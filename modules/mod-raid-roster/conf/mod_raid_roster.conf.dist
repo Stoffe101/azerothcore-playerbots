@@ -32,9 +32,10 @@ AdventureStart.Progression = 8
 AdventureStart.RevealMap = 1
 
 # AdventureStart.StarterKit
-#   Give the new real player their level-appropriate class spells, skills, riding/mounts,
-#   bags, ammo where relevant, food and combat potions. Professions are intentionally NOT
-#   initialized for the human player; crafting is intended to be a guild/social service.
+#   Give the new real player their level-appropriate class spells, skills, fast-ground Riding,
+#   bags, ammo where relevant, food and combat potions. The generic Playerbots mount helper is
+#   intentionally not used because its default level-60 path can teach flying. Professions are
+#   also intentionally NOT initialized; crafting is intended to be a guild/social service.
 AdventureStart.StarterKit = 1
 
 # AdventureStart.StartingGold
