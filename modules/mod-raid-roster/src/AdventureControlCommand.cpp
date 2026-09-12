@@ -43,6 +43,8 @@ constexpr std::array<ProgressionLabel, 19> ProgressionLabels = {{
     {18, "Final WotLK progression stage"},
 }};
 
+constexpr std::array<uint8, 10> RaidProgressionSteps = {{ 8, 9, 10, 12, 13, 14, 15, 16, 17, 18 }};
+
 Player* GetPlayer(ChatHandler* handler)
 {
     return handler && handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
@@ -59,6 +61,16 @@ std::string Lower(std::string value)
     {
         return static_cast<char>(std::tolower(c));
     });
+    return value;
+}
+
+std::string NormalizeToken(std::string value)
+{
+    value = Lower(value);
+    value.erase(std::remove_if(value.begin(), value.end(), [](unsigned char c)
+    {
+        return !std::isalnum(c);
+    }), value.end());
     return value;
 }
 
@@ -95,6 +107,98 @@ bool SetOneRate(ChatHandler* handler, Optional<uint32> percent, char const* labe
     PrintRates(handler, player);
     return true;
 }
+
+bool AdvanceProgression(ChatHandler* handler, Player* player, uint8 target, char const* requestedLabel)
+{
+    uint8 current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+    if (target <= current)
+    {
+        handler->PSendSysMessage(
+            "{} is already available at your current progression stage {} - {}.",
+            requestedLabel, uint32(current), ProgressionName(current));
+        return true;
+    }
+
+    sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(target));
+    sIndividualProgression->CheckAdjustments(player);
+    sIndividualProgression->checkIPPhasing(player, player->GetAreaId());
+
+    uint8 after = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+    if (after < target)
+    {
+        handler->PSendSysMessage(
+            "Could not advance all the way to {}. Progression stopped at stage {} - {}. A server progression limit may be active.",
+            requestedLabel, uint32(after), ProgressionName(after));
+        return true;
+    }
+
+    handler->PSendSysMessage(
+        "Raid progression advanced: {} is now unlocked. Current stage {} - {}.",
+        requestedLabel, uint32(after), ProgressionName(after));
+    return true;
+}
+
+int ResolveRaidStage(std::string const& raw)
+{
+    std::string raid = NormalizeToken(raw);
+
+    if (raid == "kara" || raid == "karazhan" || raid == "gruul" || raid == "gruulslair" ||
+        raid == "mag" || raid == "magtheridon" || raid == "magtheridonslair")
+        return 8;
+
+    if (raid == "ssc" || raid == "serpentshrine" || raid == "serpentshrinecavern" ||
+        raid == "tk" || raid == "tempestkeep" || raid == "theeye")
+        return 9;
+
+    if (raid == "hyjal" || raid == "mounthyjal" || raid == "hyjalsummit" ||
+        raid == "bt" || raid == "blacktemple")
+        return 10;
+
+    if (raid == "za" || raid == "zulaman")
+        return std::clamp<int>(sIndividualProgression->RequiredZulAmanProgression, 1, PROGRESSION_WOTLK_TIER_5);
+
+    if (raid == "sunwell" || raid == "swp" || raid == "sunwellplateau")
+        return 12;
+
+    if (raid == "naxx" || raid == "naxxramas" || raid == "eoe" || raid == "eyeofeternity" ||
+        raid == "os" || raid == "obsidiansanctum")
+        return 13;
+
+    if (raid == "ulduar")
+        return 14;
+
+    if (raid == "toc" || raid == "totc" || raid == "trialofthecrusader")
+        return 15;
+
+    if (raid == "icc" || raid == "icecrown" || raid == "icecrowncitadel")
+        return 16;
+
+    if (raid == "rs" || raid == "ruby" || raid == "rubysanctum")
+        return 17;
+
+    if (raid == "final" || raid == "wotlkfinal")
+        return 18;
+
+    return -1;
+}
+
+char const* RaidLabelForStage(uint8 stage)
+{
+    switch (stage)
+    {
+        case 8:  return "Karazhan / Gruul / Magtheridon";
+        case 9:  return "Serpentshrine Cavern / Tempest Keep";
+        case 10: return "Hyjal Summit / Black Temple";
+        case 12: return "Sunwell Plateau";
+        case 13: return "Naxxramas / Eye of Eternity / Obsidian Sanctum";
+        case 14: return "Ulduar";
+        case 15: return "Trial of the Crusader";
+        case 16: return "Icecrown Citadel";
+        case 17: return "Ruby Sanctum";
+        case 18: return "final WotLK progression";
+        default: return "requested raid tier";
+    }
+}
 }
 
 ChatCommandTable AdventureControlCommand::GetCommands() const
@@ -109,6 +213,12 @@ ChatCommandTable AdventureControlCommand::GetCommands() const
         { "list",    HandleProgressList,    SEC_PLAYER, Console::No },
         { "advance", HandleProgressAdvance, SEC_PLAYER, Console::No },
     };
+    static ChatCommandTable raid =
+    {
+        { "list",   HandleRaidList,   SEC_PLAYER, Console::No },
+        { "unlock", HandleRaidUnlock, SEC_PLAYER, Console::No },
+        { "next",   HandleRaidNext,   SEC_PLAYER, Console::No },
+    };
     static ChatCommandTable sub =
     {
         { "status",   HandleStatus, SEC_PLAYER, Console::No },
@@ -118,6 +228,7 @@ ChatCommandTable AdventureControlCommand::GetCommands() const
         { "rep",      HandleRep,    SEC_PLAYER, Console::No },
         { "quest",    quest },
         { "progress", progress },
+        { "raid",     raid },
     };
     static ChatCommandTable root = { { "playstyle", sub } };
     return root;
@@ -132,7 +243,7 @@ bool AdventureControlCommand::HandleStatus(ChatHandler* handler)
     PrintRates(handler, player);
     uint8 stage = sIndividualProgression->GetPlayerProgressionFromQuests(player);
     handler->PSendSysMessage("Progression stage: {} - {}", uint32(stage), ProgressionName(stage));
-    handler->SendSysMessage("Presets: normal, boosted, fast, turbo, insane. Use .playstyle progress list for progression stages.");
+    handler->SendSysMessage("Presets: normal, boosted, fast, turbo, insane. Use .playstyle raid list for raid shortcuts or .playstyle progress list for every progression stage.");
     return true;
 }
 
@@ -250,19 +361,73 @@ bool AdventureControlCommand::HandleProgressAdvance(ChatHandler* handler, Option
         return true;
     }
 
-    uint8 current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
     uint8 target = static_cast<uint8>(*stage);
-    if (target <= current)
+    return AdvanceProgression(handler, player, target, ProgressionName(target));
+}
+
+bool AdventureControlCommand::HandleRaidList(ChatHandler* handler)
+{
+    Player* player = GetPlayer(handler);
+    if (!player)
+        return false;
+
+    uint8 current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+    handler->PSendSysMessage("Current raid progression: stage {} - {}", uint32(current), ProgressionName(current));
+    handler->SendSysMessage("Raid shortcuts (forward-only):");
+    handler->SendSysMessage("  kara / gruul / magtheridon -> Karazhan, Gruul's Lair, Magtheridon's Lair");
+    handler->SendSysMessage("  ssc / tk -> Serpentshrine Cavern, Tempest Keep");
+    handler->SendSysMessage("  hyjal / bt -> Hyjal Summit, Black Temple");
+    handler->PSendSysMessage("  za -> Zul'Aman (currently requires progression stage {})", sIndividualProgression->RequiredZulAmanProgression);
+    handler->SendSysMessage("  sunwell -> Sunwell Plateau");
+    handler->SendSysMessage("  naxx / eoe / os -> Wrath entry raids");
+    handler->SendSysMessage("  ulduar -> Ulduar");
+    handler->SendSysMessage("  toc -> Trial of the Crusader");
+    handler->SendSysMessage("  icc -> Icecrown Citadel");
+    handler->SendSysMessage("  rs -> Ruby Sanctum");
+    handler->SendSysMessage("Use .playstyle raid unlock <name>, or .playstyle raid next to skip to the next main raid tier.");
+    return true;
+}
+
+bool AdventureControlCommand::HandleRaidUnlock(ChatHandler* handler, Optional<std::string> raid)
+{
+    Player* player = GetPlayer(handler);
+    if (!player)
+        return false;
+    if (!raid)
     {
-        handler->PSendSysMessage("Your progression is already stage {}. This command only moves forward.", uint32(current));
+        handler->SendSysMessage("Usage: .playstyle raid unlock <kara|ssc|tk|hyjal|bt|za|sunwell|naxx|ulduar|toc|icc|rs>");
         return true;
     }
 
-    sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(target));
-    sIndividualProgression->CheckAdjustments(player);
-    sIndividualProgression->checkIPPhasing(player, player->GetAreaId());
+    int resolved = ResolveRaidStage(*raid);
+    if (resolved < 0)
+    {
+        handler->PSendSysMessage("Unknown raid shortcut '{}'. Use .playstyle raid list.", *raid);
+        return true;
+    }
 
-    uint8 after = sIndividualProgression->GetPlayerProgressionFromQuests(player);
-    handler->PSendSysMessage("Progression advanced to {} - {}", uint32(after), ProgressionName(after));
+    uint8 target = static_cast<uint8>(resolved);
+    std::string normalized = NormalizeToken(*raid);
+    char const* label = RaidLabelForStage(target);
+    if (normalized == "za" || normalized == "zulaman")
+        label = "Zul'Aman";
+
+    return AdvanceProgression(handler, player, target, label);
+}
+
+bool AdventureControlCommand::HandleRaidNext(ChatHandler* handler)
+{
+    Player* player = GetPlayer(handler);
+    if (!player)
+        return false;
+
+    uint8 current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+    for (uint8 target : RaidProgressionSteps)
+    {
+        if (target > current)
+            return AdvanceProgression(handler, player, target, RaidLabelForStage(target));
+    }
+
+    handler->SendSysMessage("You are already at the final WotLK progression stage.");
     return true;
 }
