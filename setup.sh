@@ -1201,8 +1201,11 @@ else
   echo "==> Lore sidecar disabled (LORE_ENABLE != 1); skipping ac-lore."
 fi
 
-echo "==> 9/10 Restarting worldserver to apply config"
-docker compose restart ac-worldserver
+echo "==> 9/10 Recreating worldserver to apply config"
+# Docker Desktop + WSL2 can invalidate the per-file DBC bind-mount handles
+# when restarting an existing container. Recreate the worldserver so Docker
+# establishes fresh handles for the Individual Progression DBC overlays.
+docker compose up -d --no-deps --force-recreate ac-worldserver
 
 echo "==> 10/10 Installing nightly database-backup cron job"
 # Idempotent: a marked line is replaced on re-run. Skip with BACKUP_CRON=0.
