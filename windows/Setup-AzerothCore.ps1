@@ -88,7 +88,7 @@ f=.env; [ -f "$f" ] || f=.env.example
 awk -F= '/^DOCKER_AUTH_EXTERNAL_PORT=/{a=$2} /^DOCKER_WORLD_EXTERNAL_PORT=/{w=$2} END{printf "%s %s",(a?a:"3724"),(w?w:"8085")}' "$f"
 '@
 $portCommand = "cd '$abs' && $portScript"
-$portsRaw = & wsl.exe @(Get-WslPrefix $Distro) '--' 'bash' '-lc' $portCommand
+$portsRaw = & wsl.exe @(Get-WslPrefix $Distro) '-e' '/bin/bash' '-lc' $portCommand
 $ports = ([string]$portsRaw).Trim() -split '\s+'
 # Guard against StrictMode index-out-of-bounds if the read ever yields <2 tokens.
 if ($ports.Count -ge 2) { $authPort = $ports[0]; $worldPort = $ports[1] }
