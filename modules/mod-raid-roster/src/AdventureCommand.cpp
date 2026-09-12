@@ -4,6 +4,7 @@
 #include "IndividualProgression.h"
 #include "ObjectMgr.h"
 #include "Player.h"
+#include "PlayerbotAI.h"
 #include "RBAC.h"
 
 #include <algorithm>
@@ -30,7 +31,6 @@ struct AdventureDestination
 // AzerothCore's own areatrigger data through GetGoBackTrigger(), so upstream DB corrections do not
 // require coordinate updates in this fork.
 constexpr std::array<AdventureDestination, 32> Destinations = {{
-    // The Burning Crusade (progression 8+)
     {"ramparts",       "Hellfire Ramparts",          543, 60, 8},
     {"bloodfurnace",   "The Blood Furnace",          542, 60, 8},
     {"shatteredhalls", "The Shattered Halls",        540, 65, 8},
@@ -47,8 +47,6 @@ constexpr std::array<AdventureDestination, 32> Destinations = {{
     {"botanica",       "The Botanica",               553, 68, 8},
     {"arcatraz",       "The Arcatraz",               552, 68, 8},
     {"magisters",      "Magisters' Terrace",         585, 70, 12},
-
-    // Wrath of the Lich King (progression 13+)
     {"utgardekeep",    "Utgarde Keep",               574, 68, 13},
     {"nexus",          "The Nexus",                  576, 68, 13},
     {"azjol",          "Azjol-Nerub",                601, 68, 13},
@@ -68,26 +66,13 @@ constexpr std::array<AdventureDestination, 32> Destinations = {{
 }};
 
 constexpr std::array<std::pair<char const*, char const*>, 20> CommonMentions = {{
-    {"ramps", "ramparts"},
-    {"furnace", "bloodfurnace"},
-    {"shh", "shatteredhalls"},
-    {"pens", "slavepens"},
-    {"slabs", "shadowlab"},
-    {"ohb", "oldhillsbrad"},
-    {"mech", "mechanar"},
-    {"mgt", "magisters"},
-    {"oldkingdom", "ahnkahet"},
-    {"dtk", "draktharon"},
-    {"vh", "violethold"},
-    {"hos", "hallsofstone"},
-    {"hol", "hallsoflightning"},
-    {"cos", "culling"},
-    {"toc", "trial"},
-    {"fos", "forgeofsouls"},
-    {"pos", "pitofsaron"},
-    {"hor", "hallsofreflection"},
-    {"uk", "utgardekeep"},
-    {"up", "utgardepinnacle"},
+    {"ramps", "ramparts"}, {"furnace", "bloodfurnace"}, {"shh", "shatteredhalls"},
+    {"pens", "slavepens"}, {"slabs", "shadowlab"}, {"ohb", "oldhillsbrad"},
+    {"mech", "mechanar"}, {"mgt", "magisters"}, {"oldkingdom", "ahnkahet"},
+    {"dtk", "draktharon"}, {"vh", "violethold"}, {"hos", "hallsofstone"},
+    {"hol", "hallsoflightning"}, {"cos", "culling"}, {"toc", "trial"},
+    {"fos", "forgeofsouls"}, {"pos", "pitofsaron"}, {"hor", "hallsofreflection"},
+    {"uk", "utgardekeep"}, {"up", "utgardepinnacle"},
 }};
 
 std::string Normalize(std::string value)
@@ -141,26 +126,50 @@ bool CanTravel(Player* player, AdventureDestination const& destination, ChatHand
             uint32(destination.minLevel), uint32(player->GetLevel()));
         return false;
     }
-
-    uint8 progression = GetProgression(player);
-    if (progression < destination.minProgression)
+    if (GetProgression(player) < destination.minProgression)
     {
         handler->PSendSysMessage("{} is not unlocked in your current progression era.", destination.name);
         return false;
     }
-
     if (player->IsInCombat())
     {
         handler->SendSysMessage("You cannot use adventure travel while in combat.");
         return false;
     }
-
     if (!player->IsAlive())
     {
         handler->SendSysMessage("You must be alive to use adventure travel.");
         return false;
     }
+    return true;
+}
 
+bool CanPartyMemberTravel(Player* member, AdventureDestination const& destination, ChatHandler* handler)
+{
+    if (!member)
+        return true;
+    if (member->GetLevel() < destination.minLevel)
+    {
+        handler->PSendSysMessage("{} is level {} but {} requires level {}. Travel was cancelled for the whole party.",
+            member->GetName(), uint32(member->GetLevel()), destination.name, uint32(destination.minLevel));
+        return false;
+    }
+    if (IsRealPlayer(member) && GetProgression(member) < destination.minProgression)
+    {
+        handler->PSendSysMessage("{} has not unlocked {} yet. Travel was cancelled for the whole party.",
+            member->GetName(), destination.name);
+        return false;
+    }
+    if (member->IsInCombat())
+    {
+        handler->PSendSysMessage("{} is in combat. Travel was cancelled for the whole party.", member->GetName());
+        return false;
+    }
+    if (!member->IsAlive())
+    {
+        handler->PSendSysMessage("{} is dead. Travel was cancelled for the whole party.", member->GetName());
+        return false;
+    }
     return true;
 }
 }
@@ -168,12 +177,14 @@ bool CanTravel(Player* player, AdventureDestination const& destination, ChatHand
 bool AdventureCommand::ResolveMention(std::string const& text, std::string& alias, std::string& displayName)
 {
     std::string normalized = Normalize(text);
+    std::string tokenized = Tokenize(text);
 
-    // Prefer explicit full/command names before abbreviations.
+    // Full display names are safe to substring-match after punctuation/spacing normalization.
+    // Bare command aliases are token-matched instead. This prevents aliases such as "trial" from
+    // firing inside unrelated prose while still allowing natural messages such as "run nexus".
     for (AdventureDestination const& destination : Destinations)
     {
-        if (normalized.find(Normalize(destination.name)) != std::string::npos ||
-            normalized.find(destination.alias) != std::string::npos)
+        if (normalized.find(Normalize(destination.name)) != std::string::npos)
         {
             alias = destination.alias;
             displayName = destination.name;
@@ -181,9 +192,18 @@ bool AdventureCommand::ResolveMention(std::string const& text, std::string& alia
         }
     }
 
-    // Common player shorthand is token-matched so tiny abbreviations such as UK/UP/VH do not
-    // accidentally fire inside ordinary words.
-    std::string tokenized = Tokenize(text);
+    for (AdventureDestination const& destination : Destinations)
+    {
+        if (std::string(destination.alias) == "trial")
+            continue; // use "toc" or the full "Trial of the Champion" name in natural chat.
+        if (ContainsToken(tokenized, destination.alias))
+        {
+            alias = destination.alias;
+            displayName = destination.name;
+            return true;
+        }
+    }
+
     for (auto const& mention : CommonMentions)
     {
         if (!ContainsToken(tokenized, mention.first))
@@ -195,7 +215,6 @@ bool AdventureCommand::ResolveMention(std::string const& text, std::string& alia
             return true;
         }
     }
-
     return false;
 }
 
@@ -206,37 +225,29 @@ bool AdventureCommand::IsDestinationUnlocked(Player* player, std::string const& 
         reason = "No player is available.";
         return false;
     }
-
     AdventureDestination const* destination = FindDestination(destinationValue);
     if (!destination)
     {
         reason = "That dungeon is not in the Adventure Travel catalog.";
         return false;
     }
-
     if (player->GetLevel() < destination->minLevel)
     {
         reason = std::string(destination->name) + " requires level " + std::to_string(destination->minLevel) + ".";
         return false;
     }
-
     if (GetProgression(player) < destination->minProgression)
     {
         reason = std::string(destination->name) + " is not unlocked in your current progression era.";
         return false;
     }
-
     reason.clear();
     return true;
 }
 
 ChatCommandTable AdventureCommand::GetCommands() const
 {
-    static ChatCommandTable sub =
-    {
-        { "list", HandleList, SEC_PLAYER, Console::No },
-        { "go",   HandleGo,   SEC_PLAYER, Console::No },
-    };
+    static ChatCommandTable sub = {{ "list", HandleList, SEC_PLAYER, Console::No }, { "go", HandleGo, SEC_PLAYER, Console::No }};
     static ChatCommandTable root = { { "adventure", sub } };
     return root;
 }
@@ -246,14 +257,11 @@ bool AdventureCommand::HandleList(ChatHandler* handler)
     Player* player = handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
     if (!player)
         return false;
-
     uint8 progression = GetProgression(player);
     handler->SendSysMessage("Adventure travel destinations available to you:");
     for (AdventureDestination const& destination : Destinations)
-    {
         if (player->GetLevel() >= destination.minLevel && progression >= destination.minProgression)
             handler->PSendSysMessage("  .adventure go {} - {}", destination.alias, destination.name);
-    }
     return true;
 }
 
@@ -262,7 +270,6 @@ bool AdventureCommand::HandleGo(ChatHandler* handler, Optional<std::string> dest
     Player* player = handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
     if (!player)
         return false;
-
     if (!destinationArg || destinationArg->empty())
     {
         handler->SendSysMessage("Usage: .adventure go <destination>. Use .adventure list to see unlocked destinations.");
@@ -275,7 +282,6 @@ bool AdventureCommand::HandleGo(ChatHandler* handler, Optional<std::string> dest
         handler->SendSysMessage("Unknown destination. Use .adventure list to see unlocked destinations.");
         return true;
     }
-
     if (!CanTravel(player, *destination, handler))
         return true;
 
@@ -294,22 +300,13 @@ bool AdventureCommand::HandleGo(ChatHandler* handler, Optional<std::string> dest
             handler->SendSysMessage("Only the group leader can move the party with adventure travel.");
             return true;
         }
-
         for (GroupReference* reference = group->GetFirstMember(); reference; reference = reference->next())
         {
             Player* member = reference->GetSource();
             if (!member)
                 continue;
-            if (member->IsInCombat())
-            {
-                handler->PSendSysMessage("{} is in combat. Travel was cancelled for the whole party.", member->GetName());
+            if (!CanPartyMemberTravel(member, *destination, handler))
                 return true;
-            }
-            if (!member->IsAlive())
-            {
-                handler->PSendSysMessage("{} is dead. Travel was cancelled for the whole party.", member->GetName());
-                return true;
-            }
             travelers.push_back(member);
         }
     }
@@ -318,17 +315,19 @@ bool AdventureCommand::HandleGo(ChatHandler* handler, Optional<std::string> dest
         travelers.push_back(player);
     }
 
+    uint32 moved = 0;
     for (Player* traveler : travelers)
+        if (traveler->TeleportTo(entrance->target_mapId, entrance->target_X, entrance->target_Y,
+                entrance->target_Z, entrance->target_Orientation))
+            ++moved;
+
+    if (moved != travelers.size())
     {
-        traveler->TeleportTo(
-            entrance->target_mapId,
-            entrance->target_X,
-            entrance->target_Y,
-            entrance->target_Z,
-            entrance->target_Orientation);
+        handler->PSendSysMessage("Adventure travel to {} was only partially successful: {} of {} online traveler(s) moved. No additional teleport was forced.",
+            destination->name, moved, uint32(travelers.size()));
+        return true;
     }
 
-    handler->PSendSysMessage("Adventure travel: {} player(s) sent to the entrance of {}.",
-        uint32(travelers.size()), destination->name);
+    handler->PSendSysMessage("Adventure travel: {} player(s) sent to the entrance of {}.", moved, destination->name);
     return true;
 }
