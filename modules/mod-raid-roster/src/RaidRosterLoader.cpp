@@ -2,6 +2,7 @@
 #include "Log.h"
 #include "RaidRosterCommand.h"
 #include "RaidRosterConfig.h"
+#include "AdventureCacheCommand.h"
 
 void AddAdventureStartScripts();
 
@@ -17,5 +18,6 @@ void Addmod_raid_rosterScripts()
     LOG_INFO("server.loading", "[RaidRoster] Registering scripts.");
     new RaidRosterWorld();
     new RaidRosterCommand();
+    new AdventureCacheCommand();
     AddAdventureStartScripts();
 }
