@@ -50,3 +50,38 @@ GuildDirector.AutoTravel = 1
 #   Give asynchronous playerbot logins this long to finish before cancelling the request.
 #   Clamped to 5000-60000 ms.
 GuildDirector.ReadyTimeoutMs = 15000
+
+########################################
+# Encounter lifecycle (this fork)
+########################################
+
+# EncounterLifecycle.Enable
+#   Master switch for wipe recovery / automatic preparation helpers. These helpers never
+#   auto-pull or replace Playerbots combat decision making.
+EncounterLifecycle.Enable = 1
+
+# WipeRecovery.Enable
+#   Detect a true full-party wipe inside a dungeon/raid and schedule one recovery pass.
+WipeRecovery.Enable = 1
+
+# WipeRecovery.DelayMs
+#   Wait this long after the full wipe before recovery. Clamped to 2000-30000 ms.
+WipeRecovery.DelayMs = 5000
+
+# WipeRecovery.ResurrectHumans
+#   When enabled, real players are resurrected together with the guild bots after a full wipe.
+#   Disable this if you prefer manual human corpse runs while still recovering bots.
+WipeRecovery.ResurrectHumans = 1
+
+# AutoPrep.Enable
+#   Ask existing Playerbots non-combat AI to run a preparation pass after instance entry and
+#   after automatic wipe recovery. This does not invent class spell logic in this module.
+AutoPrep.Enable = 1
+
+# AutoPrep.WarlockSupport
+#   Warlock bots prepare healthstone/soulstone support and prefer a healer soulstone strategy.
+AutoPrep.WarlockSupport = 1
+
+# AutoPrep.SmartPets
+#   Let hunter/warlock class AI immediately reevaluate its normal pet state during preparation.
+AutoPrep.SmartPets = 1
