@@ -2,8 +2,10 @@
 #include "Log.h"
 #include "RaidRosterCommand.h"
 #include "RaidRosterConfig.h"
+#include "AdventureControlCommand.h"
 
 void AddAdventureStartScripts();
+void AddAdventureControlPlayerScripts();
 
 class RaidRosterWorld : public WorldScript
 {
@@ -17,5 +19,7 @@ void Addmod_raid_rosterScripts()
     LOG_INFO("server.loading", "[RaidRoster] Registering scripts.");
     new RaidRosterWorld();
     new RaidRosterCommand();
+    new AdventureControlCommand();
     AddAdventureStartScripts();
+    AddAdventureControlPlayerScripts();
 }
