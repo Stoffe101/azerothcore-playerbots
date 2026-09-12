@@ -71,7 +71,9 @@ Profile GetOrCreateProfile(uint32 botGuid)
         profile.sociability = StableTrait(profile.personaSeed, 0x40U);
         profile.preferredContent = PreferredContent(profile.personaSeed);
 
-        CharacterDatabase.Execute(
+        // The read below depends on this insert having completed. Execute() is asynchronous in
+        // AzerothCore, so use DirectExecute() here instead of racing the canonical reread.
+        CharacterDatabase.DirectExecute(
             "INSERT IGNORE INTO mod_ai_guild_profile "
             "(bot_guid, persona_seed, temperament, humor, confidence, sociability, preferred_content) "
             "VALUES ({}, {}, {}, {}, {}, {}, '{}')",
@@ -83,7 +85,8 @@ Profile GetOrCreateProfile(uint32 botGuid)
             profile.sociability,
             profile.preferredContent);
 
-        // Another world thread may have inserted first. Read the canonical persisted row.
+        // Another world thread/process may have inserted first. Read the canonical persisted row
+        // only after INSERT IGNORE has actually completed.
         result = CharacterDatabase.Query(
             "SELECT persona_seed, temperament, humor, confidence, sociability, preferred_content "
             "FROM mod_ai_guild_profile WHERE bot_guid = {}",
