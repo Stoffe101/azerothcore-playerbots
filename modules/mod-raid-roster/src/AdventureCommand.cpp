@@ -10,6 +10,7 @@
 #include <array>
 #include <cctype>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace Acore::ChatCommands;
@@ -66,15 +67,56 @@ constexpr std::array<AdventureDestination, 32> Destinations = {{
     {"hallsofreflection","Halls of Reflection",       668, 80, 16},
 }};
 
+constexpr std::array<std::pair<char const*, char const*>, 20> CommonMentions = {{
+    {"ramps", "ramparts"},
+    {"furnace", "bloodfurnace"},
+    {"shh", "shatteredhalls"},
+    {"pens", "slavepens"},
+    {"slabs", "shadowlab"},
+    {"ohb", "oldhillsbrad"},
+    {"mech", "mechanar"},
+    {"mgt", "magisters"},
+    {"oldkingdom", "ahnkahet"},
+    {"dtk", "draktharon"},
+    {"vh", "violethold"},
+    {"hos", "hallsofstone"},
+    {"hol", "hallsoflightning"},
+    {"cos", "culling"},
+    {"toc", "trial"},
+    {"fos", "forgeofsouls"},
+    {"pos", "pitofsaron"},
+    {"hor", "hallsofreflection"},
+    {"uk", "utgardekeep"},
+    {"up", "utgardepinnacle"},
+}};
+
 std::string Normalize(std::string value)
 {
     value.erase(std::remove_if(value.begin(), value.end(), [](unsigned char c) {
-        return std::isspace(c) || c == '-' || c == '_' || c == '\'';
+        return std::isspace(c) || c == '-' || c == '_' || c == '\'' || c == ':';
     }), value.end());
     std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
         return static_cast<char>(std::tolower(c));
     });
     return value;
+}
+
+std::string Tokenize(std::string value)
+{
+    for (char& c : value)
+    {
+        unsigned char uc = static_cast<unsigned char>(c);
+        if (std::isalnum(uc))
+            c = static_cast<char>(std::tolower(uc));
+        else
+            c = ' ';
+    }
+    return " " + value + " ";
+}
+
+bool ContainsToken(std::string const& tokenized, std::string const& token)
+{
+    return tokenized.find(" " + token + " ") != std::string::npos;
 }
 
 AdventureDestination const* FindDestination(std::string const& value)
@@ -121,6 +163,71 @@ bool CanTravel(Player* player, AdventureDestination const& destination, ChatHand
 
     return true;
 }
+}
+
+bool AdventureCommand::ResolveMention(std::string const& text, std::string& alias, std::string& displayName)
+{
+    std::string normalized = Normalize(text);
+
+    // Prefer explicit full/command names before abbreviations.
+    for (AdventureDestination const& destination : Destinations)
+    {
+        if (normalized.find(Normalize(destination.name)) != std::string::npos ||
+            normalized.find(destination.alias) != std::string::npos)
+        {
+            alias = destination.alias;
+            displayName = destination.name;
+            return true;
+        }
+    }
+
+    // Common player shorthand is token-matched so tiny abbreviations such as UK/UP/VH do not
+    // accidentally fire inside ordinary words.
+    std::string tokenized = Tokenize(text);
+    for (auto const& mention : CommonMentions)
+    {
+        if (!ContainsToken(tokenized, mention.first))
+            continue;
+        if (AdventureDestination const* destination = FindDestination(mention.second))
+        {
+            alias = destination->alias;
+            displayName = destination->name;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool AdventureCommand::IsDestinationUnlocked(Player* player, std::string const& destinationValue, std::string& reason)
+{
+    if (!player)
+    {
+        reason = "No player is available.";
+        return false;
+    }
+
+    AdventureDestination const* destination = FindDestination(destinationValue);
+    if (!destination)
+    {
+        reason = "That dungeon is not in the Adventure Travel catalog.";
+        return false;
+    }
+
+    if (player->GetLevel() < destination->minLevel)
+    {
+        reason = std::string(destination->name) + " requires level " + std::to_string(destination->minLevel) + ".";
+        return false;
+    }
+
+    if (GetProgression(player) < destination->minProgression)
+    {
+        reason = std::string(destination->name) + " is not unlocked in your current progression era.";
+        return false;
+    }
+
+    reason.clear();
+    return true;
 }
 
 ChatCommandTable AdventureCommand::GetCommands() const
