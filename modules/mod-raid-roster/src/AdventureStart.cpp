@@ -51,6 +51,12 @@ void GiveStarterKit(Player* player)
     factory.InitAvailableSpells();
     factory.InitBags(false);
     factory.InitMounts();
+
+    // Playerbots' generic WotLK mount setup may include flying at level 60 depending on its
+    // bot configuration. Our TBC-first human start deliberately stops at fast ground riding;
+    // flying remains something the player earns/trains during Outland progression.
+    player->SetSkill(SKILL_RIDING, 0, 150, 150);
+
     factory.InitAmmo();
     factory.InitPotions();
     factory.InitFood();
