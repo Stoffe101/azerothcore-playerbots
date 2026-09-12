@@ -95,7 +95,7 @@ StaticPopupDialogs["ADVENTURE_CONTROLS_RAID"] = {
 }
 
 StaticPopupDialogs["ADVENTURE_CONTROLS_CATCHUP"] = {
-    text = "Unlock %s and apply its one-time catch-up gear package?\n\nThe server uses your current spec and only upgrades toward entry-ready gear BELOW the raid's own loot. Better equipped pieces are kept. Enchants and gems are not granted.",
+    text = "Unlock %s and apply its one-time catch-up gear package?\n\nThe server uses your CURRENT spec and upgrades your EQUIPPED gear toward an entry-ready target below the raid's own loot. Better pieces are kept, but weaker equipped pieces may be replaced. Enchants and gems are not granted.",
     button1 = "Unlock + gear",
     button2 = "Cancel",
     OnAccept = function(self, data)
@@ -119,7 +119,7 @@ StaticPopupDialogs["ADVENTURE_CONTROLS_NEXT_RAID"] = {
 }
 
 StaticPopupDialogs["ADVENTURE_CONTROLS_NEXT_CATCHUP"] = {
-    text = "Skip to the next main raid tier AND apply its one-time catch-up gear package?\n\nYou must already be the expansion's raid level (70 in TBC, 80 in Wrath).",
+    text = "Skip to the next main raid tier AND apply its one-time catch-up gear package?\n\nYou must already be the expansion's raid level (70 in TBC, 80 in Wrath). The pass uses your current spec and may replace weaker equipped pieces.",
     button1 = "Skip + gear",
     button2 = "Cancel",
     OnAccept = function() Run(".catchup next") end,
