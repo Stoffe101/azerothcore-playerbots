@@ -1,6 +1,7 @@
 #include "ScriptMgr.h"
 #include "Log.h"
 #include "AdventureCommand.h"
+#include "AdventureGuideCommand.h"
 #include "GuildGroupDirector.h"
 #include "RaidRosterCommand.h"
 #include "RaidRosterConfig.h"
@@ -20,6 +21,7 @@ void Addmod_raid_rosterScripts()
     new RaidRosterWorld();
     new RaidRosterCommand();
     new AdventureCommand();
+    new AdventureGuideCommand();
     AddAdventureStartScripts();
     AddGuildGroupDirectorScripts();
 }
