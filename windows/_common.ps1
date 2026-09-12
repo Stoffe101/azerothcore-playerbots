@@ -5,8 +5,17 @@
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-# Make `wsl.exe` list/status output clean UTF-8 instead of UTF-16LE (PowerShell mangles UTF-16).
+# Make wsl.exe list/status output clean UTF-8 instead of UTF-16LE.
 $env:WSL_UTF8 = '1'
+
+# wsl.exe tries to translate the current Windows working directory into a Linux path.
+# A PowerShell cwd under \\wsl$ or \\wsl.localhost cannot be translated reliably and can
+# break otherwise-valid WSL commands. The scripts use $PSScriptRoot for their own files, so it
+# is safe to move the PowerShell cwd to C:\ before invoking wsl.exe.
+$currentPath = (Get-Location).Path
+if ($currentPath -like '\\wsl$\*' -or $currentPath -like '\\wsl.localhost\*') {
+    Set-Location -LiteralPath ($env:SystemDrive + '\')
+}
 
 function Test-IsAdmin {
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -20,22 +29,22 @@ function Assert-Admin {
     }
 }
 
-# Leading `wsl.exe` args, optionally targeting a specific distro (else the default distro).
+# Leading wsl.exe args, optionally targeting a specific distro (else the default distro).
 function Get-WslPrefix {
     param([string]$Distro)
     if ($Distro) { return @('-d', $Distro) } else { return @() }
 }
 
-# Expand a (possibly ~/relative) WSL path to an absolute path. $null if it doesn't exist.
-# `cd` is unquoted at the initial validation boundary so bash can expand ~. Reject spaces and
-# shell metacharacters up front instead of silently changing the requested path.
+# Expand a (possibly ~/relative) WSL path to an absolute path. $null if it does not exist.
+# RepoPath is intentionally unquoted here so bash can expand ~. The validation below rejects
+# spaces and shell metacharacters, so this remains safe for the supported path format.
 function Resolve-RepoPath {
     param([Parameter(Mandatory)][string]$RepoPath, [string]$Distro)
     if ($RepoPath -notmatch '^[~A-Za-z0-9._/\\-]+$') {
         throw "WslPath '$RepoPath' contains unsupported characters (spaces or shell metacharacters). Use a simple path like ~/AzerothCore."
     }
-    $resolveCommand = "cd '$RepoPath' 2>/dev/null && pwd"
-    $abs = (& wsl.exe @(Get-WslPrefix $Distro) '--' 'bash' '-lc' $resolveCommand)
+    $resolveCommand = "cd $RepoPath 2>/dev/null && pwd"
+    $abs = (& wsl.exe @(Get-WslPrefix $Distro) '-e' '/bin/bash' '-lc' $resolveCommand)
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($abs)) { return $null }
     return ([string]$abs).Trim()
 }
@@ -44,14 +53,14 @@ function Resolve-RepoPath {
 function Test-RepoHasSetup {
     param([Parameter(Mandatory)][string]$AbsRepoPath, [string]$Distro)
     $testCommand = "test -f '$AbsRepoPath/setup.sh'"
-    & wsl.exe @(Get-WslPrefix $Distro) '--' 'bash' '-lc' $testCommand *> $null
+    & wsl.exe @(Get-WslPrefix $Distro) '-e' '/bin/bash' '-lc' $testCommand *> $null
     return ($LASTEXITCODE -eq 0)
 }
 
-# True if `docker compose` works from WSL (Docker Desktop running + WSL integration on).
+# True if docker compose works from WSL (Docker Desktop running + WSL integration on).
 function Test-DockerReady {
     param([string]$Distro)
-    & wsl.exe @(Get-WslPrefix $Distro) '--' 'bash' '-lc' 'docker compose version' *> $null
+    & wsl.exe @(Get-WslPrefix $Distro) '-e' '/bin/bash' '-lc' 'docker compose version' *> $null
     return ($LASTEXITCODE -eq 0)
 }
 
@@ -70,7 +79,7 @@ function Start-DockerDesktopIfNeeded {
     }
 }
 
-# Run a bash command inside an ABSOLUTE $RepoPath in WSL, streaming output. Throws on non-zero.
+# Run a bash command inside an ABSOLUTE RepoPath in WSL, streaming output. Throws on non-zero.
 function Invoke-Wsl {
     param(
         [Parameter(Mandatory)][string]$RepoPath,
@@ -78,6 +87,6 @@ function Invoke-Wsl {
         [string]$Distro
     )
     $full = "cd '$RepoPath' && $Command"
-    & wsl.exe @(Get-WslPrefix $Distro) '--' 'bash' '-lc' $full
+    & wsl.exe @(Get-WslPrefix $Distro) '-e' '/bin/bash' '-lc' $full
     if ($LASTEXITCODE -ne 0) { throw "WSL command failed (exit $LASTEXITCODE)." }
 }
