@@ -12,5 +12,11 @@ extern uint32 g_AdventureStartLevel;
 extern uint8 g_AdventureStartProgression;
 extern bool g_AdventureStartRevealMap;
 
+// Gold progression for players who prefer questing/dungeons/raids over professions.
+// First-kill bounties are intentionally one-time per character/boss/map.
+extern bool g_AdventureEconomyEnable;
+extern uint32 g_AdventureEconomyDungeonBossFirstKillGold;
+extern uint32 g_AdventureEconomyRaidBossFirstKillGold;
+
 void RaidRosterLoadConfig();
 #endif
