@@ -1,5 +1,6 @@
 #include "PBChatterContext.h"
 #include "PBChatterLevelContent.h"
+#include "PBAIGuildStore.h"
 #include "Player.h"
 #include "Unit.h"
 #include "Bag.h"
@@ -41,6 +42,34 @@ namespace
             case RACE_BLOODELF: return "Blood Elf"; case RACE_DRAENEI: return "Draenei";
             default: return "traveler";
         }
+    }
+
+    char const* Temperament(uint8 value)
+    {
+        if (value < 40) return "laid-back";
+        if (value > 60) return "intense";
+        return "steady";
+    }
+
+    char const* Humor(uint8 value)
+    {
+        if (value < 40) return "dry";
+        if (value > 60) return "jokey";
+        return "wry";
+    }
+
+    char const* Confidence(uint8 value)
+    {
+        if (value < 40) return "cautious";
+        if (value > 60) return "bold";
+        return "self-assured";
+    }
+
+    char const* Sociability(uint8 value)
+    {
+        if (value < 40) return "reserved";
+        if (value > 60) return "chatty";
+        return "friendly";
     }
 }
 
@@ -189,5 +218,16 @@ std::string PBChatterContext::BuildGroundedBrief(Player* bot)
 
 std::string PBChatterContext::BuildIdentity(Player* bot)
 {
-    return Acore::StringFormat("You're a level {} {}.", bot->GetLevel(), ClassName(bot->getClass()));
+    PBAIGuildStore::Profile profile = PBAIGuildStore::GetOrCreateProfile(bot->GetGUID().GetCounter());
+
+    return Acore::StringFormat(
+        "You're a level {} {}. Your stable personality is {}, {}, {}, and {}. "
+        "You tend to enjoy {}. Keep those traits subtle and consistent; do not invent shared history that is not in memory context.",
+        bot->GetLevel(),
+        ClassName(bot->getClass()),
+        Temperament(profile.temperament),
+        Humor(profile.humor),
+        Confidence(profile.confidence),
+        Sociability(profile.sociability),
+        profile.preferredContent);
 }
