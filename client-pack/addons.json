@@ -1,8 +1,9 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "client": {
     "wowVersion": "3.3.5a",
     "build": 12340,
+    "interface": 30300,
     "primaryResolution": "3440x1440",
     "preset": "naowh-inspired-ultrawide"
   },
@@ -13,7 +14,10 @@
       "repository": "https://github.com/ElvUI-WotLK/ElvUI",
       "ref": "58ea24f7979740221389ce09685eb445723a6346",
       "installMode": "github-archive",
-      "installAllTopLevelTocFolders": true,
+      "addonFolders": [
+        "ElvUI",
+        "ElvUI_OptionsUI"
+      ],
       "required": true
     },
     {
@@ -23,7 +27,10 @@
       "ref": "02956c68068b2c01bfdc3972345eb59a357447d7",
       "license": "MIT",
       "installMode": "github-archive",
-      "installAllTopLevelTocFolders": true,
+      "addonFolders": [
+        "TidyPlates",
+        "TidyPlates_ThreatPlates"
+      ],
       "preferredTheme": "TidyPlates_ThreatPlates",
       "required": true
     },
@@ -43,16 +50,46 @@
       "ref": "39c2aca9043082c0e3219220f17b98eb69a8e43e",
       "license": "GPL-2.0",
       "installMode": "github-archive",
-      "installAllTopLevelTocFolders": true,
+      "addonFolders": [
+        "WeakAuras",
+        "WeakAurasArchive",
+        "WeakAurasModelPaths",
+        "WeakAurasOptions",
+        "WeakAurasStopMotion",
+        "WeakAurasTemplates"
+      ],
       "required": true
     },
     {
-      "id": "bigwigs",
-      "name": "BigWigs WotLK 3.3.5a",
-      "repository": "https://github.com/bkader/BigWigs-WoTLK",
-      "ref": "8fec48586899bcd7191db5049b2c51133c8c5039",
+      "id": "dbm",
+      "name": "Deadly Boss Mods 3.3.5a complete raid/dungeon suite",
+      "repository": "https://github.com/locus313/WoW-3.3.5a-Addons",
+      "ref": "a47dd619de2a87ab26adc31bd23c407a0d06e28b",
       "installMode": "github-archive",
-      "installAllTopLevelTocFolders": true,
+      "addonFolders": [
+        "DBM-Core",
+        "DBM-GUI",
+        "DBM-Karazhan",
+        "DBM-ZulAman",
+        "DBM-BurningCrusade",
+        "DBM-BlackTemple",
+        "DBM-Hyjal",
+        "DBM-Serpentshrine",
+        "DBM-TheEye",
+        "DBM-Sunwell",
+        "DBM-Outlands",
+        "DBM-Party-BC",
+        "DBM-Naxx",
+        "DBM-Onyxia",
+        "DBM-VoA",
+        "DBM-EyeOfEternity",
+        "DBM-Ulduar",
+        "DBM-Coliseum",
+        "DBM-ChamberOfAspects",
+        "DBM-Icecrown",
+        "DBM-Party-WotLK"
+      ],
+      "forceEnabled": true,
       "required": true
     }
   ],
@@ -60,6 +97,7 @@
     "resolution": "3440x1440",
     "elvui": "AzerothGuild-Ultrawide",
     "nameplates": "TidyPlates_ThreatPlates",
+    "bossMod": "DBM-Core",
     "status": "layout-spec-ready-savedvariables-needs-client-validation"
   }
 }
