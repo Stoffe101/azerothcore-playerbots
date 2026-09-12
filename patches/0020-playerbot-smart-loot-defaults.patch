@@ -1,0 +1,27 @@
+diff --git a/modules/mod-playerbots/conf/playerbots.conf.dist b/modules/mod-playerbots/conf/playerbots.conf.dist
+--- a/modules/mod-playerbots/conf/playerbots.conf.dist
++++ b/modules/mod-playerbots/conf/playerbots.conf.dist
+@@
+-# Bots' Roll level bots will use for items they Need (0 = pass, 1 = greed, 2 = need)
+-# Default: 1 (greed)
+-AiPlayerbot.LootNeedRollLevel = 1
++# Bots' Roll level bots will use for items they Need (0 = pass, 1 = greed, 2 = need)
++# This fork uses fair guild loot: actual upgrades remain NEED.
++# Default: 2 (need)
++AiPlayerbot.LootNeedRollLevel = 2
+@@
+-# Default: 0 (disabled - bots only NEED or PASS)
+-AiPlayerbot.LootGreedRollLevel = 0
++# This fork lets bots GREED useful non-upgrades/BoEs while still PASSing items
++# their item-usage evaluator considers irrelevant.
++# Default: 1
++AiPlayerbot.LootGreedRollLevel = 1
+diff --git a/modules/mod-playerbots/src/PlayerbotAIConfig.cpp b/modules/mod-playerbots/src/PlayerbotAIConfig.cpp
+--- a/modules/mod-playerbots/src/PlayerbotAIConfig.cpp
++++ b/modules/mod-playerbots/src/PlayerbotAIConfig.cpp
+@@
+-    lootNeedRollLevel = sConfigMgr->GetOption<int32>("AiPlayerbot.LootNeedRollLevel", 1);
++    lootNeedRollLevel = sConfigMgr->GetOption<int32>("AiPlayerbot.LootNeedRollLevel", 2);
+@@
+-    lootGreedRollLevel = sConfigMgr->GetOption<bool>("AiPlayerbot.LootGreedRollLevel", false);
++    lootGreedRollLevel = sConfigMgr->GetOption<bool>("AiPlayerbot.LootGreedRollLevel", true);
