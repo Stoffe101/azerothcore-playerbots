@@ -1,11 +1,21 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "client": {
     "wowVersion": "3.3.5a",
     "build": 12340,
-    "primaryResolution": "3440x1440"
+    "primaryResolution": "3440x1440",
+    "preset": "naowh-inspired-ultrawide"
   },
   "addons": [
+    {
+      "id": "elvui",
+      "name": "ElvUI WotLK 3.3.5a",
+      "repository": "https://github.com/ElvUI-WotLK/ElvUI",
+      "ref": "58ea24f7979740221389ce09685eb445723a6346",
+      "installMode": "github-archive",
+      "installAllTopLevelTocFolders": true,
+      "required": true
+    },
     {
       "id": "tidyplates",
       "name": "TidyPlates 3.3.5a",
@@ -16,12 +26,40 @@
       "installAllTopLevelTocFolders": true,
       "preferredTheme": "TidyPlates_ThreatPlates",
       "required": true
+    },
+    {
+      "id": "restedxp",
+      "name": "RestedXP Guides WotLK 3.3.5a",
+      "repository": "https://github.com/PottedSalame/RestedXP_RXPGuides-WotLK_3.3.5a",
+      "ref": "fb3e0b1e77c589ea58e28fa53d8c17ed0661cef9",
+      "installMode": "github-archive-root-addon",
+      "rootAddonName": "RXPGuides",
+      "required": true
+    },
+    {
+      "id": "weakauras",
+      "name": "WeakAuras WotLK 3.3.5a",
+      "repository": "https://github.com/NoM0Re/WeakAuras-WotLK",
+      "ref": "39c2aca9043082c0e3219220f17b98eb69a8e43e",
+      "license": "GPL-2.0",
+      "installMode": "github-archive",
+      "installAllTopLevelTocFolders": true,
+      "required": true
+    },
+    {
+      "id": "bigwigs",
+      "name": "BigWigs WotLK 3.3.5a",
+      "repository": "https://github.com/bkader/BigWigs-WoTLK",
+      "ref": "8fec48586899bcd7191db5049b2c51133c8c5039",
+      "installMode": "github-archive",
+      "installAllTopLevelTocFolders": true,
+      "required": true
     }
   ],
-  "planned": [
-    "ElvUI 3.3.5a",
-    "RestedXP 3.3.5a",
-    "WeakAuras 3.3.5a",
-    "BigWigs 3.3.5a"
-  ]
+  "profile": {
+    "resolution": "3440x1440",
+    "elvui": "AzerothGuild-Ultrawide",
+    "nameplates": "TidyPlates_ThreatPlates",
+    "status": "layout-spec-ready-savedvariables-needs-client-validation"
+  }
 }
