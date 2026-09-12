@@ -9,6 +9,10 @@ uint32 g_AdventureStartLevel = 60;
 uint8 g_AdventureStartProgression = 8;
 bool g_AdventureStartRevealMap = true;
 
+bool g_AdventureEconomyEnable = true;
+uint32 g_AdventureEconomyDungeonBossFirstKillGold = 5;
+uint32 g_AdventureEconomyRaidBossFirstKillGold = 20;
+
 void RaidRosterLoadConfig()
 {
     g_RaidRosterEnable = sConfigMgr->GetOption<bool>("RaidRoster.Enable", false);
@@ -27,6 +31,18 @@ void RaidRosterLoadConfig()
 
     g_AdventureStartRevealMap = sConfigMgr->GetOption<bool>("AdventureStart.RevealMap", true);
 
+    g_AdventureEconomyEnable = sConfigMgr->GetOption<bool>("AdventureEconomy.Enable", true);
+    g_AdventureEconomyDungeonBossFirstKillGold =
+        sConfigMgr->GetOption<uint32>("AdventureEconomy.DungeonBossFirstKillGold", 5);
+    g_AdventureEconomyRaidBossFirstKillGold =
+        sConfigMgr->GetOption<uint32>("AdventureEconomy.RaidBossFirstKillGold", 20);
+
+    // Guard against accidental config typos turning a boss into a lottery jackpot.
+    if (g_AdventureEconomyDungeonBossFirstKillGold > 1000)
+        g_AdventureEconomyDungeonBossFirstKillGold = 1000;
+    if (g_AdventureEconomyRaidBossFirstKillGold > 5000)
+        g_AdventureEconomyRaidBossFirstKillGold = 5000;
+
     LOG_INFO("server.loading", "[RaidRoster] Enable={}", g_RaidRosterEnable ? 1 : 0);
     LOG_INFO(
         "server.loading",
@@ -35,4 +51,10 @@ void RaidRosterLoadConfig()
         g_AdventureStartLevel,
         g_AdventureStartProgression,
         g_AdventureStartRevealMap ? 1 : 0);
+    LOG_INFO(
+        "server.loading",
+        "[AdventureEconomy] Enable={}, DungeonBossFirstKill={}g, RaidBossFirstKill={}g",
+        g_AdventureEconomyEnable ? 1 : 0,
+        g_AdventureEconomyDungeonBossFirstKillGold,
+        g_AdventureEconomyRaidBossFirstKillGold);
 }
