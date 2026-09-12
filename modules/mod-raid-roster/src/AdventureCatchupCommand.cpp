@@ -13,12 +13,15 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <mutex>
 #include <string>
 
 using namespace Acore::ChatCommands;
 
 namespace
 {
+std::mutex g_catchupClaimMutex;
+
 struct CatchupProfile
 {
     char const* key;
@@ -109,7 +112,8 @@ bool ResolveProfile(std::string const& raw, CatchupProfile& out)
 
 uint64 LoadClaims(uint32 guid)
 {
-    CharacterDatabase.Execute(
+    std::lock_guard<std::mutex> lock(g_catchupClaimMutex);
+    CharacterDatabase.DirectExecute(
         "INSERT IGNORE INTO mod_adventure_controls (guid) VALUES ({})",
         guid);
 
@@ -121,12 +125,32 @@ uint64 LoadClaims(uint32 guid)
     return 0;
 }
 
-void MarkClaimed(uint32 guid, uint64 bit)
+bool TryClaim(uint32 guid, uint64 bit)
 {
-    CharacterDatabase.Execute(
+    std::lock_guard<std::mutex> lock(g_catchupClaimMutex);
+    CharacterDatabase.DirectExecute(
+        "INSERT IGNORE INTO mod_adventure_controls (guid) VALUES ({})",
+        guid);
+
+    uint64 claims = 0;
+    if (QueryResult result = CharacterDatabase.Query(
+            "SELECT catchup_claims FROM mod_adventure_controls WHERE guid = {} LIMIT 1",
+            guid))
+        claims = result->Fetch()[0].Get<uint64>();
+    else
+        return false;
+
+    if ((claims & bit) != 0)
+        return false;
+
+    // Persist the one-time claim before AutoGear mutates inventory. Execute() is asynchronous;
+    // DirectExecute() is required here because later calls must not observe an unclaimed package.
+    CharacterDatabase.DirectExecute(
         "UPDATE mod_adventure_controls SET catchup_claims = catchup_claims | {} WHERE guid = {}",
         bit,
         guid);
+
+    return true;
 }
 
 bool EnsureProgression(ChatHandler* handler, Player* player, CatchupProfile const& profile)
@@ -196,6 +220,17 @@ bool ApplyProfile(ChatHandler* handler, Player* player, CatchupProfile const& pr
         return true;
     }
 
+    // Claim first so repeated commands cannot run multiple AutoGear passes while an asynchronous
+    // DB update is still queued. A process crash after this point can lose a package rather than
+    // duplicate one; a future delivery journal can make that crash window recoverable.
+    if (!TryClaim(guid, profile.claimBit))
+    {
+        handler->PSendSysMessage(
+            "You already claimed the {} catch-up gear package on this character.",
+            profile.label);
+        return true;
+    }
+
     // Incremental gearing preserves pieces already better than the target. No finishers are applied:
     // enchants, gems and raid consumables remain part of normal progression / the simulated economy.
     PlayerbotFactory::AutoGear(
@@ -207,7 +242,6 @@ bool ApplyProfile(ChatHandler* handler, Player* player, CatchupProfile const& pr
         false);
 
     player->SaveToDB(false, false);
-    MarkClaimed(guid, profile.claimBit);
 
     handler->PSendSysMessage(
         "Catch-up gear applied for {}: spec-aware incremental target ilvl {}. Better equipped items were kept.",
