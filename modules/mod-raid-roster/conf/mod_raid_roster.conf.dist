@@ -30,3 +30,37 @@ AdventureStart.Progression = 8
 #   Reveal all world-map exploration tiles on the player's first login.
 #   This removes fog-of-war but does not teleport the player or unlock flight paths.
 AdventureStart.RevealMap = 1
+
+# AdventureStart.StarterKit
+#   Give the new real player their level-appropriate class spells, skills, riding/mounts,
+#   bags, ammo where relevant, food and combat potions. Professions are intentionally NOT
+#   initialized for the human player; crafting is intended to be a guild/social service.
+AdventureStart.StarterKit = 1
+
+# AdventureStart.StartingGold
+#   Minimum starting gold for a newly bootstrapped real player. Existing money is never reduced.
+AdventureStart.StartingGold = 50
+
+# AdventureStart.AutoGear
+#   After the player commits to a talent tree, generate one solid blue starter set using
+#   Playerbots' spec-aware gear scorer. This happens exactly once per character.
+AdventureStart.AutoGear = 1
+
+# AdventureStart.GearMinTalentPoints
+#   Wait until this many total talent points have been spent before selecting the starter spec.
+#   Avoids gearing from the fallback/default spec before the player's intended role is clear.
+AdventureStart.GearMinTalentPoints = 5
+
+# AdventureStart.GearItemLevel
+#   Target item level for the rare-quality starter set. 65 is intended to feel strong at the
+#   Dark Portal while leaving Hellfire/Ramparts/Blood Furnace upgrades meaningful.
+AdventureStart.GearItemLevel = 65
+
+########################################
+# Adventure progression rewards
+########################################
+
+# AdventureProgression.Caches.Enable
+#   Enable persistent earned progression caches. The first milestones are level 65 and 70;
+#   dungeon/raid first-clear rewards will use the same persistent queue as they are added.
+AdventureProgression.Caches.Enable = 1
