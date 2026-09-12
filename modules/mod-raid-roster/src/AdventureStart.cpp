@@ -30,6 +30,30 @@ void RevealAllMap(Player* player)
         player->SetFlag(PLAYER_EXPLORED_ZONES_1 + i, 0xFFFFFFFF);
 }
 
+uint8 ApplyAdventureProgression(Player* player)
+{
+    if (!player || !player->IsInWorld())
+        return 0;
+
+    uint8 current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+    if (!g_AdventureStartProgression || !sIndividualProgression->enabled)
+        return current;
+
+    if (current < g_AdventureStartProgression)
+    {
+        sIndividualProgression->UpdateProgressionState(
+            player,
+            static_cast<ProgressionState>(g_AdventureStartProgression));
+        current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+    }
+
+    // IP's OnPlayerLogin has already run before AzerothCore fires OnPlayerFirstLogin. Re-derive
+    // the current-era adjustments and phasing after changing the hidden progression quests.
+    sIndividualProgression->CheckAdjustments(player);
+    sIndividualProgression->checkIPPhasing(player, player->GetAreaId());
+    return current;
+}
+
 uint32 GetSpentTalentPoints(Player* player)
 {
     uint32 total = 0;
@@ -84,8 +108,6 @@ void TryGiveSpecStarterGear(Player* player)
 
     uint8 specTab = AiFactory::GetPlayerSpecTab(player);
 
-    // One rare-quality, spec-aware starter pass. At the default ilvl 65 it is intentionally
-    // strong enough for a pleasant Outland start but leaves normal TBC dungeon upgrades useful.
     PlayerbotFactory::AutoGear(
         player,
         ITEM_QUALITY_RARE,
@@ -94,8 +116,6 @@ void TryGiveSpecStarterGear(Player* player)
         false,
         false);
 
-    // This write is synchronous in AdventureProgressionStore. A second talent hook therefore
-    // cannot observe starter_gear_granted=false after this pass has completed.
     AdventureProgressionStore::MarkStarterGearGranted(guid, specTab);
     player->SaveToDB(false, false);
 
@@ -165,16 +185,7 @@ public:
             player->SetUInt32Value(PLAYER_XP, 0);
         }
 
-        if (g_AdventureStartProgression > 0 && player->IsInWorld())
-        {
-            uint8 current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
-            if (current < g_AdventureStartProgression)
-            {
-                sIndividualProgression->ForceUpdateProgressionState(
-                    player,
-                    static_cast<ProgressionState>(g_AdventureStartProgression));
-            }
-        }
+        uint8 const appliedProgression = ApplyAdventureProgression(player);
 
         if (g_AdventureStartRevealMap)
             RevealAllMap(player);
@@ -188,16 +199,24 @@ public:
             player->SaveToDB(false, false);
         }
 
-        // If a future character template already has talents on first login, this can grant the
-        // starter set immediately. Normal fresh characters receive it after spending enough points.
         TryGiveSpecStarterGear(player);
+
+        if (sIndividualProgression->enabled && g_AdventureStartProgression > 0 && appliedProgression < g_AdventureStartProgression)
+        {
+            LOG_WARN(
+                "server.loading",
+                "[AdventureStart] {} requested progression {} but IP applied only {} (check IndividualProgression.ProgressionLimit/config)",
+                player->GetName(),
+                g_AdventureStartProgression,
+                appliedProgression);
+        }
 
         LOG_INFO(
             "server.loading",
             "[AdventureStart] Initialized {} at level {}, progression {}, mapReveal={}, starterKit={}",
             player->GetName(),
             player->GetLevel(),
-            g_AdventureStartProgression,
+            appliedProgression,
             g_AdventureStartRevealMap ? 1 : 0,
             g_AdventureStartStarterKit ? 1 : 0);
     }
