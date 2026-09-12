@@ -3,6 +3,7 @@
 #include "Chat.h"
 #include "CommandScript.h"
 #include "Group.h"
+#include "InstanceScript.h"
 #include "Map.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
@@ -22,6 +23,8 @@ using namespace Acore::ChatCommands;
 
 namespace
 {
+constexpr uint32 RECOVERY_MAX_WAIT_MS = 120000;
+
 struct PendingRecovery
 {
     uint32 anchorGuid = 0;
@@ -85,6 +88,38 @@ bool FullyDead(Group* group)
     return online > 0 && humans > 0 && !alive;
 }
 
+bool GroupIsOutOfCombat(Group* group)
+{
+    if (!group)
+        return false;
+
+    bool inCombat = false;
+    group->DoForAllMembers([&](Player* member)
+    {
+        if (member && member->IsInCombat())
+            inCombat = true;
+    });
+    return !inCombat;
+}
+
+bool EncounterHasReset(Player* anchor)
+{
+    if (!anchor || !anchor->GetMap())
+        return false;
+
+    // Do not infer a boss reset from elapsed time. AzerothCore itself uses this instance signal
+    // to decide whether players may enter during an active encounter, so it is the authoritative
+    // safety gate for automatic post-wipe resurrection.
+    InstanceScript* instance = anchor->GetMap()->GetInstanceScript();
+    return instance && !instance->IsEncounterInProgress();
+}
+
+bool SafeToRecover(Player* anchor)
+{
+    Group* group = anchor ? anchor->GetGroup() : nullptr;
+    return group && FullyDead(group) && GroupIsOutOfCombat(group) && EncounterHasReset(anchor);
+}
+
 bool SameInstanceGroup(Player* anchor, uint32 mapId)
 {
     if (!anchor || !anchor->GetGroup() || anchor->GetMapId() != mapId || !IsInstance(anchor))
@@ -145,7 +180,7 @@ void QueuePrep(Player* player)
 void Recover(Player* anchor)
 {
     Group* group = anchor ? anchor->GetGroup() : nullptr;
-    if (!group || !FullyDead(group))
+    if (!group || !SafeToRecover(anchor))
         return;
 
     uint32 resurrected = 0;
@@ -175,7 +210,7 @@ void Recover(Player* anchor)
     {
         ChatHandler handler(anchor->GetSession());
         handler.PSendSysMessage(
-            "Guild Recovery: recovered {} group member(s) after the full wipe. No boss was pulled or rewarded.",
+            "Guild Recovery: recovered {} group member(s) after the encounter fully reset. No boss was pulled or rewarded.",
             resurrected);
     }
 
@@ -340,9 +375,31 @@ void EncounterLifecycle::Tick(uint32 diff)
 
         Player* anchor = ObjectAccessor::FindConnectedPlayer(
             ObjectGuid::Create<HighGuid::Player>(static_cast<ObjectGuid::LowType>(pending.anchorGuid)));
-        if (anchor && SameInstanceGroup(anchor, pending.mapId) && FullyDead(anchor->GetGroup()))
-            Recover(anchor);
 
+        // Any manual recovery, logout or instance/group change cancels the automatic recovery.
+        if (!anchor || !SameInstanceGroup(anchor, pending.mapId) || !FullyDead(anchor->GetGroup()))
+        {
+            std::lock_guard<std::mutex> lock(g_pendingMutex);
+            g_recoveries.erase(pending.anchorGuid);
+            continue;
+        }
+
+        // Keep waiting while the instance still marks a boss IN_PROGRESS. The elapsed delay is
+        // only a settling delay; it is never used as evidence that the encounter has reset.
+        if (!SafeToRecover(anchor))
+        {
+            if (pending.elapsedMs >= RECOVERY_MAX_WAIT_MS)
+            {
+                if (anchor->GetSession())
+                    ChatHandler(anchor->GetSession()).SendSysMessage(
+                        "Guild Recovery: cancelled because the instance never reported a safe post-wipe reset.");
+                std::lock_guard<std::mutex> lock(g_pendingMutex);
+                g_recoveries.erase(pending.anchorGuid);
+            }
+            continue;
+        }
+
+        Recover(anchor);
         std::lock_guard<std::mutex> lock(g_pendingMutex);
         g_recoveries.erase(pending.anchorGuid);
     }
