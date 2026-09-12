@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS `mod_ai_guild_relationship` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `mod_ai_guild_event` (
-  `event_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `event_id` BIGINT UNSIGNED NOT NULL,
   `event_type` VARCHAR(32) NOT NULL,
   `actor_guid` INT UNSIGNED NOT NULL DEFAULT 0,
   `target_guid` INT UNSIGNED NOT NULL DEFAULT 0,
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS `mod_ai_guild_memory` (
   `event_id` BIGINT UNSIGNED NOT NULL DEFAULT 0,
   `memory_type` VARCHAR(32) NOT NULL,
   `importance` TINYINT UNSIGNED NOT NULL DEFAULT 50,
-  `related_type` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  `related_type` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '0=player,1=bot,2=creature/encounter',
   `related_guid` INT UNSIGNED NOT NULL DEFAULT 0,
   `summary` VARCHAR(500) NOT NULL,
   `occurred_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
