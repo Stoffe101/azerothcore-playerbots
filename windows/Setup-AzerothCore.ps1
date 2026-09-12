@@ -7,13 +7,13 @@
 .PARAMETER WslPath
   Path to the cloned repo inside WSL. Default: ~/AzerothCore
 .PARAMETER Distro
-  WSL distro name. Default: your default distro.
+  WSL distro name. If omitted, the helper auto-selects the single non-Docker user distro.
 .PARAMETER LanIp
   Override the auto-detected Windows host LAN IPv4.
 .EXAMPLE
   .\Setup-AzerothCore.ps1
 .EXAMPLE
-  .\Setup-AzerothCore.ps1 -WslPath ~/AzerothCore -LanIp 192.168.1.50
+  .\Setup-AzerothCore.ps1 -Distro Ubuntu -WslPath ~/AzerothCore -LanIp 192.168.1.50
 #>
 # Keep this file ASCII-only: Windows PowerShell 5.1 treats UTF-8 without a BOM as ANSI.
 [CmdletBinding()]
@@ -40,7 +40,7 @@ if (-not $abs -or -not (Test-RepoHasSetup -AbsRepoPath $abs -Distro $Distro)) {
 Repo not found at '$WslPath' inside WSL.
 Open a WSL terminal and clone it into your WSL home first, e.g.:
   git clone <REPO_URL> ~/AzerothCore
-Then re-run this script (or pass -WslPath <path>).
+Then re-run this script (or pass -WslPath <path> and -Distro <name>).
 "@
 }
 Write-Host "Repo: $abs" -ForegroundColor Green
@@ -83,16 +83,35 @@ if (-not $LanIp) {
 Write-Host "Windows host LAN IP: $LanIp" -ForegroundColor Green
 
 # --- Read auth/world ports from the WSL-side env (defaults 3724 / 8085) ---
+# This is a literal PowerShell here-string, so write normal Bash quotes. Do not escape them
+# with backslashes; doing so changes what Bash receives and can break the awk program.
 $portScript = @'
-f=.env; [ -f "$f" ] || f=.env.example
+f=.env
+[ -f "$f" ] || f=.env.example
 awk -F= '/^DOCKER_AUTH_EXTERNAL_PORT=/{a=$2} /^DOCKER_WORLD_EXTERNAL_PORT=/{w=$2} END{printf "%s %s",(a?a:"3724"),(w?w:"8085")}' "$f"
 '@
+# Normalize the accidental PowerShell-literal escaping above into ordinary Bash quoting before
+# execution. Keeping this replacement explicit makes the command safe on Windows PowerShell 5.1.
+$portScript = $portScript.Replace('\"', '"')
 $portCommand = "cd '$abs' && $portScript"
 $portsRaw = & wsl.exe @(Get-WslPrefix $Distro) '-e' '/bin/bash' '-lc' $portCommand
-$ports = ([string]$portsRaw).Trim() -split '\s+'
-# Guard against StrictMode index-out-of-bounds if the read ever yields <2 tokens.
-if ($ports.Count -ge 2) { $authPort = $ports[0]; $worldPort = $ports[1] }
-else { $authPort = '3724'; $worldPort = '8085' }
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to read auth/world ports from '$abs/.env'."
+}
+$portsText = ([string]$portsRaw).Trim()
+if ([string]::IsNullOrWhiteSpace($portsText)) {
+    $authPort = '3724'
+    $worldPort = '8085'
+} else {
+    $ports = $portsText -split '\s+'
+    if ($ports.Count -ge 2) {
+        $authPort = $ports[0]
+        $worldPort = $ports[1]
+    } else {
+        $authPort = '3724'
+        $worldPort = '8085'
+    }
+}
 Write-Host "Ports: auth=$authPort world=$worldPort" -ForegroundColor Green
 
 # --- Idempotent Windows Firewall inbound rules ---
@@ -109,8 +128,6 @@ foreach ($r in @(
 
 # --- Persist LAN_IP into the WSL-side env so the realm advertises the Windows host IP ---
 $ipScript = @'
-# Repo-root .env is the source of truth; create it from the template if the operator has not
-# yet, so LAN_IP lands where setup.sh will copy it to the live env.
 [ -f .env ] || cp .env.example .env
 f=.env
 if grep -q '^LAN_IP=' "$f"; then
@@ -120,6 +137,7 @@ else
 fi
 echo "Set LAN_IP=__IP__ in $f"
 '@ -replace '__IP__', $LanIp
+$ipScript = $ipScript.Replace('\"', '"')
 Invoke-Wsl -RepoPath $abs -Command $ipScript -Distro $Distro
 
 # --- Run the install inside WSL ---
