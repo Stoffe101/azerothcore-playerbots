@@ -70,24 +70,26 @@ function Resolve-RepoPath {
     $envLines = @(& wsl.exe @prefix '-e' '/usr/bin/env')
     if ($LASTEXITCODE -ne 0) { return $null }
 
-    $home = $null
+    # Do not use $home here: PowerShell variable names are case-insensitive, so $home collides
+    # with the built-in read-only $HOME variable on Windows PowerShell 5.1.
+    $wslHome = $null
     foreach ($line in $envLines) {
         $s = [string]$line
         if ($s.StartsWith('HOME=')) {
-            $home = $s.Substring(5).Trim()
+            $wslHome = $s.Substring(5).Trim()
             break
         }
     }
-    if ([string]::IsNullOrWhiteSpace($home)) { return $null }
+    if ([string]::IsNullOrWhiteSpace($wslHome)) { return $null }
 
     if ($RepoPath -eq '~') {
-        $abs = $home
+        $abs = $wslHome
     } elseif ($RepoPath.StartsWith('~/')) {
-        $abs = $home.TrimEnd('/') + '/' + $RepoPath.Substring(2)
+        $abs = $wslHome.TrimEnd('/') + '/' + $RepoPath.Substring(2)
     } elseif ($RepoPath.StartsWith('/')) {
         $abs = $RepoPath
     } else {
-        $abs = $home.TrimEnd('/') + '/' + $RepoPath
+        $abs = $wslHome.TrimEnd('/') + '/' + $RepoPath
     }
 
     & wsl.exe @prefix '-e' '/usr/bin/test' '-d' $abs *> $null
