@@ -11,42 +11,42 @@ RaidRoster.Enable = 0
 ########################################
 # Adventure start (this fork)
 ########################################
-
-# AdventureStart.Enable
-#   Bootstrap newly-created REAL player characters for the TBC-first experience.
-#   Random bots / addclass bots / playerbots are excluded.
 AdventureStart.Enable = 1
-
-# AdventureStart.Level
-#   Starting character level. 60 puts the player at the beginning of Outland progression.
 AdventureStart.Level = 60
-
-# AdventureStart.Progression
-#   Individual Progression stage. 8 = Vanilla completed / beginning of TBC.
-#   Valid range 0-18.
 AdventureStart.Progression = 8
-
-# AdventureStart.RevealMap
-#   Reveal all world-map exploration tiles on the player's first login.
-#   This removes fog-of-war but does not teleport the player or unlock flight paths.
 AdventureStart.RevealMap = 1
 
 ########################################
 # Guild Group Director (this fork)
 ########################################
-
-# GuildDirector.Enable
-#   Watch REAL-player guild chat for deterministic dungeon requests such as
-#   "anyone up for Ramparts?" and form a balanced 5-player party from the persistent roster.
-#   The text parser is deterministic; the LLM is not used to decide grouping intent.
 GuildDirector.Enable = 1
-
-# GuildDirector.AutoTravel
-#   After the four roster bots are online and synced, move the party to the registered exterior
-#   entrance using the same Adventure Travel backend as `.adventure go`.
 GuildDirector.AutoTravel = 1
-
-# GuildDirector.ReadyTimeoutMs
-#   Give asynchronous playerbot logins this long to finish before cancelling the request.
-#   Clamped to 5000-60000 ms.
 GuildDirector.ReadyTimeoutMs = 15000
+
+########################################
+# Smart guild loot (this fork)
+########################################
+
+# SmartLoot.Enable
+#   Enable the fair-guild loot policy. This uses Playerbots' existing item-usage evaluator rather
+#   than inventing a second gear scorer for bot rolls.
+SmartLoot.Enable = 1
+
+# SmartLoot.BotNeedUpgrades
+#   Let bots roll NEED when Playerbots classifies an item as an actual equip/replace upgrade.
+#   When disabled, those decisions are downgraded to GREED as in upstream's conservative default.
+SmartLoot.BotNeedUpgrades = 1
+
+# SmartLoot.BotGreedUseful
+#   Let bots GREED useful non-upgrades, BoEs/vendor/AH items, etc. Unusable items remain PASS.
+SmartLoot.BotGreedUseful = 1
+
+# BadLuckProtection.Enable
+#   Persist dry boss streaks for real players. A meaningful spec upgrade won shortly after that
+#   boss resets the streak. The streak is used by the later personal-loot protection engine.
+BadLuckProtection.Enable = 1
+
+# BadLuckProtection.UpgradeWindowSeconds
+#   Associate a meaningful group-roll gear win with the most recent credited boss on this map for
+#   this many seconds. Clamped to 30-600 seconds.
+BadLuckProtection.UpgradeWindowSeconds = 120
