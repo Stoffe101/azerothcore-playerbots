@@ -15,6 +15,7 @@
 .EXAMPLE
   .\Setup-AzerothCore.ps1 -WslPath ~/AzerothCore -LanIp 192.168.1.50
 #>
+# Keep this file ASCII-only: Windows PowerShell 5.1 treats UTF-8 without a BOM as ANSI.
 [CmdletBinding()]
 param(
     [string]$WslPath = '~/AzerothCore',
@@ -61,7 +62,7 @@ Write-Host "Docker Desktop: reachable from WSL." -ForegroundColor Green
 # --- Detect the Windows host LAN IPv4 (default-route adapter; skip virtual/WSL/APIPA) ---
 if (-not $LanIp) {
     # Pick the IPv4 of the real LAN adapter that owns the default route. Exclude WSL/Hyper-V/
-    # virtual adapters — their NAT IP (172.x) is exactly what LAN clients CANNOT reach.
+    # virtual adapters - their NAT IP (172.x) is exactly what LAN clients CANNOT reach.
     $route = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -AddressFamily IPv4 -ErrorAction SilentlyContinue |
         Where-Object {
             $a = Get-NetAdapter -InterfaceIndex $_.ifIndex -ErrorAction SilentlyContinue
@@ -86,7 +87,8 @@ $portScript = @'
 f=.env; [ -f "$f" ] || f=.env.example
 awk -F= '/^DOCKER_AUTH_EXTERNAL_PORT=/{a=$2} /^DOCKER_WORLD_EXTERNAL_PORT=/{w=$2} END{printf "%s %s",(a?a:"3724"),(w?w:"8085")}' "$f"
 '@
-$portsRaw = & wsl.exe @(Get-WslPrefix $Distro) '--' 'bash' '-lc' "cd `"$abs`" && $portScript"
+$portCommand = "cd '$abs' && $portScript"
+$portsRaw = & wsl.exe @(Get-WslPrefix $Distro) '--' 'bash' '-lc' $portCommand
 $ports = ([string]$portsRaw).Trim() -split '\s+'
 # Guard against StrictMode index-out-of-bounds if the read ever yields <2 tokens.
 if ($ports.Count -ge 2) { $authPort = $ports[0]; $worldPort = $ports[1] }
