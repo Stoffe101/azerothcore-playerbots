@@ -4,11 +4,15 @@
 #include "QueryResult.h"
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 
 namespace PBAIGuildStore
 {
 namespace
 {
+std::atomic<uint32> g_eventSequence{0};
+
 uint32 Mix(uint32 value)
 {
     value ^= value >> 16;
@@ -34,6 +38,17 @@ std::string PreferredContent(uint32 seed)
         case 2: return "pvp";
         default: return "mixed";
     }
+}
+
+uint64 NextEventId()
+{
+    // Event hooks may execute on AzerothCore map worker threads. Generate the key locally so
+    // RecordEvent can remain an asynchronous DB write instead of blocking a map thread waiting
+    // for AUTO_INCREMENT/LAST_INSERT_ID. 16 sequence bits allow 65,536 events per millisecond.
+    uint64 nowMs = static_cast<uint64>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count());
+    uint64 sequence = static_cast<uint64>(g_eventSequence.fetch_add(1, std::memory_order_relaxed) & 0xFFFFu);
+    return (nowMs << 16) | sequence;
 }
 }
 
@@ -118,6 +133,35 @@ std::vector<Memory> GetRecentImportantMemories(uint32 botGuid, uint32 limit)
     return memories;
 }
 
+uint64 RecordEvent(std::string eventType, uint32 actorGuid, uint32 targetGuid,
+                   uint32 mapId, uint32 encounterId, std::string summary)
+{
+    if (eventType.empty())
+        eventType = "event";
+    if (eventType.size() > 32)
+        eventType.resize(32);
+    if (summary.size() > 500)
+        summary.resize(500);
+
+    uint64 eventId = NextEventId();
+    CharacterDatabase.EscapeString(eventType);
+    CharacterDatabase.EscapeString(summary);
+
+    CharacterDatabase.Execute(
+        "INSERT INTO mod_ai_guild_event "
+        "(event_id, event_type, actor_guid, target_guid, map_id, encounter_id, summary) "
+        "VALUES ({}, '{}', {}, {}, {}, {}, '{}')",
+        eventId,
+        eventType,
+        actorGuid,
+        targetGuid,
+        mapId,
+        encounterId,
+        summary);
+
+    return eventId;
+}
+
 void AddMemory(uint32 botGuid, uint64 eventId, std::string memoryType, uint8 importance,
                uint8 relatedType, uint32 relatedGuid, std::string summary)
 {
@@ -126,6 +170,10 @@ void AddMemory(uint32 botGuid, uint64 eventId, std::string memoryType, uint8 imp
 
     if (importance > 100)
         importance = 100;
+    if (memoryType.size() > 32)
+        memoryType.resize(32);
+    if (summary.size() > 500)
+        summary.resize(500);
 
     CharacterDatabase.EscapeString(memoryType);
     CharacterDatabase.EscapeString(summary);
