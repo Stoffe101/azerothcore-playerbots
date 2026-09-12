@@ -30,3 +30,23 @@ AdventureStart.Progression = 8
 #   Reveal all world-map exploration tiles on the player's first login.
 #   This removes fog-of-war but does not teleport the player or unlock flight paths.
 AdventureStart.RevealMap = 1
+
+########################################
+# Guild Group Director (this fork)
+########################################
+
+# GuildDirector.Enable
+#   Watch REAL-player guild chat for deterministic dungeon requests such as
+#   "anyone up for Ramparts?" and form a balanced 5-player party from the persistent roster.
+#   The text parser is deterministic; the LLM is not used to decide grouping intent.
+GuildDirector.Enable = 1
+
+# GuildDirector.AutoTravel
+#   After the four roster bots are online and synced, move the party to the registered exterior
+#   entrance using the same Adventure Travel backend as `.adventure go`.
+GuildDirector.AutoTravel = 1
+
+# GuildDirector.ReadyTimeoutMs
+#   Give asynchronous playerbot logins this long to finish before cancelling the request.
+#   Clamped to 5000-60000 ms.
+GuildDirector.ReadyTimeoutMs = 15000
