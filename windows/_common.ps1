@@ -29,10 +29,29 @@ function Assert-Admin {
     }
 }
 
-# Leading wsl.exe args, optionally targeting a specific distro (else the default distro).
+# Leading wsl.exe args. If -Distro is omitted, prefer a real user distro over Docker Desktop's
+# internal docker-desktop distro. Docker Desktop can make itself the WSL default, and that distro
+# intentionally does not provide a normal Ubuntu userspace such as /bin/bash.
 function Get-WslPrefix {
     param([string]$Distro)
-    if ($Distro) { return @('-d', $Distro) } else { return @() }
+
+    if ($Distro) { return @('-d', $Distro) }
+
+    $userDistros = @(
+        & wsl.exe -l -q 2>$null |
+            ForEach-Object { ([string]$_).Replace([char]0, '').Trim() } |
+            Where-Object { $_ -and $_ -notlike 'docker-desktop*' }
+    )
+
+    if ($userDistros.Count -eq 1) {
+        return @('-d', $userDistros[0])
+    }
+
+    if ($userDistros.Count -gt 1) {
+        throw "Multiple WSL user distros were found ($($userDistros -join ', ')). Re-run with -Distro <name>."
+    }
+
+    throw "No normal WSL user distro was found. Install Ubuntu (or pass -Distro <name>) before running this script."
 }
 
 # Expand a (possibly ~/relative) WSL path to an absolute path. $null if it does not exist.
