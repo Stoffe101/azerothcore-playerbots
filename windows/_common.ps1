@@ -1,6 +1,7 @@
 # windows/_common.ps1
 # Shared helpers for the AzerothCore Windows (WSL2 + Docker Desktop) scripts.
-# Dot-sourced by Setup/Start/Stop — not meant to be run directly.
+# Dot-sourced by Setup/Start/Stop - not meant to be run directly.
+# Keep this file ASCII-only: Windows PowerShell 5.1 treats UTF-8 without a BOM as ANSI.
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -26,15 +27,15 @@ function Get-WslPrefix {
 }
 
 # Expand a (possibly ~/relative) WSL path to an absolute path. $null if it doesn't exist.
-# `cd` is UNQUOTED so bash expands ~; the path therefore must not contain spaces or shell
-# metacharacters — reject those up front with a clear error instead of silently cd'ing to a
-# truncated path.
+# `cd` is unquoted at the initial validation boundary so bash can expand ~. Reject spaces and
+# shell metacharacters up front instead of silently changing the requested path.
 function Resolve-RepoPath {
     param([Parameter(Mandatory)][string]$RepoPath, [string]$Distro)
-    if ($RepoPath -notmatch '^[~A-Za-z0-9._/\-]+$') {
+    if ($RepoPath -notmatch '^[~A-Za-z0-9._/\\-]+$') {
         throw "WslPath '$RepoPath' contains unsupported characters (spaces or shell metacharacters). Use a simple path like ~/AzerothCore."
     }
-    $abs = (& wsl.exe @(Get-WslPrefix $Distro) '--' 'bash' '-lc' "cd $RepoPath 2>/dev/null && pwd")
+    $resolveCommand = "cd '$RepoPath' 2>/dev/null && pwd"
+    $abs = (& wsl.exe @(Get-WslPrefix $Distro) '--' 'bash' '-lc' $resolveCommand)
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($abs)) { return $null }
     return ([string]$abs).Trim()
 }
@@ -42,7 +43,8 @@ function Resolve-RepoPath {
 # True if $AbsRepoPath/setup.sh exists in WSL.
 function Test-RepoHasSetup {
     param([Parameter(Mandatory)][string]$AbsRepoPath, [string]$Distro)
-    & wsl.exe @(Get-WslPrefix $Distro) '--' 'bash' '-lc' "test -f `"$AbsRepoPath/setup.sh`"" *> $null
+    $testCommand = "test -f '$AbsRepoPath/setup.sh'"
+    & wsl.exe @(Get-WslPrefix $Distro) '--' 'bash' '-lc' $testCommand *> $null
     return ($LASTEXITCODE -eq 0)
 }
 
@@ -60,7 +62,7 @@ function Start-DockerDesktopIfNeeded {
     Write-Host "Starting Docker Desktop..." -ForegroundColor Cyan
     $dd = Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'
     if (Test-Path $dd) { Start-Process $dd }
-    else { Write-Warning "Docker Desktop.exe not found at '$dd' — start Docker Desktop manually." }
+    else { Write-Warning "Docker Desktop.exe not found at '$dd' - start Docker Desktop manually." }
     $deadline = (Get-Date).AddMinutes(3)
     while (-not (Test-DockerReady -Distro $Distro)) {
         if ((Get-Date) -gt $deadline) { throw "Docker Desktop did not become ready within 3 minutes." }
@@ -75,7 +77,7 @@ function Invoke-Wsl {
         [Parameter(Mandatory)][string]$Command,
         [string]$Distro
     )
-    $full = "cd `"$RepoPath`" && $Command"
+    $full = "cd '$RepoPath' && $Command"
     & wsl.exe @(Get-WslPrefix $Distro) '--' 'bash' '-lc' $full
     if ($LASTEXITCODE -ne 0) { throw "WSL command failed (exit $LASTEXITCODE)." }
 }
