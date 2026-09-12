@@ -7,3 +7,26 @@
 # RaidRoster.Enable
 #   Master switch. Default 0. setup.sh sets this from .env RAIDROSTER_ENABLE.
 RaidRoster.Enable = 0
+
+########################################
+# Adventure start (this fork)
+########################################
+
+# AdventureStart.Enable
+#   Bootstrap newly-created REAL player characters for the TBC-first experience.
+#   Random bots / addclass bots / playerbots are excluded.
+AdventureStart.Enable = 1
+
+# AdventureStart.Level
+#   Starting character level. 60 puts the player at the beginning of Outland progression.
+AdventureStart.Level = 60
+
+# AdventureStart.Progression
+#   Individual Progression stage. 8 = Vanilla completed / beginning of TBC.
+#   Valid range 0-18.
+AdventureStart.Progression = 8
+
+# AdventureStart.RevealMap
+#   Reveal all world-map exploration tiles on the player's first login.
+#   This removes fog-of-war but does not teleport the player or unlock flight paths.
+AdventureStart.RevealMap = 1
