@@ -2,6 +2,7 @@
 #include "Log.h"
 #include "AdventureCommand.h"
 #include "AdventureGuideCommand.h"
+#include "EncounterLifecycle.h"
 #include "GuildGroupDirector.h"
 #include "RaidRosterCommand.h"
 #include "RaidRosterConfig.h"
@@ -24,4 +25,5 @@ void Addmod_raid_rosterScripts()
     new AdventureGuideCommand();
     AddAdventureStartScripts();
     AddGuildGroupDirectorScripts();
+    AddEncounterLifecycleScripts();
 }
