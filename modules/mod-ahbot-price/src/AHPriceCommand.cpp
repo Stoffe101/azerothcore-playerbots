@@ -3,11 +3,13 @@
 #include "AHPriceCalc.h"
 #include "Chat.h"
 #include "CommandScript.h"
+#include "Config.h"
 #include "RBAC.h"
 #include "DatabaseEnv.h"
 #include "ObjectMgr.h"
 #include "ItemTemplate.h"
 #include "StringFormat.h"
+#include "World.h"
 #include <string>
 #include <cctype>
 
@@ -20,8 +22,9 @@ ChatCommandTable AHPriceCommand::GetCommands() const
     // AddonChannelCommandHandler, which pipes SendSysMessage output back to the client.
     static ChatCommandTable sub =
     {
-        { "search", HandleSearch, SEC_PLAYER, Console::Yes },
-        { "item",   HandleItem,   SEC_PLAYER, Console::Yes },
+        { "search",  HandleSearch,  SEC_PLAYER, Console::Yes },
+        { "item",    HandleItem,    SEC_PLAYER, Console::Yes },
+        { "economy", HandleEconomy, SEC_PLAYER, Console::Yes },
     };
     static ChatCommandTable root = { { "ahprice", sub } };
     return root;
@@ -89,5 +92,53 @@ bool AHPriceCommand::HandleItem(ChatHandler* handler, uint32 itemId)
     handler->SendSysMessage(Acore::StringFormat("P\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
         proto->ItemId, proto->Quality, proto->Name1, proto->SellPrice,
         band.minCopper, band.maxCopper, maxStack).c_str());
+    return true;
+}
+
+bool AHPriceCommand::HandleEconomy(ChatHandler* handler)
+{
+    float const moneyRate = sWorld->getRate(RATE_DROP_MONEY);
+    bool const capQuestMoney = sConfigMgr->GetOption<bool>("IndividualProgression.QuestMoneyAtLevelCap", true);
+
+    bool const seller = sConfigMgr->GetOption<bool>("AuctionHouseBot.EnableSeller", false);
+    bool const buyer = sConfigMgr->GetOption<bool>("AuctionHouseBot.Buyer.Enabled", false);
+    std::string const candidates = sConfigMgr->GetOption<std::string>(
+        "AuctionHouseBot.Buyer.BuyCandidatesPerBuyCycle", "1");
+    float const acceptable = sConfigMgr->GetOption<float>("AuctionHouseBot.Buyer.AcceptablePriceModifier", 1.0f);
+    uint32 const itemsPerCycle = sConfigMgr->GetOption<uint32>("AuctionHouseBot.ItemsPerCycle", 150);
+    uint32 const maxAlliance = sConfigMgr->GetOption<uint32>("AuctionHouseBot.Alliance.MaxItems", 15000);
+    uint32 const maxHorde = sConfigMgr->GetOption<uint32>("AuctionHouseBot.Horde.MaxItems", 15000);
+    uint32 const maxNeutral = sConfigMgr->GetOption<uint32>("AuctionHouseBot.Neutral.MaxItems", 15000);
+    float const reduce = sConfigMgr->GetOption<float>("AuctionHouseBot.BuyoutVariationReducePercent", 0.15f);
+    float const add = sConfigMgr->GetOption<float>("AuctionHouseBot.BuyoutVariationAddPercent", 0.25f);
+
+    handler->PSendSysMessage(
+        "Economy: creature money x{}, extra quest money at current progression level cap: {}.",
+        moneyRate,
+        capQuestMoney ? "ON" : "OFF");
+    handler->PSendSysMessage(
+        "AHBot: seller {}, buyer {}, buyer candidates {}/AH/cycle, acceptable-price modifier x{}.",
+        seller ? "ON" : "OFF",
+        buyer ? "ON" : "OFF",
+        candidates,
+        acceptable);
+    handler->PSendSysMessage(
+        "AH stock targets: Alliance {}, Horde {}, Neutral {}; seller refills up to {} item(s) per cycle.",
+        maxAlliance,
+        maxHorde,
+        maxNeutral,
+        itemsPerCycle);
+    handler->PSendSysMessage(
+        "AH calculated buyout variation: -{} / +{} around the computed center price.",
+        reduce,
+        add);
+
+    if (buyer && candidates == "1")
+    {
+        handler->SendSysMessage(
+            "Economy warning: AH buyer is only evaluating 1 candidate per house/cycle. "
+            "With many playerbot listings, real-player auctions may take too long to sell.");
+    }
+
     return true;
 }
