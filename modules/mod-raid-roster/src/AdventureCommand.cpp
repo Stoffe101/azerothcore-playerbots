@@ -4,6 +4,7 @@
 #include "IndividualProgression.h"
 #include "ObjectMgr.h"
 #include "Player.h"
+#include "PlayerbotAI.h"
 #include "RBAC.h"
 
 #include <algorithm>
@@ -121,6 +122,43 @@ bool CanTravel(Player* player, AdventureDestination const& destination, ChatHand
 
     return true;
 }
+
+bool CanPartyMemberTravel(Player* member, AdventureDestination const& destination, ChatHandler* handler)
+{
+    if (!member)
+        return true;
+
+    if (member->GetLevel() < destination.minLevel)
+    {
+        handler->PSendSysMessage("{} is level {} but {} requires level {}. Travel was cancelled for the whole party.",
+            member->GetName(), uint32(member->GetLevel()), destination.name, uint32(destination.minLevel));
+        return false;
+    }
+
+    // Real players keep their own Individual Progression state. Playerbots are synchronized by
+    // the roster/director path and may not have human-style quest progression, so do not reject
+    // otherwise valid bots based on quest-derived era state here.
+    if (IsRealPlayer(member) && GetProgression(member) < destination.minProgression)
+    {
+        handler->PSendSysMessage("{} has not unlocked {} yet. Travel was cancelled for the whole party.",
+            member->GetName(), destination.name);
+        return false;
+    }
+
+    if (member->IsInCombat())
+    {
+        handler->PSendSysMessage("{} is in combat. Travel was cancelled for the whole party.", member->GetName());
+        return false;
+    }
+
+    if (!member->IsAlive())
+    {
+        handler->PSendSysMessage("{} is dead. Travel was cancelled for the whole party.", member->GetName());
+        return false;
+    }
+
+    return true;
+}
 }
 
 ChatCommandTable AdventureCommand::GetCommands() const
@@ -193,16 +231,8 @@ bool AdventureCommand::HandleGo(ChatHandler* handler, Optional<std::string> dest
             Player* member = reference->GetSource();
             if (!member)
                 continue;
-            if (member->IsInCombat())
-            {
-                handler->PSendSysMessage("{} is in combat. Travel was cancelled for the whole party.", member->GetName());
+            if (!CanPartyMemberTravel(member, *destination, handler))
                 return true;
-            }
-            if (!member->IsAlive())
-            {
-                handler->PSendSysMessage("{} is dead. Travel was cancelled for the whole party.", member->GetName());
-                return true;
-            }
             travelers.push_back(member);
         }
     }
@@ -211,17 +241,27 @@ bool AdventureCommand::HandleGo(ChatHandler* handler, Optional<std::string> dest
         travelers.push_back(player);
     }
 
+    uint32 moved = 0;
     for (Player* traveler : travelers)
     {
-        traveler->TeleportTo(
-            entrance->target_mapId,
-            entrance->target_X,
-            entrance->target_Y,
-            entrance->target_Z,
-            entrance->target_Orientation);
+        if (traveler->TeleportTo(
+                entrance->target_mapId,
+                entrance->target_X,
+                entrance->target_Y,
+                entrance->target_Z,
+                entrance->target_Orientation))
+            ++moved;
+    }
+
+    if (moved != travelers.size())
+    {
+        handler->PSendSysMessage(
+            "Adventure travel to {} was only partially successful: {} of {} online traveler(s) moved. No additional teleport was forced.",
+            destination->name, moved, uint32(travelers.size()));
+        return true;
     }
 
     handler->PSendSysMessage("Adventure travel: {} player(s) sent to the entrance of {}.",
-        uint32(travelers.size()), destination->name);
+        moved, destination->name);
     return true;
 }
