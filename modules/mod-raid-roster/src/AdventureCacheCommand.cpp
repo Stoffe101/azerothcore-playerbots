@@ -82,17 +82,18 @@ bool AdventureCacheCommand::HandleOpen(ChatHandler* handler)
     uint32 manaCount = urand(4, 7);
     uint32 gold = urand(4, 8);
     uint32 roll = urand(1, 100);
-    std::string bonusText;
+    bool rareBonus = false;
+    bool commonBonus = false;
 
     if (roll <= 5)
     {
         gold += 20;
-        bonusText = " Rare bonus: +20 gold!";
+        rareBonus = true;
     }
     else if (roll <= 25)
     {
         gold += 5;
-        bonusText = " Bonus: +5 gold.";
+        commonBonus = true;
     }
 
     // Gold can always be delivered. If a bag is completely full, convert the affected potion
@@ -119,13 +120,32 @@ bool AdventureCacheCommand::HandleOpen(ChatHandler* handler)
     }
 
     AdventureProgressionStore::State after = AdventureProgressionStore::LoadOrCreate(guid);
-    handler->PSendSysMessage(
-        "Adventure Cache opened: {} gold, {} Super Healing Potion(s){}{}. {} cache(s) remain.",
-        gold,
-        healingGiven ? healingCount : 0,
-        usesMana ? Acore::StringFormat(", {} Super Mana Potion(s)", manaGiven ? manaCount : 0) : std::string(),
-        bonusText,
-        after.pendingCaches);
+
+    if (usesMana)
+    {
+        handler->PSendSysMessage(
+            "Adventure Cache opened: {} gold, {} Super Healing Potion(s), {} Super Mana Potion(s). {} cache(s) remain.",
+            gold,
+            healingGiven ? healingCount : 0,
+            manaGiven ? manaCount : 0,
+            after.pendingCaches);
+    }
+    else
+    {
+        handler->PSendSysMessage(
+            "Adventure Cache opened: {} gold and {} Super Healing Potion(s). {} cache(s) remain.",
+            gold,
+            healingGiven ? healingCount : 0,
+            after.pendingCaches);
+    }
+
+    if (rareBonus)
+        handler->SendSysMessage("Rare cache bonus: +20 gold!");
+    else if (commonBonus)
+        handler->SendSysMessage("Cache bonus: +5 gold.");
+
+    if (!healingGiven || (usesMana && !manaGiven))
+        handler->SendSysMessage("Your bags were full, so the missing potion bundle was converted to extra gold.");
 
     return true;
 }
