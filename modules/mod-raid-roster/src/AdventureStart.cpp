@@ -50,11 +50,12 @@ void GiveStarterKit(Player* player)
     factory.InitClassSpells();
     factory.InitAvailableSpells();
     factory.InitBags(false);
-    factory.InitMounts();
 
-    // Playerbots' generic WotLK mount setup may include flying at level 60 depending on its
-    // bot configuration. Our TBC-first human start deliberately stops at fast ground riding;
-    // flying remains something the player earns/trains during Outland progression.
+    // Do NOT call PlayerbotFactory::InitMounts() for a real level-60 player. Its thresholds come
+    // from the global bot config, whose default flying threshold is level 60, so it can teach a
+    // flying mount before our TBC-first player has earned flying. Grant only fast ground Riding
+    // here; an explicitly ground-only mount grant can be added after its spell selection is
+    // independently validated.
     player->SetSkill(SKILL_RIDING, 0, 150, 150);
 
     factory.InitAmmo();
@@ -93,6 +94,8 @@ void TryGiveSpecStarterGear(Player* player)
         false,
         false);
 
+    // This write is synchronous in AdventureProgressionStore. A second talent hook therefore
+    // cannot observe starter_gear_granted=false after this pass has completed.
     AdventureProgressionStore::MarkStarterGearGranted(guid, specTab);
     player->SaveToDB(false, false);
 
