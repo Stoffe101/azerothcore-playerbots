@@ -7,6 +7,7 @@ local finderRows, compatRows = {}, {}
 local roadmap = { level="?", progression="?", now="", next="" }
 local mode, page, selected = "finder", 1, nil
 local loggedIn = false
+local responseStream = nil
 
 local OUTLAND = {
     ramparts=true,bloodfurnace=true,shatteredhalls=true,slavepens=true,underbog=true,
@@ -193,17 +194,25 @@ PanelTemplates_SetNumTabs(frame,#tabDefs)
 local function ParseAG(msg)
     local payload=string.match(msg or "","^%[AG%]%s*(.*)$"); if not payload then return false end
     local p=Split(payload)
-    if p[1]=="BEGIN" then if p[2]=="FINDER" then finderRows={} elseif p[2]=="COMPAT" then compatRows={} end; return true end
-    if p[1]=="END" then selected=nil; page=1; AG.Refresh(); return true end
+    if p[1]=="BEGIN" then
+        if p[2]=="FINDER" then finderRows={}; responseStream="finder"
+        elseif p[2]=="COMPAT" then compatRows={}; responseStream="compat"
+        else responseStream=nil end
+        return true
+    end
+    if p[1]=="END" then
+        responseStream=nil; selected=nil; page=1; AG.Refresh(); return true
+    end
     if p[1]=="ROADMAP" then
         if p[2]=="LEVEL" then roadmap.level=p[3] or "?" elseif p[2]=="PROGRESSION" then roadmap.progression=p[3] or "?" elseif p[2]=="NOW" then roadmap.now=p[3] or "" elseif p[2]=="NEXT" then roadmap.next=p[3] or "" end
         if mode=="roadmap" then AG.Refresh() end; return true
     end
     if #p>=8 then
         local entry={alias=p[1],name=p[2],kind=p[3],status=p[4],level=p[5],size=p[6],unlocked=p[7],note=p[8]}
-        -- The response stream tells us which collection is currently being populated through mode.
-        -- Finder/Travel requests populate finderRows; Compatibility requests populate compatRows.
-        if mode=="compat" then compatRows[#compatRows+1]=entry else finderRows[#finderRows+1]=entry end
+        -- Route rows by the server response stream, never by whichever tab happens to be visible
+        -- when the line arrives. This prevents fast tab switches from contaminating the other list.
+        if responseStream=="compat" then compatRows[#compatRows+1]=entry
+        elseif responseStream=="finder" then finderRows[#finderRows+1]=entry end
         return true
     end
     return true
