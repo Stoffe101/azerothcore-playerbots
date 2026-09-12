@@ -22,7 +22,12 @@ AdventureControlRates Clamp(AdventureControlRates rates)
     };
 
     rates.xpPercent = clampOne(rates.xpPercent);
-    rates.goldPercent = clampOne(rates.goldPercent);
+
+    // Gold must stay source-safe. OnPlayerMoneyChanged sees transfers and mailbox withdrawals in
+    // addition to earned rewards, so a generic multiplier there creates currency. Keep the
+    // persisted/displayed personal gold rate at 100% until source-specific reward hooks exist.
+    rates.goldPercent = 100;
+
     rates.repPercent = clampOne(rates.repPercent);
     return rates;
 }
@@ -64,7 +69,9 @@ void Save(uint32 guid, AdventureControlRates const& requested)
         g_rates[guid] = rates;
     }
 
-    CharacterDatabase.Execute(
+    // This is a user-triggered settings mutation, not a hot-path gameplay event. Persist it before
+    // returning so a restart immediately after changing playstyle cannot silently lose the choice.
+    CharacterDatabase.DirectExecute(
         "INSERT INTO mod_adventure_controls (guid, xp_percent, gold_percent, rep_percent) "
         "VALUES ({}, {}, {}, {}) ON DUPLICATE KEY UPDATE "
         "xp_percent=VALUES(xp_percent), gold_percent=VALUES(gold_percent), rep_percent=VALUES(rep_percent)",
