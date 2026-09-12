@@ -5,6 +5,7 @@
 #include "GuildGroupDirector.h"
 #include "RaidRosterCommand.h"
 #include "RaidRosterConfig.h"
+#include "SmartLootSystem.h"
 
 void AddAdventureStartScripts();
 
@@ -24,4 +25,5 @@ void Addmod_raid_rosterScripts()
     new AdventureGuideCommand();
     AddAdventureStartScripts();
     AddGuildGroupDirectorScripts();
+    AddSmartLootScripts();
 }
