@@ -4,6 +4,7 @@
 #include "RaidRosterConfig.h"
 
 void AddAdventureStartScripts();
+void AddAdventureEconomyScripts();
 
 class RaidRosterWorld : public WorldScript
 {
@@ -18,4 +19,5 @@ void Addmod_raid_rosterScripts()
     new RaidRosterWorld();
     new RaidRosterCommand();
     AddAdventureStartScripts();
+    AddAdventureEconomyScripts();
 }
