@@ -3,6 +3,7 @@
 #include "RaidRosterCommand.h"
 #include "RaidRosterConfig.h"
 #include "AdventureControlCommand.h"
+#include "AdventureCatchupCommand.h"
 
 void AddAdventureStartScripts();
 void AddAdventureControlPlayerScripts();
@@ -20,6 +21,7 @@ void Addmod_raid_rosterScripts()
     new RaidRosterWorld();
     new RaidRosterCommand();
     new AdventureControlCommand();
+    new AdventureCatchupCommand();
     AddAdventureStartScripts();
     AddAdventureControlPlayerScripts();
 }
