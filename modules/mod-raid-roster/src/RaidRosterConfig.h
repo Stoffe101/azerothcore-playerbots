@@ -18,5 +18,14 @@ extern bool g_GuildDirectorEnable;
 extern bool g_GuildDirectorAutoTravel;
 extern uint32 g_GuildDirectorReadyTimeoutMs;
 
+// Encounter lifecycle conveniences. These never own combat decisions or auto-pull bosses.
+extern bool g_EncounterLifecycleEnable;
+extern bool g_WipeRecoveryEnable;
+extern uint32 g_WipeRecoveryDelayMs;
+extern bool g_WipeRecoveryResurrectHumans;
+extern bool g_AutoPrepEnable;
+extern bool g_AutoPrepWarlockSupport;
+extern bool g_AutoPrepSmartPets;
+
 void RaidRosterLoadConfig();
 #endif
