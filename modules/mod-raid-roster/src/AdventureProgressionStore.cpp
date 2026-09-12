@@ -3,13 +3,18 @@
 #include "Field.h"
 #include "QueryResult.h"
 
+#include <mutex>
+
 namespace AdventureProgressionStore
 {
 namespace
 {
-void EnsureRow(uint32 playerGuid)
+std::mutex g_progressionMutex;
+
+void EnsureRowUnlocked(uint32 playerGuid)
 {
-    CharacterDatabase.Execute(
+    // Callers immediately rely on this row existing, so an asynchronous Execute() is incorrect.
+    CharacterDatabase.DirectExecute(
         "INSERT IGNORE INTO mod_adventure_progression (player_guid) VALUES ({})",
         playerGuid);
 }
@@ -17,7 +22,8 @@ void EnsureRow(uint32 playerGuid)
 
 State LoadOrCreate(uint32 playerGuid)
 {
-    EnsureRow(playerGuid);
+    std::lock_guard<std::mutex> lock(g_progressionMutex);
+    EnsureRowUnlocked(playerGuid);
 
     State state;
     QueryResult result = CharacterDatabase.Query(
@@ -39,16 +45,18 @@ State LoadOrCreate(uint32 playerGuid)
 
 void MarkStarterInitialized(uint32 playerGuid)
 {
-    EnsureRow(playerGuid);
-    CharacterDatabase.Execute(
+    std::lock_guard<std::mutex> lock(g_progressionMutex);
+    EnsureRowUnlocked(playerGuid);
+    CharacterDatabase.DirectExecute(
         "UPDATE mod_adventure_progression SET starter_initialized = 1 WHERE player_guid = {}",
         playerGuid);
 }
 
 void MarkStarterGearGranted(uint32 playerGuid, uint8 specTab)
 {
-    EnsureRow(playerGuid);
-    CharacterDatabase.Execute(
+    std::lock_guard<std::mutex> lock(g_progressionMutex);
+    EnsureRowUnlocked(playerGuid);
+    CharacterDatabase.DirectExecute(
         "UPDATE mod_adventure_progression SET starter_gear_granted = 1, starter_spec_tab = {} WHERE player_guid = {}",
         specTab, playerGuid);
 }
@@ -58,22 +66,28 @@ void AddPendingCache(uint32 playerGuid, uint16 count)
     if (!count)
         return;
 
-    EnsureRow(playerGuid);
-    CharacterDatabase.Execute(
+    std::lock_guard<std::mutex> lock(g_progressionMutex);
+    EnsureRowUnlocked(playerGuid);
+    CharacterDatabase.DirectExecute(
         "UPDATE mod_adventure_progression SET pending_caches = LEAST(65535, pending_caches + {}) WHERE player_guid = {}",
         count, playerGuid);
 }
 
 bool ConsumePendingCache(uint32 playerGuid)
 {
-    EnsureRow(playerGuid);
+    // Chat commands and level hooks normally execute serially, but make the one-time cache claim
+    // explicit anyway. Query + decrement are protected by one process-local critical section and
+    // both DB operations complete before this function reports success.
+    std::lock_guard<std::mutex> lock(g_progressionMutex);
+    EnsureRowUnlocked(playerGuid);
+
     QueryResult result = CharacterDatabase.Query(
         "SELECT pending_caches FROM mod_adventure_progression WHERE player_guid = {}",
         playerGuid);
     if (!result || result->Fetch()[0].Get<uint16>() == 0)
         return false;
 
-    CharacterDatabase.Execute(
+    CharacterDatabase.DirectExecute(
         "UPDATE mod_adventure_progression SET pending_caches = pending_caches - 1 "
         "WHERE player_guid = {} AND pending_caches > 0",
         playerGuid);
@@ -82,8 +96,9 @@ bool ConsumePendingCache(uint32 playerGuid)
 
 void SetLastLevelCache(uint32 playerGuid, uint8 level)
 {
-    EnsureRow(playerGuid);
-    CharacterDatabase.Execute(
+    std::lock_guard<std::mutex> lock(g_progressionMutex);
+    EnsureRowUnlocked(playerGuid);
+    CharacterDatabase.DirectExecute(
         "UPDATE mod_adventure_progression SET last_level_cache = {} WHERE player_guid = {}",
         level, playerGuid);
 }
