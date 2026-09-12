@@ -16,15 +16,6 @@ uint32 ScaleUnsigned(uint32 amount, uint16 percent)
     return static_cast<uint32>(std::min<uint64>(scaled, std::numeric_limits<uint32>::max()));
 }
 
-int32 ScalePositiveSigned(int32 amount, uint16 percent)
-{
-    if (amount <= 0)
-        return amount;
-
-    int64 scaled = static_cast<int64>(amount) * static_cast<int64>(percent) / 100;
-    return static_cast<int32>(std::min<int64>(scaled, std::numeric_limits<int32>::max()));
-}
-
 class AdventureControlPlayerScript : public PlayerScript
 {
 public:
@@ -52,13 +43,10 @@ public:
         amount = ScaleUnsigned(amount, rates.xpPercent);
     }
 
-    void OnPlayerMoneyChanged(Player* player, int32& amount) override
-    {
-        if (!player || !IsRealPlayer(player) || amount <= 0)
-            return;
-        AdventureControlRates rates = AdventureControlStore::Get(player->GetGUID().GetCounter());
-        amount = ScalePositiveSigned(amount, rates.goldPercent);
-    }
+    // There is intentionally no OnPlayerMoneyChanged multiplier. That hook sees every positive
+    // balance change, including taking gold from mail and receiving transfers, so applying a
+    // personal rate there creates currency from transfers. Gold stays source-safe at 1.0x until
+    // we add reward-source-specific hooks (creature money, quests, etc.).
 
     void OnPlayerGiveReputation(Player* player, int32 /*factionID*/, float& amount, ReputationSource /*repSource*/) override
     {
