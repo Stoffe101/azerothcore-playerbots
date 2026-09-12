@@ -31,16 +31,29 @@ local function RateMenu(kind)
     return out
 end
 
+local RAID_SHORTCUTS = {
+    { "kara",    "Karazhan / Gruul / Magtheridon" },
+    { "ssc",     "Serpentshrine Cavern / Tempest Keep" },
+    { "hyjal",   "Hyjal Summit / Black Temple" },
+    { "za",      "Zul'Aman" },
+    { "sunwell", "Sunwell Plateau" },
+    { "naxx",    "Naxxramas / EoE / Obsidian Sanctum" },
+    { "ulduar",  "Ulduar" },
+    { "toc",     "Trial of the Crusader" },
+    { "icc",     "Icecrown Citadel" },
+    { "rs",      "Ruby Sanctum" },
+}
+
 local PROGRESSION = {
-    { 8,  "TBC start: Karazhan / Gruul / Magtheridon" },
-    { 9,  "Unlock SSC / Tempest Keep tier" },
-    { 10, "Unlock Hyjal / Black Temple tier" },
-    { 12, "Unlock Sunwell tier" },
-    { 13, "Wrath start: Naxx / EoE / Obsidian Sanctum" },
-    { 14, "Unlock Ulduar tier" },
-    { 15, "Unlock Trial of the Crusader tier" },
-    { 16, "Unlock Icecrown Citadel tier" },
-    { 17, "Unlock Ruby Sanctum tier" },
+    { 8,  "TBC start" },
+    { 9,  "TBC stage 9" },
+    { 10, "TBC stage 10" },
+    { 12, "TBC final tier" },
+    { 13, "Wrath start" },
+    { 14, "Wrath stage 14" },
+    { 15, "Wrath stage 15" },
+    { 16, "Wrath stage 16" },
+    { 17, "Wrath stage 17" },
     { 18, "Final WotLK progression stage" },
 }
 
@@ -68,11 +81,58 @@ StaticPopupDialogs["ADVENTURE_CONTROLS_PROGRESS"] = {
     preferredIndex = 3,
 }
 
+StaticPopupDialogs["ADVENTURE_CONTROLS_RAID"] = {
+    text = "Skip forward and unlock %s?\n\nThis advances the server's raid/content progression only. It does not fake-complete every normal quest.",
+    button1 = "Unlock raid tier",
+    button2 = "Cancel",
+    OnAccept = function(self, data)
+        if data then Run(".playstyle raid unlock " .. data) end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+StaticPopupDialogs["ADVENTURE_CONTROLS_NEXT_RAID"] = {
+    text = "Skip forward to the next main raid tier?\n\nThis is forward-only and uses the server's normal Individual Progression system.",
+    button1 = "Skip to next tier",
+    button2 = "Cancel",
+    OnAccept = function() Run(".playstyle raid next") end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+local raidMenu = {
+    {
+        text = "Skip to NEXT raid tier...",
+        notCheckable = true,
+        func = function() StaticPopup_Show("ADVENTURE_CONTROLS_NEXT_RAID") end,
+    },
+}
+for _, entry in ipairs(RAID_SHORTCUTS) do
+    local alias, label = entry[1], entry[2]
+    raidMenu[#raidMenu + 1] = {
+        text = "Unlock " .. label .. "...",
+        notCheckable = true,
+        func = function()
+            StaticPopup_Show("ADVENTURE_CONTROLS_RAID", label, nil, alias)
+        end,
+    }
+end
+raidMenu[#raidMenu + 1] = {
+    text = "Show raid unlock status in chat",
+    notCheckable = true,
+    func = function() Run(".playstyle raid list") end,
+}
+
 local progressionMenu = {}
 for _, entry in ipairs(PROGRESSION) do
     local stage, label = entry[1], entry[2]
     progressionMenu[#progressionMenu + 1] = {
-        text = label,
+        text = label .. " (stage " .. stage .. ")",
         notCheckable = true,
         func = function()
             StaticPopup_Show("ADVENTURE_CONTROLS_PROGRESS", tostring(stage), nil, stage)
@@ -102,7 +162,8 @@ local menu = {
         { text = "Finish ALL active quest objectives...", notCheckable = true, func = function() StaticPopup_Show("ADVENTURE_CONTROLS_FINISH_ALL") end },
         { text = "Finish one quest: use .playstyle quest finish <id>", notCheckable = true, disabled = true },
     } },
-    { text = "Advance story / progression", notCheckable = true, hasArrow = true, menuList = progressionMenu },
+    { text = "Raid progression / skip forward", notCheckable = true, hasArrow = true, menuList = raidMenu },
+    { text = "Advanced progression stages", notCheckable = true, hasArrow = true, menuList = progressionMenu },
 }
 
 local RADIUS = 80
@@ -148,8 +209,8 @@ end)
 btn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine("Adventure Controls")
-    GameTooltip:AddLine("XP, gold, rep, quest and progression switches.", 1, 1, 1)
-    GameTooltip:AddLine("Rates are personal multipliers on top of realm rates.", 0.75, 0.75, 0.75)
+    GameTooltip:AddLine("XP, gold, rep, quest and raid progression switches.", 1, 1, 1)
+    GameTooltip:AddLine("Skip forward to later raids without raw DB edits.", 0.75, 0.75, 0.75)
     GameTooltip:Show()
 end)
 btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
