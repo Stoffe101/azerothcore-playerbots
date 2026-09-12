@@ -1,10 +1,17 @@
 #include "AdventureCacheCommand.h"
 #include "AdventureProgressionStore.h"
 #include "RaidRosterConfig.h"
-#include "Player.h"
+#include "AiFactory.h"
 #include "Item.h"
+#include "ItemTemplate.h"
+#include "ObjectMgr.h"
+#include "Player.h"
 #include "Random.h"
+#include "RandomItemMgr.h"
 #include "RBAC.h"
+
+#include <array>
+#include <vector>
 
 using namespace Acore::ChatCommands;
 
@@ -27,6 +34,95 @@ bool TryGiveItem(Player* player, uint32 itemId, uint32 count)
 
     player->SendNewItem(item, count, true, false);
     return true;
+}
+
+uint32 CacheGearItemLevelCap(Player* player)
+{
+    // Keep cache jackpots exciting without handing out later-raid gear. Around level 65 this
+    // reaches strong normal-dungeon/world gear. At 70, ilvl 115 allows excellent pre-raid / early
+    // raid-quality jackpots but excludes SSC/TK/BT/Sunwell escalation.
+    return player->GetLevel() >= 70 ? 115u : 100u;
+}
+
+bool IsSpecAppropriate(Player* player, ItemTemplate const* proto, uint8 specTab)
+{
+    if (!player || !proto)
+        return false;
+
+    if (proto->Class == ITEM_CLASS_WEAPON)
+    {
+        return sRandomItemMgr.CanEquipWeapon(proto, player->getClass()) &&
+               sRandomItemMgr.ShouldEquipWeaponForSpec(proto, player->getClass(), specTab);
+    }
+
+    if (proto->Class == ITEM_CLASS_ARMOR)
+    {
+        return sRandomItemMgr.CanEquipArmor(proto, player->getClass(), player->GetLevel()) &&
+               sRandomItemMgr.ShouldEquipArmorForSpec(proto, player->getClass(), specTab);
+    }
+
+    return true;
+}
+
+uint32 PickSpecAwareGear(Player* player, uint32 quality)
+{
+    if (!player)
+        return 0;
+
+    std::string specName = AiFactory::GetPlayerSpecName(player);
+    if (specName.empty())
+        return 0;
+
+    uint8 specTab = AiFactory::GetPlayerSpecTab(player);
+    uint32 itemLevelCap = CacheGearItemLevelCap(player);
+
+    // Weapon and trinket first because those are the fun jackpot outcomes the cache is designed
+    // around. Armor slots give the roll somewhere useful to land if the scorer finds no valid
+    // weapon/trinket upgrade at this era-safe item-level ceiling.
+    constexpr std::array<uint8, 7> slots = {
+        EQUIPMENT_SLOT_MAINHAND,
+        EQUIPMENT_SLOT_TRINKET1,
+        EQUIPMENT_SLOT_TRINKET2,
+        EQUIPMENT_SLOT_CHEST,
+        EQUIPMENT_SLOT_HEAD,
+        EQUIPMENT_SLOT_LEGS,
+        EQUIPMENT_SLOT_HANDS,
+    };
+
+    // Randomize the starting slot while keeping weapon/trinkets weighted by appearing first in
+    // the circular search. This avoids every jackpot becoming the same armor slot.
+    uint32 start = urand(0, 2);
+    for (uint32 offset = 0; offset < slots.size(); ++offset)
+    {
+        uint8 slot = slots[(start + offset) % slots.size()];
+        Item* current = player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+        uint32 currentItemId = current ? current->GetEntry() : 0;
+
+        std::vector<uint32> scored = sRandomItemMgr.GetUpgradeList(
+            player,
+            specName,
+            slot,
+            quality,
+            currentItemId,
+            20);
+
+        std::vector<uint32> eligible;
+        eligible.reserve(scored.size());
+        for (uint32 itemId : scored)
+        {
+            ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
+            if (!proto || proto->ItemLevel > itemLevelCap)
+                continue;
+            if (!IsSpecAppropriate(player, proto, specTab))
+                continue;
+            eligible.push_back(itemId);
+        }
+
+        if (!eligible.empty())
+            return eligible[urand(0, static_cast<uint32>(eligible.size() - 1))];
+    }
+
+    return 0;
 }
 }
 
@@ -76,24 +172,53 @@ bool AdventureCacheCommand::HandleOpen(ChatHandler* handler)
         return true;
     }
 
-    // V1 rewards are deliberately combat-focused and profession-free. Gear jackpots are being
-    // added through the spec-aware item scorer separately rather than hard-coding class item IDs.
     uint32 healingCount = urand(4, 7);
     uint32 manaCount = urand(4, 7);
     uint32 gold = urand(4, 8);
     uint32 roll = urand(1, 100);
-    bool rareBonus = false;
-    bool commonBonus = false;
 
-    if (roll <= 5)
+    // 3% epic jackpot, 12% rare gear roll, 15% extra-gold bonus. Gear is selected by the
+    // Playerbots stat scorer for the player's live spec and then bounded by an era-safe ilvl cap.
+    uint32 gearItemId = 0;
+    bool epicJackpot = roll <= 3;
+    bool rareGearBonus = roll > 3 && roll <= 15;
+    bool goldBonus = roll > 15 && roll <= 30;
+
+    if (epicJackpot)
     {
-        gold += 20;
-        rareBonus = true;
+        gearItemId = PickSpecAwareGear(player, ITEM_QUALITY_EPIC);
+        if (!gearItemId)
+            gearItemId = PickSpecAwareGear(player, ITEM_QUALITY_RARE);
     }
-    else if (roll <= 25)
+    else if (rareGearBonus)
     {
-        gold += 5;
-        commonBonus = true;
+        gearItemId = PickSpecAwareGear(player, ITEM_QUALITY_RARE);
+    }
+    else if (goldBonus)
+    {
+        gold += 10;
+    }
+
+    bool gearGiven = true;
+    if (gearItemId)
+    {
+        gearGiven = TryGiveItem(player, gearItemId, 1);
+        if (!gearGiven)
+        {
+            // Never silently eat a jackpot. A full inventory converts it into a chunky cash
+            // payout so the cache still feels materially better than a normal roll.
+            gold += epicJackpot ? 40 : 15;
+        }
+    }
+    else if (epicJackpot)
+    {
+        // The scorer can legitimately have no safe epic candidate under the ilvl ceiling.
+        // Preserve the jackpot feeling without bypassing the progression cap.
+        gold += 30;
+    }
+    else if (rareGearBonus)
+    {
+        gold += 10;
     }
 
     // Gold can always be delivered. If a bag is completely full, convert the affected potion
@@ -139,10 +264,29 @@ bool AdventureCacheCommand::HandleOpen(ChatHandler* handler)
             after.pendingCaches);
     }
 
-    if (rareBonus)
-        handler->SendSysMessage("Rare cache bonus: +20 gold!");
-    else if (commonBonus)
-        handler->SendSysMessage("Cache bonus: +5 gold.");
+    if (gearItemId && gearGiven)
+    {
+        ItemTemplate const* proto = sObjectMgr->GetItemTemplate(gearItemId);
+        handler->PSendSysMessage(
+            epicJackpot ? "EPIC CACHE JACKPOT: {}!" : "Rare cache gear bonus: {}!",
+            proto ? proto->Name1 : "spec-appropriate gear");
+    }
+    else if (gearItemId && !gearGiven)
+    {
+        handler->SendSysMessage("Your bags were full for the gear reward, so the jackpot was converted to extra gold.");
+    }
+    else if (epicJackpot)
+    {
+        handler->SendSysMessage("EPIC CACHE JACKPOT: no progression-safe epic upgrade was available, so you received +30 gold instead.");
+    }
+    else if (rareGearBonus)
+    {
+        handler->SendSysMessage("Rare cache roll: no progression-safe gear upgrade was available, so you received +10 gold instead.");
+    }
+    else if (goldBonus)
+    {
+        handler->SendSysMessage("Cache bonus: +10 gold.");
+    }
 
     if (!healingGiven || (usesMana && !manaGiven))
         handler->SendSysMessage("Your bags were full, so the missing potion bundle was converted to extra gold.");
