@@ -19,6 +19,9 @@ public:
     static bool HandleFinishAllQuests(ChatHandler* handler);
     static bool HandleProgressList(ChatHandler* handler);
     static bool HandleProgressAdvance(ChatHandler* handler, Optional<uint32> stage);
+    static bool HandleRaidList(ChatHandler* handler);
+    static bool HandleRaidUnlock(ChatHandler* handler, Optional<std::string> raid);
+    static bool HandleRaidNext(ChatHandler* handler);
 };
 
 #endif
