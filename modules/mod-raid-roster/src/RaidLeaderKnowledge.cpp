@@ -41,7 +41,7 @@ std::vector<Encounter> Build()
             "Expect damage on multiple controlled/tanked targets and keep the active tanks covered while the marked targets die.",
             "Follow the raid target marks. Do not ignore the add priority to tunnel Moroes.",
             "Bots choose and mark the target priority for Moroes and his guests.",
-            "The raid leader should reinforce the marked target rather than inventing a separate kill order."
+            "The pinned encounter strategy explicitly marks guest priority; it does not justify inventing extra automated CC assignments in this brief."
         },
         {
             "Karazhan", "Maiden of Virtue", {"maiden", "maiden of virtue"}, Readiness::GuildReady,
@@ -146,11 +146,11 @@ std::vector<Encounter> Build()
         {
             "Karazhan", "Chess Event", {"chess", "chess event"}, Readiness::Playable,
             "none",
-            "Chess is the Karazhan exception: the current Playerbots completion guide treats it as a manual/solo event rather than a bot-controlled raid encounter.",
+            "Chess is the Karazhan exception: there is no Chess-specific combat strategy registered in the pinned Playerbots Karazhan strategy set.",
             "No tank role applies. Control the chess event manually.",
             "No healer role applies. Control the chess event manually.",
             "No DPS role applies. Control the chess event manually.",
-            "No Playerbots combat strategy is used for Chess.",
+            "No Playerbots combat strategy is claimed for Chess by this fork.",
             "Yellow/Playable by design, not Guild Ready. The guild system should never pretend the bots solve it."
         },
         {
@@ -181,7 +181,7 @@ std::vector<Encounter> Build()
             "Keep the split Channeler tanks alive in phase one, then stabilize the raid through Magtheridon while respecting debris and Blast Nova timing.",
             "Follow the marked Channeler kill order, stay spread on Magtheridon and move out of debris. Do not interfere with the cube assignments unless the deterministic strategy assigns you.",
             "Bots split Channeler tanks, mark DPS priority, CC Burning Abyssals, position/spread on Magtheridon, move from debris and schedule Manticron Cube use for Blast Nova.",
-            "The current upstream guide notes a low-health Blast Nova timing bug can occasionally cast earlier than expected. The raid leader should surface that caveat rather than claim perfect cube timing."
+            "Cube handling is deterministic in the pinned strategy, but an assigned bot can still fail to complete an interaction if its cube GameObject cannot be resolved or reached. Treat the mechanic as automated, not infallible."
         },
     };
 }
@@ -223,7 +223,7 @@ Encounter const* Find(std::string const& text)
         if (!found)
             continue;
         if (match)
-            return nullptr; // ambiguous phrase: refuse to guess.
+            return nullptr;
         match = &encounter;
     }
     return match;
@@ -237,5 +237,4 @@ char const* ReadinessName(Readiness readiness)
         case Readiness::Playable: return "PLAYABLE / CAVEAT";
         default: return "NOT READY";
     }
-}
 }
