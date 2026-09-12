@@ -48,6 +48,9 @@ if ($abs -like '/mnt/*') {
     Write-Warning "Repo is on the Windows filesystem ($abs). For speed and correct Docker bind-mount permissions, clone it into the WSL native filesystem (e.g. ~/AzerothCore) instead."
 }
 
+# Resolve the distro once for all direct WSL calls below.
+$wslPrefix = @(Get-WslPrefix $Distro)
+
 # --- Preflight: Docker reachable from WSL ---
 if (-not (Test-DockerReady -Distro $Distro)) {
     throw @"
@@ -62,7 +65,7 @@ Write-Host "Docker Desktop: reachable from WSL." -ForegroundColor Green
 # --- Detect the Windows host LAN IPv4 (default-route adapter; skip virtual/WSL/APIPA) ---
 if (-not $LanIp) {
     # Pick the IPv4 of the real LAN adapter that owns the default route. Exclude WSL/Hyper-V/
-    # virtual adapters - their NAT IP (172.x) is exactly what LAN clients CANNOT reach.
+    # virtual adapters because their NAT IPs are not what LAN clients should use.
     $route = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -AddressFamily IPv4 -ErrorAction SilentlyContinue |
         Where-Object {
             $a = Get-NetAdapter -InterfaceIndex $_.ifIndex -ErrorAction SilentlyContinue
@@ -82,35 +85,28 @@ if (-not $LanIp) {
 }
 Write-Host "Windows host LAN IP: $LanIp" -ForegroundColor Green
 
-# --- Read auth/world ports from the WSL-side env (defaults 3724 / 8085) ---
-# This is a literal PowerShell here-string, so write normal Bash quotes. Do not escape them
-# with backslashes; doing so changes what Bash receives and can break the awk program.
-$portScript = @'
-f=.env
-[ -f "$f" ] || f=.env.example
-awk -F= '/^DOCKER_AUTH_EXTERNAL_PORT=/{a=$2} /^DOCKER_WORLD_EXTERNAL_PORT=/{w=$2} END{printf "%s %s",(a?a:"3724"),(w?w:"8085")}' "$f"
-'@
-# Normalize the accidental PowerShell-literal escaping above into ordinary Bash quoting before
-# execution. Keeping this replacement explicit makes the command safe on Windows PowerShell 5.1.
-$portScript = $portScript.Replace('\"', '"')
-$portCommand = "cd '$abs' && $portScript"
-$portsRaw = & wsl.exe @(Get-WslPrefix $Distro) '-e' '/bin/bash' '-lc' $portCommand
-if ($LASTEXITCODE -ne 0) {
-    throw "Failed to read auth/world ports from '$abs/.env'."
-}
-$portsText = ([string]$portsRaw).Trim()
-if ([string]::IsNullOrWhiteSpace($portsText)) {
-    $authPort = '3724'
-    $worldPort = '8085'
+# --- Read auth/world ports from .env with direct cat, then parse in PowerShell ---
+# Avoid awk/bash command strings here. Windows PowerShell 5.1 can mangle nested shell quotes.
+$envPath = $abs.TrimEnd('/') + '/.env'
+$envExamplePath = $abs.TrimEnd('/') + '/.env.example'
+& wsl.exe @wslPrefix '-e' '/usr/bin/test' '-f' $envPath *> $null
+if ($LASTEXITCODE -eq 0) {
+    $portSource = $envPath
 } else {
-    $ports = $portsText -split '\s+'
-    if ($ports.Count -ge 2) {
-        $authPort = $ports[0]
-        $worldPort = $ports[1]
-    } else {
-        $authPort = '3724'
-        $worldPort = '8085'
-    }
+    $portSource = $envExamplePath
+}
+
+$envLines = @(& wsl.exe @wslPrefix '-e' '/bin/cat' $portSource)
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to read '$portSource'."
+}
+
+$authPort = '3724'
+$worldPort = '8085'
+foreach ($line in $envLines) {
+    $s = [string]$line
+    if ($s -match '^DOCKER_AUTH_EXTERNAL_PORT=([0-9]+)') { $authPort = $Matches[1] }
+    elseif ($s -match '^DOCKER_WORLD_EXTERNAL_PORT=([0-9]+)') { $worldPort = $Matches[1] }
 }
 Write-Host "Ports: auth=$authPort world=$worldPort" -ForegroundColor Green
 
@@ -126,23 +122,30 @@ foreach ($r in @(
     Write-Host "Firewall: allowed inbound TCP $($r.Port) ($($r.Name))." -ForegroundColor Green
 }
 
-# --- Persist LAN_IP into the WSL-side env so the realm advertises the Windows host IP ---
-$ipScript = @'
-[ -f .env ] || cp .env.example .env
-f=.env
-if grep -q '^LAN_IP=' "$f"; then
-  sed -i "s|^LAN_IP=.*|LAN_IP=__IP__|" "$f"
-else
-  printf '\nLAN_IP=__IP__\n' >> "$f"
-fi
-echo "Set LAN_IP=__IP__ in $f"
-'@ -replace '__IP__', $LanIp
-$ipScript = $ipScript.Replace('\"', '"')
-Invoke-Wsl -RepoPath $abs -Command $ipScript -Distro $Distro
+# --- Persist LAN_IP into the WSL-side env using direct Linux tools ---
+# Repo-root .env is the source of truth. Create it from the template if needed.
+& wsl.exe @wslPrefix '-e' '/usr/bin/test' '-f' $envPath *> $null
+if ($LASTEXITCODE -ne 0) {
+    & wsl.exe @wslPrefix '-e' '/bin/cp' $envExamplePath $envPath
+    if ($LASTEXITCODE -ne 0) { throw "Failed to create '$envPath' from .env.example." }
+}
+
+& wsl.exe @wslPrefix '-e' '/usr/bin/grep' '-q' '^LAN_IP=' $envPath
+$grepExit = $LASTEXITCODE
+if ($grepExit -eq 0) {
+    $sedExpr = "s|^LAN_IP=.*$|LAN_IP=$LanIp|"
+    & wsl.exe @wslPrefix '-e' '/usr/bin/sed' '-i' $sedExpr $envPath
+    if ($LASTEXITCODE -ne 0) { throw "Failed to write LAN_IP to '$envPath'." }
+} elseif ($grepExit -eq 1) {
+    throw "'$envPath' has no LAN_IP= entry. Restore it from .env.example before continuing."
+} else {
+    throw "Failed to inspect LAN_IP in '$envPath'."
+}
+Write-Host "Set LAN_IP=$LanIp in .env" -ForegroundColor Green
 
 # --- Run the install inside WSL ---
 Write-Host "Running ./setup.sh inside WSL (first run can take a long time)..." -ForegroundColor Cyan
-Invoke-Wsl -RepoPath $abs -Command './setup.sh' -Distro $Distro
+Invoke-WslScript -RepoPath $abs -ScriptName 'setup.sh' -Distro $Distro
 
 Write-Host ""
 Write-Host "Done. On each player's PC, set realmlist to:" -ForegroundColor Cyan
