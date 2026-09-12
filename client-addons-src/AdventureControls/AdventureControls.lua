@@ -1,5 +1,5 @@
 -- AdventureControls: lightweight WotLK 3.3.5a switchboard for the server-side
--- .playstyle command family. The addon contains no progression logic itself.
+-- .playstyle / .catchup command families. The addon contains no progression logic itself.
 
 local function Run(cmd)
     local eb = DEFAULT_CHAT_FRAME.editBox
@@ -94,6 +94,19 @@ StaticPopupDialogs["ADVENTURE_CONTROLS_RAID"] = {
     preferredIndex = 3,
 }
 
+StaticPopupDialogs["ADVENTURE_CONTROLS_CATCHUP"] = {
+    text = "Unlock %s and apply its one-time catch-up gear package?\n\nThe server uses your current spec and only upgrades toward entry-ready gear BELOW the raid's own loot. Better equipped pieces are kept. Enchants and gems are not granted.",
+    button1 = "Unlock + gear",
+    button2 = "Cancel",
+    OnAccept = function(self, data)
+        if data then Run(".catchup raid " .. data) end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
 StaticPopupDialogs["ADVENTURE_CONTROLS_NEXT_RAID"] = {
     text = "Skip forward to the next main raid tier?\n\nThis is forward-only and uses the server's normal Individual Progression system.",
     button1 = "Skip to next tier",
@@ -105,27 +118,63 @@ StaticPopupDialogs["ADVENTURE_CONTROLS_NEXT_RAID"] = {
     preferredIndex = 3,
 }
 
+StaticPopupDialogs["ADVENTURE_CONTROLS_NEXT_CATCHUP"] = {
+    text = "Skip to the next main raid tier AND apply its one-time catch-up gear package?\n\nYou must already be the expansion's raid level (70 in TBC, 80 in Wrath).",
+    button1 = "Skip + gear",
+    button2 = "Cancel",
+    OnAccept = function() Run(".catchup next") end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
 local raidMenu = {
     {
-        text = "Skip to NEXT raid tier...",
+        text = "Skip to NEXT raid tier",
         notCheckable = true,
-        func = function() StaticPopup_Show("ADVENTURE_CONTROLS_NEXT_RAID") end,
+        hasArrow = true,
+        menuList = {
+            { text = "Unlock only...", notCheckable = true, func = function() StaticPopup_Show("ADVENTURE_CONTROLS_NEXT_RAID") end },
+            { text = "Unlock + catch-up gear...", notCheckable = true, func = function() StaticPopup_Show("ADVENTURE_CONTROLS_NEXT_CATCHUP") end },
+        },
     },
 }
+
+local function RaidActions(alias, label)
+    return {
+        {
+            text = "Unlock only...",
+            notCheckable = true,
+            func = function() StaticPopup_Show("ADVENTURE_CONTROLS_RAID", label, nil, alias) end,
+        },
+        {
+            text = "Unlock + catch-up gear...",
+            notCheckable = true,
+            func = function() StaticPopup_Show("ADVENTURE_CONTROLS_CATCHUP", label, nil, alias) end,
+        },
+    }
+end
+
 for _, entry in ipairs(RAID_SHORTCUTS) do
     local alias, label = entry[1], entry[2]
     raidMenu[#raidMenu + 1] = {
-        text = "Unlock " .. label .. "...",
+        text = label,
         notCheckable = true,
-        func = function()
-            StaticPopup_Show("ADVENTURE_CONTROLS_RAID", label, nil, alias)
-        end,
+        hasArrow = true,
+        menuList = RaidActions(alias, label),
     }
 end
+
 raidMenu[#raidMenu + 1] = {
     text = "Show raid unlock status in chat",
     notCheckable = true,
     func = function() Run(".playstyle raid list") end,
+}
+raidMenu[#raidMenu + 1] = {
+    text = "Show catch-up claims in chat",
+    notCheckable = true,
+    func = function() Run(".catchup status") end,
 }
 
 local progressionMenu = {}
@@ -209,8 +258,8 @@ end)
 btn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine("Adventure Controls")
-    GameTooltip:AddLine("XP, gold, rep, quest and raid progression switches.", 1, 1, 1)
-    GameTooltip:AddLine("Skip forward to later raids without raw DB edits.", 0.75, 0.75, 0.75)
+    GameTooltip:AddLine("XP, gold, rep, quests, raid skips and catch-up gear.", 1, 1, 1)
+    GameTooltip:AddLine("Catch-up gear is spec-aware and one-time per raid tier.", 0.75, 0.75, 0.75)
     GameTooltip:Show()
 end)
 btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
