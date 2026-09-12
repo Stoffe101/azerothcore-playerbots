@@ -30,6 +30,8 @@ struct Memory
 
 Profile GetOrCreateProfile(uint32 botGuid);
 std::vector<Memory> GetRecentImportantMemories(uint32 botGuid, uint32 limit = 5);
+uint64 RecordEvent(std::string eventType, uint32 actorGuid, uint32 targetGuid,
+                   uint32 mapId, uint32 encounterId, std::string summary);
 void AddMemory(uint32 botGuid, uint64 eventId, std::string memoryType, uint8 importance,
                uint8 relatedType, uint32 relatedGuid, std::string summary);
 void TouchRelationship(uint32 botGuid, uint8 targetType, uint32 targetGuid,
