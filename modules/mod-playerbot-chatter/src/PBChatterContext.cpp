@@ -218,9 +218,10 @@ std::string PBChatterContext::BuildGroundedBrief(Player* bot)
 
 std::string PBChatterContext::BuildIdentity(Player* bot)
 {
-    PBAIGuildStore::Profile profile = PBAIGuildStore::GetOrCreateProfile(bot->GetGUID().GetCounter());
+    uint32 botGuid = bot->GetGUID().GetCounter();
+    PBAIGuildStore::Profile profile = PBAIGuildStore::GetOrCreateProfile(botGuid);
 
-    return Acore::StringFormat(
+    std::string identity = Acore::StringFormat(
         "You're a level {} {}. Your stable personality is {}, {}, {}, and {}. "
         "You tend to enjoy {}. Keep those traits subtle and consistent; do not invent shared history that is not in memory context.",
         bot->GetLevel(),
@@ -230,4 +231,15 @@ std::string PBChatterContext::BuildIdentity(Player* bot)
         Confidence(profile.confidence),
         Sociability(profile.sociability),
         profile.preferredContent);
+
+    std::vector<PBAIGuildStore::Memory> memories = PBAIGuildStore::GetRecentImportantMemories(botGuid, 3);
+    if (!memories.empty())
+    {
+        identity += " Grounded memories from actual gameplay:";
+        for (PBAIGuildStore::Memory const& memory : memories)
+            identity += " [" + memory.summary + "]";
+        identity += " You may refer to these naturally when relevant, but never add details that are not stated here.";
+    }
+
+    return identity;
 }
