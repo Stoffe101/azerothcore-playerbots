@@ -165,8 +165,11 @@ bool AdventureCacheCommand::HandleOpen(ChatHandler* handler)
     }
 
     uint32 guid = player->GetGUID().GetCounter();
-    AdventureProgressionStore::State state = AdventureProgressionStore::LoadOrCreate(guid);
-    if (!state.pendingCaches)
+
+    // Claim the queue entry before any item or money is created. The store performs this
+    // synchronously and serializes the check/decrement, so repeated .cache open commands cannot
+    // redeem the same pending cache while an async UPDATE is still waiting in the DB queue.
+    if (!AdventureProgressionStore::ConsumePendingCache(guid))
     {
         handler->SendSysMessage("You do not have an Adventure Cache waiting.");
         return true;
@@ -221,8 +224,8 @@ bool AdventureCacheCommand::HandleOpen(ChatHandler* handler)
         gold += 10;
     }
 
-    // Gold can always be delivered. If a bag is completely full, convert the affected potion
-    // bundle into extra gold rather than consuming a cache and silently losing the reward.
+    // Gold can always be attempted independently of bag space. If a bag is completely full,
+    // convert the affected potion bundle into extra gold rather than silently losing that reward.
     bool healingGiven = TryGiveItem(player, ITEM_SUPER_HEALING_POTION, healingCount);
     bool manaGiven = true;
     bool usesMana = player->getPowerType() == POWER_MANA;
@@ -234,23 +237,14 @@ bool AdventureCacheCommand::HandleOpen(ChatHandler* handler)
     if (usesMana && !manaGiven)
         gold += 2;
 
-    player->ModifyMoney(static_cast<int32>(gold * COPPER_PER_GOLD));
-
-    if (!AdventureProgressionStore::ConsumePendingCache(guid))
-    {
-        // This should only be reachable if the queue was changed concurrently. We intentionally
-        // do not try to claw rewards back from the player.
-        handler->SendSysMessage("Cache reward delivered, but the queue changed while opening it. Check .cache status.");
-        return true;
-    }
-
+    bool goldGiven = player->ModifyMoney(static_cast<int32>(gold * COPPER_PER_GOLD));
     AdventureProgressionStore::State after = AdventureProgressionStore::LoadOrCreate(guid);
 
     if (usesMana)
     {
         handler->PSendSysMessage(
             "Adventure Cache opened: {} gold, {} Super Healing Potion(s), {} Super Mana Potion(s). {} cache(s) remain.",
-            gold,
+            goldGiven ? gold : 0,
             healingGiven ? healingCount : 0,
             manaGiven ? manaCount : 0,
             after.pendingCaches);
@@ -259,10 +253,13 @@ bool AdventureCacheCommand::HandleOpen(ChatHandler* handler)
     {
         handler->PSendSysMessage(
             "Adventure Cache opened: {} gold and {} Super Healing Potion(s). {} cache(s) remain.",
-            gold,
+            goldGiven ? gold : 0,
             healingGiven ? healingCount : 0,
             after.pendingCaches);
     }
+
+    if (!goldGiven)
+        handler->SendSysMessage("The gold part of the cache could not be added because your character is at the money cap.");
 
     if (gearItemId && gearGiven)
     {
