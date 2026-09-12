@@ -3,9 +3,11 @@
 #include "AiFactory.h"
 #include "Chat.h"
 #include "Creature.h"
+#include "Group.h"
 #include "Item.h"
 #include "ItemTemplate.h"
 #include "KillRewarder.h"
+#include "LootMgr.h"
 #include "Map.h"
 #include "ObjectMgr.h"
 #include "Player.h"
@@ -33,6 +35,7 @@ struct RecentBoss
 {
     uint32 mapId = 0;
     uint32 bossEntry = 0;
+    ObjectGuid bossGuid;
     std::chrono::steady_clock::time_point when;
 };
 
@@ -156,7 +159,7 @@ void RecordBoss(Player* player, Creature* boss)
 
     {
         std::lock_guard<std::mutex> lock(g_recentMutex);
-        g_recentBoss[guid] = {map->GetId(), boss->GetEntry(), std::chrono::steady_clock::now()};
+        g_recentBoss[guid] = {map->GetId(), boss->GetEntry(), boss->GetGUID(), std::chrono::steady_clock::now()};
     }
 
     if (streak >= 3 && player->GetSession())
@@ -167,9 +170,9 @@ void RecordBoss(Player* player, Creature* boss)
     }
 }
 
-void MaybeResetRecentBoss(Player* player, Item* item)
+void MaybeResetRecentBoss(Player* player, Item* item, ObjectGuid lootSourceGuid)
 {
-    if (!g_BadLuckProtectionEnable || !player || !item || IsPlayerbot(player) || !IsMeaningfulUpgrade(player, item))
+    if (!g_BadLuckProtectionEnable || !player || !item || IsPlayerbot(player) || lootSourceGuid.IsEmpty())
         return;
 
     RecentBoss recent;
@@ -186,6 +189,15 @@ void MaybeResetRecentBoss(Player* player, Item* item)
     if (age < 0 || static_cast<uint32>(age) > g_BadLuckUpgradeWindowSeconds || player->GetMapId() != recent.mapId)
         return;
 
+    // The old implementation reset a boss streak for any meaningful item acquired on the same
+    // map during the time window. Trash, chests and unrelated containers could therefore erase a
+    // dry streak. Require the loot object's source GUID to be the exact defeated boss instead.
+    if (lootSourceGuid != recent.bossGuid)
+        return;
+
+    if (!IsMeaningfulUpgrade(player, item))
+        return;
+
     SmartLootStore::ResetDryStreak(player->GetGUID().GetCounter(), recent.mapId, recent.bossEntry);
     {
         std::lock_guard<std::mutex> lock(g_recentMutex);
@@ -195,7 +207,7 @@ void MaybeResetRecentBoss(Player* player, Item* item)
     if (player->GetSession())
     {
         ChatHandler(player->GetSession()).PSendSysMessage(
-            "Bad-luck protection: {} counted as a meaningful main-spec win; the recent boss dry streak was reset.",
+            "Bad-luck protection: {} counted as a meaningful main-spec win from that boss; its dry streak was reset.",
             item->GetTemplate() ? item->GetTemplate()->Name1 : "your item");
     }
 }
@@ -218,16 +230,20 @@ public:
         RecordBoss(player, boss);
     }
 
-    void OnPlayerGroupRollRewardItem(Player* player, Item* item, uint32 /*count*/, RollVote /*voteType*/, Roll* /*roll*/) override
+    void OnPlayerGroupRollRewardItem(Player* player, Item* item, uint32 /*count*/, RollVote /*voteType*/, Roll* roll) override
     {
-        MaybeResetRecentBoss(player, item);
+        ObjectGuid sourceGuid;
+        if (roll)
+            if (Loot* loot = roll->getLoot())
+                sourceGuid = loot->sourceWorldObjectGUID;
+        MaybeResetRecentBoss(player, item, sourceGuid);
     }
 
-    void OnPlayerLootItem(Player* player, Item* item, uint32 /*count*/, ObjectGuid /*lootguid*/) override
+    void OnPlayerLootItem(Player* player, Item* item, uint32 /*count*/, ObjectGuid lootguid) override
     {
-        // Covers solo/direct-loot paths. Group-roll rewards are harmlessly idempotent because the
-        // recent encounter entry is erased after the first meaningful reset.
-        MaybeResetRecentBoss(player, item);
+        // Direct/solo loot exposes the source object GUID through the hook. Exact-source matching
+        // below prevents an unrelated chest/trash/container drop from resetting the boss streak.
+        MaybeResetRecentBoss(player, item, lootguid);
     }
 
     void OnPlayerLogout(Player* player) override
