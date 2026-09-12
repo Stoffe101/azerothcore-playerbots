@@ -30,3 +30,21 @@ AdventureStart.Progression = 8
 #   Reveal all world-map exploration tiles on the player's first login.
 #   This removes fog-of-war but does not teleport the player or unlock flight paths.
 AdventureStart.RevealMap = 1
+
+########################################
+# Adventure economy (this fork)
+########################################
+
+# AdventureEconomy.Enable
+#   Makes dungeon/raid progression a direct gold source for real players who prefer
+#   adventuring over profession farming. Playerbots never receive these bounties.
+AdventureEconomy.Enable = 1
+
+# AdventureEconomy.DungeonBossFirstKillGold
+#   Gold awarded the first time THIS character receives kill credit for a dungeon boss.
+#   Keyed by character + map + boss entry, so repeating the same boss does not print gold.
+AdventureEconomy.DungeonBossFirstKillGold = 5
+
+# AdventureEconomy.RaidBossFirstKillGold
+#   Gold awarded the first time THIS character receives kill credit for a raid boss.
+AdventureEconomy.RaidBossFirstKillGold = 20
