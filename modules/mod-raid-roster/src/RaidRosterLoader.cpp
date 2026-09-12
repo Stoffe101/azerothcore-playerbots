@@ -1,5 +1,6 @@
 #include "ScriptMgr.h"
 #include "Log.h"
+#include "RaidLeaderCommand.h"
 #include "RaidRosterCommand.h"
 #include "RaidRosterConfig.h"
 
@@ -17,5 +18,6 @@ void Addmod_raid_rosterScripts()
     LOG_INFO("server.loading", "[RaidRoster] Registering scripts.");
     new RaidRosterWorld();
     new RaidRosterCommand();
+    new RaidLeaderCommand();
     AddAdventureStartScripts();
 }
