@@ -12,9 +12,12 @@
 #include "RandomPlayerbotMgr.h"
 #include "WorldSession.h"
 
+#include <mutex>
+
 namespace
 {
 constexpr uint32 COPPER_PER_GOLD = 10000;
+std::mutex g_bountyClaimMutex;
 
 bool IsPlayerbot(Player* player)
 {
@@ -38,15 +41,34 @@ bool HasClaimedBossBounty(uint32 playerGuid, uint32 mapId, uint32 creatureEntry)
     return result != nullptr;
 }
 
-void RecordBossBounty(uint32 playerGuid, uint32 mapId, uint32 creatureEntry, uint32 rewardCopper)
+bool ClaimBossBounty(uint32 playerGuid, uint32 mapId, uint32 creatureEntry, uint32 rewardCopper)
 {
-    CharacterDatabase.Execute(
+    // A kill-reward hook can be reached through more than one map worker. Serialize the check and
+    // claim in-process, and persist the claim synchronously before any money is created.
+    std::lock_guard<std::mutex> lock(g_bountyClaimMutex);
+    if (HasClaimedBossBounty(playerGuid, mapId, creatureEntry))
+        return false;
+
+    CharacterDatabase.DirectExecute(
         "INSERT IGNORE INTO mod_adventure_boss_bounty "
         "(player_guid, map_id, creature_entry, reward_copper) VALUES ({}, {}, {}, {})",
         playerGuid,
         mapId,
         creatureEntry,
         rewardCopper);
+
+    return HasClaimedBossBounty(playerGuid, mapId, creatureEntry);
+}
+
+void ReleaseBossBounty(uint32 playerGuid, uint32 mapId, uint32 creatureEntry)
+{
+    std::lock_guard<std::mutex> lock(g_bountyClaimMutex);
+    CharacterDatabase.DirectExecute(
+        "DELETE FROM mod_adventure_boss_bounty "
+        "WHERE player_guid = {} AND map_id = {} AND creature_entry = {}",
+        playerGuid,
+        mapId,
+        creatureEntry);
 }
 }
 
@@ -84,26 +106,27 @@ public:
         uint32 const playerGuid = player->GetGUID().GetCounter();
         uint32 const mapId = map->GetId();
         uint32 const creatureEntry = boss->GetEntry();
+        uint32 const rewardCopper = rewardGold * COPPER_PER_GOLD;
 
-        // One reward per character, map and boss entry. This makes adventuring profitable
-        // without turning the easiest repeatable boss into an infinite gold printer.
-        if (HasClaimedBossBounty(playerGuid, mapId, creatureEntry))
+        // Persist the one-time claim before awarding currency. This closes the previous window in
+        // which ModifyMoney succeeded while the asynchronous claim INSERT was still queued.
+        if (!ClaimBossBounty(playerGuid, mapId, creatureEntry, rewardCopper))
             return;
 
-        uint32 const rewardCopper = rewardGold * COPPER_PER_GOLD;
         if (!player->ModifyMoney(static_cast<int32>(rewardCopper)))
         {
+            // Money-cap failure should not permanently consume the bounty. Release the claim
+            // synchronously so a later kill can retry once the player has room for the reward.
+            ReleaseBossBounty(playerGuid, mapId, creatureEntry);
             LOG_WARN(
                 "server.loading",
-                "[AdventureEconomy] Could not award {} copper to {} for boss {} on map {}",
+                "[AdventureEconomy] Could not award {} copper to {} for boss {} on map {}; bounty claim released",
                 rewardCopper,
                 player->GetName(),
                 creatureEntry,
                 mapId);
             return;
         }
-
-        RecordBossBounty(playerGuid, mapId, creatureEntry, rewardCopper);
 
         if (WorldSession* session = player->GetSession())
         {
