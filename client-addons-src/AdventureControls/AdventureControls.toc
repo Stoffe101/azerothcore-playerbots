@@ -1,8 +1,8 @@
 ## Interface: 30300
 ## Title: Adventure Controls
-## Notes: In-game controls for personal XP, gold, reputation, quest completion and progression.
+## Notes: In-game playstyle rates, quest helpers and raid progression shortcuts for the AzerothCore playerbots server.
 ## Author: Stoffe101 server fork
-## Version: 0.1.0
+## Version: 0.2.0
 ## SavedVariables: AdventureControlsDB
 
 AdventureControls.lua
