@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "client": {
+    "wowVersion": "3.3.5a",
+    "build": 12340,
+    "primaryResolution": "3440x1440"
+  },
+  "addons": [
+    {
+      "id": "tidyplates",
+      "name": "TidyPlates 3.3.5a",
+      "repository": "https://github.com/hypopheria2k/TidyPlates_3.3.5a",
+      "ref": "02956c68068b2c01bfdc3972345eb59a357447d7",
+      "license": "MIT",
+      "installMode": "github-archive",
+      "installAllTopLevelTocFolders": true,
+      "preferredTheme": "TidyPlates_ThreatPlates",
+      "required": true
+    }
+  ],
+  "planned": [
+    "ElvUI 3.3.5a",
+    "RestedXP 3.3.5a",
+    "WeakAuras 3.3.5a",
+    "BigWigs 3.3.5a"
+  ]
+}
