@@ -9,6 +9,10 @@ uint32 g_AdventureStartLevel = 60;
 uint8 g_AdventureStartProgression = 8;
 bool g_AdventureStartRevealMap = true;
 
+bool g_GuildDirectorEnable = true;
+bool g_GuildDirectorAutoTravel = true;
+uint32 g_GuildDirectorReadyTimeoutMs = 15000;
+
 void RaidRosterLoadConfig()
 {
     g_RaidRosterEnable = sConfigMgr->GetOption<bool>("RaidRoster.Enable", false);
@@ -27,6 +31,14 @@ void RaidRosterLoadConfig()
 
     g_AdventureStartRevealMap = sConfigMgr->GetOption<bool>("AdventureStart.RevealMap", true);
 
+    g_GuildDirectorEnable = sConfigMgr->GetOption<bool>("GuildDirector.Enable", true);
+    g_GuildDirectorAutoTravel = sConfigMgr->GetOption<bool>("GuildDirector.AutoTravel", true);
+    g_GuildDirectorReadyTimeoutMs = sConfigMgr->GetOption<uint32>("GuildDirector.ReadyTimeoutMs", 15000);
+    if (g_GuildDirectorReadyTimeoutMs < 5000)
+        g_GuildDirectorReadyTimeoutMs = 5000;
+    else if (g_GuildDirectorReadyTimeoutMs > 60000)
+        g_GuildDirectorReadyTimeoutMs = 60000;
+
     LOG_INFO("server.loading", "[RaidRoster] Enable={}", g_RaidRosterEnable ? 1 : 0);
     LOG_INFO(
         "server.loading",
@@ -35,4 +47,10 @@ void RaidRosterLoadConfig()
         g_AdventureStartLevel,
         g_AdventureStartProgression,
         g_AdventureStartRevealMap ? 1 : 0);
+    LOG_INFO(
+        "server.loading",
+        "[GuildDirector] Enable={}, AutoTravel={}, ReadyTimeoutMs={}",
+        g_GuildDirectorEnable ? 1 : 0,
+        g_GuildDirectorAutoTravel ? 1 : 0,
+        g_GuildDirectorReadyTimeoutMs);
 }
