@@ -5,18 +5,22 @@
 
 extern bool g_RaidRosterEnable;
 
-// New-player bootstrap for this fork. Kept separate from raid-roster behaviour so it can be
-// disabled independently without affecting persistent raid bots.
 extern bool g_AdventureStartEnable;
 extern uint32 g_AdventureStartLevel;
 extern uint8 g_AdventureStartProgression;
 extern bool g_AdventureStartRevealMap;
 
-// Natural guild-chat group director. Uses the persistent roster rather than creating a second
-// population of disposable dungeon bots.
 extern bool g_GuildDirectorEnable;
 extern bool g_GuildDirectorAutoTravel;
 extern uint32 g_GuildDirectorReadyTimeoutMs;
+
+// Smart guild loot. Fair mode lets bots Need genuine upgrades, Greed useful non-upgrades, and
+// Pass unusable items by enabling the behaviour already implemented by Playerbots.
+extern bool g_SmartLootEnable;
+extern bool g_SmartLootBotNeedUpgrades;
+extern bool g_SmartLootBotGreedUseful;
+extern bool g_BadLuckProtectionEnable;
+extern uint32 g_BadLuckUpgradeWindowSeconds;
 
 void RaidRosterLoadConfig();
 #endif
