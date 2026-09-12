@@ -2,7 +2,6 @@
 #include "Player.h"
 #include "Log.h"
 #include "IndividualProgression.h"
-#include "Playerbots.h"
 #include "RandomPlayerbotMgr.h"
 #include "RaidRosterConfig.h"
 
@@ -13,6 +12,9 @@ bool IsPlayerbot(Player* player)
     if (!player)
         return true;
 
+    // RandomPlayerbotMgr.h already exposes both sRandomPlayerbotMgr and sPlayerbotsMgr through
+    // PlayerbotMgr.h. Do not include Playerbots.h here: it pulls in PlayerbotAI.h, whose global
+    // GENERAL enumerator collides with IndividualProgression.h in the same translation unit.
     return sRandomPlayerbotMgr.IsRandomBot(player)
         || sRandomPlayerbotMgr.IsAddclassBot(player)
         || sPlayerbotsMgr.GetPlayerbotAI(player) != nullptr;
