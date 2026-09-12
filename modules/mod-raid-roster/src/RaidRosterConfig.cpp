@@ -1,6 +1,7 @@
 #include "RaidRosterConfig.h"
 #include "Config.h"
 #include "Log.h"
+#include "PlayerbotAIConfig.h"
 
 bool g_RaidRosterEnable = false;
 
@@ -12,6 +13,12 @@ bool g_AdventureStartRevealMap = true;
 bool g_GuildDirectorEnable = true;
 bool g_GuildDirectorAutoTravel = true;
 uint32 g_GuildDirectorReadyTimeoutMs = 15000;
+
+bool g_SmartLootEnable = true;
+bool g_SmartLootBotNeedUpgrades = true;
+bool g_SmartLootBotGreedUseful = true;
+bool g_BadLuckProtectionEnable = true;
+uint32 g_BadLuckUpgradeWindowSeconds = 120;
 
 void RaidRosterLoadConfig()
 {
@@ -28,7 +35,6 @@ void RaidRosterLoadConfig()
     if (progression > 18)
         progression = 18;
     g_AdventureStartProgression = static_cast<uint8>(progression);
-
     g_AdventureStartRevealMap = sConfigMgr->GetOption<bool>("AdventureStart.RevealMap", true);
 
     g_GuildDirectorEnable = sConfigMgr->GetOption<bool>("GuildDirector.Enable", true);
@@ -38,6 +44,23 @@ void RaidRosterLoadConfig()
         g_GuildDirectorReadyTimeoutMs = 5000;
     else if (g_GuildDirectorReadyTimeoutMs > 60000)
         g_GuildDirectorReadyTimeoutMs = 60000;
+
+    g_SmartLootEnable = sConfigMgr->GetOption<bool>("SmartLoot.Enable", true);
+    g_SmartLootBotNeedUpgrades = sConfigMgr->GetOption<bool>("SmartLoot.BotNeedUpgrades", true);
+    g_SmartLootBotGreedUseful = sConfigMgr->GetOption<bool>("SmartLoot.BotGreedUseful", true);
+    g_BadLuckProtectionEnable = sConfigMgr->GetOption<bool>("BadLuckProtection.Enable", true);
+    g_BadLuckUpgradeWindowSeconds = sConfigMgr->GetOption<uint32>("BadLuckProtection.UpgradeWindowSeconds", 120);
+    if (g_BadLuckUpgradeWindowSeconds < 30)
+        g_BadLuckUpgradeWindowSeconds = 30;
+    else if (g_BadLuckUpgradeWindowSeconds > 600)
+        g_BadLuckUpgradeWindowSeconds = 600;
+
+    if (g_SmartLootEnable)
+    {
+        PlayerbotAIConfig& botConfig = PlayerbotAIConfig::instance();
+        botConfig.lootNeedRollLevel = g_SmartLootBotNeedUpgrades ? 2 : 1;
+        botConfig.lootGreedRollLevel = g_SmartLootBotGreedUseful;
+    }
 
     LOG_INFO("server.loading", "[RaidRoster] Enable={}", g_RaidRosterEnable ? 1 : 0);
     LOG_INFO(
@@ -53,4 +76,12 @@ void RaidRosterLoadConfig()
         g_GuildDirectorEnable ? 1 : 0,
         g_GuildDirectorAutoTravel ? 1 : 0,
         g_GuildDirectorReadyTimeoutMs);
+    LOG_INFO(
+        "server.loading",
+        "[SmartLoot] Enable={}, BotNeedUpgrades={}, BotGreedUseful={}, BadLuckProtection={}, UpgradeWindow={}s",
+        g_SmartLootEnable ? 1 : 0,
+        g_SmartLootBotNeedUpgrades ? 1 : 0,
+        g_SmartLootBotGreedUseful ? 1 : 0,
+        g_BadLuckProtectionEnable ? 1 : 0,
+        g_BadLuckUpgradeWindowSeconds);
 }
