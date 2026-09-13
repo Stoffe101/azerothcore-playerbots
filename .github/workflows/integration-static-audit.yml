@@ -1,0 +1,81 @@
+name: Integration static audit
+
+on:
+  push:
+    branches:
+      - feature/full-adventure-stack-guildsync
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  patch-stack:
+    name: Pinned patch stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout integration repository
+        uses: actions/checkout@v4
+
+      - name: Clone pinned AzerothCore tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p audit
+          git clone --no-checkout https://github.com/mod-playerbots/azerothcore-wotlk.git audit/ac
+          git -C audit/ac fetch --depth 1 origin 413bea61a85e20d9caef7d66fc601a661fdddd9d
+          git -C audit/ac checkout --detach 413bea61a85e20d9caef7d66fc601a661fdddd9d
+
+      - name: Clone pinned patch dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p audit/ac/modules
+
+          git clone --no-checkout https://github.com/mod-playerbots/mod-playerbots.git audit/ac/modules/mod-playerbots
+          git -C audit/ac/modules/mod-playerbots fetch --depth 1 origin b949b50bfcdd4fab937781bac2d7765e39330e4b
+          git -C audit/ac/modules/mod-playerbots checkout --detach b949b50bfcdd4fab937781bac2d7765e39330e4b
+
+          git clone --no-checkout https://github.com/ZhengPeiRu21/mod-individual-progression.git audit/ac/modules/mod-individual-progression
+          git -C audit/ac/modules/mod-individual-progression fetch --depth 1 origin 977e2005bacf97f35e506eb27b8af6b2ea1136af
+          git -C audit/ac/modules/mod-individual-progression checkout --detach 977e2005bacf97f35e506eb27b8af6b2ea1136af
+
+          git clone --no-checkout https://github.com/Wishmaster117/mod-multibot-bridge.git audit/ac/modules/mod-multibot-bridge
+          git -C audit/ac/modules/mod-multibot-bridge fetch --depth 1 origin 759c100d5e508b9af28531a2642ded70619828ba
+          git -C audit/ac/modules/mod-multibot-bridge checkout --detach 759c100d5e508b9af28531a2642ded70619828ba
+
+          git clone --no-checkout https://github.com/lathcf/azerothcore-mod-era-talents.git audit/ac/modules/mod-era-talents
+          git -C audit/ac/modules/mod-era-talents fetch --depth 1 origin 3a0d9776c6837d8a5e5038c23c01c4fc388d90f8
+          git -C audit/ac/modules/mod-era-talents checkout --detach 3a0d9776c6837d8a5e5038c23c01c4fc388d90f8
+
+      - name: Validate and apply repository patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
+            echo "::group::$(basename "$patch")"
+            git -C audit/ac apply --check "$patch"
+            git -C audit/ac apply "$patch"
+            echo "::endgroup::"
+          done
+
+      - name: Validate EraTalents integration patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x audit/ac/modules/mod-era-talents/apply-patches.sh
+          audit/ac/modules/mod-era-talents/apply-patches.sh "$GITHUB_WORKSPACE/audit/ac"
+
+      - name: Verify expected integration files exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f audit/ac/modules/mod-playerbots/src/Ai/Base/Actions/LootRollAction.cpp
+          grep -q 'GroupHumanMainSpecUpgrade' audit/ac/modules/mod-playerbots/src/Ai/Base/Actions/LootRollAction.cpp
+          test -f modules/mod-raid-roster/src/GuildGroupDirector.cpp
+          test -f modules/mod-raid-roster/src/EncounterLifecycle.cpp
+          test -f modules/mod-raid-roster/src/RaidLeaderKnowledge.cpp
+          test -f modules/mod-playerbot-chatter/src/PBAIGuildServices.cpp
+          echo 'Static integration audit completed successfully.'
