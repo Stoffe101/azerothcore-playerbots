@@ -1,6 +1,6 @@
 # Adventure Systems Roadmap
 
-This document is the canonical feature roadmap for the custom persistent-AI-guild server.
+This document is the canonical feature/status map for the custom persistent-AI-guild server.
 
 ## Product rules
 
@@ -9,224 +9,240 @@ This document is the canonical feature roadmap for the custom persistent-AI-guil
 - Finder defaults to content marked **Guild Ready**. Experimental/WIP content is visible as context but never silently presented as supported.
 - Convenience features must not erase progression unless the player explicitly opts into a skip.
 - Reward systems must be spec-aware, era-aware and protected against infinite vendor/AH farming.
-- Human professions remain optional. Adventuring, guild services and the simulated economy must provide viable progression.
+- Human professions remain optional. Adventuring, guild services and the simulated economy should provide viable progression.
+- "Implemented" below means the code path exists in this branch. Anything not yet exercised against the pinned live server/client is explicitly marked **runtime validation pending**.
 
 ## A. Adventure Guide and navigation
 
 ### Adventure Finder
-Status: **IN PROGRESS** (`feature/adventure-guide-finder`)
+Status: **IMPLEMENTED / RUNTIME VALIDATION PENDING**
 
-- Dungeon/raid finder lists only Guild Ready content by default.
-- Central shared catalog owns activity name, alias, map, level/progression requirement, group size and compatibility status.
-- Supported filters: dungeons, raids, all.
-- Server remains authoritative for unlock checks.
+- `AdventureCatalog` is the single server-authoritative activity table.
+- Finder exposes only `Guild Ready` activities.
+- Compatibility view exposes green/yellow/red support state without pretending experimental encounters are supported.
+- Server validates level and Individual Progression stage before travel/preparation.
 - Dungeon formation reuses Guild Group Director.
-- Raid formation reuses persistent RaidRoster.
+- Raid preparation reuses persistent RaidRoster.
+- Client addon parses machine-readable `[AG]` transport once, avoiding duplicate rows when multiple chat frames receive system messages.
 
-### Compatibility overlay
-Status: **IN PROGRESS**
+### Adventure travel board
+Status: **IMPLEMENTED / RUNTIME VALIDATION PENDING**
 
-- Green: Guild Ready / normal Finder content.
-- Yellow: playable/experimental with explicit caveats.
-- Red: Not Ready and never offered as normal Finder content.
-- Compatibility notes come from the same catalog as Finder/travel.
-
-### Adventure teleport map
-Status: **PLANNED NEXT**
-
-- Visual TBC/WotLK travel board/map in the client addon.
-- Only server-approved activities can be teleported to.
-- Group travel remains leader-only, alive and out-of-combat.
-- Return-to-previous-location support should be added after basic map travel is validated.
+- Client travel board is sourced from the authoritative Finder payload.
+- Outland and Northrend destinations are paged instead of overflowing the 3.3.5 UI.
+- Only unlocked `Guild Ready` destinations become clickable.
+- Group travel is leader-only and requires the whole travelling party to be alive and out of combat.
+- Server teleports to AzerothCore's registered exterior instance entrance, not guessed coordinates.
 
 ### Personal roadmap
-Status: **IN PROGRESS**
+Status: **IMPLEMENTED / RUNTIME VALIDATION PENDING**
 
-- Shows current level/progression, recommended Guild Ready content, next tier and experimental blockers.
-- Later: gear-upgrade suggestions and first-clear tracking.
+- Shows character level and Individual Progression state.
+- Gives a current tier and next-tier recommendation.
+- Yellow/red content remains visibly caveated.
 
 ### Exploration options
-Status: **PLANNED**
+Status: **PARTIAL**
 
-Per-character/account-selectable modes:
-- Normal exploration.
-- Reveal current expansion.
-- Reveal all maps.
-- Optional flight-path unlock modes.
+- Existing AdventureStart profiles can reveal maps for new/bootstrap characters.
+- Per-character Normal / current-expansion / all-map modes and flight-path inheritance remain future work.
 
-## B. Encounter lifecycle
+## B. Group formation and encounter lifecycle
+
+### Guild Group Director
+Status: **IMPLEMENTED / RUNTIME VALIDATION PENDING**
+
+- Conservative natural guild-chat dungeon requests such as `anyone up for Ramparts?` resolve through the Adventure catalog.
+- Existing real-player parties are preserved and validated.
+- Missing tank/healer/DPS slots are selected from the persistent roster.
+- Manually-added non-roster bots are never silently hijacked.
+- Asynchronous bot login is waited for before sync/travel.
+- Composition, progression, alive state and combat state are revalidated at departure.
+
+### Automatic wipe recovery
+Status: **IMPLEMENTED / RUNTIME VALIDATION PENDING**
+
+- Requires a confirmed full group wipe.
+- Waits for AzerothCore's instance script to report that the encounter is no longer in progress.
+- Never treats elapsed time alone as proof that a boss reset.
+- Resurrects configured members only after the safe reset gate.
+- Re-enters Playerbots non-combat/follow state and runs group preparation.
+- Does not auto-pull or fabricate boss completion/rewards.
+
+### Automatic encounter preparation
+Status: **IMPLEMENTED / RUNTIME VALIDATION PENDING**
+
+- Requests Playerbots' existing buff actions rather than duplicating class logic.
+- Warlocks are asked to create healthstone/soulstone utility and use their existing healer soulstone strategy.
+- Hunters recover/call pets; warlocks get a non-combat AI tick to correct pet state.
+- Manual `.encounter prep` remains available as a fallback.
 
 ### Raid boss practice mode
 Status: **PLANNED / HIGH RISK**
 
-- Explicit practice session flag.
-- No boss loot, lockout credit, achievements, first-kill bounty or progression completion.
-- Safe reset/retry loop.
-- Only enabled for encounters we can reliably reset in the pinned core.
-- Must not be implemented as fake boss copies with guessed scripts.
-
-### Automatic wipe recovery
-Status: **PLANNED NEXT**
-
-On confirmed full group wipe:
-1. wait until combat ends;
-2. release/resurrect safely using supported APIs;
-3. regroup at a known safe point;
-4. repair/rebuff/refill where configured;
-5. deterministic brief/ready state;
-6. never auto-pull.
+- Must suppress loot, lockouts, achievements, first-kill bounties, bad-luck credit and progression.
+- Will only be enabled for encounters whose reset/lockout behavior can be proven safe on the pinned server.
 
 ### Encounter skip vote
 Status: **PLANNED / EXPERIMENTAL ONLY**
 
-- Available only for yellow/red encounters explicitly allow-listed by us.
-- Human players vote; AI guild members do not override human votes.
-- Skip gives no boss loot, first-kill bounty, achievement or bad-luck credit.
-- Skip must move progression to the next safe encounter without directly killing/rewarding the boss.
-
-### Auto buff logic
-Status: **PLANNED NEXT**
-
-- Long-duration party/raid buffs before departure/pulls.
-- Rebuff after wipe/death when safe.
-- No spam during combat.
-- Respect class/spec and avoid redundant buff conflicts.
-
-### Warlock prep
-Status: **PLANNED NEXT**
-
-- Healthstones before challenging content.
-- Soulstone sensible healer/tank fallback target.
-- Summoning only when it solves a real missing-member problem.
-
-### Smart pet management
-Status: **PLANNED NEXT**
-
-- Ensure appropriate hunter/warlock pet is active when useful.
-- Dismiss/park pets for known dangerous pathing encounters.
-- Restore normal pet state after the encounter.
+- Human vote only.
+- No boss kill/reward emulation.
+- Only for explicitly allow-listed yellow/red encounters after safe next-encounter routing is validated.
 
 ## C. Loot and rewards
 
-### Smart loot rules
-Status: **PLANNED**
+### Smart bot loot rules
+Status: **IMPLEMENTED / RUNTIME VALIDATION PENDING**
 
-- Main-spec upgrade > off-spec > greed.
-- Spec-aware using maintained Playerbots stat/equip scoring where possible.
-- Human-friendly option without making bots incapable of progressing.
-- Never award unusable armor/weapon types as a smart recommendation.
-
-### Personal loot option
-Status: **PLANNED**
-
-- Optional per-character/per-group mode.
-- Server performs an independent spec-aware eligible roll from the defeated boss's real loot source.
-- Must not duplicate normal group loot when personal mode is active.
-- Needs explicit handling for quest items, legendary fragments and unique encounter objects.
+- Playerbots Need threshold is configured for meaningful upgrades.
+- Useful non-upgrades may be Greeded according to the smart-loot config.
+- Upgrade checks reuse Playerbots `StatsWeightCalculator` and class/spec armor/weapon rules.
+- TBC/WotLK armor-token class masks are handled separately.
 
 ### Bad-luck protection
+Status: **IMPLEMENTED / RUNTIME VALIDATION PENDING**
+
+- Tracks credited real-player dungeon/raid boss kills.
+- Streak persistence is synchronous where an immediate reread is required.
+- A streak resets only when a meaningful main-spec item is won from the exact defeated boss loot source.
+- Trash/chests/unrelated containers cannot erase the boss streak.
+- Current implementation tracks/provides protection state; it does not vend guaranteed BiS items.
+
+### Personal loot option
+Status: **PREFERENCE/STUB ONLY**
+
+- Per-character preference persistence exists.
+- Replacement-loot generation is deliberately **not enabled** yet.
+- Normal group loot remains authoritative until duplicate-loot, quest-item, legendary-fragment and unique-object behavior is implemented and proven safe.
+
+### Adventurer first-kill economy
+Status: **IMPLEMENTED / RUNTIME VALIDATION PENDING**
+
+- One-time per-character/per-boss dungeon and raid bounties.
+- Claim is persisted before money is created.
+- Money-cap failure releases the claim so a later legitimate kill can retry.
+- Bots do not receive the synthetic bounty.
+
+### Adventure streak rewards / caches
+Status: **PARTIAL / FUTURE SLICE**
+
+- Adventure progression storage already has pending-cache plumbing.
+- Unique-clear/no-wipe streak scoring and cache contents are not finished and must not be advertised as live yet.
+
+## D. Persistent AI guild personality and services
+
+### Persistent guild personalities and memories
+Status: **IMPLEMENTED / RUNTIME VALIDATION PENDING**
+
+- Each bot receives a deterministic persisted personality seed and stable trait profile.
+- Actual shared boss kills, group wipes and human deaths can create grounded memories.
+- Relationship familiarity/trust counters are persisted.
+- LLM identity context receives only persisted gameplay memories and is explicitly told not to invent shared history.
+- Combat decisions remain entirely outside the LLM path.
+
+### Guild chat responses
+Status: **IMPLEMENTED / RUNTIME VALIDATION PENDING**
+
+- Online bots in the same guild may answer ordinary guild chat using the same bounded fan-out behavior as group chat.
+- Service commands are handled before conversational classification and do not wake normal chatter.
+- General chat also has one guaranteed same-zone/same-faction responder when an eligible bot is online.
+
+### Guild treasury, vault and mail services
+Status: **IMPLEMENTED PROTOTYPE / RUNTIME VALIDATION PENDING**
+
+Guild-chat service surface:
+
+- `!services`
+- `!bank`
+- `!donate <gold>`
+- `!deposit <itemId> [count]`
+- `!withdraw <itemId> [count]`
+- `!mail <itemId> [count] <guildmate>`
+- `!buy <itemId> [count]`
+- `!craft <itemId> [count]`
+- `!requests`
+
+Safety properties:
+
+- Persistent treasury, stock and request tables.
+- BoP, quest/key and above-epic items are rejected by the synthetic service path.
+- Item counts are stack/attachment bounded.
+- Vault removal is restored if mail creation fails.
+- Requests are FIFO and remain queued when the treasury cannot fund the next request.
+
+Current limitation: `!buy` and `!craft` charge a deterministic service price and synthesize a safe requested item. They do **not yet** consume a real AH listing or prove a guildmate knows the recipe and owns every reagent. That richer deterministic supply-chain pipeline remains planned.
+
+### Real guild crafting/AH supply chain
 Status: **PLANNED**
 
-- Tracks eligible boss kills without receiving a meaningful main-spec upgrade.
-- Protection increases only for items the player could legitimately receive.
-- Resets/decreases when a protected upgrade is won.
-- Practice/skip kills do not count.
-- Hard caps prevent guaranteed current-tier BiS vending-machine behavior.
-
-### Adventure streak rewards
-Status: **PLANNED**
-
-Examples:
-- consecutive unique dungeon clears;
-- first full raid clear;
-- multiple supported bosses without abandoning the run;
-- no-wipe bonus.
-
-Rewards feed Adventure Caches / gold / consumables / cosmetics, not profession materials.
-
-## D. Persistent guild services
-
-### Guild mail
-Status: **PLANNED**
-
-- Server-generated mail only from grounded events/services.
-- Crafted orders, shopping deliveries, milestone congratulations and returned guild-bank items.
-- Mail text may be locally phrased by the LLM; attached items/gold remain deterministic.
-
-### Guild crafting requests
-Status: **PLANNED**
-
-Natural request -> deterministic service pipeline:
-1. resolve requested item;
+Target pipeline:
+1. resolve request;
 2. find persistent guildmate with profession + recipe;
-3. calculate materials;
-4. source from guild bank/player/AH according to settings;
-5. craft or refuse with the true missing requirement;
-6. trade/mail actual item.
+3. calculate actual materials;
+4. consume guild/player/AH stock with hard fair-price guards;
+5. craft or return the true missing requirement;
+6. trade/mail the real result;
+7. persist an auditable item/gold ledger.
 
-The LLM must never claim an item was crafted unless the backend succeeded.
-
-### Guild bank economy
+### Smart AH wanted list / inflation control
 Status: **PLANNED**
 
-- Persistent guild inventory/gold ledger.
-- Spare BoEs, cloth, gems, profession materials and consumables.
-- Human can deposit useful drops without taking a profession.
-- Guild crafters consume real stock.
-- Audit trail for generated/consumed gold/items.
-
-### Guild shopping service
-Status: **PLANNED**
-
-- Buy consumables/gear/materials from the simulated AH on request.
-- Configurable payment source: player funds or guild allowance.
-- Hard maximum price / fair-price guard.
-- Delivery by trade/mail.
-
-### Smart AH buy list
-Status: **PLANNED**
-
-- Per-character wanted-item list with max price.
-- Alerts on reasonable matching listings.
-- Optional auto-buy disabled by default; if enabled, strict budget and price guards.
-
-### Inflation control
-Status: **PLANNED**
-
-- Economy telemetry first: gold sources/sinks, AH median bands, inventory counts, human purchasing power.
-- Tune AH liquidity before changing prices.
-- Adaptive changes must be bounded and slow; never rewrite the economy radically from one sample.
-- Normal adventuring should fund repairs, consumables, normal mounts and reasonable AH upgrades.
+- Wanted-item max-price alerts and optional guarded auto-buy remain future work.
+- Economy telemetry must exist before adaptive price/liquidity tuning.
 
 ## E. Account / alt progression
 
 ### Alt-friendly account progression
 Status: **PLANNED**
 
-Optional account-wide inheritance categories:
+Possible opt-in inheritance:
 - map exploration;
 - flight paths;
-- selected raid/content unlocks;
+- selected earned content unlocks;
 - collection/cosmetic state where supported;
-- reputation catch-up multiplier rather than blindly cloning reputations.
+- reputation catch-up multiplier instead of blind reputation cloning.
 
 ### Instant alt bootstrap
-Status: **PLANNED**
+Status: **PARTIAL FOUNDATION**
 
-- Player chooses target expansion/progression already earned by the account.
-- Level, spells, riding and bags initialized safely.
-- Optional one-time spec-aware catch-up gear.
-- Join persistent guild automatically.
-- Never bootstrap past the account's earned ceiling unless Adventure Controls explicitly skips forward.
+- TBC Adventure, TBC Raid Ready and WotLK Raid Ready character bootstrap profiles already exist.
+- Account-earned-ceiling selection/inheritance is not implemented yet.
 
-## Implementation order
+## F. Administration and population reliability
 
-1. Adventure Guide/Finder + compatibility + roadmap + travel board.
-2. Wipe recovery + buff/warlock/pet preparation.
-3. Smart loot + personal loot + bad-luck protection.
-4. Guild bank/crafting/mail/shopping + AH wanted list.
-5. Adventure streak rewards + economy telemetry/inflation control.
-6. Account-wide progression + instant alt bootstrap.
-7. Practice mode and encounter-skip framework after encounter-reset/lockout behavior is validated on the running server.
+### Runtime bot population controls
+Status: **IMPLEMENTED / RUNTIME VALIDATION PENDING**
 
-Every slice remains draft until it is compiled and exercised against the pinned server/client build.
+- AdminPanel supports targets up to 1000 bots.
+- Runtime target changes force Playerbots enabled + random-bot autologin.
+- Account/character capacity is recalculated through upstream `RandomPlayerbotFactory`.
+- Missing RNDbot capacity can be created and account assignments refreshed.
+- Manager gets two bootstrap passes before normal world ticks take over.
+- Watchdog detects a target with zero online bots, performs bounded repairs, resets its repair budget after recovery/target changes, and logs actionable diagnostics rather than retrying forever.
+- `.botdiag` and `.botrepair` remain explicit administrator fallbacks.
+
+## G. Raid knowledge
+
+### Grounded encounter briefs
+Status: **TBC IMPLEMENTED / WOTLK EXPANSION IN PROGRESS**
+
+- Existing TBC briefs are tied to actual Playerbots strategy coverage and explicitly caveat unsupported cases such as Karazhan Chess.
+- Finder compatibility and raid brief knowledge are intentionally separate: marking a raid Guild Ready does not license the LLM/brief system to invent encounter automation.
+- WotLK brief coverage should only be expanded from inspected pinned Playerbots strategies.
+
+## Release gate for this branch
+
+The full-adventure branch is **source-integrated but not declared production-ready yet**. Before it replaces the current live branch:
+
+1. complete source/API audit of the remaining new code paths;
+2. build the pinned server once after the batch is complete;
+3. run DB migrations and confirm worldserver clean startup;
+4. validate 500 then 1000 bot population ramp without login storm;
+5. install the client pack and smoke-test AdminPanel + Adventure Guide;
+6. exercise one TBC dungeon, one WotLK dungeon and one Guild Ready raid with persistent roster bots;
+7. force one controlled wipe and verify safe recovery without encounter/reward corruption;
+8. exercise smart-loot/bad-luck bookkeeping and AI guild mail/vault service on disposable items;
+9. only then fast-forward/merge the integration branch into the live branch.
+
+Anything that fails a runtime test stays caveated or disabled rather than being painted green.
