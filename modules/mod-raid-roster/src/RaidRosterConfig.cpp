@@ -23,17 +23,17 @@ bool g_AdventureStartAutoGear = true;
 uint32 g_AdventureStartGearMinTalentPoints = 5;
 uint32 g_AdventureStartGearItemLevel = 88;
 
-uint32 g_AdventureStartRaidReadyLevel = 80;
-uint8 g_AdventureStartRaidReadyProgression = 13;
-uint32 g_AdventureStartRaidReadyStartingGold = 500;
-uint32 g_AdventureStartRaidReadyBasicGearItemLevel = 187;
-uint32 g_AdventureStartRaidReadyGearItemLevel = 200;
-bool g_AdventureStartRaidReadyTeleport = true;
-uint32 g_AdventureStartRaidReadyTeleportMap = 571;
-float g_AdventureStartRaidReadyTeleportX = 5807.75f;
-float g_AdventureStartRaidReadyTeleportY = 588.27f;
-float g_AdventureStartRaidReadyTeleportZ = 660.94f;
-float g_AdventureStartRaidReadyTeleportO = 1.64f;
+uint32 g_AdventureStartTbcRaidReadyLevel = 70;
+uint8 g_AdventureStartTbcRaidReadyProgression = 8;
+uint32 g_AdventureStartTbcRaidReadyStartingGold = 500;
+uint32 g_AdventureStartTbcRaidReadyBasicGearItemLevel = 110;
+uint32 g_AdventureStartTbcRaidReadyGearItemLevel = 115;
+bool g_AdventureStartTbcRaidReadyTeleport = true;
+uint32 g_AdventureStartTbcRaidReadyTeleportMap = 530;
+float g_AdventureStartTbcRaidReadyTeleportX = -1838.16f;
+float g_AdventureStartTbcRaidReadyTeleportY = 5301.79f;
+float g_AdventureStartTbcRaidReadyTeleportZ = -12.43f;
+float g_AdventureStartTbcRaidReadyTeleportO = 5.95f;
 
 namespace
 {
@@ -55,9 +55,9 @@ void RaidRosterLoadConfig()
     g_AdventureStartDefaultProfile = static_cast<uint8>(ClampU32(
         sConfigMgr->GetOption<uint32>("AdventureStart.DefaultProfile", 0), 0, 1));
 
-    g_AdventureStartLevel = ClampU32(sConfigMgr->GetOption<uint32>("AdventureStart.Level", 60), 1, 80);
+    g_AdventureStartLevel = ClampU32(sConfigMgr->GetOption<uint32>("AdventureStart.Level", 60), 1, 70);
     g_AdventureStartProgression = static_cast<uint8>(ClampU32(
-        sConfigMgr->GetOption<uint32>("AdventureStart.Progression", 8), 0, 18));
+        sConfigMgr->GetOption<uint32>("AdventureStart.Progression", 8), 0, 12));
 
     g_AdventureStartRevealMap = sConfigMgr->GetOption<bool>("AdventureStart.RevealMap", true);
     g_AdventureStartTeleport = sConfigMgr->GetOption<bool>("AdventureStart.Teleport.Enable", true);
@@ -73,45 +73,44 @@ void RaidRosterLoadConfig()
 
     g_AdventureStartBasicGear = sConfigMgr->GetOption<bool>("AdventureStart.BasicGear", true);
     g_AdventureStartBasicGearItemLevel = ClampU32(
-        sConfigMgr->GetOption<uint32>("AdventureStart.BasicGearItemLevel", 58), 1, 300);
+        sConfigMgr->GetOption<uint32>("AdventureStart.BasicGearItemLevel", 58), 1, 200);
 
     g_AdventureStartAutoGear = sConfigMgr->GetOption<bool>("AdventureStart.AutoGear", true);
     g_AdventureStartGearMinTalentPoints = ClampU32(
-        sConfigMgr->GetOption<uint32>("AdventureStart.GearMinTalentPoints", 5), 0, 71);
+        sConfigMgr->GetOption<uint32>("AdventureStart.GearMinTalentPoints", 5), 0, 61);
     g_AdventureStartGearItemLevel = ClampU32(
-        sConfigMgr->GetOption<uint32>("AdventureStart.GearItemLevel", 88), 1, 300);
+        sConfigMgr->GetOption<uint32>("AdventureStart.GearItemLevel", 88), 1, 200);
 
-    g_AdventureStartRaidReadyLevel = ClampU32(
-        sConfigMgr->GetOption<uint32>("AdventureStart.RaidReady.Level", 80), 1, 80);
-    g_AdventureStartRaidReadyProgression = static_cast<uint8>(ClampU32(
-        sConfigMgr->GetOption<uint32>("AdventureStart.RaidReady.Progression", 13), 0, 18));
-    g_AdventureStartRaidReadyStartingGold = ClampU32(
-        sConfigMgr->GetOption<uint32>("AdventureStart.RaidReady.StartingGold", 500), 0, 10000);
-    g_AdventureStartRaidReadyBasicGearItemLevel = ClampU32(
-        sConfigMgr->GetOption<uint32>("AdventureStart.RaidReady.BasicGearItemLevel", 187), 1, 300);
-    g_AdventureStartRaidReadyGearItemLevel = ClampU32(
-        sConfigMgr->GetOption<uint32>("AdventureStart.RaidReady.GearItemLevel", 200), 1, 300);
-    g_AdventureStartRaidReadyTeleport = sConfigMgr->GetOption<bool>("AdventureStart.RaidReady.Teleport.Enable", true);
-    g_AdventureStartRaidReadyTeleportMap = sConfigMgr->GetOption<uint32>("AdventureStart.RaidReady.Teleport.Map", 571);
-    g_AdventureStartRaidReadyTeleportX = sConfigMgr->GetOption<float>("AdventureStart.RaidReady.Teleport.X", 5807.75f);
-    g_AdventureStartRaidReadyTeleportY = sConfigMgr->GetOption<float>("AdventureStart.RaidReady.Teleport.Y", 588.27f);
-    g_AdventureStartRaidReadyTeleportZ = sConfigMgr->GetOption<float>("AdventureStart.RaidReady.Teleport.Z", 660.94f);
-    g_AdventureStartRaidReadyTeleportO = sConfigMgr->GetOption<float>("AdventureStart.RaidReady.Teleport.O", 1.64f);
+    g_AdventureStartTbcRaidReadyLevel = ClampU32(
+        sConfigMgr->GetOption<uint32>("AdventureStart.TbcRaidReady.Level", 70), 60, 70);
+    g_AdventureStartTbcRaidReadyProgression = static_cast<uint8>(ClampU32(
+        sConfigMgr->GetOption<uint32>("AdventureStart.TbcRaidReady.Progression", 8), 8, 12));
+    g_AdventureStartTbcRaidReadyStartingGold = ClampU32(
+        sConfigMgr->GetOption<uint32>("AdventureStart.TbcRaidReady.StartingGold", 500), 0, 10000);
+    g_AdventureStartTbcRaidReadyBasicGearItemLevel = ClampU32(
+        sConfigMgr->GetOption<uint32>("AdventureStart.TbcRaidReady.BasicGearItemLevel", 110), 1, 200);
+    g_AdventureStartTbcRaidReadyGearItemLevel = ClampU32(
+        sConfigMgr->GetOption<uint32>("AdventureStart.TbcRaidReady.GearItemLevel", 115), 1, 200);
+    g_AdventureStartTbcRaidReadyTeleport = sConfigMgr->GetOption<bool>("AdventureStart.TbcRaidReady.Teleport.Enable", true);
+    g_AdventureStartTbcRaidReadyTeleportMap = sConfigMgr->GetOption<uint32>("AdventureStart.TbcRaidReady.Teleport.Map", 530);
+    g_AdventureStartTbcRaidReadyTeleportX = sConfigMgr->GetOption<float>("AdventureStart.TbcRaidReady.Teleport.X", -1838.16f);
+    g_AdventureStartTbcRaidReadyTeleportY = sConfigMgr->GetOption<float>("AdventureStart.TbcRaidReady.Teleport.Y", 5301.79f);
+    g_AdventureStartTbcRaidReadyTeleportZ = sConfigMgr->GetOption<float>("AdventureStart.TbcRaidReady.Teleport.Z", -12.43f);
+    g_AdventureStartTbcRaidReadyTeleportO = sConfigMgr->GetOption<float>("AdventureStart.TbcRaidReady.Teleport.O", 5.95f);
 
     LOG_INFO("server.loading", "[RaidRoster] Enable={}", g_RaidRosterEnable ? 1 : 0);
     LOG_INFO(
         "server.loading",
-        "[AdventureStart] Enable={}, DefaultProfile={}, TBC(level={}, stage={}, gold={}g, basic@{}, epic@{}), RaidReady(level={}, stage={}, gold={}g, basic@{}, epic@{})",
+        "[AdventureStart] Enable={}, DefaultProfile={}, TBC(level={}, stage={}, gold={}g, vanillaRaid@{}), TbcRaidReady(level={}, stage={}, gold={}g, basic@{}, final@{})",
         g_AdventureStartEnable ? 1 : 0,
         g_AdventureStartDefaultProfile,
         g_AdventureStartLevel,
         g_AdventureStartProgression,
         g_AdventureStartStartingGold,
-        g_AdventureStartBasicGearItemLevel,
         g_AdventureStartGearItemLevel,
-        g_AdventureStartRaidReadyLevel,
-        g_AdventureStartRaidReadyProgression,
-        g_AdventureStartRaidReadyStartingGold,
-        g_AdventureStartRaidReadyBasicGearItemLevel,
-        g_AdventureStartRaidReadyGearItemLevel);
+        g_AdventureStartTbcRaidReadyLevel,
+        g_AdventureStartTbcRaidReadyProgression,
+        g_AdventureStartTbcRaidReadyStartingGold,
+        g_AdventureStartTbcRaidReadyBasicGearItemLevel,
+        g_AdventureStartTbcRaidReadyGearItemLevel);
 }
