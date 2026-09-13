@@ -1,4 +1,4 @@
-name: Integration static audit
+name: Integration validation
 
 on:
   push:
@@ -10,10 +10,10 @@ permissions:
   contents: read
 
 jobs:
-  patch-stack:
-    name: Pinned patch stack
+  integration:
+    name: Pinned patch stack and WotLK build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
 
     steps:
       - name: Checkout integration repository
@@ -107,3 +107,41 @@ jobs:
           test -f modules/mod-raid-roster/src/RaidLeaderKnowledge.cpp
           test -f modules/mod-playerbot-chatter/src/PBAIGuildServices.cpp
           echo 'Static integration audit completed successfully.'
+
+      - name: Stage local server modules into pinned core
+        shell: bash
+        run: |
+          set -euo pipefail
+          for module in modules/*; do
+            name="$(basename "$module")"
+            rm -rf "audit/ac/modules/$name"
+            cp -a "$module" "audit/ac/modules/$name"
+          done
+          test -f audit/ac/modules/mod-raid-roster/src/EncounterLifecycle.cpp
+          test -f audit/ac/modules/mod-playerbot-chatter/src/PBAIGuildServices.cpp
+
+      - name: Install AzerothCore build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake make gcc g++ clang \
+            libmysqlclient-dev libssl-dev libbz2-dev \
+            libreadline-dev libncurses-dev libboost-all-dev
+
+      - name: Configure pinned WotLK server
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S audit/ac -B audit/ac/build \
+            -DCMAKE_CXX_COMPILER=g++ \
+            -DCMAKE_C_COMPILER=gcc \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build pinned WotLK server and complete integration stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake --build audit/ac/build --config Release -- -j2
+          echo 'Pinned WotLK integration compiled successfully.'
