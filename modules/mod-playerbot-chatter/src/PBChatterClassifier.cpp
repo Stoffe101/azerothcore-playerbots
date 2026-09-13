@@ -2,6 +2,7 @@
 #include "PBChatterConfig.h"
 #include "Player.h"
 #include "Group.h"
+#include "Guild.h"
 #include "Playerbots.h"
 #include "WorldSession.h"
 #include "WorldSessionMgr.h"
@@ -131,6 +132,37 @@ std::vector<Player*> PBChatterClassifier::ResolveGroupTargets(Player* sender, Gr
         if (m && m != sender && IsBot(m))
             bots.push_back(m);
     }
+    return PickFanout(std::move(bots), Lower(msg), g_PBChatGroupMaxBots, g_PBChatGroupChance,
+                      g_PBChatGroupGuaranteeOne);
+}
+
+std::vector<Player*> PBChatterClassifier::ResolveGuildTargets(Player* sender, Guild* guild, std::string const& msg)
+{
+    std::vector<Player*> bots;
+    if (!sender || !guild)
+        return bots;
+
+    uint32 const guildId = guild->GetId();
+    if (!guildId || sender->GetGuildId() != guildId)
+        return bots;
+
+    // Guild chat is realm-wide, so look across online bot sessions rather than only the
+    // sender's map/zone. Reuse the party fanout knobs to avoid a 30-bot reply avalanche.
+    for (auto const& entry : sWorldSessionMgr->GetAllSessions())
+    {
+        WorldSession* session = entry.second;
+        if (!session || !session->IsBot())
+            continue;
+
+        Player* bot = session->GetPlayer();
+        if (!bot || bot == sender || !bot->IsInWorld() || !IsBot(bot))
+            continue;
+        if (bot->GetGuildId() != guildId)
+            continue;
+
+        bots.push_back(bot);
+    }
+
     return PickFanout(std::move(bots), Lower(msg), g_PBChatGroupMaxBots, g_PBChatGroupChance,
                       g_PBChatGroupGuaranteeOne);
 }
