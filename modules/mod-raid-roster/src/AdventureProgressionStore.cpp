@@ -26,7 +26,7 @@ State LoadOrCreate(uint32 playerGuid)
 
     State state;
     QueryResult result = CharacterDatabase.Query(
-        "SELECT starter_initialized, starter_gear_granted, starter_spec_tab, pending_caches, last_level_cache "
+        "SELECT starter_initialized, starter_gear_granted, starter_spec_tab, starter_profile, pending_caches, last_level_cache "
         "FROM mod_adventure_progression WHERE player_guid = {}",
         playerGuid);
 
@@ -37,18 +37,19 @@ State LoadOrCreate(uint32 playerGuid)
     state.starterInitialized = fields[0].Get<uint8>() != 0;
     state.starterGearGranted = fields[1].Get<uint8>() != 0;
     state.starterSpecTab = fields[2].Get<uint8>();
-    state.pendingCaches = fields[3].Get<uint16>();
-    state.lastLevelCache = fields[4].Get<uint8>();
+    state.starterProfile = fields[3].Get<uint8>();
+    state.pendingCaches = fields[4].Get<uint16>();
+    state.lastLevelCache = fields[5].Get<uint8>();
     return state;
 }
 
-void MarkStarterInitialized(uint32 playerGuid)
+void MarkStarterInitialized(uint32 playerGuid, uint8 profile)
 {
     std::lock_guard<std::mutex> lock(g_progressionMutex);
     EnsureRowUnlocked(playerGuid);
     CharacterDatabase.DirectExecute(
-        "UPDATE mod_adventure_progression SET starter_initialized = 1 WHERE player_guid = {}",
-        playerGuid);
+        "UPDATE mod_adventure_progression SET starter_initialized = 1, starter_profile = {} WHERE player_guid = {}",
+        profile, playerGuid);
 }
 
 void MarkStarterGearGranted(uint32 playerGuid, uint8 specTab)
@@ -58,6 +59,17 @@ void MarkStarterGearGranted(uint32 playerGuid, uint8 specTab)
     CharacterDatabase.DirectExecute(
         "UPDATE mod_adventure_progression SET starter_gear_granted = 1, starter_spec_tab = {} WHERE player_guid = {}",
         specTab, playerGuid);
+}
+
+void PrepareStarterProfile(uint32 playerGuid, uint8 profile)
+{
+    std::lock_guard<std::mutex> lock(g_progressionMutex);
+    EnsureRowUnlocked(playerGuid);
+    CharacterDatabase.DirectExecute(
+        "UPDATE mod_adventure_progression "
+        "SET starter_initialized = 0, starter_gear_granted = 0, starter_spec_tab = 255, starter_profile = {} "
+        "WHERE player_guid = {}",
+        profile, playerGuid);
 }
 
 void AddPendingCache(uint32 playerGuid, uint16 count)
