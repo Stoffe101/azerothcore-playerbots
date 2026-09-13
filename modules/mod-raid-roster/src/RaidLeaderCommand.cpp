@@ -43,7 +43,7 @@ ChatCommandTable RaidLeaderCommand::GetCommands() const
 
 bool RaidLeaderCommand::HandleList(ChatHandler* handler)
 {
-    handler->SendSysMessage("Grounded TBC raid briefs currently available:");
+    handler->SendSysMessage("Grounded raid briefs currently available (TBC + WotLK):");
     std::string currentRaid;
     for (RaidLeaderKnowledge::Encounter const& encounter : RaidLeaderKnowledge::Encounters())
     {
