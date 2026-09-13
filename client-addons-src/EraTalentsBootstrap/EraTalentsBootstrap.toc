@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: EraTalents Bootstrap
+## Notes: Delayed EraTalents resync for fresh AdventureStart characters.
+## Author: AzerothGuild
+## Version: 1.0.0
+## Dependencies: EraTalents
+
+EraTalentsBootstrap.lua
