@@ -13,15 +13,14 @@
 
 namespace RaidRosterGuild
 {
-SyncResult SyncRosterToOwnerGuild(Player* owner, std::vector<RaidRosterRow> const& rows)
+SyncResult SyncRosterToGuild(Player* owner, Guild* targetGuild, std::vector<RaidRosterRow> const& rows)
 {
     SyncResult result;
-    if (!owner)
+    if (!owner || !targetGuild)
         return result;
 
-    uint32 const targetGuildId = owner->GetGuildId();
-    Guild* targetGuild = targetGuildId ? sGuildMgr->GetGuildById(targetGuildId) : nullptr;
-    if (!targetGuild)
+    uint32 const targetGuildId = targetGuild->GetId();
+    if (!targetGuildId)
         return result;
 
     result.ownerHasGuild = true;
@@ -50,7 +49,10 @@ SyncResult SyncRosterToOwnerGuild(Player* owner, std::vector<RaidRosterRow> cons
             // Cache/player says the target guild but the Guild object does not. Let AddMember
             // repair the missing membership instead of performing direct SQL surgery.
             if (targetGuild->AddMember(guid, GUILD_RANK_NONE))
+            {
+                PlayerbotGuildMgr::instance().OnGuildUpdate(targetGuild);
                 ++result.joined;
+            }
             else
                 ++result.failed;
             continue;
@@ -85,7 +87,12 @@ SyncResult SyncRosterToOwnerGuild(Player* owner, std::vector<RaidRosterRow> cons
                 continue;
             }
 
-            previousGuild->DeleteMember(guid, false, true, false);
+            // canDeleteGuild=true lets AzerothCore clean up an empty synthetic bot guild if this
+            // character happened to be its final member/leader. We never dereference the old
+            // pointer afterwards unless GuildMgr still owns that guild.
+            previousGuild->DeleteMember(guid, false, true, true);
+            if (Guild* survivingGuild = sGuildMgr->GetGuildById(currentGuildId))
+                PlayerbotGuildMgr::instance().OnGuildUpdate(survivingGuild);
             movedFromBotGuild = true;
         }
 
@@ -100,6 +107,7 @@ SyncResult SyncRosterToOwnerGuild(Player* owner, std::vector<RaidRosterRow> cons
             continue;
         }
 
+        PlayerbotGuildMgr::instance().OnGuildUpdate(targetGuild);
         if (movedFromBotGuild)
             ++result.movedFromBotGuild;
         else
@@ -120,13 +128,20 @@ SyncResult SyncRosterToOwnerGuild(Player* owner, std::vector<RaidRosterRow> cons
 
     return result;
 }
+
+SyncResult SyncRosterToOwnerGuild(Player* owner, std::vector<RaidRosterRow> const& rows)
+{
+    if (!owner || !owner->GetGuildId())
+        return {};
+    return SyncRosterToGuild(owner, sGuildMgr->GetGuildById(owner->GetGuildId()), rows);
+}
 }
 
 namespace
 {
-void SyncExistingRoster(Player* player)
+void SyncExistingRoster(Player* player, Guild* explicitGuild = nullptr)
 {
-    if (!player || !IsRealPlayer(player) || !player->GetGuildId())
+    if (!player || !IsRealPlayer(player))
         return;
 
     uint32 const ownerGuid = player->GetGUID().GetCounter();
@@ -134,8 +149,11 @@ void SyncExistingRoster(Player* player)
     if (rows.empty())
         return;
 
-    RaidRosterGuild::SyncResult const result = RaidRosterGuild::SyncRosterToOwnerGuild(player, rows);
-    if (!result.Complete())
+    RaidRosterGuild::SyncResult const result = explicitGuild
+        ? RaidRosterGuild::SyncRosterToGuild(player, explicitGuild, rows)
+        : RaidRosterGuild::SyncRosterToOwnerGuild(player, rows);
+
+    if (result.ownerHasGuild && !result.Complete())
     {
         LOG_WARN(
             "server.loading",
@@ -169,16 +187,18 @@ public:
     RaidRosterGuildScript()
         : GuildScript("RaidRosterGuildScript", { GUILDHOOK_ON_ADD_MEMBER, GUILDHOOK_ON_CREATE }) { }
 
-    void OnAddMember(Guild* /*guild*/, Player* player, uint8& /*rank*/) override
+    void OnAddMember(Guild* guild, Player* player, uint8& /*rank*/) override
     {
-        // Handles a human joining a guild after their persistent roster already existed.
-        SyncExistingRoster(player);
+        // Handles a human joining a guild after their persistent roster already existed. Passing
+        // the concrete Guild* avoids depending on GuildMgr update ordering during the join hook.
+        SyncExistingRoster(player, guild);
     }
 
-    void OnCreate(Guild* /*guild*/, Player* leader, std::string const& /*name*/) override
+    void OnCreate(Guild* guild, Player* leader, std::string const& /*name*/) override
     {
-        // Handles creating the player's guild after their persistent roster already existed.
-        SyncExistingRoster(leader);
+        // Handles creating the player's guild after their persistent roster already existed. The
+        // guild object is valid here even before it has necessarily been inserted into GuildMgr.
+        SyncExistingRoster(leader, guild);
     }
 };
 }
