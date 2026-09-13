@@ -18,6 +18,9 @@ struct PopulationStats
     uint32 botAccounts = 0;
     uint32 assignedBotAccounts = 0;
     uint32 requiredBotAccounts = 0;
+    uint32 managerCandidates = 0;
+    uint32 managerRandomAccounts = 0;
+    uint32 pendingBotLogins = 0;
     bool botEngineEnabled = false;
     bool botAutologinEnabled = false;
 };
@@ -25,8 +28,9 @@ struct PopulationStats
 PopulationStats GetPopulationStats();
 void SetBotTarget(uint32 target, uint32 batch = 10);
 void SetBotActivity(float percent);
-// Rebuilds/extends the RNDbot account+character pool for the current MaxRandomBots and kicks the
-// login manager. Safe to call repeatedly; the upstream factory only creates missing capacity.
+// Ensures the RNDbot account/character pool has enough capacity, refreshes account assignments,
+// rebuilds stale ephemeral add-event state when no random bots are online, and kicks the login
+// manager. Safe to call repeatedly; persistent bot characters/progression are never deleted.
 void RepairBotPopulation();
 
 bool GiveGold(Player* player, uint32 gold);
