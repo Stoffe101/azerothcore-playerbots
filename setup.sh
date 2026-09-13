@@ -103,6 +103,20 @@ text = text.replace(old_chatter_url, new_chatter_url, 1)
 path.write_text(text, encoding="utf-8")
 PY
 
+# CI and maintainers can validate the pinned bootstrap transformation without cloning/building the
+# server or touching an existing installation. This catches stale string replacements and shell
+# syntax regressions in the exact generated runtime that a fresh install would execute.
+if [[ "${SETUP_PREFLIGHT_ONLY:-0}" == "1" ]]; then
+  bash -n "$RUNTIME"
+  grep -Fq 'mod-admin-panel' "$RUNTIME"
+  grep -Fq 'mod-titan-rune' "$RUNTIME"
+  grep -Fq 'RaidRoster.Enable" "1"' "$RUNTIME"
+  grep -Fq 'host.docker.internal' "$RUNTIME"
+  grep -Fq 'git -C "$AC_DIR" apply --check "$patch"' "$RUNTIME"
+  echo "Setup bootstrap preflight passed."
+  exit 0
+fi
+
 chmod +x "$RUNTIME"
 set +e
 bash "$RUNTIME" "$@"
