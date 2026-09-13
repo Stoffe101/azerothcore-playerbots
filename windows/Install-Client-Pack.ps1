@@ -1,16 +1,21 @@
+[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
     [string]$PackZip,
 
-    [string]$WowPath = "D:\wow private server\TheraWoW wotlk"
+    # Keep the project's usual private-client path as a convenience, but do not hard-lock the
+    # installer to one drive/folder. Any explicitly supplied client is accepted only after the
+    # same 3.3.5a safety checks pass.
+    [string]$WowPath = "D:\wow private server\TheraWoW wotlk",
+
+    # Some private 3.3.5a executables have stripped Windows version metadata. This switch is only
+    # for an explicitly selected private-server client. It never enables client auto-discovery.
+    [switch]$AllowUnknownClientVersion
 )
 
 $ErrorActionPreference = "Stop"
-$FixedWowRoot = "D:\wow private server\TheraWoW wotlk"
-$FixedAddOnsRoot = "D:\wow private server\TheraWoW wotlk\Interface\AddOns"
-$RetiredClientAddons = @(
-    "Mapster"
-)
+$LegacyDefaultWowRoot = "D:\wow private server\TheraWoW wotlk"
+$RetiredClientAddons = @("Mapster")
 
 function Write-Step([string]$Message) {
     Write-Host "==> $Message" -ForegroundColor Cyan
@@ -20,31 +25,54 @@ function Canonical([string]$Path) {
     return ([IO.Path]::GetFullPath($Path)).TrimEnd('\')
 }
 
-function Assert-FixedTarget([string]$Requested) {
-    $expected = Canonical $FixedWowRoot
+function Assert-ChildPath([string]$Parent, [string]$Child, [string]$Label) {
+    $parentPath = (Canonical $Parent) + '\'
+    $childPath = Canonical $Child
+    if (-not $childPath.StartsWith($parentPath, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "$Label escaped the selected WoW client root: '$childPath'."
+    }
+}
+
+function Assert-WowTarget([string]$Requested) {
+    if ([string]::IsNullOrWhiteSpace($Requested)) {
+        throw "A WoW 3.3.5a client path is required. No client auto-discovery is performed."
+    }
+
     $actual = Canonical $Requested
-    if ($actual -ine $expected) {
-        throw @"
-REFUSING TO INSTALL.
-This project is hard-locked to the private-server client:
-  $FixedWowRoot
-Requested target was:
-  $Requested
-Retail/other WoW installations are intentionally never auto-discovered or modified.
+    if (-not (Test-Path -LiteralPath $actual -PathType Container)) {
+        throw "Selected WoW client folder does not exist: '$actual'."
+    }
+
+    $exe = Join-Path $actual "Wow.exe"
+    $data = Join-Path $actual "Data"
+    if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) {
+        throw "Wow.exe was not found in the selected client: '$actual'."
+    }
+    if (-not (Test-Path -LiteralPath $data -PathType Container)) {
+        throw "Data folder was not found in the selected client: '$actual'."
+    }
+
+    # Reject a recognizable non-3.3.5 executable. Retail/Classic installations are never searched
+    # for and an arbitrary target cannot silently pass this check.
+    $info = (Get-Item -LiteralPath $exe).VersionInfo
+    $versionText = "$($info.FileVersion) $($info.ProductVersion)".Trim()
+    if ($versionText -match '3\.3\.5' -or $versionText -match '12340') {
+        Write-Host "    Client version: $versionText"
+    } else {
+        $isLegacyDefault = $actual -ieq (Canonical $LegacyDefaultWowRoot)
+        if (-not $AllowUnknownClientVersion -and -not $isLegacyDefault) {
+            throw @"
+The selected Wow.exe did not identify itself as WoW 3.3.5a / build 12340:
+  $actual
+  Version metadata: '$versionText'
+No files were changed. If this is a private 3.3.5a client with stripped metadata, re-run with
+-AllowUnknownClientVersion and the explicit -WowPath. Retail/Classic clients must not use that switch.
 "@
+        }
+        Write-Host "    WARNING: Wow.exe metadata did not expose 3.3.5/12340: '$versionText'" -ForegroundColor Yellow
+        Write-Host "    Continuing because this is the known project client or -AllowUnknownClientVersion was explicitly supplied." -ForegroundColor Yellow
     }
 
-    $addons = Canonical (Join-Path $actual "Interface\AddOns")
-    if ($addons -ine (Canonical $FixedAddOnsRoot)) {
-        throw "Safety check failed: AddOns destination resolved to '$addons' instead of '$FixedAddOnsRoot'."
-    }
-
-    if (-not (Test-Path -LiteralPath (Join-Path $actual "Wow.exe") -PathType Leaf)) {
-        throw "Private-server Wow.exe not found at '$actual'. No fallback search will be attempted."
-    }
-    if (-not (Test-Path -LiteralPath (Join-Path $actual "Data") -PathType Container)) {
-        throw "Private-server Data folder not found at '$actual'."
-    }
     return $actual
 }
 
@@ -55,28 +83,13 @@ function Assert-WowClosed([string]$Root) {
             if ($exe) {
                 $runningRoot = Canonical (Split-Path -Parent $exe)
                 if ($runningRoot -ieq (Canonical $Root)) {
-                    throw "TheraWoW is currently running from '$Root'. Close it completely before installing addons/data patches."
+                    throw "WoW is currently running from '$Root'. Close it completely before installing addons/data patches."
                 }
             }
         } catch {
-            if ($_.Exception.Message -like 'TheraWoW is currently running*') { throw }
+            if ($_.Exception.Message -like 'WoW is currently running*') { throw }
         }
     }
-}
-
-function Assert-Wow335([string]$Root) {
-    $exe = Join-Path $Root "Wow.exe"
-    $info = (Get-Item -LiteralPath $exe).VersionInfo
-    $text = "$($info.FileVersion) $($info.ProductVersion)".Trim()
-    if ($text -match '3\.3\.5' -or $text -match '12340') {
-        Write-Host "    Client version: $text"
-        return
-    }
-
-    # Some private 3.3.5 executables have stripped/odd Windows version metadata. The exact path
-    # lock above is the primary safety boundary, so warn rather than redirecting to another client.
-    Write-Host "    WARNING: Wow.exe metadata did not explicitly show 3.3.5/12340: '$text'" -ForegroundColor Yellow
-    Write-Host "    Continuing ONLY because the target exactly matches the hard-locked TheraWoW path." -ForegroundColor Yellow
 }
 
 $RequiredClientFiles = @(
@@ -115,10 +128,7 @@ function Backup-And-CopyFolder([string]$Source, [string]$Destination, [string]$B
 }
 
 function Backup-And-RemoveFolder([string]$Destination, [string]$Backup) {
-    if (-not (Test-Path -LiteralPath $Destination -PathType Container)) {
-        return $false
-    }
-
+    if (-not (Test-Path -LiteralPath $Destination -PathType Container)) { return $false }
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Backup) | Out-Null
     if (Test-Path -LiteralPath $Backup) { Remove-Item -LiteralPath $Backup -Recurse -Force }
     Copy-Item -LiteralPath $Destination -Destination $Backup -Recurse -Force
@@ -162,16 +172,15 @@ function Get-TopLevelAddonFolders([string]$AddOnsRoot) {
 }
 
 $resolvedZip = (Resolve-Path -LiteralPath $PackZip -ErrorAction Stop).Path
-$resolvedWow = Assert-FixedTarget $WowPath
+$resolvedWow = Assert-WowTarget $WowPath
 $destAddons = Canonical (Join-Path $resolvedWow "Interface\AddOns")
+Assert-ChildPath $resolvedWow $destAddons "AddOns destination"
 
-Write-Host "Azeroth client installer" -ForegroundColor Green
-Write-Host "SAFETY MODE: HARD-LOCKED PRIVATE CLIENT" -ForegroundColor Green
+Write-Host "Azeroth 3.3.5a client installer" -ForegroundColor Green
 Write-Host "WoW root : $resolvedWow"
 Write-Host "AddOns   : $destAddons"
-Write-Host "Retail WoW discovery/install: DISABLED" -ForegroundColor Yellow
+Write-Host "Client auto-discovery: DISABLED" -ForegroundColor Yellow
 Assert-WowClosed $resolvedWow
-Assert-Wow335 $resolvedWow
 
 $temp = Join-Path ([IO.Path]::GetTempPath()) ("AzerothClientPack-" + [guid]::NewGuid().ToString("N"))
 $extract = Join-Path $temp "pack"
@@ -187,16 +196,12 @@ try {
 
     $sourceAddons = Join-Path $extract "Interface\AddOns"
     New-Item -ItemType Directory -Force -Path $destAddons | Out-Null
+    Assert-ChildPath $resolvedWow $destAddons "AddOns destination"
 
-    # Re-check immediately before the first write. This is intentionally redundant: it makes it
-    # impossible for an accidental path edit higher in the script to redirect files into retail.
-    if ((Canonical $destAddons) -ine (Canonical $FixedAddOnsRoot)) {
-        throw "WRITE BLOCKED: destination is not the fixed TheraWoW AddOns folder."
-    }
-
-    Write-Step "Removing retired/redundant addons from the private client"
+    Write-Step "Removing retired/redundant addons from the selected private client"
     foreach ($retired in $RetiredClientAddons) {
         $dest = Join-Path $destAddons $retired
+        Assert-ChildPath $resolvedWow $dest "Retired addon destination"
         $backup = Join-Path $backupRoot ("Interface\AddOns\" + $retired)
         if (Backup-And-RemoveFolder $dest $backup) {
             Write-Host "    - $retired (backed up first)" -ForegroundColor Yellow
@@ -205,15 +210,12 @@ try {
         }
     }
 
-    Write-Step "Installing addons into D:\wow private server\TheraWoW wotlk\Interface\AddOns"
+    Write-Step "Installing addons into $destAddons"
     $installed = @()
     foreach ($addon in @(Get-ChildItem -LiteralPath $sourceAddons -Directory | Sort-Object Name)) {
-        if ($RetiredClientAddons -contains $addon.Name) {
-            Write-Host "    x $($addon.Name) (retired; intentionally skipped)" -ForegroundColor DarkGray
-            continue
-        }
-
+        if ($RetiredClientAddons -contains $addon.Name) { continue }
         $dest = Join-Path $destAddons $addon.Name
+        Assert-ChildPath $resolvedWow $dest "Addon destination"
         $backup = Join-Path $backupRoot ("Interface\AddOns\" + $addon.Name)
         Backup-And-CopyFolder $addon.FullName $dest $backup
         $installed += $addon.Name
@@ -221,11 +223,13 @@ try {
     }
 
     $sourceData = Join-Path $extract "Data"
+    $destData = Canonical (Join-Path $resolvedWow "Data")
     if (Test-Path -LiteralPath $sourceData -PathType Container) {
-        Write-Step "Installing required client data patches into the SAME fixed private client"
+        Write-Step "Installing required client data patches into the selected private client"
         foreach ($file in @(Get-ChildItem -LiteralPath $sourceData -File -Recurse)) {
             $relative = $file.FullName.Substring($sourceData.Length).TrimStart('\')
-            $dest = Join-Path (Join-Path $resolvedWow "Data") $relative
+            $dest = Join-Path $destData $relative
+            Assert-ChildPath $destData $dest "Data patch destination"
             $backup = Join-Path $backupRoot ("Data\" + $relative)
             New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dest) | Out-Null
             if (Test-Path -LiteralPath $dest) {
@@ -240,32 +244,25 @@ try {
     Write-Step "Enabling compatible legacy 3.3.5 addons"
     Set-LegacyAddonLoading $resolvedWow
 
-    Write-Step "Verifying the installed TheraWoW client"
-    Assert-ClientTree $resolvedWow "Installed TheraWoW client"
+    Write-Step "Verifying installed client"
+    Assert-ClientTree $resolvedWow "Installed 3.3.5a client"
     $detectedAddons = @(Get-TopLevelAddonFolders $destAddons)
-    Write-Host "    Installed client validation: OK" -ForegroundColor Green
-    Write-Host "    Found $($detectedAddons.Count) top-level addon folders with a .toc"
-
     foreach ($mustShow in @('ElvUI', 'ElvUI_OptionsUI', 'AdminPanel', 'AdventureGuide', 'ExtendedCharacterStats', 'EraTalents', 'DBM-Core', 'TidyPlates', 'Pawn', 'MinimapButtonButton')) {
         if ($detectedAddons -notcontains $mustShow) {
-            throw "Post-install scan could not see '$mustShow' in $FixedAddOnsRoot"
+            throw "Post-install scan could not see '$mustShow' in $destAddons"
         }
-        Write-Host "    [OK] $mustShow"
     }
-
     foreach ($retired in $RetiredClientAddons) {
         if (Test-Path -LiteralPath (Join-Path $destAddons $retired)) {
-            throw "Post-install cleanup failed: retired addon '$retired' is still present in $FixedAddOnsRoot"
+            throw "Post-install cleanup failed: retired addon '$retired' is still present in $destAddons"
         }
-        Write-Host "    [REMOVED] $retired"
     }
 
     $marker = [ordered]@{
         installedAt = (Get-Date).ToString("o")
         wowPath = $resolvedWow
         addonPath = $destAddons
-        hardLockedTarget = $FixedWowRoot
-        retailDiscovery = "disabled"
+        clientAutoDiscovery = "disabled"
         sourceZip = $resolvedZip
         installedAddonFolders = $installed
         retiredAddonFolders = $RetiredClientAddons
@@ -279,14 +276,10 @@ try {
     Write-Host "============================================================" -ForegroundColor DarkGray
     Write-Host "CLIENT READY - VALIDATION PASSED" -ForegroundColor Green
     Write-Host "============================================================" -ForegroundColor DarkGray
-    Write-Host "Installed ONLY into:"
-    Write-Host "  $FixedAddOnsRoot" -ForegroundColor Green
-    Write-Host "Retail/other WoW installations were not searched or modified." -ForegroundColor Yellow
-    Write-Host "Backup of replaced private-client files/folders:"
-    Write-Host "  $backupRoot"
-    Write-Host ""
-    Write-Host "Start: D:\wow private server\TheraWoW wotlk\Wow.exe" -ForegroundColor Yellow
-    Write-Host "At character select, AddOns should include ElvUI, Azeroth Control, Adventure Guide, Pawn, MinimapButtonButton and the rest."
+    Write-Host "Installed into: $destAddons" -ForegroundColor Green
+    Write-Host "No other WoW installation was searched or modified." -ForegroundColor Yellow
+    Write-Host "Backup: $backupRoot"
+    Write-Host "Start: $(Join-Path $resolvedWow 'Wow.exe')" -ForegroundColor Yellow
 }
 finally {
     if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue }
