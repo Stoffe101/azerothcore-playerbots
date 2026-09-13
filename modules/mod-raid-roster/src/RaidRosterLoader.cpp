@@ -7,6 +7,7 @@
 #include "RaidLeaderCommand.h"
 #include "RaidRosterCommand.h"
 #include "RaidRosterConfig.h"
+#include "RaidRosterGuild.h"
 #include "SmartLootSystem.h"
 
 void AddAdventureStartScripts();
@@ -28,6 +29,7 @@ void Addmod_raid_rosterScripts()
     new AdventureGuideCommand();
     new RaidLeaderCommand();
     AddAdventureStartScripts();
+    AddRaidRosterGuildScripts();
     AddGuildGroupDirectorScripts();
     AddEncounterLifecycleScripts();
     AddSmartLootScripts();
