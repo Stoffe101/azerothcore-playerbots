@@ -10,6 +10,7 @@ using namespace Acore::ChatCommands;
 
 namespace
 {
+constexpr uint32 WATCHDOG_TICK_MS = 5000;
 constexpr uint32 FIRST_REPAIR_DELAY_MS = 15000;
 constexpr uint32 RETRY_DELAY_MS = 30000;
 constexpr uint8 MAX_AUTOMATIC_REPAIRS = 4;
@@ -40,31 +41,93 @@ public:
 
     void OnUpdate(uint32 diff) override
     {
-        _elapsed += diff;
-        uint32 const delay = _attempts == 0 ? FIRST_REPAIR_DELAY_MS : RETRY_DELAY_MS;
-        if (_elapsed < delay)
+        _tickElapsed += diff;
+        if (_tickElapsed < WATCHDOG_TICK_MS)
             return;
-        _elapsed = 0;
+
+        uint32 const step = _tickElapsed;
+        _tickElapsed = 0;
 
         AdminPanelGameplay::PopulationStats const stats = AdminPanelGameplay::GetPopulationStats();
-        if (stats.botTarget == 0 || stats.bots > 0)
+
+        // A new target is a new population episode. This matters when the realm starts at 0,
+        // the operator later asks for 500/1000, or they deliberately change the target after an
+        // earlier exhausted repair cycle.
+        if (!_haveTarget || stats.botTarget != _lastTarget)
         {
-            // Once the manager has demonstrated that it can actually log a bot in, stop doing
-            // expensive recovery checks. Normal Playerbots population management owns the ramp.
-            if (stats.bots > 0)
-                _healthy = true;
+            _haveTarget = true;
+            _lastTarget = stats.botTarget;
+            _zeroElapsed = 0;
+            _attempts = 0;
+            _exhaustionLogged = false;
+            _wasHealthy = stats.bots > 0;
+
+            if (stats.botTarget > 0)
+                LOG_INFO("server.loading", "[AdminPanel] Bot watchdog armed for target={} (online={})", stats.botTarget, stats.bots);
             return;
         }
 
-        if (_healthy || _attempts >= MAX_AUTOMATIC_REPAIRS)
+        if (stats.botTarget == 0)
+        {
+            _zeroElapsed = 0;
+            _attempts = 0;
+            _exhaustionLogged = false;
+            _wasHealthy = false;
             return;
+        }
+
+        if (stats.bots > 0)
+        {
+            // Seeing even one bot proves that the manager/pool is alive. Reset the outage budget
+            // so a later collapse to zero gets a fresh set of automatic repair attempts instead
+            // of being permanently ignored because the server was healthy once at startup.
+            if (!_wasHealthy)
+                LOG_INFO("server.loading", "[AdminPanel] Bot watchdog healthy: online={} target={}", stats.bots, stats.botTarget);
+            _zeroElapsed = 0;
+            _attempts = 0;
+            _exhaustionLogged = false;
+            _wasHealthy = true;
+            return;
+        }
+
+        if (_wasHealthy)
+        {
+            LOG_WARN("server.loading", "[AdminPanel] Bot watchdog detected population collapse: target={} online=0", stats.botTarget);
+            _wasHealthy = false;
+            _zeroElapsed = 0;
+            _attempts = 0;
+            _exhaustionLogged = false;
+        }
+
+        _zeroElapsed += step;
+        uint32 const delay = _attempts == 0 ? FIRST_REPAIR_DELAY_MS : RETRY_DELAY_MS;
+        if (_zeroElapsed < delay)
+            return;
+
+        _zeroElapsed = 0;
+        if (_attempts >= MAX_AUTOMATIC_REPAIRS)
+        {
+            if (!_exhaustionLogged)
+            {
+                _exhaustionLogged = true;
+                LOG_ERROR(
+                    "server.loading",
+                    "[AdminPanel] Bot watchdog exhausted {}/{} automatic repairs: target={} online=0 pool={}/{} assigned={}. Use .botdiag/.botrepair after inspecting the first Playerbots error.",
+                    uint32(_attempts),
+                    uint32(MAX_AUTOMATIC_REPAIRS),
+                    stats.botTarget,
+                    stats.botAccounts,
+                    stats.requiredBotAccounts,
+                    stats.assignedBotAccounts);
+            }
+            return;
+        }
 
         ++_attempts;
         LOG_WARN(
             "server.loading",
-            "[AdminPanel] Bot watchdog: target={} but online=0 after {}s; repair attempt {}/{} (pool={}/{} assigned={})",
+            "[AdminPanel] Bot watchdog: target={} but online=0; repair attempt {}/{} (pool={}/{} assigned={})",
             stats.botTarget,
-            (_attempts == 1 ? FIRST_REPAIR_DELAY_MS : RETRY_DELAY_MS) / 1000,
             uint32(_attempts),
             uint32(MAX_AUTOMATIC_REPAIRS),
             stats.botAccounts,
@@ -75,9 +138,13 @@ public:
     }
 
 private:
-    uint32 _elapsed = 0;
+    uint32 _tickElapsed = 0;
+    uint32 _zeroElapsed = 0;
+    uint32 _lastTarget = 0;
     uint8 _attempts = 0;
-    bool _healthy = false;
+    bool _haveTarget = false;
+    bool _wasHealthy = false;
+    bool _exhaustionLogged = false;
 };
 
 class AdminPanelBotRecoveryCommands final : public CommandScript
