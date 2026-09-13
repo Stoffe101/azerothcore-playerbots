@@ -3,6 +3,8 @@
 #include "AdventureCatalog.h"
 #include "AdventureCommand.h"
 #include "IndividualProgression.h"
+#include "Item.h"
+#include "ItemTemplate.h"
 #include "Player.h"
 #include "PlayerbotAI.h"
 #include "RaidRosterCommand.h"
@@ -49,10 +51,84 @@ char const* KindName(AdventureActivityKind kind)
     return kind == AdventureActivityKind::Dungeon ? "Dungeon" : "Raid";
 }
 
+uint32 AverageEquippedItemLevel(Player* player)
+{
+    if (!player)
+        return 0;
+
+    uint32 total = 0;
+    uint32 pieces = 0;
+    for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
+    {
+        // Shirts and tabards are cosmetic and would make the readiness estimate noisy.
+        if (slot == EQUIPMENT_SLOT_BODY || slot == EQUIPMENT_SLOT_TABARD)
+            continue;
+
+        Item* item = player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+        ItemTemplate const* proto = item ? item->GetTemplate() : nullptr;
+        if (!proto || !proto->ItemLevel)
+            continue;
+
+        total += proto->ItemLevel;
+        ++pieces;
+    }
+
+    return pieces ? total / pieces : 0;
+}
+
+uint32 SuggestedItemLevel(AdventureActivity const& activity)
+{
+    // These are advisory bands, not fake lockouts. Leveling dungeons deliberately return zero so
+    // the normal WotLK/TBC leveling curve remains level/progression driven. Endgame values are
+    // conservative entry targets used only for Finder guidance.
+    if (activity.kind == AdventureActivityKind::Dungeon)
+    {
+        if (activity.minLevel < 70)
+            return 0;
+        if (activity.minProgression < 13)
+            return std::string(activity.alias) == "magisters" ? 110 : 90;
+        if (activity.minLevel < 80)
+            return 0;
+        if (std::string(activity.alias) == "forgeofsouls" || std::string(activity.alias) == "pitofsaron" ||
+            std::string(activity.alias) == "hallsofreflection")
+            return 200;
+        return 187;
+    }
+
+    if (activity.minProgression <= 8)
+        return 110;
+    if (activity.minProgression == 9)
+        return 120;
+    if (activity.minProgression <= 11)
+        return 130;
+    if (activity.minProgression == 12)
+        return 135;
+    if (activity.minProgression == 13)
+        return 187;
+    if (activity.minProgression == 14)
+        return 200;
+    if (activity.minProgression == 15)
+        return 219;
+    if (activity.minProgression == 16)
+        return 232;
+    return 245;
+}
+
+bool GearComfortable(Player* player, AdventureActivity const& activity)
+{
+    uint32 const target = SuggestedItemLevel(activity);
+    if (!target)
+        return true;
+
+    uint32 const equipped = AverageEquippedItemLevel(player);
+    // Keep gear advisory rather than a hard gate: below 90% of the target gets a visible warning,
+    // while a skilled or deliberately undergeared player can still form/travel to unlocked content.
+    return equipped && equipped * 100u >= target * 90u;
+}
+
 // Player readiness is deliberately separate from encounter support. "Guild Ready" answers
 // whether this fork trusts the bots/content; this answers whether the activity makes sense for
-// THIS player right now. It is progression/level aware only for now. Gear-aware advice can be
-// layered on later without pretending we already have a reliable item-level model.
+// this player now using progression, level and an advisory equipped-item-level band.
 int PlayerReadinessRank(Player* player, AdventureActivity const& activity, bool* unlockedOut = nullptr)
 {
     std::string reason;
@@ -60,34 +136,42 @@ int PlayerReadinessRank(Player* player, AdventureActivity const& activity, bool*
     if (unlockedOut)
         *unlockedOut = unlocked;
     if (!unlocked)
-        return 2; // LOCKED
+        return 3; // LOCKED
 
+    bool const gearComfortable = GearComfortable(player, activity);
     uint8 const progression = sIndividualProgression->GetPlayerProgressionFromQuests(player);
     uint8 const level = player->GetLevel();
 
+    bool sweetSpot = false;
     if (activity.kind == AdventureActivityKind::Raid)
     {
-        // Raids are recommended when they belong to the player's current progression tier.
-        if (progression == activity.minProgression)
-            return 0;
+        sweetSpot = progression == activity.minProgression;
     }
     else
     {
-        // Dungeons are recommended around their natural level band. At level cap this naturally
-        // promotes the level-80 catch-up/endgame dungeons while keeping older unlocked dungeons
-        // available as normal READY choices.
-        if (level >= activity.minLevel && level <= uint8(std::min<uint32>(80u, uint32(activity.minLevel) + 3u)))
-            return 0;
+        sweetSpot = level >= activity.minLevel &&
+            level <= uint8(std::min<uint32>(80u, uint32(activity.minLevel) + 3u));
     }
 
-    return 1; // READY, but not the current sweet spot.
+    if (sweetSpot && gearComfortable)
+        return 0; // RECOMMENDED
+    if (gearComfortable)
+        return 1; // READY
+    return 2;     // GEAR LOW, still unlocked and playable.
 }
 
 char const* PlayerReadinessName(Player* player, AdventureActivity const& activity, bool unlocked)
 {
     if (!unlocked)
         return "LOCKED";
-    return PlayerReadinessRank(player, activity) == 0 ? "RECOMMENDED" : "READY";
+
+    switch (PlayerReadinessRank(player, activity))
+    {
+        case 0: return "RECOMMENDED";
+        case 1: return "READY";
+        case 2: return "GEAR LOW";
+        default: return "LOCKED";
+    }
 }
 
 void PrintReadyLine(ChatHandler* handler, Player* player, AdventureActivity const& activity)
@@ -95,7 +179,7 @@ void PrintReadyLine(ChatHandler* handler, Player* player, AdventureActivity cons
     std::string reason;
     bool const unlocked = AdventureCatalog::IsUnlocked(player, activity, reason);
     handler->PSendSysMessage(
-        "[AG] {}|{}|{}|{}|{}|{}|{}|{}|{}",
+        "[AG] {}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
         activity.alias,
         activity.name,
         KindName(activity.kind),
@@ -104,7 +188,9 @@ void PrintReadyLine(ChatHandler* handler, Player* player, AdventureActivity cons
         uint32(activity.preferredSize),
         unlocked ? "UNLOCKED" : "LOCKED",
         unlocked ? activity.supportNote : reason,
-        PlayerReadinessName(player, activity, unlocked));
+        PlayerReadinessName(player, activity, unlocked),
+        AverageEquippedItemLevel(player),
+        SuggestedItemLevel(activity));
 }
 }
 
@@ -130,7 +216,7 @@ bool AdventureGuideCommand::HandleFinder(ChatHandler* handler, Optional<std::str
 
     // Finder is ordered for the current player instead of dumping the static catalog in expansion
     // order. Current sweet-spot activities come first, then other unlocked Guild Ready content,
-    // then the nearest locked activities so the UI also shows what the player is working toward.
+    // undergeared-but-unlocked choices, then the nearest locked activities.
     std::vector<AdventureActivity const*> rows;
     for (AdventureActivity const& activity : AdventureCatalog::All())
     {
@@ -146,9 +232,9 @@ bool AdventureGuideCommand::HandleFinder(ChatHandler* handler, Optional<std::str
             return ar < br;
 
         if (a->minProgression != b->minProgression)
-            return ar == 2 ? a->minProgression < b->minProgression : a->minProgression > b->minProgression;
+            return ar == 3 ? a->minProgression < b->minProgression : a->minProgression > b->minProgression;
         if (a->minLevel != b->minLevel)
-            return ar == 2 ? a->minLevel < b->minLevel : a->minLevel > b->minLevel;
+            return ar == 3 ? a->minLevel < b->minLevel : a->minLevel > b->minLevel;
         return a->name < b->name;
     });
 
@@ -185,6 +271,7 @@ bool AdventureGuideCommand::HandleRoadmap(ChatHandler* handler)
     uint8 progression = sIndividualProgression->GetPlayerProgressionFromQuests(player);
     handler->PSendSysMessage("[AG] ROADMAP|LEVEL|{}", uint32(player->GetLevel()));
     handler->PSendSysMessage("[AG] ROADMAP|PROGRESSION|{}", uint32(progression));
+    handler->PSendSysMessage("[AG] ROADMAP|ITEMLEVEL|{}", AverageEquippedItemLevel(player));
 
     if (player->GetLevel() < 70)
     {
@@ -195,17 +282,17 @@ bool AdventureGuideCommand::HandleRoadmap(ChatHandler* handler)
 
     if (progression <= 8)
     {
-        handler->SendSysMessage("[AG] ROADMAP|NOW|Karazhan / Gruul / Magtheridon are your first raid tier.");
+        handler->SendSysMessage("[AG] ROADMAP|NOW|Karazhan / Gruul / Magtheridon are your first raid tier. Around ilvl 110 is a comfortable entry target.");
         handler->SendSysMessage("[AG] ROADMAP|NEXT|Serpentshrine Cavern / Tempest Keep.");
     }
     else if (progression == 9)
     {
-        handler->SendSysMessage("[AG] ROADMAP|NOW|Serpentshrine Cavern / Tempest Keep.");
+        handler->SendSysMessage("[AG] ROADMAP|NOW|Serpentshrine Cavern / Tempest Keep. Around ilvl 120 is a comfortable entry target.");
         handler->SendSysMessage("[AG] ROADMAP|NEXT|Hyjal Summit / Black Temple.");
     }
     else if (progression <= 11)
     {
-        handler->SendSysMessage("[AG] ROADMAP|NOW|Hyjal Summit / Black Temple.");
+        handler->SendSysMessage("[AG] ROADMAP|NOW|Hyjal Summit / Black Temple. Around ilvl 130 is a comfortable entry target.");
         handler->SendSysMessage("[AG] ROADMAP|NEXT|Zul'Aman catch-up; Sunwell remains experimental in this fork until validated.");
     }
     else if (progression == 12)
@@ -215,22 +302,22 @@ bool AdventureGuideCommand::HandleRoadmap(ChatHandler* handler)
     }
     else if (progression == 13)
     {
-        handler->SendSysMessage("[AG] ROADMAP|NOW|Naxxramas / Eye of Eternity / Obsidian Sanctum / Onyxia are Guild Ready.");
+        handler->SendSysMessage("[AG] ROADMAP|NOW|Naxxramas / Eye of Eternity / Obsidian Sanctum / Onyxia are Guild Ready. Aim for roughly ilvl 187+.");
         handler->SendSysMessage("[AG] ROADMAP|NEXT|Ulduar is experimental, not normal Finder content yet.");
     }
     else if (progression == 14)
     {
-        handler->SendSysMessage("[AG] ROADMAP|NOW|Ulduar is available but marked experimental/WIP.");
+        handler->SendSysMessage("[AG] ROADMAP|NOW|Ulduar is available but marked experimental/WIP. Roughly ilvl 200+ is a sensible entry band.");
         handler->SendSysMessage("[AG] ROADMAP|NEXT|Trial of the Crusader is not Finder Ready; ICC becomes the next green target later.");
     }
     else if (progression == 15)
     {
         handler->SendSysMessage("[AG] ROADMAP|NOW|Trial of the Crusader is WIP and excluded from the normal Finder.");
-        handler->SendSysMessage("[AG] ROADMAP|NEXT|Icecrown Citadel at progression 16.");
+        handler->SendSysMessage("[AG] ROADMAP|NEXT|Icecrown Citadel at progression 16; build toward roughly ilvl 232+.");
     }
     else if (progression == 16)
     {
-        handler->SendSysMessage("[AG] ROADMAP|NOW|Icecrown Citadel normal mode is Guild Ready.");
+        handler->SendSysMessage("[AG] ROADMAP|NOW|Icecrown Citadel normal mode is Guild Ready. Roughly ilvl 232+ is the Finder comfort target.");
         handler->SendSysMessage("[AG] ROADMAP|NEXT|Ruby Sanctum is experimental/WIP.");
     }
     else
