@@ -8,7 +8,7 @@ class Player;
 enum class AdventureStartProfile : uint8
 {
     TbcAdventure = 0,
-    RaidReady = 1,
+    TbcRaidReady = 1,
 };
 
 namespace AdventureStartControl
@@ -21,13 +21,13 @@ char const* ProfileName(AdventureStartProfile profile);
 bool MatchesProfile(Player* player, AdventureStartProfile profile);
 
 // Bootstrap a character into the requested profile. forceStarterReset is used by the GM
-// "make this character raid ready" action so an already-initialized TBC starter gets a fresh
-// level-80 kit and a new spec-aware gear pass.
+// "make this character TBC raid ready" action so an already-initialized level-60 starter gets a
+// fresh level-70 kit and a new spec-aware pre-raid gear pass.
 bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStarterReset);
 
-inline bool MakeRaidReady(Player* player)
+inline bool MakeTbcRaidReady(Player* player)
 {
-    return ApplyProfile(player, AdventureStartProfile::RaidReady, true);
+    return ApplyProfile(player, AdventureStartProfile::TbcRaidReady, true);
 }
 }
 
