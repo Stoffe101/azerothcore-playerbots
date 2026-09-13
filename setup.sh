@@ -1119,24 +1119,26 @@ SQL
       WEBREG_DB_PASS: "\${WEBREG_DB_PASS}"
       WEBREG_CLIENT_ZIP_PATH: "/data/client.zip"
       WEBREG_CLIENT_ZIP_LABEL: "\${CLIENT_ZIP_LABEL:-Download client}"
-      WEBREG_ADDONS_ZIP_PATH: "/data/addons.zip"
+      WEBREG_ADDONS_ZIP_PATH: "/data/dist/client-addons.zip"
       WEBREG_ADDONS_ZIP_LABEL: "\${ADDONS_ZIP_LABEL:-Download bot addons}"
       WEBREG_BOT_PREFIX: "\${WEBREG_BOT_PREFIX:-rndbot}"
     ports:
       - "\${WEBREG_LAN_PORT:-8090}:8090"
     volumes:
       - "\${CLIENT_ZIP_PATH:-/dev/null}:/data/client.zip:ro"
-      - "\${ADDONS_ZIP_PATH:-/dev/null}:/data/addons.zip:ro"
+      # DIRECTORY mount, not a file mount: a file bind-mount pins the inode that
+      # existed at container creation, so a rebuilt zip (rm + new file) was never
+      # seen and a missing one stayed /dev/null forever. Mounting the folder means
+      # fetch-client-addons.sh can drop a new zip in and the site serves it live.
+      - "$ROOT/client-dist:/data/dist:ro"
 YAML
   # The main `docker compose up` (above) ran before this service was appended and
   # before its secrets existed, so it must be built + started now. Idempotent:
   # re-running reconciles the container with the regenerated override.
-  # If fetch-client-addons.sh has produced the bundle, mount it by default so the
-  # "Download bot addons" button works without editing .env. An explicit
-  # ADDONS_ZIP_PATH still wins; absent, the compose default (/dev/null) applies.
-  if [[ -z "${ADDONS_ZIP_PATH:-}" && -f "$ROOT/client-addons.zip" ]]; then
-    export ADDONS_ZIP_PATH="$ROOT/client-addons.zip"
-  fi
+  # client-dist/ is the live download folder (fetch-client-addons.sh writes
+  # client-addons.zip there). Create it ourselves so Docker doesn't auto-create a
+  # root-owned one; the site 404s the button until the zip exists, no restart needed.
+  mkdir -p "$ROOT/client-dist"
   echo "    Building and starting ac-webreg..."
   docker compose up -d --build ac-webreg
   echo "    ac-webreg up (LAN port ${WEBREG_LAN_PORT:-8090}); point your Cloudflare tunnel here."

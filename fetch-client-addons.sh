@@ -143,7 +143,7 @@ if [[ "${IP_CLIENT_PATCH_V:-1}" == "1" ]]; then
 fi
 
 # --- Build the ready-to-unzip addons bundle ---------------------------------
-# Produce client-addons.zip at the repo root, pre-structured so a player unzips
+# Produce client-dist/client-addons.zip, pre-structured so a player unzips
 # it directly into their World of Warcraft base folder:
 #   Interface/AddOns/<addon>/   -- every folder that has a .toc at its top level
 #   Data/<lang>/patch-<lang>-M.MPQ
@@ -152,7 +152,7 @@ fi
 # container whose immediate subdirs that have a .toc are each an addon. We stop
 # at immediate children so an embedded library deeper inside an addon rides
 # along inside its parent rather than being hoisted out.
-echo "==> Building client-addons.zip"
+echo "==> Building client-dist/client-addons.zip"
 BUNDLE="$DEST/_bundle"
 rm -rf "$BUNDLE"
 mkdir -p "$BUNDLE/Interface/AddOns"
@@ -192,23 +192,35 @@ if [[ -f "$DEST/_data-patches/patch-V.mpq" ]]; then
   cp -a "$DEST/_data-patches/patch-V.mpq" "$BUNDLE/Data/patch-V.mpq"
 fi
 
-rm -f "$ROOT/client-addons.zip"
+# client-dist/ is bind-mounted (as a DIRECTORY) into ac-webreg, so the site picks
+# the new zip up live. Build to a temp name and mv into place so a player who
+# clicks "Download bot addons" mid-build never gets a half-written archive.
+DIST="$ROOT/client-dist"
+mkdir -p "$DIST"
+rm -f "$DIST/client-addons.zip.tmp"
 # Only zip the trees that exist: Data is absent when WDM_LANG="" skipped the patch.
 targets=(Interface)
 [[ -d "$BUNDLE/Data" ]] && targets+=(Data)
-( cd "$BUNDLE" && zip -qr "$ROOT/client-addons.zip" "${targets[@]}" )
+( cd "$BUNDLE" && zip -qr "$DIST/client-addons.zip.tmp" "${targets[@]}" )
+mv -f "$DIST/client-addons.zip.tmp" "$DIST/client-addons.zip"
 rm -rf "$BUNDLE"
-echo "    Wrote $ROOT/client-addons.zip"
+# Pre-2026-09-12 builds wrote the zip at the repo root; drop a stale copy so nobody
+# hands out an outdated bundle by mistake.
+rm -f "$ROOT/client-addons.zip"
+echo "    Wrote $DIST/client-addons.zip"
 
 cat <<EOF
 
 ==================================================================
  Client addons are staged in: $DEST
 
- Or hand a player ONE file: $ROOT/client-addons.zip -- they unzip it directly
+ Or hand a player ONE file: $DIST/client-addons.zip -- they unzip it directly
  into their "World of Warcraft" folder and everything lands in the right place
  (Interface/AddOns/ and Data/<lang>/). The registration site serves this zip
- via its "Download bot addons" button.
+ via its "Download bot addons" button and sees a rebuilt zip immediately
+ (client-dist/ is folder-mounted into ac-webreg) -- no restart. The one
+ exception: an ac-webreg container created before the folder mount existed
+ needs a single ./setup.sh re-run to pick up the new mount.
 
  Not every entry is one ready-to-copy folder: MultiBot, PlayerBotManager
  and Questie-335 are single-folder addons, while AtlasLoot, Atlas, Grid2 and
