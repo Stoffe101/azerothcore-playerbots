@@ -14,6 +14,11 @@ void SetWotlkReleased(bool released);
 uint8 CurrentLevelCap();
 uint8 CurrentProgressionLimit();
 uint8 PlayerProgression(Player* player);
+
+// Exact manual progression control for the current character. The global live-expansion ceiling
+// is always enforced, so a TBC realm cannot be accidentally pushed into stage 13 by the panel.
+bool SetPlayerProgression(Player* player, uint8 stage);
+
 char const* CurrentExpansionName();
 }
 
