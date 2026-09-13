@@ -2,9 +2,9 @@
 # Canonical AzerothCore + Playerbots LAN bootstrap entry point.
 #
 # The historical bootstrap is large and battle-tested. Keep that body immutable at the pinned
-# commit below, patch the two integration defects introduced by newer local modules/patch targets,
-# then execute it from this repository directory. The pinned raw file is immutable and setup
-# already requires GitHub/network access to clone AzerothCore and its modules.
+# commit below, patch the integration changes introduced by the full-adventure stack, then execute
+# it from this repository directory. The pinned raw file is immutable and setup already requires
+# GitHub/network access to clone AzerothCore and its modules.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -124,6 +124,13 @@ apply_patches () {
 if old_apply not in text:
     raise SystemExit("ERROR: pinned setup body no longer matches expected apply_patches block")
 text = text.replace(old_apply, new_apply, 1)
+
+old_roster = '  set_conf "RaidRoster.Enable" "${RAIDROSTER_ENABLE:-0}" "$RAID_CONF"'
+new_roster = '  set_conf "RaidRoster.Enable" "1" "$RAID_CONF"'
+if old_roster not in text:
+    raise SystemExit("ERROR: pinned setup body no longer matches expected RaidRoster.Enable line")
+text = text.replace(old_roster, new_roster, 1)
+
 path.write_text(text, encoding="utf-8")
 PY
 
