@@ -74,11 +74,14 @@ bool ShouldPollStarterGear(Player* player, uint32 diff)
 
 bool MatchesUninitializedAdventureProfile(Player* player)
 {
-    if (!player || !player->IsInWorld())
+    if (!player)
         return false;
     if (player->GetLevel() != g_AdventureStartLevel)
         return false;
 
+    // GetPlayerProgressionFromQuests is safe during OnPlayerLogin too; EraTalents uses the same
+    // query there. Do not require IsInWorld(), otherwise an already-created starter character can
+    // miss the one-time recovery path before the world-insertion phase finishes.
     uint8 const current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
     return current == g_AdventureStartProgression;
 }
