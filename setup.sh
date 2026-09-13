@@ -49,6 +49,12 @@ if old_modules not in text:
     raise SystemExit("ERROR: pinned setup body no longer matches expected LOCAL_MODULES line")
 text = text.replace(old_modules, new_modules, 1)
 
+# Every patch in this overlay is rooted at the AzerothCore checkout. Some patches edit files under
+# modules/mod-individual-progression or modules/mod-playerbots, but their diff paths deliberately
+# include that modules/... prefix. Applying those patches with `git -C` inside the nested module
+# repository breaks fresh installs because the prefixed path no longer exists relative to that
+# repository. Keep the historical, proven root-relative apply loop and merely verify it is still
+# present in the pinned bootstrap body.
 old_apply = r'''apply_patches () {
   local pdir="$ROOT/patches"
   [[ -d "$pdir" && -d "$AC_DIR/.git" ]] || return 0
@@ -76,54 +82,8 @@ old_apply = r'''apply_patches () {
 }
 '''
 
-new_apply = r'''patch_target_dir () {
-  local name="$1"
-  case "$name" in
-    0014-ip-*)
-      echo "$AC_DIR/modules/mod-individual-progression"
-      ;;
-    *)
-      echo "$AC_DIR"
-      ;;
-  esac
-}
-
-apply_patches () {
-  local pdir="$ROOT/patches"
-  [[ -d "$pdir" && -d "$AC_DIR/.git" ]] || return 0
-  local patch name target
-  for patch in "$pdir"/*.patch; do
-    [[ -e "$patch" ]] || continue
-    name="$(basename "$patch")"
-    target="$(patch_target_dir "$name")"
-
-    if [[ ! -d "$target/.git" ]]; then
-      echo "    ERROR: patch target repo missing for $name: $target" >&2
-      exit 1
-    fi
-
-    if git -C "$target" apply --reverse --check "$patch" >/dev/null 2>&1; then
-      echo "    Patch already applied: $name"
-    elif git -C "$target" apply --check "$patch" >/dev/null 2>&1; then
-      git -C "$target" apply "$patch"
-      echo "    Applied patch: $name"
-    else
-      echo "    ERROR: $name no longer applies to $(basename "$target") (upstream moved?)." >&2
-      echo "           Regenerate it against the pinned repo or remove it from patches/." >&2
-      exit 1
-    fi
-  done
-  # mod-era-talents ships its own patch tree (core + IP always; playerbots/bridge when present).
-  # Runs AFTER ours so 0012's Unit.cpp hunk lands before its Shatter/Wand/Molten Fury hunks.
-  if [[ -x "$AC_DIR/modules/mod-era-talents/apply-patches.sh" ]]; then
-    "$AC_DIR/modules/mod-era-talents/apply-patches.sh" "$AC_DIR"
-  fi
-}
-'''
-
 if old_apply not in text:
     raise SystemExit("ERROR: pinned setup body no longer matches expected apply_patches block")
-text = text.replace(old_apply, new_apply, 1)
 
 old_roster = '  set_conf "RaidRoster.Enable" "${RAIDROSTER_ENABLE:-0}" "$RAID_CONF"'
 new_roster = '  set_conf "RaidRoster.Enable" "1" "$RAID_CONF"'
