@@ -13,7 +13,6 @@ extern bool        g_PBChatThink;        // false -> send "think": false
 extern std::string g_PBChatSystemPrompt;
 extern uint32_t    g_PBChatReplyMaxLen;  // chars
 extern uint32_t    g_PBChatMaxConcurrent;
-extern uint32_t    g_PBChatFailureBackoff; // seconds to suppress repeat Ollama attempts after transport failure
 
 // ── Lore sidecar (Tier-2 factual Q&A) ────────────────────────────────────────
 extern bool        g_PBChatLoreEnable;   // route likely questions to the lore sidecar
