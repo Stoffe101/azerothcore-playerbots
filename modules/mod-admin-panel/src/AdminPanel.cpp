@@ -57,13 +57,13 @@ struct TeleportPoint
 
 std::array<TeleportPoint, 8> const kTeleports = {{
     { "darkportal", "Dark Portal", 0, -11894.80f, -3206.52f, -14.62f, 0.00f, false },
-    { "stormwind",  "Stormwind",   0, -8833.38f,   628.62f,  94.00f, 0.70f, false },
-    { "ironforge",  "Ironforge",   0, -4981.25f,  -881.54f, 501.66f, 5.40f, false },
-    { "orgrimmar",  "Orgrimmar",   1,  1629.36f, -4373.39f,  31.26f, 3.00f, false },
+    { "stormwind", "Stormwind", 0, -8833.38f, 628.62f, 94.00f, 0.70f, false },
+    { "ironforge", "Ironforge", 0, -4981.25f, -881.54f, 501.66f, 5.40f, false },
+    { "orgrimmar", "Orgrimmar", 1, 1629.36f, -4373.39f, 31.26f, 3.00f, false },
     { "thunderbluff", "Thunder Bluff", 1, -1274.45f, 71.86f, 128.16f, 2.80f, false },
-    { "shattrath",  "Shattrath", 530, -1838.16f,  5301.79f, -12.43f, 5.95f, false },
-    { "dalaran",    "Dalaran",   571,  5807.75f,   588.27f, 660.94f, 1.64f, true },
-    { "argent",     "Argent Tournament", 571, 8475.70f, 891.54f, 547.29f, 0.00f, true },
+    { "shattrath", "Shattrath", 530, -1838.16f, 5301.79f, -12.43f, 5.95f, false },
+    { "dalaran", "Dalaran", 571, 5807.75f, 588.27f, 660.94f, 1.64f, true },
+    { "argent", "Argent Tournament", 571, 8475.70f, 891.54f, 547.29f, 0.00f, true },
 }};
 
 std::string Lower(std::string value)
@@ -171,7 +171,15 @@ TeleportPoint const* FindTeleport(std::string key)
 
 std::string StarterName()
 {
-    return AdventureStartControl::GetDefaultProfile() == AdventureStartProfile::TbcRaidReady ? "tbcraid" : "tbc";
+    switch (AdventureStartControl::GetDefaultProfile())
+    {
+        case AdventureStartProfile::WotlkRaidReady:
+            return "wotlkraid";
+        case AdventureStartProfile::TbcRaidReady:
+            return "tbcraid";
+        default:
+            return "tbc";
+    }
 }
 
 void ApplyPreset(std::string const& preset)
@@ -223,21 +231,34 @@ void LoadPersistedSettings()
     if (LoadSetting(GOLD_RATE_KEY, raw) && ParseRate(raw, rate))
         ApplyGoldRate(rate);
 
-    // Migration: the previous experimental "raidready" value meant WotLK level 80. Treat it as the
-    // corrected TBC raid-ready profile rather than silently resurrecting the wrong design.
-    if (LoadSetting(STARTER_KEY, raw))
-    {
-        std::string const mode = Lower(raw);
-        if (mode == "tbcraid" || mode == "raid" || mode == "raidready" || mode == "70")
-            AdventureStartControl::SetDefaultProfile(AdventureStartProfile::TbcRaidReady);
-        else
-            AdventureStartControl::SetDefaultProfile(AdventureStartProfile::TbcAdventure);
-    }
-
+    // Expansion state must be restored BEFORE the starter profile so a saved WotLK raid-ready
+    // starter can only become active on a realm where WotLK has actually been released.
     bool wotlkReleased = false;
     if (LoadSetting(WOTLK_KEY, raw))
         wotlkReleased = raw == "1" || Lower(raw) == "true";
     AdminPanelExpansion::SetWotlkReleased(wotlkReleased);
+
+    if (LoadSetting(STARTER_KEY, raw))
+    {
+        std::string const mode = Lower(raw);
+        if (mode == "wotlkraid" || mode == "wrathraid" || mode == "80")
+        {
+            AdventureStartControl::SetDefaultProfile(
+                wotlkReleased ? AdventureStartProfile::WotlkRaidReady : AdventureStartProfile::TbcAdventure);
+            if (!wotlkReleased)
+                SaveSetting(STARTER_KEY, "tbc");
+        }
+        else if (mode == "tbcraid" || mode == "raid" || mode == "raidready" || mode == "70")
+        {
+            // Historical "raidready" meant the old experimental level-80 mode. Migrate it to the
+            // corrected TBC raid-ready shortcut instead of silently skipping the current expansion.
+            AdventureStartControl::SetDefaultProfile(AdventureStartProfile::TbcRaidReady);
+        }
+        else
+        {
+            AdventureStartControl::SetDefaultProfile(AdventureStartProfile::TbcAdventure);
+        }
+    }
 
     uint32 botTarget = 0;
     if (LoadSetting(BOT_TARGET_KEY, raw) && ParseU32(raw, botTarget))
@@ -292,36 +313,37 @@ public:
     {
         static ChatCommandTable sub =
         {
-            { "status",        HandleStatus,       SEC_GAMEMASTER, Console::No },
-            { "health",        HandleHealth,       SEC_GAMEMASTER, Console::No },
-            { "xp",            HandleXp,           SEC_GAMEMASTER, Console::No },
-            { "rep",           HandleRep,          SEC_GAMEMASTER, Console::No },
-            { "gold",          HandleGoldRate,     SEC_GAMEMASTER, Console::No },
-            { "givegold",      HandleGiveGold,     SEC_GAMEMASTER, Console::No },
-            { "reset",         HandleResetRates,   SEC_GAMEMASTER, Console::No },
-            { "preset",        HandlePreset,       SEC_GAMEMASTER, Console::No },
-            { "starter",       HandleStarter,      SEC_GAMEMASTER, Console::No },
-            { "tbcraidready",  HandleTbcRaidReady, SEC_GAMEMASTER, Console::No },
-            { "progression",   HandleProgression,  SEC_GAMEMASTER, Console::No },
-            { "releasewotlk",  HandleReleaseWotlk, SEC_GAMEMASTER, Console::No },
-            { "announce",      HandleAnnounce,     SEC_GAMEMASTER, Console::No },
-            { "repair",        HandleRepair,       SEC_GAMEMASTER, Console::No },
-            { "restore",       HandleRestore,      SEC_GAMEMASTER, Console::No },
-            { "maxskills",     HandleMaxSkills,    SEC_GAMEMASTER, Console::No },
-            { "consumables",   HandleConsumables,  SEC_GAMEMASTER, Console::No },
-            { "resettalents",  HandleResetTalents, SEC_GAMEMASTER, Console::No },
-            { "regear",        HandleRegear,       SEC_GAMEMASTER, Console::No },
-            { "bots",          HandleBots,         SEC_GAMEMASTER, Console::No },
-            { "botactivity",   HandleBotActivity,  SEC_GAMEMASTER, Console::No },
-            { "raidnight",     HandleRaidNight,    SEC_GAMEMASTER, Console::No },
-            { "groupprep",     HandleGroupPrep,    SEC_GAMEMASTER, Console::No },
-            { "groupsummon",   HandleGroupSummon,  SEC_GAMEMASTER, Console::No },
-            { "tp",            HandleTeleport,     SEC_GAMEMASTER, Console::No },
-            { "goto",          HandleGoto,         SEC_GAMEMASTER, Console::No },
-            { "summon",        HandleSummon,       SEC_GAMEMASTER, Console::No },
-            { "save",          HandleSave,         SEC_GAMEMASTER, Console::No },
-            { "gosaved",       HandleGoSaved,      SEC_GAMEMASTER, Console::No },
-            { "saved",         HandleSaved,        SEC_GAMEMASTER, Console::No },
+            { "status",          HandleStatus,          SEC_GAMEMASTER, Console::No },
+            { "health",          HandleHealth,          SEC_GAMEMASTER, Console::No },
+            { "xp",              HandleXp,              SEC_GAMEMASTER, Console::No },
+            { "rep",             HandleRep,             SEC_GAMEMASTER, Console::No },
+            { "gold",            HandleGoldRate,        SEC_GAMEMASTER, Console::No },
+            { "givegold",        HandleGiveGold,        SEC_GAMEMASTER, Console::No },
+            { "reset",           HandleResetRates,      SEC_GAMEMASTER, Console::No },
+            { "preset",          HandlePreset,          SEC_GAMEMASTER, Console::No },
+            { "starter",         HandleStarter,         SEC_GAMEMASTER, Console::No },
+            { "tbcraidready",    HandleTbcRaidReady,    SEC_GAMEMASTER, Console::No },
+            { "wotlkraidready",  HandleWotlkRaidReady,  SEC_GAMEMASTER, Console::No },
+            { "progression",     HandleProgression,     SEC_GAMEMASTER, Console::No },
+            { "releasewotlk",    HandleReleaseWotlk,    SEC_GAMEMASTER, Console::No },
+            { "announce",        HandleAnnounce,        SEC_GAMEMASTER, Console::No },
+            { "repair",          HandleRepair,          SEC_GAMEMASTER, Console::No },
+            { "restore",         HandleRestore,         SEC_GAMEMASTER, Console::No },
+            { "maxskills",       HandleMaxSkills,       SEC_GAMEMASTER, Console::No },
+            { "consumables",     HandleConsumables,     SEC_GAMEMASTER, Console::No },
+            { "resettalents",    HandleResetTalents,    SEC_GAMEMASTER, Console::No },
+            { "regear",          HandleRegear,          SEC_GAMEMASTER, Console::No },
+            { "bots",            HandleBots,            SEC_GAMEMASTER, Console::No },
+            { "botactivity",     HandleBotActivity,     SEC_GAMEMASTER, Console::No },
+            { "raidnight",       HandleRaidNight,       SEC_GAMEMASTER, Console::No },
+            { "groupprep",       HandleGroupPrep,       SEC_GAMEMASTER, Console::No },
+            { "groupsummon",     HandleGroupSummon,     SEC_GAMEMASTER, Console::No },
+            { "tp",              HandleTeleport,        SEC_GAMEMASTER, Console::No },
+            { "goto",            HandleGoto,            SEC_GAMEMASTER, Console::No },
+            { "summon",          HandleSummon,          SEC_GAMEMASTER, Console::No },
+            { "save",            HandleSave,            SEC_GAMEMASTER, Console::No },
+            { "gosaved",         HandleGoSaved,         SEC_GAMEMASTER, Console::No },
+            { "saved",           HandleSaved,           SEC_GAMEMASTER, Console::No },
         };
         static ChatCommandTable root =
         {
@@ -474,15 +496,29 @@ private:
     {
         if (!EnsureEnabled(handler))
             return true;
+
         std::string const mode = Lower(std::string(rawMode));
         AdventureStartProfile profile;
         if (mode == "tbc" || mode == "60" || mode == "adventure")
+        {
             profile = AdventureStartProfile::TbcAdventure;
+        }
         else if (mode == "tbcraid" || mode == "raid" || mode == "raidready" || mode == "70")
+        {
             profile = AdventureStartProfile::TbcRaidReady;
+        }
+        else if (mode == "wotlkraid" || mode == "wrathraid" || mode == "80")
+        {
+            if (!AdminPanelExpansion::IsWotlkReleased())
+            {
+                handler->PSendSysMessage("{} WotLK raid-ready start is locked until WotLK is released.", PREFIX);
+                return true;
+            }
+            profile = AdventureStartProfile::WotlkRaidReady;
+        }
         else
         {
-            handler->PSendSysMessage("{} starter must be 'tbc' or 'tbcraid'.", PREFIX);
+            handler->PSendSysMessage("{} starter must be 'tbc', 'tbcraid' or (after release) 'wotlkraid'.", PREFIX);
             return true;
         }
 
@@ -509,7 +545,33 @@ private:
         }
 
         handler->PSendSysMessage(
-            "{} TBC raid-ready applied: level 70, stage 8, Shattrath, max TBC riding and starter supplies. Spend at least 5 talent points to trigger the spec-aware ilvl-115 final set.",
+            "{} TBC raid-ready applied: level 70, stage 8, Shattrath, max TBC riding and starter supplies. Spec-aware ilvl-115 gear applies immediately when a spec is identifiable.",
+            PREFIX);
+        return true;
+    }
+
+    static bool HandleWotlkRaidReady(ChatHandler* handler)
+    {
+        if (!EnsureEnabled(handler))
+            return true;
+        if (!AdminPanelExpansion::IsWotlkReleased())
+        {
+            handler->PSendSysMessage("{} WotLK raid-ready is locked until you release Wrath of the Lich King.", PREFIX);
+            return true;
+        }
+
+        Player* player = CommandPlayer(handler);
+        if (!player)
+            return true;
+
+        if (!AdventureStartControl::MakeWotlkRaidReady(player))
+        {
+            handler->PSendSysMessage("{} Could not apply the WotLK raid-ready profile.", PREFIX);
+            return true;
+        }
+
+        handler->PSendSysMessage(
+            "{} WotLK raid-ready applied: level 80, stage 13, Dalaran, max riding, glyph/mount/supply bootstrap and spec-aware ilvl-200 pre-Naxx gear.",
             PREFIX);
         return true;
     }
@@ -556,7 +618,7 @@ private:
         SaveSetting(WOTLK_KEY, "1");
         sWorldSessionMgr->SendServerMessage(
             SERVER_MSG_STRING,
-            "Wrath of the Lich King has been released! Northrend and level 80 progression are now available.");
+            "Wrath of the Lich King has been released! Northrend, level 80 progression and WotLK raid-ready controls are now available.");
         handler->PSendSysMessage("{} WOTLK RELEASED. The expansion gate is permanently saved as open.", PREFIX);
         return true;
     }
@@ -616,7 +678,7 @@ private:
     {
         if (!EnsureEnabled(handler)) return true;
         AdminPanelGameplay::RegearTbcPreRaid(CommandPlayer(handler));
-        handler->PSendSysMessage("{} Regeared for the current spec at the TBC pre-raid ilvl-115 target.", PREFIX);
+        handler->PSendSysMessage("{} Regeared current character at the TBC pre-raid ilvl-115 target.", PREFIX);
         return true;
     }
 
@@ -810,7 +872,7 @@ private:
 
 void Addmod_admin_panelScripts()
 {
-    LOG_INFO("server.loading", "[AdminPanel] Registering TBC-first server control center.");
+    LOG_INFO("server.loading", "[AdminPanel] Registering expansion-aware server control center.");
     new AdminPanelWorldScript();
     new AdminPanelCommandScript();
 }
