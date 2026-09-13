@@ -59,9 +59,9 @@ bool GrantInitial(Player* player)
     if (player->GetSkillValue(SKILL_RIDING) < 150)
         player->SetSkill(SKILL_RIDING, 0, 150, 150);
 
-    // A fresh level-60 character should not arrive at the Dark Portal naked. This first set is
-    // intentionally only green/late-Vanilla quality; once the player commits to a talent tree we
-    // replace it with the spec-aware rare set below. applyFinishers=false avoids bot-only enchants.
+    // A fresh level-60 character should not arrive at the Dark Portal naked while we wait for the
+    // custom EraTalents tree to reveal the intended spec. This temporary set is deliberately modest;
+    // after the player commits enough points it is replaced by a full Vanilla-raider epic set.
     if (g_AdventureStartBasicGear)
     {
         PlayerbotFactory::AutoGear(
@@ -110,9 +110,13 @@ bool TryGiveSpecStarterGear(Player* player)
 
     uint8 const specTab = AiFactory::GetPlayerSpecTab(player);
 
+    // Model the character as a successful late-Vanilla raider crossing into Outland rather than a
+    // fresh 60 in dungeon blues. The era-aware Playerbots scorer selects a complete spec-appropriate
+    // epic set around the configured ilvl. applyFinishers=false deliberately avoids handing out the
+    // bot factory's automatic enchants/gems on top of the already-powerful starting equipment.
     PlayerbotFactory::AutoGear(
         player,
-        ITEM_QUALITY_RARE,
+        ITEM_QUALITY_EPIC,
         g_AdventureStartGearItemLevel,
         false,
         false,
@@ -123,7 +127,7 @@ bool TryGiveSpecStarterGear(Player* player)
 
     LOG_INFO(
         "server.loading",
-        "[AdventureStart] Spec-aware starter gear granted to {} (specTab={}, spentTalents={}, targetIlvl={})",
+        "[AdventureStart] Vanilla-raider epic starter gear granted to {} (specTab={}, spentTalents={}, targetIlvl={})",
         player->GetName(),
         specTab,
         spent,
