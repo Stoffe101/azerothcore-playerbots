@@ -26,6 +26,52 @@ bool IsTbcRaidReady(AdventureStartProfile profile)
 {
     return profile == AdventureStartProfile::TbcRaidReady;
 }
+
+bool IsWotlkRaidReady(AdventureStartProfile profile)
+{
+    return profile == AdventureStartProfile::WotlkRaidReady;
+}
+
+bool IsRaidReady(AdventureStartProfile profile)
+{
+    return IsTbcRaidReady(profile) || IsWotlkRaidReady(profile);
+}
+
+AdventureStartProfile StoredProfile(uint8 value)
+{
+    if (value == static_cast<uint8>(AdventureStartProfile::WotlkRaidReady))
+        return AdventureStartProfile::WotlkRaidReady;
+    if (value == static_cast<uint8>(AdventureStartProfile::TbcRaidReady))
+        return AdventureStartProfile::TbcRaidReady;
+    return AdventureStartProfile::TbcAdventure;
+}
+
+uint32 StartingGold(AdventureStartProfile profile)
+{
+    if (IsWotlkRaidReady(profile))
+        return g_AdventureStartWotlkRaidReadyStartingGold;
+    if (IsTbcRaidReady(profile))
+        return g_AdventureStartTbcRaidReadyStartingGold;
+    return g_AdventureStartStartingGold;
+}
+
+uint32 BasicItemLevel(AdventureStartProfile profile)
+{
+    if (IsWotlkRaidReady(profile))
+        return g_AdventureStartWotlkRaidReadyBasicGearItemLevel;
+    if (IsTbcRaidReady(profile))
+        return g_AdventureStartTbcRaidReadyBasicGearItemLevel;
+    return g_AdventureStartBasicGearItemLevel;
+}
+
+uint32 FinalItemLevel(AdventureStartProfile profile)
+{
+    if (IsWotlkRaidReady(profile))
+        return g_AdventureStartWotlkRaidReadyGearItemLevel;
+    if (IsTbcRaidReady(profile))
+        return g_AdventureStartTbcRaidReadyGearItemLevel;
+    return g_AdventureStartGearItemLevel;
+}
 }
 
 namespace AdventureStartKit
@@ -46,9 +92,10 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
         return true;
     }
 
-    bool const raidReady = IsTbcRaidReady(profile);
-    uint32 const startingGold = raidReady ? g_AdventureStartTbcRaidReadyStartingGold : g_AdventureStartStartingGold;
-    uint32 const basicIlvl = raidReady ? g_AdventureStartTbcRaidReadyBasicGearItemLevel : g_AdventureStartBasicGearItemLevel;
+    bool const raidReady = IsRaidReady(profile);
+    bool const wotlkRaidReady = IsWotlkRaidReady(profile);
+    uint32 const startingGold = StartingGold(profile);
+    uint32 const basicIlvl = BasicItemLevel(profile);
 
     // Keep PlayerbotFactory isolated in this translation unit. AdventureStartControl.cpp includes
     // IndividualProgression.h, while PlayerbotFactory -> PlayerbotAI.h defines a conflicting
@@ -61,16 +108,21 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
     factory.InitAvailableSpells();
     factory.InitBags(false);
     factory.InitAmmo();
+    factory.InitReagents();
     factory.InitPotions();
     factory.InitFood();
 
     if (raidReady)
     {
-        // A deliberate max-level TBC shortcut should actually feel ready to play. Give max TBC-era
-        // riding and let the maintained Playerbots mount bootstrap choose usable ground/flying mounts.
+        // Max riding plus a maintained mount bootstrap means the explicit raid-ready shortcuts are
+        // actually ready to play rather than requiring a trainer/mount scavenger hunt first.
         if (player->GetSkillValue(SKILL_RIDING) < 300)
             player->SetSkill(SKILL_RIDING, 0, 300, 300);
         factory.InitMounts();
+
+        // Glyphs are a Wrath system. Only the post-release WotLK shortcut receives them.
+        if (wotlkRaidReady)
+            factory.InitGlyphs(false);
     }
     else if (player->GetSkillValue(SKILL_RIDING) < 150)
     {
@@ -80,8 +132,8 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
     }
 
     // Temporary gear prevents naked boosted characters while we wait for enough talent investment
-    // to identify their intended role. The adventure path starts in replaceable greens; the level-70
-    // shortcut starts in heroic-quality blues and then receives the spec-aware pre-raid epic pass.
+    // to identify their intended role. Both raid-ready modes start in good blues before the final
+    // spec-aware epic pass.
     if (g_AdventureStartBasicGear)
     {
         PlayerbotFactory::AutoGear(
@@ -90,7 +142,7 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
             basicIlvl,
             false,
             false,
-            false);
+            raidReady);
     }
 
     uint32 const targetCopper = startingGold * COPPER_PER_GOLD;
@@ -129,24 +181,19 @@ bool TryGiveSpecStarterGear(Player* player)
     if (spent < g_AdventureStartGearMinTalentPoints)
         return false;
 
-    AdventureStartProfile const profile = state.starterProfile == static_cast<uint8>(AdventureStartProfile::TbcRaidReady)
-        ? AdventureStartProfile::TbcRaidReady
-        : AdventureStartProfile::TbcAdventure;
-    uint32 const targetIlvl = IsTbcRaidReady(profile)
-        ? g_AdventureStartTbcRaidReadyGearItemLevel
-        : g_AdventureStartGearItemLevel;
+    AdventureStartProfile const profile = StoredProfile(state.starterProfile);
+    uint32 const targetIlvl = FinalItemLevel(profile);
     uint8 const specTab = AiFactory::GetPlayerSpecTab(player);
 
-    // Adventure mode gets late-Vanilla raid epics (AQ40/Naxx40 power band). TBC raid-ready gets a
-    // spec-scored ilvl-115 pre-raid set suitable for starting Kara/Gruul/Mag without skipping the
-    // TBC raid ladder itself.
+    // Adventure mode gets late-Vanilla raid epics. TBC raid-ready gets a pre-Kara ilvl-115 set.
+    // WotLK raid-ready gets ilvl-200 epics, positioning Naxx as the first meaningful Wrath raid.
     PlayerbotFactory::AutoGear(
         player,
         ITEM_QUALITY_EPIC,
         targetIlvl,
         false,
         false,
-        IsTbcRaidReady(profile));
+        IsRaidReady(profile));
 
     AdventureProgressionStore::MarkStarterGearGranted(guid, specTab);
     player->SaveToDB(false, false);
