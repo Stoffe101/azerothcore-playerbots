@@ -7,6 +7,7 @@
 #include "PBChatterLore.h"
 #include "PBChatterAmbient.h"
 #include "PBChatterAmbientPrompt.h"   // StyleExamples() — shared few-shot style block
+#include "PBAIGuildServices.h"
 #include "Player.h"
 #include "Group.h"
 #include "Guild.h"
@@ -128,6 +129,18 @@ bool PBChatterObserver::OnPlayerCanUseChat(Player* player, uint32 type, uint32 l
 
 bool PBChatterObserver::OnPlayerCanUseChat(Player* player, uint32 /*type*/, uint32 lang, std::string& msg, Guild* guild)
 {
+    // Service commands intentionally use a prefix that the normal chatter classifier treats as
+    // control traffic. Handle them first, and only for real client-controlled characters. The
+    // original guild line is still allowed through to the client, but it does not enter ambient
+    // memory or wake a conversational responder.
+    if (guild && lang != LANG_ADDON && PBChatterClassifier::IsRealPlayerSender(player) &&
+        PBAIGuildServices::HandleGuildMessage(player, guild, msg))
+        return true;
+
+    if (guild && Eligible(player, lang, msg))
+        for (Player* bot : PBChatterClassifier::ResolveGuildTargets(player, guild, msg))
+            Enqueue(bot, player, PBChatChannel::Guild, msg);
+
     if (guild && BufferEligible(player, lang))
         PBChatterAmbient::OnPlayerLine(AMB_GUILD, guild->GetId(),
                                        player->GetGUID().GetCounter(), player->GetName(), msg);
