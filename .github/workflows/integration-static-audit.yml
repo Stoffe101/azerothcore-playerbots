@@ -19,6 +19,14 @@ jobs:
       - name: Checkout integration repository
         uses: actions/checkout@v4
 
+      - name: Validate setup and updater bootstrap scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n setup.sh
+          bash -n update.sh
+          SETUP_PREFLIGHT_ONLY=1 bash setup.sh
+
       - name: Clone pinned AzerothCore tree
         shell: bash
         run: |
