@@ -68,10 +68,11 @@ AdventureStart.WotlkRaidReady.Teleport.O = 1.64
 # Guild Group Director
 ########################################
 
-# Turns guild activity requests into balanced AI-assisted five-player groups.
+# Turns guild activity requests into balanced AI-assisted five-player groups. Thirty seconds gives
+# cold-login bots time to join on a busy persistent world without making normal requests feel stuck.
 GuildDirector.Enable = 1
 GuildDirector.AutoTravel = 1
-GuildDirector.ReadyTimeoutMs = 15000
+GuildDirector.ReadyTimeoutMs = 30000
 
 ########################################
 # Encounter lifecycle / wipe recovery
@@ -82,9 +83,10 @@ WipeRecovery.Enable = 1
 WipeRecovery.DelayMs = 5000
 WipeRecovery.ResurrectHumans = 1
 
-# Rebuild the party after a wipe without initiating a pull: repair, refill, rebuff,
-# restore warlock utility and choose suitable pets.
+# Rebuild the party after a wipe without initiating a pull: paid repairs, standard Playerbots
+# food/potion/ammo/reagent refills, rebuffs, warlock utility and suitable pets.
 AutoPrep.Enable = 1
+AutoPrep.RefillConsumables = 1
 AutoPrep.WarlockSupport = 1
 AutoPrep.SmartPets = 1
 
