@@ -25,6 +25,9 @@ bool GiveGold(Player* player, uint32 gold);
 void Repair(Player* player);
 void Restore(Player* player);
 void MaxSkills(Player* player);
+// Maxes the skill value/rank of professions the character already knows. It deliberately does
+// not learn every profession or every recipe, so it cannot blow past the normal two-primary limit.
+uint32 MaxProfessions(Player* player);
 void RefreshConsumables(Player* player);
 void ResetEraTalents(Player* player);
 void RegearTbcPreRaid(Player* player);
