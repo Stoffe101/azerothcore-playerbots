@@ -13,7 +13,9 @@
 #include "WorldSession.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
+#include <chrono>
 #include <cstdint>
 #include <mutex>
 #include <sstream>
@@ -28,6 +30,7 @@ constexpr uint32 COPPER_PER_GOLD = 10000;
 constexpr uint32 MAX_SERVICE_STACKS = 12;
 constexpr uint32 MAX_DONATION_GOLD = 100000;
 std::mutex g_serviceMutex;
+std::atomic<uint32> g_requestSequence{0};
 
 struct PendingRequest
 {
@@ -40,6 +43,17 @@ struct PendingRequest
     uint32 itemCount = 0;
     uint64 quotedCopper = 0;
 };
+
+uint64 NextRequestId()
+{
+    // Do not rely on LAST_INSERT_ID() across pooled DB connections. Generate a durable key on the
+    // world process instead: millisecond timestamp + a 16-bit local sequence is ample for this
+    // human-driven service surface and remains stable across asynchronous/direct DB helpers.
+    uint64 nowMs = static_cast<uint64>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count());
+    uint64 sequence = static_cast<uint64>(g_requestSequence.fetch_add(1, std::memory_order_relaxed) & 0xFFFFu);
+    return (nowMs << 16) | sequence;
+}
 
 std::string Lower(std::string value)
 {
@@ -98,6 +112,15 @@ void CreditBank(uint32 guildId, uint64 copper, bool earned)
         copper,
         earned ? copper : 0,
         guildId);
+}
+
+void RefundBank(uint32 guildId, uint64 copper)
+{
+    EnsureEconomy(guildId);
+    CharacterDatabase.DirectExecute(
+        "UPDATE mod_ai_guild_economy SET money_copper = money_copper + {}, "
+        "spent_copper = GREATEST(0, spent_copper - {}), updated_at = CURRENT_TIMESTAMP WHERE guild_id = {}",
+        copper, copper, guildId);
 }
 
 bool DebitBank(uint32 guildId, uint64 copper)
@@ -195,7 +218,7 @@ bool SendItemMail(uint32 senderGuid, uint32 targetGuid, ItemTemplate const* prot
         return false;
 
     MailSender sender(MAIL_NORMAL, senderGuid, MAIL_STATIONERY_GM);
-    draft.SendMailTo(trans, MailReceiver(nullptr, targetGuid), sender);
+    draft.SendMailTo(trans, MailReceiver(targetGuid), sender);
     CharacterDatabase.CommitTransaction(trans);
     return true;
 }
@@ -225,15 +248,14 @@ uint64 ServicePrice(ItemTemplate const* proto, uint32 count, bool craft)
 uint64 CreateRequest(uint32 guildId, uint32 requesterGuid, uint32 targetGuid, std::string type,
                      uint32 itemId, uint32 count, uint64 quote)
 {
+    uint64 const requestId = NextRequestId();
     CharacterDatabase.EscapeString(type);
     CharacterDatabase.DirectExecute(
         "INSERT INTO mod_ai_guild_request "
-        "(guild_id, requester_guid, target_guid, request_type, item_id, item_count, quoted_copper, status) "
-        "VALUES ({}, {}, {}, '{}', {}, {}, {}, 'queued')",
-        guildId, requesterGuid, targetGuid, type, itemId, count, quote);
-
-    QueryResult result = CharacterDatabase.Query("SELECT LAST_INSERT_ID()");
-    return result ? result->Fetch()[0].Get<uint64>() : 0;
+        "(request_id, guild_id, requester_guid, target_guid, request_type, item_id, item_count, quoted_copper, status) "
+        "VALUES ({}, {}, {}, {}, '{}', {}, {}, {}, 'queued')",
+        requestId, guildId, requesterGuid, targetGuid, type, itemId, count, quote);
+    return requestId;
 }
 
 void SetRequestStatus(uint64 requestId, char const* status)
@@ -287,7 +309,7 @@ bool FulfillRequest(PendingRequest const& request)
     if (!SendItemMail(request.requesterGuid, request.targetGuid, proto, count,
                       "AI Guild Service", body))
     {
-        CreditBank(request.guildId, request.quotedCopper, false);
+        RefundBank(request.guildId, request.quotedCopper);
         return false;
     }
 
@@ -304,7 +326,7 @@ uint32 ProcessQueued(uint32 guildId, uint32 limit = 20)
     if (!result)
         return 0;
 
-    uint32 fulfilled = 0;
+    uint32 processed = 0;
     do
     {
         Field* f = result->Fetch();
@@ -318,11 +340,11 @@ uint32 ProcessQueued(uint32 guildId, uint32 limit = 20)
         request.itemCount = f[6].Get<uint32>();
         request.quotedCopper = f[7].Get<uint64>();
         if (FulfillRequest(request))
-            ++fulfilled;
+            ++processed;
         else
             break; // preserve FIFO when the treasury cannot afford the next request
     } while (result->NextRow());
-    return fulfilled;
+    return processed;
 }
 
 uint32 FindGuildMemberGuid(uint32 guildId, std::string name)
@@ -392,7 +414,7 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
         uint32 const processed = ProcessQueued(guildId);
         Reply(player, "[AI Guild] Treasury: " + MoneyText(BankBalance(guildId)) + ". Vault: " +
             std::to_string(items) + " items across " + std::to_string(lines) + " item types. " +
-            std::to_string(processed) + " queued request(s) fulfilled now.");
+            std::to_string(processed) + " queued request(s) processed now.");
         return true;
     }
 
@@ -421,93 +443,7 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
         player->SaveToDB(false, false);
         uint32 const processed = ProcessQueued(guildId);
         Reply(player, "[AI Guild] Donated " + std::to_string(gold) + "g. Treasury is now " +
-            MoneyText(BankBalance(guildId)) + ". Fulfilled " + std::to_string(processed) + " queued request(s).");
-        return true;
-    }
-
-    std::string rawItem, rawCount;
-    input >> rawItem;
-    if (rawItem.empty())
-    {
-        ShowHelp(player);
-        return true;
-    }
-    uint32 itemId = 0;
-    if (!ParseU32(rawItem, itemId))
-    {
-        Reply(player, "[AI Guild] Item must be a numeric item ID.");
-        return true;
-    }
-    ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
-    if (!proto)
-    {
-        Reply(player, "[AI Guild] Unknown item ID.");
-        return true;
-    }
-
-    input >> rawCount;
-    uint32 count = 1;
-    if (!rawCount.empty() && !ParseU32(rawCount, count))
-    {
-        Reply(player, "[AI Guild] Count must be a positive number.");
-        return true;
-    }
-    count = ClampServiceCount(proto, count);
-    if (!count)
-    {
-        Reply(player, "[AI Guild] Invalid count.");
-        return true;
-    }
-
-    if (command == "!deposit")
-    {
-        if (player->GetItemCount(itemId, false) < count)
-        {
-            Reply(player, "[AI Guild] You do not have enough of that item.");
-            return true;
-        }
-        player->DestroyItemCount(itemId, count, true, false);
-        AddStock(guildId, itemId, count);
-        uint32 const processed = ProcessQueued(guildId);
-        Reply(player, "[AI Guild] Deposited " + std::to_string(count) + "x " + proto->Name1 +
-            ". Vault now has " + std::to_string(StockCount(guildId, itemId)) + ". Fulfilled " +
-            std::to_string(processed) + " queued request(s).");
-        return true;
-    }
-
-    if (command == "!withdraw" || command == "!mail")
-    {
-        uint32 targetGuid = player->GetGUID().GetCounter();
-        std::string targetName = player->GetName();
-        if (command == "!mail")
-        {
-            input >> targetName;
-            if (targetName.empty())
-            {
-                Reply(player, "[AI Guild] Usage: !mail <itemId> [count] <guildmate>.");
-                return true;
-            }
-            targetGuid = FindGuildMemberGuid(guildId, targetName);
-            if (!targetGuid)
-            {
-                Reply(player, "[AI Guild] That character is not a member of this guild.");
-                return true;
-            }
-        }
-
-        if (!RemoveStock(guildId, itemId, count))
-        {
-            Reply(player, "[AI Guild] The vault does not have enough of that item.");
-            return true;
-        }
-        if (!SendItemMail(player->GetGUID().GetCounter(), targetGuid, proto, count,
-                          "Guild Vault Delivery", "Requested from the persistent AI guild vault."))
-        {
-            AddStock(guildId, itemId, count);
-            Reply(player, "[AI Guild] Mail creation failed; vault stock was restored.");
-            return true;
-        }
-        Reply(player, "[AI Guild] Sent " + std::to_string(count) + "x " + proto->Name1 + " to " + targetName + ".");
+            MoneyText(BankBalance(guildId)) + ". Processed " + std::to_string(processed) + " queued request(s).");
         return true;
     }
 
@@ -529,6 +465,134 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
                 " item=" + std::to_string(f[2].Get<uint32>()) + " x" + std::to_string(f[3].Get<uint32>()) +
                 " quote=" + MoneyText(f[4].Get<uint64>()) + " status=" + f[5].Get<std::string>());
         } while (requests->NextRow());
+        return true;
+    }
+
+    std::string rawItem;
+    input >> rawItem;
+    if (rawItem.empty())
+    {
+        ShowHelp(player);
+        return true;
+    }
+    uint32 itemId = 0;
+    if (!ParseU32(rawItem, itemId))
+    {
+        Reply(player, "[AI Guild] Item must be a numeric item ID.");
+        return true;
+    }
+    ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
+    if (!proto)
+    {
+        Reply(player, "[AI Guild] Unknown item ID.");
+        return true;
+    }
+
+    uint32 count = 1;
+    std::string targetName;
+    if (command == "!mail")
+    {
+        std::string token;
+        input >> token;
+        if (token.empty())
+        {
+            Reply(player, "[AI Guild] Usage: !mail <itemId> [count] <guildmate>.");
+            return true;
+        }
+
+        uint32 parsedCount = 0;
+        if (ParseU32(token, parsedCount))
+        {
+            count = parsedCount;
+            input >> targetName;
+        }
+        else
+        {
+            targetName = token;
+        }
+
+        if (targetName.empty())
+        {
+            Reply(player, "[AI Guild] Usage: !mail <itemId> [count] <guildmate>.");
+            return true;
+        }
+    }
+    else
+    {
+        std::string rawCount;
+        input >> rawCount;
+        if (!rawCount.empty() && !ParseU32(rawCount, count))
+        {
+            Reply(player, "[AI Guild] Count must be a positive number.");
+            return true;
+        }
+    }
+
+    count = ClampServiceCount(proto, count);
+    if (!count)
+    {
+        Reply(player, "[AI Guild] Invalid count.");
+        return true;
+    }
+
+    if (command == "!deposit")
+    {
+        if (!IsServiceSafe(proto))
+        {
+            Reply(player, "[AI Guild] The guild vault refuses BoP, quest/key or above-epic items.");
+            return true;
+        }
+        if (player->GetItemCount(itemId, false) < count)
+        {
+            Reply(player, "[AI Guild] You do not have enough of that item.");
+            return true;
+        }
+        player->DestroyItemCount(itemId, count, true, false);
+        player->SaveToDB(false, false);
+        AddStock(guildId, itemId, count);
+        uint32 const processed = ProcessQueued(guildId);
+        Reply(player, "[AI Guild] Deposited " + std::to_string(count) + "x " + proto->Name1 +
+            ". Vault now has " + std::to_string(StockCount(guildId, itemId)) + ". Processed " +
+            std::to_string(processed) + " queued request(s).");
+        return true;
+    }
+
+    if (command == "!withdraw" || command == "!mail")
+    {
+        if (!IsServiceSafe(proto))
+        {
+            Reply(player, "[AI Guild] The guild vault refuses BoP, quest/key or above-epic items.");
+            return true;
+        }
+
+        uint32 targetGuid = player->GetGUID().GetCounter();
+        if (command == "!mail")
+        {
+            targetGuid = FindGuildMemberGuid(guildId, targetName);
+            if (!targetGuid)
+            {
+                Reply(player, "[AI Guild] That character is not a member of this guild.");
+                return true;
+            }
+        }
+        else
+        {
+            targetName = player->GetName();
+        }
+
+        if (!RemoveStock(guildId, itemId, count))
+        {
+            Reply(player, "[AI Guild] The vault does not have enough of that item.");
+            return true;
+        }
+        if (!SendItemMail(player->GetGUID().GetCounter(), targetGuid, proto, count,
+                          "Guild Vault Delivery", "Requested from the persistent AI guild vault."))
+        {
+            AddStock(guildId, itemId, count);
+            Reply(player, "[AI Guild] Mail creation failed; vault stock was restored.");
+            return true;
+        }
+        Reply(player, "[AI Guild] Sent " + std::to_string(count) + "x " + proto->Name1 + " to " + targetName + ".");
         return true;
     }
 
