@@ -50,6 +50,7 @@ void PrepareOne(Player* player)
     RestoreUnit(player->GetPet());
 
     PlayerbotFactory factory(player, player->GetLevel());
+    factory.InitBags(false);
     factory.InitAmmo();
     factory.InitPotions();
     factory.InitFood();
@@ -91,15 +92,32 @@ void SetBotTarget(uint32 target, uint32 batch)
     target = std::min(target, MAX_BOT_TARGET);
     batch = std::max<uint32>(1, std::min<uint32>(batch ? batch : DEFAULT_BOT_BATCH, 50));
 
-    // Keep the manager enabled even at target=0 so it can actively drain existing random bots.
-    // The deliberately small batch is the fix for the old 150-bot login storm that starved the
-    // character DB and made real-player login hang for minutes.
+    // Runtime population control has to enable BOTH switches. Setting only randomBotAutologin is
+    // not enough because RandomPlayerbotMgr::UpdateAIInternal also exits when enabled == false.
+    sPlayerbotAIConfig.enabled = true;
     sPlayerbotAIConfig.randomBotAutologin = true;
     sPlayerbotAIConfig.minRandomBots = target;
     sPlayerbotAIConfig.maxRandomBots = target;
     sPlayerbotAIConfig.randomBotsPerInterval = batch;
 
-    LOG_INFO("server.loading", "[AdminPanel] Random-bot target={} batch={}", target, batch);
+    if (target > 0)
+    {
+        // Account-type assignment is calculated from MaxRandomBots. A realm that booted with a
+        // zero target may therefore have every RNDbot account marked unassigned; merely changing
+        // maxRandomBots at runtime leaves the manager with an empty account pool. Rebuild that pool
+        // now, then run one throttled manager tick so the GUI button has an immediate visible effect.
+        sRandomPlayerbotMgr.AssignAccountTypes();
+        sRandomPlayerbotMgr.UpdateAIInternal(0, false);
+    }
+
+    LOG_INFO(
+        "server.loading",
+        "[AdminPanel] Random-bot target={} batch={} enabled={} autologin={} assigned-refresh={}",
+        target,
+        batch,
+        sPlayerbotAIConfig.enabled ? 1 : 0,
+        sPlayerbotAIConfig.randomBotAutologin ? 1 : 0,
+        target > 0 ? 1 : 0);
 }
 
 void SetBotActivity(float percent)
@@ -153,6 +171,7 @@ void RefreshConsumables(Player* player)
     if (!player)
         return;
     PlayerbotFactory factory(player, player->GetLevel());
+    factory.InitBags(false);
     factory.InitAmmo();
     factory.InitPotions();
     factory.InitFood();
@@ -181,12 +200,17 @@ void RegearTbcPreRaid(Player* player)
 {
     if (!player)
         return;
+
+    // Make room first, then directly replace the old set. secondChance=true avoids the factory
+    // needing to autostore every equipped item into the backpack before it can equip the new set.
+    PlayerbotFactory factory(player, player->GetLevel());
+    factory.InitBags(false);
     PlayerbotFactory::AutoGear(
         player,
         ITEM_QUALITY_EPIC,
         TBC_PRE_RAID_ILVL,
         false,
-        false,
+        true,
         true);
     player->SaveToDB(false, false);
 }
