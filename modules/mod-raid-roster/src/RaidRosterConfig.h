@@ -74,6 +74,9 @@ extern uint32 g_BadLuckUpgradeWindowSeconds;
 extern bool g_AdventureEconomyEnable;
 extern uint32 g_AdventureEconomyDungeonBossFirstKillGold;
 extern uint32 g_AdventureEconomyRaidBossFirstKillGold;
+extern uint32 g_AdventureEconomyDungeonBossRepeatGold;
+extern uint32 g_AdventureEconomyRaidBossRepeatGold;
+extern uint32 g_AdventureEconomyDailyRepeatCapGold;
 
 void RaidRosterLoadConfig();
 #endif
