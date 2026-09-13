@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: Azeroth Admin Panel
+## Notes: GM-only quality-of-life controls for this AzerothCore server.
+## Author: Skrra server project
+## Version: 1.0.0
+## SavedVariables: AzerothAdminPanelDB
+
+AdminPanel.lua
