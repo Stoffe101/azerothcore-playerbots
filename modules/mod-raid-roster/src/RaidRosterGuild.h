@@ -30,4 +30,8 @@ struct SyncResult
 SyncResult SyncRosterToOwnerGuild(Player* owner, std::vector<RaidRosterRow> const& rows);
 }
 
+// Registers migration/sync hooks for existing rosters when their human owner logs in, creates a
+// guild, or joins one after the roster already existed.
+void AddRaidRosterGuildScripts();
+
 #endif
