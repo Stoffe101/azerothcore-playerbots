@@ -18,8 +18,6 @@ constexpr uint32 STARTER_GEAR_POLL_MS = 2000;
 
 bool IsPlayerbot(Player* player)
 {
-    // mod-playerbots marks bot sessions before the playerbot AI object itself is attached.
-    // Using the session flag also keeps PlayerbotAI.h out of this translation unit.
     return !player || !player->GetSession() || player->GetSession()->IsBot();
 }
 
@@ -75,9 +73,8 @@ public:
         if (!g_AdventureStartEnable || !player || IsPlayerbot(player))
             return;
 
-        // Death Knights are already a WotLK class with their own stage-13 start rules. Do not run
-        // the generic first-login bootstrap on them; the GM raid-ready action can still be used
-        // manually later if desired.
+        // DK availability is controlled by Individual Progression's stage-13 unlock and therefore
+        // remains naturally unavailable while the server-wide WotLK release gate is closed.
         if (IsDeathKnight(player))
         {
             LOG_INFO("server.loading", "[AdventureStart] Skipping Death Knight {}", player->GetName());
@@ -99,13 +96,11 @@ public:
 
         if (!state.starterInitialized)
         {
-            // Recovery for characters created during earlier AdventureStart revisions. Match either
-            // supported profile exactly so normal progressed characters never receive a starter kit.
             AdventureStartProfile recoveredProfile;
             bool matched = false;
-            if (AdventureStartControl::MatchesProfile(player, AdventureStartProfile::RaidReady))
+            if (AdventureStartControl::MatchesProfile(player, AdventureStartProfile::TbcRaidReady))
             {
-                recoveredProfile = AdventureStartProfile::RaidReady;
+                recoveredProfile = AdventureStartProfile::TbcRaidReady;
                 matched = true;
             }
             else if (AdventureStartControl::MatchesProfile(player, AdventureStartProfile::TbcAdventure))
