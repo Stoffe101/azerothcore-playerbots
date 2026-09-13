@@ -15,11 +15,19 @@ struct PopulationStats
     uint32 botTarget = 0;
     uint32 botBatch = 0;
     float botActivity = 0.0f;
+    uint32 botAccounts = 0;
+    uint32 assignedBotAccounts = 0;
+    uint32 requiredBotAccounts = 0;
+    bool botEngineEnabled = false;
+    bool botAutologinEnabled = false;
 };
 
 PopulationStats GetPopulationStats();
 void SetBotTarget(uint32 target, uint32 batch = 10);
 void SetBotActivity(float percent);
+// Rebuilds/extends the RNDbot account+character pool for the current MaxRandomBots and kicks the
+// login manager. Safe to call repeatedly; the upstream factory only creates missing capacity.
+void RepairBotPopulation();
 
 bool GiveGold(Player* player, uint32 gold);
 void Repair(Player* player);
