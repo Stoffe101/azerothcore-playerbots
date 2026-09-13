@@ -20,6 +20,7 @@
 #include <cmath>
 #include <sstream>
 #include <string>
+#include <string_view>
 
 using namespace Acore::ChatCommands;
 
@@ -274,19 +275,19 @@ private:
         return true;
     }
 
-    static bool HandleXp(ChatHandler* handler, std::string value)
+    static bool HandleXp(ChatHandler* handler, std::string_view value)
     {
-        return SetRate(handler, value, XP_KEY, "XP");
+        return SetRate(handler, std::string(value), XP_KEY, "XP");
     }
 
-    static bool HandleRep(ChatHandler* handler, std::string value)
+    static bool HandleRep(ChatHandler* handler, std::string_view value)
     {
-        return SetRate(handler, value, REP_KEY, "Reputation");
+        return SetRate(handler, std::string(value), REP_KEY, "Reputation");
     }
 
-    static bool HandleGold(ChatHandler* handler, std::string value)
+    static bool HandleGold(ChatHandler* handler, std::string_view value)
     {
-        return SetRate(handler, value, GOLD_KEY, "Gold");
+        return SetRate(handler, std::string(value), GOLD_KEY, "Gold");
     }
 
     static bool HandleReset(ChatHandler* handler)
@@ -303,11 +304,11 @@ private:
         return true;
     }
 
-    static bool HandleStarter(ChatHandler* handler, std::string mode)
+    static bool HandleStarter(ChatHandler* handler, std::string_view rawMode)
     {
         if (!EnsureEnabled(handler))
             return true;
-        mode = Lower(std::move(mode));
+        std::string const mode = Lower(std::string(rawMode));
         AdventureStartProfile profile;
         if (mode == "tbc" || mode == "60")
             profile = AdventureStartProfile::TbcAdventure;
@@ -347,12 +348,12 @@ private:
         return true;
     }
 
-    static bool HandleTeleport(ChatHandler* handler, std::string destination)
+    static bool HandleTeleport(ChatHandler* handler, std::string_view destination)
     {
         if (!EnsureEnabled(handler))
             return true;
         Player* player = CommandPlayer(handler);
-        TeleportPoint const* point = FindTeleport(std::move(destination));
+        TeleportPoint const* point = FindTeleport(std::string(destination));
         if (!point)
         {
             handler->PSendSysMessage("{} Unknown destination. Use: darkportal, stormwind, ironforge, orgrimmar, thunderbluff, shattrath, dalaran, argent.", PREFIX);
@@ -363,10 +364,11 @@ private:
         return true;
     }
 
-    static bool HandleGoto(ChatHandler* handler, std::string name)
+    static bool HandleGoto(ChatHandler* handler, std::string_view rawName)
     {
         if (!EnsureEnabled(handler))
             return true;
+        std::string const name(rawName);
         Player* player = CommandPlayer(handler);
         Player* target = ObjectAccessor::FindPlayerByName(name);
         if (!player || !target)
@@ -379,10 +381,11 @@ private:
         return true;
     }
 
-    static bool HandleSummon(ChatHandler* handler, std::string name)
+    static bool HandleSummon(ChatHandler* handler, std::string_view rawName)
     {
         if (!EnsureEnabled(handler))
             return true;
+        std::string const name(rawName);
         Player* player = CommandPlayer(handler);
         Player* target = ObjectAccessor::FindPlayerByName(name);
         if (!player || !target)
@@ -395,14 +398,14 @@ private:
         return true;
     }
 
-    static bool HandleSave(ChatHandler* handler, std::string name)
+    static bool HandleSave(ChatHandler* handler, std::string_view rawName)
     {
         if (!EnsureEnabled(handler))
             return true;
         Player* player = CommandPlayer(handler);
         if (!player)
             return true;
-        name = Lower(std::move(name));
+        std::string const name = Lower(std::string(rawName));
         if (!IsSafeLocationName(name))
         {
             handler->PSendSysMessage("{} Saved location names may use only A-Z, 0-9, '_' and '-' (max 24 chars).", PREFIX);
@@ -417,14 +420,14 @@ private:
         return true;
     }
 
-    static bool HandleGoSaved(ChatHandler* handler, std::string name)
+    static bool HandleGoSaved(ChatHandler* handler, std::string_view rawName)
     {
         if (!EnsureEnabled(handler))
             return true;
         Player* player = CommandPlayer(handler);
         if (!player)
             return true;
-        name = Lower(std::move(name));
+        std::string const name = Lower(std::string(rawName));
         if (!IsSafeLocationName(name))
             return true;
         uint32 const accountId = handler->GetSession()->GetAccountId();
