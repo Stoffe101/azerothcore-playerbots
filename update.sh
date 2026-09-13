@@ -120,6 +120,31 @@ sync_module_configs () {
   done < <(find "$AC_DIR/modules" -type f -path '*/conf/*.conf.dist' -print0)
 }
 
+# One-time migration for installs created before the Adventure Guide / Guild Director became the
+# normal player-facing path. Old installs intentionally shipped RaidRoster.Enable=0, which makes
+# the new Form Group / Prepare Raid buttons look broken even though the code is present. Promote
+# that legacy value once, then leave the marker behind so a later deliberate operator opt-out is
+# respected on every future update.
+migrate_full_adventure_config () {
+  local marker="$AC_DIR/env/dist/etc/.full_adventure_stack_v1"
+  local conf="$AC_DIR/env/dist/etc/modules/mod_raid_roster.conf"
+  [[ -f "$marker" ]] && return 0
+
+  if [[ ! -f "$conf" ]]; then
+    echo "    ERROR: full-adventure migration expected $conf but it does not exist." >&2
+    exit 1
+  fi
+
+  if grep -qE '^[[:space:]]*RaidRoster\.Enable[[:space:]]*=' "$conf"; then
+    sed -i -E 's|^[[:space:]]*RaidRoster\.Enable[[:space:]]*=.*|RaidRoster.Enable = 1|' "$conf"
+  else
+    printf '\nRaidRoster.Enable = 1\n' >> "$conf"
+  fi
+
+  : > "$marker"
+  echo "==> Full adventure migration: RaidRoster enabled for Guild Director / Adventure Guide."
+}
+
 update_repo "$AC_DIR" "AzerothCore (playerbots fork)"
 for moddir in "$AC_DIR"/modules/*/; do
   [[ -d "$moddir/.git" ]] || continue
@@ -139,6 +164,7 @@ done
 # Persistent module configs are outside the image build context's generated reference tree. Keep
 # them compatible with newly added modules/options before restarting containers.
 sync_module_configs
+migrate_full_adventure_config
 
 cd "$AC_DIR"
 
