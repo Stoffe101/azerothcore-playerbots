@@ -1,6 +1,6 @@
-diff --git a/src/IndividualProgression.cpp b/src/IndividualProgression.cpp
---- a/src/IndividualProgression.cpp
-+++ b/src/IndividualProgression.cpp
+diff --git a/modules/mod-individual-progression/src/IndividualProgression.cpp b/modules/mod-individual-progression/src/IndividualProgression.cpp
+--- a/modules/mod-individual-progression/src/IndividualProgression.cpp
++++ b/modules/mod-individual-progression/src/IndividualProgression.cpp
 @@ -79,6 +79,12 @@ void IndividualProgression::ForceUpdateProgressionState(Player* player, ProgressionState newState)
      if (!newState)
          return;
