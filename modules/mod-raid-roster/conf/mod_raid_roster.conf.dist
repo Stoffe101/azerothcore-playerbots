@@ -4,62 +4,41 @@
 # mod-raid-roster configuration
 ########################################
 
-# RaidRoster.Enable
-#   Master switch. Default 0. setup.sh sets this from .env RAIDROSTER_ENABLE.
 RaidRoster.Enable = 0
 
 ########################################
-# Adventure start (this fork)
+# Adventure start (TBC-first server)
 ########################################
 
-# AdventureStart.Enable
-#   Bootstrap newly-created REAL player characters. Random bots / addclass bots / playerbots are
-#   excluded. Death Knights keep their normal WotLK stage-13 start flow.
+# Bootstrap newly-created REAL player characters. Random bots / addclass bots / playerbots are
+# excluded. WotLK remains globally locked by the Admin Panel expansion gate until deliberately
+# released.
 AdventureStart.Enable = 1
 
-# AdventureStart.DefaultProfile
-#   0 = TBC Adventure: level 60 at the Dark Portal with late-Vanilla raider gear after spec choice.
-#   1 = WotLK Raid Ready: level 80 / stage 13 in Dalaran with pre-Naxx gear after spec choice.
-#   The in-game AdminPanel can change this live and persists its override across restarts.
+# 0 = TBC Adventure: level 60 at the Dark Portal with late-Vanilla raid gear after spec choice.
+# 1 = TBC Raid Ready: level 70 in Shattrath with pre-Karazhan gear after spec choice.
+# The in-game Admin Panel can switch this live and persists the override across restarts.
 AdventureStart.DefaultProfile = 0
 
-# AdventureStart.Level / Progression
-#   TBC Adventure profile. Stage 8 = Vanilla completed / beginning of TBC.
+# TBC Adventure profile. Stage 8 = Vanilla completed / beginning of TBC.
 AdventureStart.Level = 60
 AdventureStart.Progression = 8
-
-# AdventureStart.RevealMap
-#   Reveal all world-map exploration tiles on bootstrap.
 AdventureStart.RevealMap = 1
-
-# AdventureStart.StarterKit
-#   Gives class skills/spells, bags, ammo where relevant, food, combat potions and riding.
 AdventureStart.StarterKit = 1
-
-# AdventureStart.StartingGold
-#   Minimum money for the TBC profile. Existing money is never reduced.
 AdventureStart.StartingGold = 50
 
-# AdventureStart.BasicGear / BasicGearItemLevel
-#   TBC temporary gear while the custom EraTalents tree has no committed spec.
+# Temporary gear while the custom EraTalents tree has no committed spec.
 AdventureStart.BasicGear = 1
 AdventureStart.BasicGearItemLevel = 58
 
-# AdventureStart.AutoGear
-#   Once enough points are committed, replace the temporary set once with spec-aware epic gear.
+# Once enough points are committed, replace the temporary set once with spec-aware epic gear.
 AdventureStart.AutoGear = 1
-
-# AdventureStart.GearMinTalentPoints
-#   Total talent points required before choosing the spec-aware final starter set.
 AdventureStart.GearMinTalentPoints = 5
 
-# AdventureStart.GearItemLevel
-#   TBC profile final gear. ilvl 88 models a successful late-Vanilla AQ40/Naxx40 raider entering
-#   Outland. Selection is spec/era aware rather than hard-coded to one class/spec list.
+# ilvl 88 models a successful late-Vanilla AQ40/Naxx40 raider walking through the Dark Portal.
 AdventureStart.GearItemLevel = 88
 
-# AdventureStart.Teleport.*
-#   TBC profile destination: Blasted Lands side of the Dark Portal.
+# TBC Adventure destination: Blasted Lands side of the Dark Portal.
 AdventureStart.Teleport.Enable = 1
 AdventureStart.Teleport.Map = 0
 AdventureStart.Teleport.X = -11894.80
@@ -68,25 +47,24 @@ AdventureStart.Teleport.Z = -14.62
 AdventureStart.Teleport.O = 0.0
 
 ########################################
-# Raid-ready level-80 profile
+# TBC max-level / raid-ready profile
 ########################################
 
-# Keep progression at stage 13: WotLK is unlocked but Naxxramas remains meaningful as the first
-# progression raid. This is intentionally NOT stage 18 / expansion-complete.
-AdventureStart.RaidReady.Level = 80
-AdventureStart.RaidReady.Progression = 13
-AdventureStart.RaidReady.StartingGold = 500
+# Stay at stage 8 so Karazhan/Gruul/Mag are still the first progression raids. This shortcut
+# skips leveling/gearing friction, not the actual TBC raid ladder.
+AdventureStart.TbcRaidReady.Level = 70
+AdventureStart.TbcRaidReady.Progression = 8
+AdventureStart.TbcRaidReady.StartingGold = 500
 
-# Immediate blue/heroic-ish gear prevents a naked level 80. After 5 talent points the spec-aware
-# pass upgrades it to ilvl 200 epics, appropriate for walking into Naxx without trivialising later
-# tiers. Fast flying/mount setup is also granted by this profile.
-AdventureStart.RaidReady.BasicGearItemLevel = 187
-AdventureStart.RaidReady.GearItemLevel = 200
+# Immediate heroic-quality blues prevent a naked boost. After 5 talent points the spec-aware pass
+# upgrades the character to a compact ilvl-115 epic pre-raid set suitable for starting Kara/Gruul/Mag.
+AdventureStart.TbcRaidReady.BasicGearItemLevel = 110
+AdventureStart.TbcRaidReady.GearItemLevel = 115
 
-# Raid-ready spawn: Dalaran.
-AdventureStart.RaidReady.Teleport.Enable = 1
-AdventureStart.RaidReady.Teleport.Map = 571
-AdventureStart.RaidReady.Teleport.X = 5807.75
-AdventureStart.RaidReady.Teleport.Y = 588.27
-AdventureStart.RaidReady.Teleport.Z = 660.94
-AdventureStart.RaidReady.Teleport.O = 1.64
+# Raid-ready spawn: Shattrath.
+AdventureStart.TbcRaidReady.Teleport.Enable = 1
+AdventureStart.TbcRaidReady.Teleport.Map = 530
+AdventureStart.TbcRaidReady.Teleport.X = -1838.16
+AdventureStart.TbcRaidReady.Teleport.Y = 5301.79
+AdventureStart.TbcRaidReady.Teleport.Z = -12.43
+AdventureStart.TbcRaidReady.Teleport.O = 5.95
