@@ -302,7 +302,9 @@ public:
             { "preset",        HandlePreset,       SEC_GAMEMASTER, Console::No },
             { "starter",       HandleStarter,      SEC_GAMEMASTER, Console::No },
             { "tbcraidready",  HandleTbcRaidReady, SEC_GAMEMASTER, Console::No },
+            { "progression",   HandleProgression,  SEC_GAMEMASTER, Console::No },
             { "releasewotlk",  HandleReleaseWotlk, SEC_GAMEMASTER, Console::No },
+            { "announce",      HandleAnnounce,     SEC_GAMEMASTER, Console::No },
             { "repair",        HandleRepair,       SEC_GAMEMASTER, Console::No },
             { "restore",       HandleRestore,      SEC_GAMEMASTER, Console::No },
             { "maxskills",     HandleMaxSkills,    SEC_GAMEMASTER, Console::No },
@@ -512,6 +514,29 @@ private:
         return true;
     }
 
+    static bool HandleProgression(ChatHandler* handler, uint32 stage)
+    {
+        if (!EnsureEnabled(handler))
+            return true;
+        if (stage == 11 || stage < 8 || stage > AdminPanelExpansion::CurrentProgressionLimit())
+        {
+            handler->PSendSysMessage(
+                "{} Invalid progression stage for the live expansion. Current maximum is {}.",
+                PREFIX, AdminPanelExpansion::CurrentProgressionLimit());
+            return true;
+        }
+
+        Player* player = CommandPlayer(handler);
+        if (!AdminPanelExpansion::SetPlayerProgression(player, static_cast<uint8>(stage)))
+        {
+            handler->PSendSysMessage("{} Could not set progression stage {}.", PREFIX, stage);
+            return true;
+        }
+
+        handler->PSendSysMessage("{} Current character progression set exactly to stage {}.", PREFIX, stage);
+        return true;
+    }
+
     static bool HandleReleaseWotlk(ChatHandler* handler, std::string_view rawConfirm)
     {
         if (!EnsureEnabled(handler))
@@ -533,6 +558,17 @@ private:
             SERVER_MSG_STRING,
             "Wrath of the Lich King has been released! Northrend and level 80 progression are now available.");
         handler->PSendSysMessage("{} WOTLK RELEASED. The expansion gate is permanently saved as open.", PREFIX);
+        return true;
+    }
+
+    static bool HandleAnnounce(ChatHandler* handler, Tail message)
+    {
+        if (!EnsureEnabled(handler))
+            return true;
+        if (message.empty())
+            return false;
+        sWorldSessionMgr->SendServerMessage(SERVER_MSG_STRING, std::string(message));
+        handler->PSendSysMessage("{} Announcement sent.", PREFIX);
         return true;
     }
 
