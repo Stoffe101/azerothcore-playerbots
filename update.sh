@@ -40,40 +40,25 @@ update_repo () {
   git -C "$dir" clean -fd -- src/ 2>/dev/null || true
 }
 
-patch_target_dir () {
-  local name="$1"
-  case "$name" in
-    0014-ip-*)
-      echo "$AC_DIR/modules/mod-individual-progression"
-      ;;
-    *)
-      echo "$AC_DIR"
-      ;;
-  esac
-}
-
 apply_patches () {
   local pdir="$ROOT/patches"
   [[ -d "$pdir" && -d "$AC_DIR/.git" ]] || return 0
-  local patch name target
+  local patch name
   for patch in "$pdir"/*.patch; do
     [[ -e "$patch" ]] || continue
     name="$(basename "$patch")"
-    target="$(patch_target_dir "$name")"
 
-    if [[ ! -d "$target/.git" ]]; then
-      echo "    ERROR: patch target repo missing for $name: $target" >&2
-      exit 1
-    fi
-
-    if git -C "$target" apply --reverse --check "$patch" >/dev/null 2>&1; then
+    # All overlay diffs are rooted at the AzerothCore checkout. This includes patches whose
+    # paths begin with modules/mod-playerbots/... or modules/mod-individual-progression/....
+    # Applying those from inside the nested module repository makes the prefixed path invalid.
+    if git -C "$AC_DIR" apply --reverse --check "$patch" >/dev/null 2>&1; then
       echo "    Patch already applied: $name"
-    elif git -C "$target" apply --check "$patch" >/dev/null 2>&1; then
-      git -C "$target" apply "$patch"
+    elif git -C "$AC_DIR" apply --check "$patch" >/dev/null 2>&1; then
+      git -C "$AC_DIR" apply "$patch"
       echo "    Applied patch: $name"
     else
-      echo "    ERROR: $name no longer applies to $(basename "$target") (upstream moved?)." >&2
-      echo "           Regenerate it against the pinned repo or remove it from patches/." >&2
+      echo "    ERROR: $name no longer applies to the pinned integration tree (upstream moved?)." >&2
+      echo "           Regenerate it against the pinned repos or remove it from patches/." >&2
       exit 1
     fi
   done
