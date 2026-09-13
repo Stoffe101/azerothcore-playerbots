@@ -2,9 +2,9 @@
 #include "Player.h"
 #include "WorldSession.h"
 #include "Log.h"
-#include "IndividualProgression.h"
 #include "RaidRosterConfig.h"
 #include "AdventureProgressionStore.h"
+#include "AdventureStartControl.h"
 #include "AdventureStartKit.h"
 
 #include <mutex>
@@ -19,21 +19,13 @@ constexpr uint32 STARTER_GEAR_POLL_MS = 2000;
 bool IsPlayerbot(Player* player)
 {
     // mod-playerbots marks bot sessions before the playerbot AI object itself is attached.
-    // Using the session flag avoids pulling Playerbots.h/PlayerbotAI.h into the same translation
-    // unit as IndividualProgression.h, whose global GENERAL enumerator otherwise collides with
-    // PlayerbotAI.h's GENERAL enumerator at compile time.
+    // Using the session flag also keeps PlayerbotAI.h out of this translation unit.
     return !player || !player->GetSession() || player->GetSession()->IsBot();
 }
 
 bool IsDeathKnight(Player* player)
 {
     return player && player->getClass() == CLASS_DEATH_KNIGHT;
-}
-
-void RevealAllMap(Player* player)
-{
-    for (uint8 i = 0; i < PLAYER_EXPLORED_ZONES_SIZE; ++i)
-        player->SetFlag(PLAYER_EXPLORED_ZONES_1 + i, 0xFFFFFFFF);
 }
 
 void TrackStarterGear(Player* player)
@@ -71,20 +63,6 @@ bool ShouldPollStarterGear(Player* player, uint32 diff)
     it->second = 0;
     return true;
 }
-
-bool MatchesUninitializedAdventureProfile(Player* player)
-{
-    if (!player)
-        return false;
-    if (player->GetLevel() != g_AdventureStartLevel)
-        return false;
-
-    // GetPlayerProgressionFromQuests is safe during OnPlayerLogin too; EraTalents uses the same
-    // query there. Do not require IsInWorld(), otherwise an already-created starter character can
-    // miss the one-time recovery path before the world-insertion phase finishes.
-    uint8 const current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
-    return current == g_AdventureStartProgression;
-}
 }
 
 class AdventureStartPlayerScript : public PlayerScript
@@ -97,74 +75,18 @@ public:
         if (!g_AdventureStartEnable || !player || IsPlayerbot(player))
             return;
 
-        // Death Knights are a WotLK-only class on this progression setup and have their own
-        // stage-13 bootstrap. Never pull a fresh DK backwards into the TBC start flow.
+        // Death Knights are already a WotLK class with their own stage-13 start rules. Do not run
+        // the generic first-login bootstrap on them; the GM raid-ready action can still be used
+        // manually later if desired.
         if (IsDeathKnight(player))
         {
             LOG_INFO("server.loading", "[AdventureStart] Skipping Death Knight {}", player->GetName());
             return;
         }
 
-        bool levelChanged = false;
-        if (g_AdventureStartLevel > player->GetLevel())
-        {
-            player->GiveLevel(static_cast<uint8>(g_AdventureStartLevel));
-            player->SetUInt32Value(PLAYER_XP, 0);
-            levelChanged = true;
-        }
-
-        // Match the verified faction-leader expansion flow: only force the IP state here.
-        // mod-era-talents detects the era crossing and performs its existing talent wipe,
-        // tree switch, spell reconcile, glyph handling and addon sync on the normal poll.
-        if (g_AdventureStartProgression > 0 && player->IsInWorld())
-        {
-            uint8 current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
-            if (current < g_AdventureStartProgression)
-            {
-                sIndividualProgression->ForceUpdateProgressionState(
-                    player,
-                    static_cast<ProgressionState>(g_AdventureStartProgression));
-            }
-        }
-
-        // Recalculate native talent points only after the level/progression bootstrap. Era talents
-        // use their own point accounting, but keeping the core state correct avoids stale UI/state.
-        if (levelChanged)
-            player->InitTalentForLevel();
-
-        if (g_AdventureStartRevealMap)
-            RevealAllMap(player);
-
-        // Skills/spells, bags, consumables, minimum gold and a modest immediate gear set. The
-        // PlayerbotFactory-heavy work lives in AdventureStartKit.cpp specifically so this file can
-        // keep IndividualProgression.h without reviving the PlayerbotAI GENERAL enum collision.
-        AdventureStartKit::GrantInitial(player);
-        TrackStarterGear(player);
-
-        if (g_AdventureStartTeleport && player->IsInWorld())
-        {
-            player->TeleportTo(
-                g_AdventureStartTeleportMap,
-                g_AdventureStartTeleportX,
-                g_AdventureStartTeleportY,
-                g_AdventureStartTeleportZ,
-                g_AdventureStartTeleportO);
-        }
-
-        LOG_INFO(
-            "server.loading",
-            "[AdventureStart] Initialized {} at level {}, progression {}, mapReveal={}, starterKit={}, teleport={} map={} xyz=({:.2f},{:.2f},{:.2f}) o={:.2f}",
-            player->GetName(),
-            player->GetLevel(),
-            g_AdventureStartProgression,
-            g_AdventureStartRevealMap ? 1 : 0,
-            g_AdventureStartStarterKit ? 1 : 0,
-            g_AdventureStartTeleport ? 1 : 0,
-            g_AdventureStartTeleportMap,
-            g_AdventureStartTeleportX,
-            g_AdventureStartTeleportY,
-            g_AdventureStartTeleportZ,
-            g_AdventureStartTeleportO);
+        AdventureStartProfile const profile = AdventureStartControl::GetDefaultProfile();
+        if (AdventureStartControl::ApplyProfile(player, profile, true))
+            TrackStarterGear(player);
     }
 
     void OnPlayerLogin(Player* player) override
@@ -177,15 +99,29 @@ public:
 
         if (!state.starterInitialized)
         {
-            // Recovery path for characters created while AdventureStart only handled level/stage/
-            // teleport. It is intentionally narrow: exactly the configured starter level + stage.
-            // That fixes the already-created test character without handing starter loot to normal
-            // progressed characters on every login.
-            if (MatchesUninitializedAdventureProfile(player))
+            // Recovery for characters created during earlier AdventureStart revisions. Match either
+            // supported profile exactly so normal progressed characters never receive a starter kit.
+            AdventureStartProfile recoveredProfile;
+            bool matched = false;
+            if (AdventureStartControl::MatchesProfile(player, AdventureStartProfile::RaidReady))
             {
-                LOG_INFO("server.loading", "[AdventureStart] Backfilling missing starter kit for {}", player->GetName());
-                AdventureStartKit::GrantInitial(player);
-                TrackStarterGear(player);
+                recoveredProfile = AdventureStartProfile::RaidReady;
+                matched = true;
+            }
+            else if (AdventureStartControl::MatchesProfile(player, AdventureStartProfile::TbcAdventure))
+            {
+                recoveredProfile = AdventureStartProfile::TbcAdventure;
+                matched = true;
+            }
+
+            if (matched)
+            {
+                LOG_INFO(
+                    "server.loading",
+                    "[AdventureStart] Backfilling missing starter kit for {} as profile={}",
+                    player->GetName(), AdventureStartControl::ProfileName(recoveredProfile));
+                if (AdventureStartControl::ApplyProfile(player, recoveredProfile, false))
+                    TrackStarterGear(player);
             }
             return;
         }
