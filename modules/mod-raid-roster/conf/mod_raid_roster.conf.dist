@@ -17,7 +17,8 @@ AdventureStart.Enable = 1
 
 # 0 = TBC Adventure: level 60 at the Dark Portal with late-Vanilla raid gear after spec choice.
 # 1 = TBC Raid Ready: level 70 in Shattrath with pre-Karazhan gear after spec choice.
-# The in-game Admin Panel can switch this live and persists the override across restarts.
+# 2 = WotLK Raid Ready: level 80 in Dalaran with pre-Naxx gear after spec choice.
+# The Admin Panel only exposes profile 2 after WotLK has actually been released.
 AdventureStart.DefaultProfile = 0
 
 # TBC Adventure profile. Stage 8 = Vanilla completed / beginning of TBC.
@@ -57,7 +58,7 @@ AdventureStart.TbcRaidReady.Progression = 8
 AdventureStart.TbcRaidReady.StartingGold = 500
 
 # Immediate heroic-quality blues prevent a naked boost. After 5 talent points the spec-aware pass
-# upgrades the character to a compact ilvl-115 epic pre-raid set suitable for starting Kara/Gruul/Mag.
+# upgrades the character to an ilvl-115 epic pre-raid set suitable for starting Kara/Gruul/Mag.
 AdventureStart.TbcRaidReady.BasicGearItemLevel = 110
 AdventureStart.TbcRaidReady.GearItemLevel = 115
 
@@ -68,3 +69,26 @@ AdventureStart.TbcRaidReady.Teleport.X = -1838.16
 AdventureStart.TbcRaidReady.Teleport.Y = 5301.79
 AdventureStart.TbcRaidReady.Teleport.Z = -12.43
 AdventureStart.TbcRaidReady.Teleport.O = 5.95
+
+########################################
+# WotLK max-level / raid-ready profile
+########################################
+
+# The Admin Panel keeps this unavailable until the persistent WotLK release gate is open. Stage 13
+# is the beginning of Wrath, so Naxxramas remains the first raid rather than being auto-completed.
+AdventureStart.WotlkRaidReady.Level = 80
+AdventureStart.WotlkRaidReady.Progression = 13
+AdventureStart.WotlkRaidReady.StartingGold = 1000
+
+# Immediate level-80 blues keep the character playable before a spec is known. Once at least five
+# talent points are committed, the final pass gives spec-aware ilvl-200 epics suitable for Naxx.
+AdventureStart.WotlkRaidReady.BasicGearItemLevel = 187
+AdventureStart.WotlkRaidReady.GearItemLevel = 200
+
+# WotLK raid-ready spawn: Dalaran.
+AdventureStart.WotlkRaidReady.Teleport.Enable = 1
+AdventureStart.WotlkRaidReady.Teleport.Map = 571
+AdventureStart.WotlkRaidReady.Teleport.X = 5807.75
+AdventureStart.WotlkRaidReady.Teleport.Y = 588.27
+AdventureStart.WotlkRaidReady.Teleport.Z = 660.94
+AdventureStart.WotlkRaidReady.Teleport.O = 1.64
