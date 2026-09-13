@@ -22,7 +22,7 @@ void PrintBotDiagnostics(ChatHandler* handler)
 
     AdminPanelGameplay::PopulationStats const stats = AdminPanelGameplay::GetPopulationStats();
     handler->PSendSysMessage(
-        "[BotPopulation] online={} target={} batch={} activity={:.0f}% engine={} autologin={} pool={}/{} assignedAccounts={}",
+        "[BotPopulation] online={} target={} batch={} activity={:.0f}% engine={} autologin={} accounts={}/{} assignedDB={} managerAccounts={} candidates={} pendingLogins={}",
         stats.bots,
         stats.botTarget,
         stats.botBatch,
@@ -31,7 +31,10 @@ void PrintBotDiagnostics(ChatHandler* handler)
         stats.botAutologinEnabled ? 1 : 0,
         stats.botAccounts,
         stats.requiredBotAccounts,
-        stats.assignedBotAccounts);
+        stats.assignedBotAccounts,
+        stats.managerRandomAccounts,
+        stats.managerCandidates,
+        stats.pendingBotLogins);
 }
 
 class AdminPanelBotRecoveryWorld final : public WorldScript
@@ -112,13 +115,16 @@ public:
                 _exhaustionLogged = true;
                 LOG_ERROR(
                     "server.loading",
-                    "[AdminPanel] Bot watchdog exhausted {}/{} automatic repairs: target={} online=0 pool={}/{} assigned={}. Use .botdiag/.botrepair after inspecting the first Playerbots error.",
+                    "[AdminPanel] Bot watchdog exhausted {}/{} automatic repairs: target={} online=0 accounts={}/{} assignedDB={} managerAccounts={} candidates={} pending={}. Use .botdiag/.botrepair after inspecting the first Playerbots error.",
                     uint32(_attempts),
                     uint32(MAX_AUTOMATIC_REPAIRS),
                     stats.botTarget,
                     stats.botAccounts,
                     stats.requiredBotAccounts,
-                    stats.assignedBotAccounts);
+                    stats.assignedBotAccounts,
+                    stats.managerRandomAccounts,
+                    stats.managerCandidates,
+                    stats.pendingBotLogins);
             }
             return;
         }
@@ -126,13 +132,16 @@ public:
         ++_attempts;
         LOG_WARN(
             "server.loading",
-            "[AdminPanel] Bot watchdog: target={} but online=0; repair attempt {}/{} (pool={}/{} assigned={})",
+            "[AdminPanel] Bot watchdog: target={} but online=0; repair attempt {}/{} (accounts={}/{} assignedDB={} managerAccounts={} candidates={} pending={})",
             stats.botTarget,
             uint32(_attempts),
             uint32(MAX_AUTOMATIC_REPAIRS),
             stats.botAccounts,
             stats.requiredBotAccounts,
-            stats.assignedBotAccounts);
+            stats.assignedBotAccounts,
+            stats.managerRandomAccounts,
+            stats.managerCandidates,
+            stats.pendingBotLogins);
 
         AdminPanelGameplay::RepairBotPopulation();
     }
@@ -171,7 +180,7 @@ public:
     static bool HandleRepair(ChatHandler* handler)
     {
         PrintBotDiagnostics(handler);
-        handler->SendSysMessage("[BotPopulation] Running RNDbot account/character-pool repair and kicking the login manager...");
+        handler->SendSysMessage("[BotPopulation] Rebuilding RNDbot capacity/assignments/add-events and kicking the login manager...");
         AdminPanelGameplay::RepairBotPopulation();
         PrintBotDiagnostics(handler);
         return true;
