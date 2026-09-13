@@ -85,10 +85,11 @@ old_apply = r'''apply_patches () {
 if old_apply not in text:
     raise SystemExit("ERROR: pinned setup body no longer matches expected apply_patches block")
 
-# The full-adventure stack depends on the persistent roster/director path, so enable it by default
-# while preserving an explicit RAIDROSTER_ENABLE=0 operator opt-out.
+# This integration branch treats the persistent roster/director as core gameplay. Older templates
+# still carry RAIDROSTER_ENABLE=0, so deliberately promote the generated runtime config to enabled.
+# Once this branch becomes the canonical installer the template can be simplified separately.
 old_roster = '  set_conf "RaidRoster.Enable" "${RAIDROSTER_ENABLE:-0}" "$RAID_CONF"'
-new_roster = '  set_conf "RaidRoster.Enable" "${RAIDROSTER_ENABLE:-1}" "$RAID_CONF"'
+new_roster = '  set_conf "RaidRoster.Enable" "1" "$RAID_CONF"'
 if old_roster not in text:
     raise SystemExit("ERROR: pinned setup body no longer matches expected RaidRoster.Enable line")
 text = text.replace(old_roster, new_roster, 1)
@@ -112,7 +113,7 @@ if [[ "${SETUP_PREFLIGHT_ONLY:-0}" == "1" ]]; then
   bash -n "$RUNTIME"
   grep -Fq 'mod-admin-panel' "$RUNTIME"
   grep -Fq 'mod-titan-rune' "$RUNTIME"
-  grep -Fq 'RaidRoster.Enable" "${RAIDROSTER_ENABLE:-1}"' "$RUNTIME"
+  grep -Fq 'RaidRoster.Enable" "1"' "$RUNTIME"
   grep -Fq 'host.docker.internal' "$RUNTIME"
   grep -Fq 'git -C "$AC_DIR" apply --check "$patch"' "$RUNTIME"
   echo "Setup bootstrap preflight passed."
