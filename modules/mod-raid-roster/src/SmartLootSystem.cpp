@@ -189,9 +189,8 @@ void MaybeResetRecentBoss(Player* player, Item* item, ObjectGuid lootSourceGuid)
     if (age < 0 || static_cast<uint32>(age) > g_BadLuckUpgradeWindowSeconds || player->GetMapId() != recent.mapId)
         return;
 
-    // The old implementation reset a boss streak for any meaningful item acquired on the same
-    // map during the time window. Trash, chests and unrelated containers could therefore erase a
-    // dry streak. Require the loot object's source GUID to be the exact defeated boss instead.
+    // Require the loot object's source GUID to be the exact defeated boss. Trash, chests and
+    // unrelated containers on the same map must never erase a boss dry streak.
     if (lootSourceGuid != recent.bossGuid)
         return;
 
@@ -217,9 +216,9 @@ class SmartLootPlayerScript : public PlayerScript
 public:
     SmartLootPlayerScript() : PlayerScript("SmartLootPlayerScript") { }
 
-    void OnPlayerRewardKillRewarder(Player* player, KillRewarder* rewarder, bool isDungeon, float& /*rate*/) override
+    void OnPlayerRewardKillRewarder(Player* player, KillRewarder* rewarder, bool /*isDungeon*/, float& /*rate*/) override
     {
-        if (!g_BadLuckProtectionEnable || !player || !rewarder || !isDungeon || IsPlayerbot(player))
+        if (!g_BadLuckProtectionEnable || !player || !rewarder || IsPlayerbot(player))
             return;
 
         Unit* victim = rewarder->GetVictim();
@@ -227,6 +226,9 @@ public:
         if (!boss || !boss->IsDungeonBoss())
             return;
 
+        // KillRewarder passes isDungeon=false for an ungrouped killer even when that character is
+        // physically inside an instance. The boss/map are the authoritative signal, so using the
+        // hook boolean would silently skip solo/cleanup kills. RecordBoss validates the actual map.
         RecordBoss(player, boss);
     }
 
@@ -241,8 +243,6 @@ public:
 
     void OnPlayerLootItem(Player* player, Item* item, uint32 /*count*/, ObjectGuid lootguid) override
     {
-        // Direct/solo loot exposes the source object GUID through the hook. Exact-source matching
-        // below prevents an unrelated chest/trash/container drop from resetting the boss streak.
         MaybeResetRecentBoss(player, item, lootguid);
     }
 
