@@ -14,7 +14,8 @@ RaidRoster.Enable = 0
 
 # AdventureStart.Enable
 #   Bootstrap newly-created REAL player characters for the TBC-first experience.
-#   Random bots / addclass bots / playerbots are excluded.
+#   Random bots / addclass bots / playerbots are excluded. Death Knights are also excluded
+#   because they belong to the WotLK stage-13 start flow.
 AdventureStart.Enable = 1
 
 # AdventureStart.Level
@@ -28,5 +29,19 @@ AdventureStart.Progression = 8
 
 # AdventureStart.RevealMap
 #   Reveal all world-map exploration tiles on the player's first login.
-#   This removes fog-of-war but does not teleport the player or unlock flight paths.
 AdventureStart.RevealMap = 1
+
+# AdventureStart.Teleport.Enable
+#   Teleport the fresh TBC character to the Blasted Lands side of the Dark Portal after
+#   level/progression initialization. This only runs from the first-login hook.
+AdventureStart.Teleport.Enable = 1
+
+# AdventureStart.Teleport.Map / X / Y / Z / O
+#   Configurable first-login destination. Defaults are The Dark Portal in Blasted Lands.
+#   If you later choose a nicer exact standing position, use .gps in-game and replace these
+#   values; no code change is required.
+AdventureStart.Teleport.Map = 0
+AdventureStart.Teleport.X = -11894.80
+AdventureStart.Teleport.Y = -3206.52
+AdventureStart.Teleport.Z = -14.62
+AdventureStart.Teleport.O = 0.0
