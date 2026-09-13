@@ -98,7 +98,12 @@ public:
         {
             AdventureStartProfile recoveredProfile;
             bool matched = false;
-            if (AdventureStartControl::MatchesProfile(player, AdventureStartProfile::TbcRaidReady))
+            if (AdventureStartControl::MatchesProfile(player, AdventureStartProfile::WotlkRaidReady))
+            {
+                recoveredProfile = AdventureStartProfile::WotlkRaidReady;
+                matched = true;
+            }
+            else if (AdventureStartControl::MatchesProfile(player, AdventureStartProfile::TbcRaidReady))
             {
                 recoveredProfile = AdventureStartProfile::TbcRaidReady;
                 matched = true;
