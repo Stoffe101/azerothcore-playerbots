@@ -24,6 +24,20 @@ struct ProfileData
 
 ProfileData DataFor(AdventureStartProfile profile)
 {
+    if (profile == AdventureStartProfile::WotlkRaidReady)
+    {
+        return {
+            g_AdventureStartWotlkRaidReadyLevel,
+            g_AdventureStartWotlkRaidReadyProgression,
+            g_AdventureStartWotlkRaidReadyTeleport,
+            g_AdventureStartWotlkRaidReadyTeleportMap,
+            g_AdventureStartWotlkRaidReadyTeleportX,
+            g_AdventureStartWotlkRaidReadyTeleportY,
+            g_AdventureStartWotlkRaidReadyTeleportZ,
+            g_AdventureStartWotlkRaidReadyTeleportO,
+        };
+    }
+
     if (profile == AdventureStartProfile::TbcRaidReady)
     {
         return {
@@ -61,9 +75,11 @@ namespace AdventureStartControl
 {
 AdventureStartProfile GetDefaultProfile()
 {
-    return g_AdventureStartDefaultProfile == static_cast<uint8>(AdventureStartProfile::TbcRaidReady)
-        ? AdventureStartProfile::TbcRaidReady
-        : AdventureStartProfile::TbcAdventure;
+    if (g_AdventureStartDefaultProfile == static_cast<uint8>(AdventureStartProfile::WotlkRaidReady))
+        return AdventureStartProfile::WotlkRaidReady;
+    if (g_AdventureStartDefaultProfile == static_cast<uint8>(AdventureStartProfile::TbcRaidReady))
+        return AdventureStartProfile::TbcRaidReady;
+    return AdventureStartProfile::TbcAdventure;
 }
 
 void SetDefaultProfile(AdventureStartProfile profile)
@@ -74,7 +90,11 @@ void SetDefaultProfile(AdventureStartProfile profile)
 
 char const* ProfileName(AdventureStartProfile profile)
 {
-    return profile == AdventureStartProfile::TbcRaidReady ? "tbcraid" : "tbc";
+    if (profile == AdventureStartProfile::WotlkRaidReady)
+        return "wotlkraid";
+    if (profile == AdventureStartProfile::TbcRaidReady)
+        return "tbcraid";
+    return "tbc";
 }
 
 bool MatchesProfile(Player* player, AdventureStartProfile profile)
@@ -106,9 +126,9 @@ bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStart
         levelChanged = true;
     }
 
-    // Both current start profiles stay entirely inside TBC. Progression stage 8 means the TBC
-    // world is open while Karazhan/Gruul/Mag remain the first raid tier. The server-wide expansion
-    // gate separately prevents stage 13 / WotLK until the administrator deliberately releases it.
+    // Progression is exact to the profile's opening tier: stage 8 for TBC, stage 13 for WotLK.
+    // The Admin Panel separately prevents the WotLK profile from being selected before the realm's
+    // persistent WotLK release gate is open.
     if (data.progression > 0 && player->IsInWorld())
     {
         uint8 const current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
