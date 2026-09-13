@@ -4,7 +4,10 @@
 # mod-raid-roster configuration
 ########################################
 
-RaidRoster.Enable = 0
+# The full adventure stack depends on the persistent roster for Guild Director dungeon filling
+# and raid preparation, so it is enabled by default. Set to 0 only if you intentionally want to
+# disable those player-facing systems.
+RaidRoster.Enable = 1
 
 ########################################
 # Adventure start (TBC-first server)
