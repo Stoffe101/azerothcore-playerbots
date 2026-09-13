@@ -8,7 +8,7 @@ extern bool g_RaidRosterEnable;
 // New-player bootstrap for this fork. Kept separate from raid-roster behaviour so it can be
 // disabled independently without affecting persistent raid bots.
 extern bool g_AdventureStartEnable;
-extern uint8 g_AdventureStartDefaultProfile; // 0 = TBC adventure, 1 = WotLK raid-ready
+extern uint8 g_AdventureStartDefaultProfile; // 0 = TBC adventure, 1 = TBC raid-ready
 extern uint32 g_AdventureStartLevel;
 extern uint8 g_AdventureStartProgression;
 extern bool g_AdventureStartRevealMap;
@@ -29,19 +29,19 @@ extern bool g_AdventureStartAutoGear;
 extern uint32 g_AdventureStartGearMinTalentPoints;
 extern uint32 g_AdventureStartGearItemLevel;
 
-// Optional WotLK max-level/raid-ready start profile. It keeps progression at stage 13 so Naxxramas
-// is the first raid rather than silently marking the whole expansion complete.
-extern uint32 g_AdventureStartRaidReadyLevel;
-extern uint8 g_AdventureStartRaidReadyProgression;
-extern uint32 g_AdventureStartRaidReadyStartingGold;
-extern uint32 g_AdventureStartRaidReadyBasicGearItemLevel;
-extern uint32 g_AdventureStartRaidReadyGearItemLevel;
-extern bool g_AdventureStartRaidReadyTeleport;
-extern uint32 g_AdventureStartRaidReadyTeleportMap;
-extern float g_AdventureStartRaidReadyTeleportX;
-extern float g_AdventureStartRaidReadyTeleportY;
-extern float g_AdventureStartRaidReadyTeleportZ;
-extern float g_AdventureStartRaidReadyTeleportO;
+// Optional TBC max-level/raid-ready start profile. It remains at stage 8 so Karazhan/Gruul/Mag are
+// still the first progression raids; this is a convenience gear/level shortcut, not a progression skip.
+extern uint32 g_AdventureStartTbcRaidReadyLevel;
+extern uint8 g_AdventureStartTbcRaidReadyProgression;
+extern uint32 g_AdventureStartTbcRaidReadyStartingGold;
+extern uint32 g_AdventureStartTbcRaidReadyBasicGearItemLevel;
+extern uint32 g_AdventureStartTbcRaidReadyGearItemLevel;
+extern bool g_AdventureStartTbcRaidReadyTeleport;
+extern uint32 g_AdventureStartTbcRaidReadyTeleportMap;
+extern float g_AdventureStartTbcRaidReadyTeleportX;
+extern float g_AdventureStartTbcRaidReadyTeleportY;
+extern float g_AdventureStartTbcRaidReadyTeleportZ;
+extern float g_AdventureStartTbcRaidReadyTeleportO;
 
 void RaidRosterLoadConfig();
 #endif
