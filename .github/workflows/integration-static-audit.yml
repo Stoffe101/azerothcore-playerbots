@@ -19,13 +19,17 @@ jobs:
       - name: Checkout integration repository
         uses: actions/checkout@v4
 
-      - name: Validate setup and updater bootstrap scripts
+      - name: Validate bootstrap and client installer scripts
         shell: bash
         run: |
           set -euo pipefail
           bash -n setup.sh
           bash -n update.sh
+          bash -n install-client-pack.sh
+          bash -n build-client-pack.sh
+          bash -n fetch-client-addons.sh
           SETUP_PREFLIGHT_ONLY=1 bash setup.sh
+          pwsh -NoProfile -NonInteractive -Command '$null = [scriptblock]::Create((Get-Content -Raw "windows/Install-Client-Pack.ps1")); Write-Host "PowerShell client installer parse: OK"'
 
       - name: Clone pinned AzerothCore tree
         shell: bash
