@@ -18,5 +18,15 @@ extern float g_AdventureStartTeleportY;
 extern float g_AdventureStartTeleportZ;
 extern float g_AdventureStartTeleportO;
 
+// TBC starter package. The first gear set is deliberately modest and immediate; the second pass
+// waits for era-talent investment so Playerbots' spec bridge can choose role-appropriate blues.
+extern bool g_AdventureStartStarterKit;
+extern uint32 g_AdventureStartStartingGold;
+extern bool g_AdventureStartBasicGear;
+extern uint32 g_AdventureStartBasicGearItemLevel;
+extern bool g_AdventureStartAutoGear;
+extern uint32 g_AdventureStartGearMinTalentPoints;
+extern uint32 g_AdventureStartGearItemLevel;
+
 void RaidRosterLoadConfig();
 #endif
