@@ -8,6 +8,9 @@ param(
 $ErrorActionPreference = "Stop"
 $FixedWowRoot = "D:\wow private server\TheraWoW wotlk"
 $FixedAddOnsRoot = "D:\wow private server\TheraWoW wotlk\Interface\AddOns"
+$RetiredClientAddons = @(
+    "Mapster"
+)
 
 function Write-Step([string]$Message) {
     Write-Host "==> $Message" -ForegroundColor Cyan
@@ -83,7 +86,9 @@ $RequiredClientFiles = @(
     "Interface\AddOns\ExtendedCharacterStats\ExtendedCharacterStats.toc",
     "Interface\AddOns\EraTalents\EraTalents.toc",
     "Interface\AddOns\DBM-Core\DBM-Core.toc",
-    "Interface\AddOns\TidyPlates\TidyPlates.toc"
+    "Interface\AddOns\TidyPlates\TidyPlates.toc",
+    "Interface\AddOns\Pawn\Pawn.toc",
+    "Interface\AddOns\MinimapButtonButton\MinimapButtonButton.toc"
 )
 
 function Assert-ClientTree([string]$Root, [string]$Label) {
@@ -106,6 +111,18 @@ function Backup-And-CopyFolder([string]$Source, [string]$Destination, [string]$B
         Remove-Item -LiteralPath $Destination -Recurse -Force
     }
     Copy-Item -LiteralPath $Source -Destination $Destination -Recurse -Force
+}
+
+function Backup-And-RemoveFolder([string]$Destination, [string]$Backup) {
+    if (-not (Test-Path -LiteralPath $Destination -PathType Container)) {
+        return $false
+    }
+
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Backup) | Out-Null
+    if (Test-Path -LiteralPath $Backup) { Remove-Item -LiteralPath $Backup -Recurse -Force }
+    Copy-Item -LiteralPath $Destination -Destination $Backup -Recurse -Force
+    Remove-Item -LiteralPath $Destination -Recurse -Force
+    return $true
 }
 
 function Set-LegacyAddonLoading([string]$Root) {
@@ -176,9 +193,25 @@ try {
         throw "WRITE BLOCKED: destination is not the fixed TheraWoW AddOns folder."
     }
 
+    Write-Step "Removing retired/redundant addons from the private client"
+    foreach ($retired in $RetiredClientAddons) {
+        $dest = Join-Path $destAddons $retired
+        $backup = Join-Path $backupRoot ("Interface\AddOns\" + $retired)
+        if (Backup-And-RemoveFolder $dest $backup) {
+            Write-Host "    - $retired (backed up first)" -ForegroundColor Yellow
+        } else {
+            Write-Host "    - $retired (not installed)"
+        }
+    }
+
     Write-Step "Installing addons into D:\wow private server\TheraWoW wotlk\Interface\AddOns"
     $installed = @()
     foreach ($addon in @(Get-ChildItem -LiteralPath $sourceAddons -Directory | Sort-Object Name)) {
+        if ($RetiredClientAddons -contains $addon.Name) {
+            Write-Host "    x $($addon.Name) (retired; intentionally skipped)" -ForegroundColor DarkGray
+            continue
+        }
+
         $dest = Join-Path $destAddons $addon.Name
         $backup = Join-Path $backupRoot ("Interface\AddOns\" + $addon.Name)
         Backup-And-CopyFolder $addon.FullName $dest $backup
@@ -212,11 +245,18 @@ try {
     Write-Host "    Installed client validation: OK" -ForegroundColor Green
     Write-Host "    Found $($detectedAddons.Count) top-level addon folders with a .toc"
 
-    foreach ($mustShow in @('ElvUI', 'ElvUI_OptionsUI', 'AdminPanel', 'ExtendedCharacterStats', 'EraTalents', 'DBM-Core', 'TidyPlates')) {
+    foreach ($mustShow in @('ElvUI', 'ElvUI_OptionsUI', 'AdminPanel', 'ExtendedCharacterStats', 'EraTalents', 'DBM-Core', 'TidyPlates', 'Pawn', 'MinimapButtonButton')) {
         if ($detectedAddons -notcontains $mustShow) {
             throw "Post-install scan could not see '$mustShow' in $FixedAddOnsRoot"
         }
         Write-Host "    [OK] $mustShow"
+    }
+
+    foreach ($retired in $RetiredClientAddons) {
+        if (Test-Path -LiteralPath (Join-Path $destAddons $retired)) {
+            throw "Post-install cleanup failed: retired addon '$retired' is still present in $FixedAddOnsRoot"
+        }
+        Write-Host "    [REMOVED] $retired"
     }
 
     $marker = [ordered]@{
@@ -227,6 +267,7 @@ try {
         retailDiscovery = "disabled"
         sourceZip = $resolvedZip
         installedAddonFolders = $installed
+        retiredAddonFolders = $RetiredClientAddons
         detectedTocAddonFolders = $detectedAddons
         backup = $backupRoot
         validation = "passed"
@@ -244,7 +285,7 @@ try {
     Write-Host "  $backupRoot"
     Write-Host ""
     Write-Host "Start: D:\wow private server\TheraWoW wotlk\Wow.exe" -ForegroundColor Yellow
-    Write-Host "At character select, AddOns should include ElvUI, Azeroth Control, Extended Character Stats and the rest."
+    Write-Host "At character select, AddOns should include ElvUI, Azeroth Control, Pawn, MinimapButtonButton and the rest."
 }
 finally {
     if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue }
