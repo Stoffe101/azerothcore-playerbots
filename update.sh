@@ -128,7 +128,7 @@ done
 apply_patches
 
 # Re-sync every in-repo module before rebuild. Keep this list in step with setup.sh LOCAL_MODULES.
-for lm in mod-playerbot-chatter mod-raid-roster mod-admin-panel mod-ahbot-price mod-wintergrasp-bots mod-arena-roster; do
+for lm in mod-playerbot-chatter mod-raid-roster mod-admin-panel mod-ahbot-price mod-wintergrasp-bots mod-arena-roster mod-titan-rune; do
   if [[ -d "$ROOT/modules/$lm" ]]; then
     echo "==> Syncing local module: $lm"
     rm -rf "$AC_DIR/modules/$lm"
