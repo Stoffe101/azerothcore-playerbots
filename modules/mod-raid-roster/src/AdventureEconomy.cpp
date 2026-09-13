@@ -80,10 +80,10 @@ public:
     void OnPlayerRewardKillRewarder(
         Player* player,
         KillRewarder* rewarder,
-        bool isDungeon,
+        bool /*isDungeon*/,
         float& /*rate*/) override
     {
-        if (!g_AdventureEconomyEnable || !player || IsPlayerbot(player) || !rewarder || !isDungeon)
+        if (!g_AdventureEconomyEnable || !player || IsPlayerbot(player) || !rewarder)
             return;
 
         Unit* victim = rewarder->GetVictim();
@@ -92,9 +92,11 @@ public:
             return;
 
         Map* map = boss->GetMap();
-        if (!map)
+        if (!map || !(map->IsDungeon() || map->IsRaid()))
             return;
 
+        // KillRewarder passes isDungeon=false for an ungrouped killer. Use the actual map type so
+        // a legitimate solo/cleanup boss kill cannot silently miss its first-kill bounty.
         bool const isRaid = map->IsRaid();
         uint32 rewardGold = isRaid
             ? g_AdventureEconomyRaidBossFirstKillGold
@@ -109,7 +111,7 @@ public:
         uint32 const rewardCopper = rewardGold * COPPER_PER_GOLD;
 
         // Persist the one-time claim before awarding currency. This closes the previous window in
-        // which ModifyMoney succeeded while the asynchronous claim INSERT was still queued.
+        // which ModifyMoney succeeded while an asynchronous claim INSERT was still queued.
         if (!ClaimBossBounty(playerGuid, mapId, creatureEntry, rewardCopper))
             return;
 
