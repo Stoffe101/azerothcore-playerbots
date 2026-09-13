@@ -22,9 +22,9 @@ uint32 SpentTalentPoints(Player* player)
     return total;
 }
 
-bool IsRaidReady(AdventureStartProfile profile)
+bool IsTbcRaidReady(AdventureStartProfile profile)
 {
-    return profile == AdventureStartProfile::RaidReady;
+    return profile == AdventureStartProfile::TbcRaidReady;
 }
 }
 
@@ -40,25 +40,21 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
     if (state.starterInitialized)
         return true;
 
-    // A disabled starter kit is still considered initialized. Otherwise every login would keep
-    // entering the recovery path forever when an administrator intentionally turns the kit off.
     if (!g_AdventureStartStarterKit)
     {
         AdventureProgressionStore::MarkStarterInitialized(guid, static_cast<uint8>(profile));
         return true;
     }
 
-    bool const raidReady = IsRaidReady(profile);
-    uint32 const startingGold = raidReady ? g_AdventureStartRaidReadyStartingGold : g_AdventureStartStartingGold;
-    uint32 const basicIlvl = raidReady ? g_AdventureStartRaidReadyBasicGearItemLevel : g_AdventureStartBasicGearItemLevel;
+    bool const raidReady = IsTbcRaidReady(profile);
+    uint32 const startingGold = raidReady ? g_AdventureStartTbcRaidReadyStartingGold : g_AdventureStartStartingGold;
+    uint32 const basicIlvl = raidReady ? g_AdventureStartTbcRaidReadyBasicGearItemLevel : g_AdventureStartBasicGearItemLevel;
 
     // Keep PlayerbotFactory isolated in this translation unit. AdventureStartControl.cpp includes
     // IndividualProgression.h, while PlayerbotFactory -> PlayerbotAI.h defines a conflicting
     // unscoped GENERAL enumerator. Splitting the helpers avoids that compile-time collision.
     PlayerbotFactory factory(player, player->GetLevel());
 
-    // Reuse the maintained Playerbots class bootstrap instead of hard-coding every class's weapon
-    // skills and spell ranks. Professions remain a normal gameplay choice.
     player->LearnDefaultSkills();
     factory.InitSkills();
     factory.InitClassSpells();
@@ -70,22 +66,22 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
 
     if (raidReady)
     {
-        // The explicit max-level shortcut is intentionally convenience-heavy: max riding plus the
-        // Playerbots mount bootstrap gives the character a usable ground/flying mount immediately.
+        // A deliberate max-level TBC shortcut should actually feel ready to play. Give max TBC-era
+        // riding and let the maintained Playerbots mount bootstrap choose usable ground/flying mounts.
         if (player->GetSkillValue(SKILL_RIDING) < 300)
             player->SetSkill(SKILL_RIDING, 0, 300, 300);
         factory.InitMounts();
     }
-    else
+    else if (player->GetSkillValue(SKILL_RIDING) < 150)
     {
-        // TBC adventure start gets fast ground riding only. Flying remains something to earn in
-        // Outland, preserving that part of the expansion progression.
-        if (player->GetSkillValue(SKILL_RIDING) < 150)
-            player->SetSkill(SKILL_RIDING, 0, 150, 150);
+        // The level-60 adventure path starts with fast ground riding only. Flying remains part of
+        // normal Outland progression.
+        player->SetSkill(SKILL_RIDING, 0, 150, 150);
     }
 
-    // Temporary gear prevents a naked boosted character while we wait for enough talent points to
-    // identify the intended role/spec. TBC gets greens; raid-ready gets heroic-ish blues.
+    // Temporary gear prevents naked boosted characters while we wait for enough talent investment
+    // to identify their intended role. The adventure path starts in replaceable greens; the level-70
+    // shortcut starts in heroic-quality blues and then receives the spec-aware pre-raid epic pass.
     if (g_AdventureStartBasicGear)
     {
         PlayerbotFactory::AutoGear(
@@ -133,23 +129,24 @@ bool TryGiveSpecStarterGear(Player* player)
     if (spent < g_AdventureStartGearMinTalentPoints)
         return false;
 
-    AdventureStartProfile const profile = state.starterProfile == static_cast<uint8>(AdventureStartProfile::RaidReady)
-        ? AdventureStartProfile::RaidReady
+    AdventureStartProfile const profile = state.starterProfile == static_cast<uint8>(AdventureStartProfile::TbcRaidReady)
+        ? AdventureStartProfile::TbcRaidReady
         : AdventureStartProfile::TbcAdventure;
-    uint32 const targetIlvl = IsRaidReady(profile)
-        ? g_AdventureStartRaidReadyGearItemLevel
+    uint32 const targetIlvl = IsTbcRaidReady(profile)
+        ? g_AdventureStartTbcRaidReadyGearItemLevel
         : g_AdventureStartGearItemLevel;
     uint8 const specTab = AiFactory::GetPlayerSpecTab(player);
 
-    // Both modes end on epics, but at different power bands: late-Vanilla raid gear for the TBC
-    // adventure and Naxx-ready ilvl-200 gear for the explicit max-level shortcut.
+    // Adventure mode gets late-Vanilla raid epics (AQ40/Naxx40 power band). TBC raid-ready gets a
+    // spec-scored ilvl-115 pre-raid set suitable for starting Kara/Gruul/Mag without skipping the
+    // TBC raid ladder itself.
     PlayerbotFactory::AutoGear(
         player,
         ITEM_QUALITY_EPIC,
         targetIlvl,
         false,
         false,
-        false);
+        IsTbcRaidReady(profile));
 
     AdventureProgressionStore::MarkStarterGearGranted(guid, specTab);
     player->SaveToDB(false, false);
