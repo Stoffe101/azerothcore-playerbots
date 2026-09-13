@@ -1,0 +1,65 @@
+diff --git a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.h b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.h
+index 48bdbcf..9b2089e 100644
+--- a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.h
++++ b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.h
+@@ -166,6 +166,13 @@ public:
+     // Account type management
+     void AssignAccountTypes();
+     bool IsAccountType(uint32 accountId, uint8 accountType);
++
++    // Runtime population diagnostics/recovery for server control surfaces. These intentionally
++    // expose counts rather than the underlying containers so callers cannot mutate manager state.
++    uint32 GetRandomBotCandidateCount() const { return static_cast<uint32>(currentBots.size()); }
++    uint32 GetRandomBotAccountPoolCount() const { return static_cast<uint32>(rndBotTypeAccounts.size()); }
++    uint32 GetPendingBotLoginCount() const { return static_cast<uint32>(botLoading.size()); }
++    void RepairRandomBotPopulationState();
+ 
+ protected:
+     void OnBotLoginInternal(Player* const bot) override;
+diff --git a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
+index c438eb7..21763a9 100644
+--- a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
++++ b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
+@@ -2530,6 +2530,40 @@ void RandomPlayerbotMgr::Init()
+     PlayerbotsDatabase.Execute("DELETE FROM playerbots_random_bots WHERE event = 'add'");
+ }
++
++void RandomPlayerbotMgr::RepairRandomBotPopulationState()
++{
++    // Never tear down state underneath bots that are already online. In that case a refresh of
++    // account assignments plus an ordinary manager tick is sufficient and avoids destabilising a
++    // healthy population because an administrator pressed a repair button unnecessarily.
++    if (!playerBots.empty())
++    {
++        AssignAccountTypes();
++        UpdateAIInternal(0, false);
++        return;
++    }
++
++    LOG_WARN("playerbots",
++        "Random-bot population recovery: online=0 candidates={} pendingLogins={} rndAccounts={}; rebuilding add-event state",
++        currentBots.size(), botLoading.size(), rndBotTypeAccounts.size());
++
++    // The random-bot manager derives its login candidates from persistent 'add' events and caches
++    // those events in currentBots/eventCache. If a previous startup/runtime target change leaves
++    // the cache and DB out of sync, the manager can sit at 0/N indefinitely despite having valid
++    // accounts and characters. Rebuild only this ephemeral population state; characters, gear,
++    // guilds, progression and every other bot event remain untouched.
++    currentBots.clear();
++    eventCache.clear();
++    PlayerbotsDatabase.DirectExecute("DELETE FROM playerbots_random_bots WHERE event = 'add'");
++
++    AssignAccountTypes();
++
++    // First pass creates fresh add events/candidates, second pass can consume the freshly-created
++    // candidates and schedule logins. Subsequent pacing remains owned by the normal world tick.
++    UpdateAIInternal(0, false);
++    UpdateAIInternal(0, false);
++
++    LOG_INFO("playerbots",
++        "Random-bot population recovery complete: candidates={} pendingLogins={} rndAccounts={}",
++        currentBots.size(), botLoading.size(), rndBotTypeAccounts.size());
++}
+ 
+ void RandomPlayerbotMgr::InitArenaTeams()
+ {
