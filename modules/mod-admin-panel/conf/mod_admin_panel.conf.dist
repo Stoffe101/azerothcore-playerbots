@@ -1,0 +1,12 @@
+[worldserver]
+
+########################################
+# In-game Admin Panel
+########################################
+
+# Master switch. The panel commands are GM-only even while enabled.
+AdminPanel.Enable = 1
+
+# Safety ceiling for live XP / reputation / gold multipliers changed from the panel.
+# Minimum accepted value is 0.01.
+AdminPanel.MaxRate = 100.0
