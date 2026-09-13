@@ -27,8 +27,10 @@ namespace AdventureStartKit
 {
 bool GrantInitial(Player* player)
 {
-    if (!g_AdventureStartStarterKit || !player)
+    if (!player)
         return false;
+    if (!g_AdventureStartStarterKit)
+        return true;
 
     uint32 const guid = player->GetGUID().GetCounter();
     AdventureProgressionStore::State state = AdventureProgressionStore::LoadOrCreate(guid);
@@ -91,13 +93,13 @@ bool GrantInitial(Player* player)
 
 bool TryGiveSpecStarterGear(Player* player)
 {
-    if (!player)
+    if (!player || !g_AdventureStartStarterKit || !g_AdventureStartAutoGear)
         return true;
 
     uint32 const guid = player->GetGUID().GetCounter();
     AdventureProgressionStore::State state = AdventureProgressionStore::LoadOrCreate(guid);
 
-    if (!g_AdventureStartAutoGear || state.starterGearGranted)
+    if (state.starterGearGranted)
         return true;
     if (!state.starterInitialized)
         return false;
