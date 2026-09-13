@@ -115,6 +115,9 @@ PopulationStats GetPopulationStats()
     stats.botAccounts = CountBotAccounts();
     stats.assignedBotAccounts = CountAssignedBotAccounts();
     stats.requiredBotAccounts = stats.botTarget ? RequiredBotAccounts() : 0u;
+    stats.managerCandidates = sRandomPlayerbotMgr.GetRandomBotCandidateCount();
+    stats.managerRandomAccounts = sRandomPlayerbotMgr.GetRandomBotAccountPoolCount();
+    stats.pendingBotLogins = sRandomPlayerbotMgr.GetPendingBotLoginCount();
     return stats;
 }
 
@@ -128,10 +131,8 @@ void RepairBotPopulation()
     uint32 const required = RequiredBotAccounts();
 
     // MaxRandomBots is consumed by RandomPlayerbotFactory during PlayerbotAIConfig startup. The
-    // Admin Panel changes that value later at runtime. If the realm booted with MaxRandomBots=0,
-    // or booted with a smaller pool than the persisted AdminPanel target, simply changing the
-    // manager's min/max leaves it with zero (or too few) account/character candidates forever.
-    // Re-run the upstream idempotent factory when capacity is missing, then refresh account types.
+    // Admin Panel can raise that value later at runtime. Extend only missing account/character
+    // capacity, then let the Playerbots-side recovery API rebuild stale ephemeral add-event state.
     if (beforeAccounts < required || beforeAssigned == 0)
     {
         LOG_WARN(
@@ -143,24 +144,21 @@ void RepairBotPopulation()
         RandomPlayerbotFactory::CreateRandomBots();
     }
 
-    sRandomPlayerbotMgr.AssignAccountTypes();
-
-    // Force two manager passes for the same reason as the old workaround: the first pass can seed
-    // fresh random-bot events and the second can consume them. Normal world ticks take over after
-    // this kick, so we do not run a busy retry loop here.
-    sRandomPlayerbotMgr.UpdateAIInternal(0, false);
-    sRandomPlayerbotMgr.UpdateAIInternal(0, false);
+    sRandomPlayerbotMgr.RepairRandomBotPopulationState();
 
     LOG_INFO(
         "server.loading",
-        "[AdminPanel] RNDbot repair complete: accounts {}->{} assigned {}->{} required={} target={} batch={}",
+        "[AdminPanel] RNDbot repair complete: accounts {}->{} assigned {}->{} required={} target={} batch={} candidates={} pending={} managerAccounts={}",
         beforeAccounts,
         CountBotAccounts(),
         beforeAssigned,
         CountAssignedBotAccounts(),
         required,
         sPlayerbotAIConfig.maxRandomBots,
-        sPlayerbotAIConfig.randomBotsPerInterval);
+        sPlayerbotAIConfig.randomBotsPerInterval,
+        sRandomPlayerbotMgr.GetRandomBotCandidateCount(),
+        sRandomPlayerbotMgr.GetPendingBotLoginCount(),
+        sRandomPlayerbotMgr.GetRandomBotAccountPoolCount());
 }
 
 void SetBotTarget(uint32 target, uint32 batch)
@@ -181,13 +179,15 @@ void SetBotTarget(uint32 target, uint32 batch)
 
     LOG_INFO(
         "server.loading",
-        "[AdminPanel] Random-bot target={} batch={} enabled={} autologin={} accounts={} assigned={}",
+        "[AdminPanel] Random-bot target={} batch={} enabled={} autologin={} accounts={} assigned={} candidates={} pending={}",
         target,
         batch,
         sPlayerbotAIConfig.enabled ? 1 : 0,
         sPlayerbotAIConfig.randomBotAutologin ? 1 : 0,
         CountBotAccounts(),
-        CountAssignedBotAccounts());
+        CountAssignedBotAccounts(),
+        sRandomPlayerbotMgr.GetRandomBotCandidateCount(),
+        sRandomPlayerbotMgr.GetPendingBotLoginCount());
 }
 
 void SetBotActivity(float percent)
