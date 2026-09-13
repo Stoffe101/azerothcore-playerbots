@@ -14,6 +14,7 @@
 #include "WorldSessionMgr.h"
 
 #include <algorithm>
+#include <array>
 
 namespace
 {
@@ -164,6 +165,53 @@ void MaxSkills(Player* player)
         return;
     player->UpdateSkillsToMaxSkillsForLevel();
     player->SaveToDB(false, false);
+}
+
+uint32 MaxProfessions(Player* player)
+{
+    if (!player)
+        return 0;
+
+    // Only touch professions/secondary skills the character already knows. This preserves the
+    // normal two-primary-profession choice while making the admin shortcut genuinely useful.
+    static constexpr std::array<uint16, 14> professionSkills = {
+        SKILL_ALCHEMY,
+        SKILL_BLACKSMITHING,
+        SKILL_ENCHANTING,
+        SKILL_ENGINEERING,
+        SKILL_HERBALISM,
+        SKILL_JEWELCRAFTING,
+        SKILL_LEATHERWORKING,
+        SKILL_MINING,
+        SKILL_SKINNING,
+        SKILL_TAILORING,
+        SKILL_INSCRIPTION,
+        SKILL_COOKING,
+        SKILL_FIRST_AID,
+        SKILL_FISHING,
+    };
+
+    uint32 changed = 0;
+    for (uint16 skill : professionSkills)
+    {
+        if (!player->HasSkill(skill))
+            continue;
+
+        // WotLK Grand Master cap. Setting step 6 keeps the profession rank coherent even if the
+        // character learned the profession before being boosted. We intentionally do NOT teach
+        // every recipe; this is a skill/rank max button, not an unlock-every-recipe cheat.
+        constexpr uint16 WOTLK_PROFESSION_CAP = 450;
+        if (player->GetPureSkillValue(skill) != WOTLK_PROFESSION_CAP ||
+            player->GetPureMaxSkillValue(skill) != WOTLK_PROFESSION_CAP ||
+            player->GetSkillStep(skill) != 6)
+        {
+            player->SetSkill(skill, 6, WOTLK_PROFESSION_CAP, WOTLK_PROFESSION_CAP);
+            ++changed;
+        }
+    }
+
+    player->SaveToDB(false, false);
+    return changed;
 }
 
 void RefreshConsumables(Player* player)
