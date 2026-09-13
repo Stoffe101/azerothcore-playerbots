@@ -6,6 +6,7 @@
 
 #include <vector>
 
+class Guild;
 class Player;
 
 namespace RaidRosterGuild
@@ -24,9 +25,13 @@ struct SyncResult
     uint32 Managed() const { return alreadyMember + joined + movedFromBotGuild; }
 };
 
-// Makes the owner's persistent roster a real part of the owner's in-game guild.
-// Bots may be moved out of synthetic/random-bot guilds, but this function never steals a
-// character from another real-player-led guild. Safe to call repeatedly.
+// Makes the owner's persistent roster a real part of a concrete in-game guild. Bots may be moved
+// out of synthetic/random-bot guilds, but this never steals a character from another real-player-
+// led guild. Supplying Guild* directly also works safely while a newly-created guild has not yet
+// been inserted into GuildMgr.
+SyncResult SyncRosterToGuild(Player* owner, Guild* targetGuild, std::vector<RaidRosterRow> const& rows);
+
+// Convenience wrapper that resolves the owner's current guild from GuildMgr.
 SyncResult SyncRosterToOwnerGuild(Player* owner, std::vector<RaidRosterRow> const& rows);
 }
 
