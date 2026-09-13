@@ -20,10 +20,18 @@ diff --git a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp b/modules/mod
 index c438eb7..21763a9 100644
 --- a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
 +++ b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
-@@ -1762,2 +1762,39 @@ void RandomPlayerbotMgr::Init()
+@@ -1779,12 +1779,49 @@ void RandomPlayerbotMgr::Init()
+ void RandomPlayerbotMgr::Init()
+ {
+     if (sPlayerbotAIConfig.addClassCommand)
+         sRandomPlayerbotMgr.PrepareAddclassCache();
+ 
+     if (sPlayerbotAIConfig.randomBotJoinBG)
+         sRandomPlayerbotMgr.LoadBattleMastersCache();
+ 
      PlayerbotsDatabase.Execute("DELETE FROM playerbots_random_bots WHERE event = 'add'");
  }
-+
+ 
 +void RandomPlayerbotMgr::RepairRandomBotPopulationState()
 +{
 +    // Never tear down state underneath bots that are already online. In that case a refresh of
@@ -60,3 +68,5 @@ index c438eb7..21763a9 100644
 +        "Random-bot population recovery complete: candidates={} pendingLogins={} rndAccounts={}",
 +        currentBots.size(), botLoading.size(), rndBotTypeAccounts.size());
 +}
++
+ void RandomPlayerbotMgr::InitArenaTeams()
