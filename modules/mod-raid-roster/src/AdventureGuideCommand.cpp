@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cctype>
 #include <string>
+#include <vector>
 
 using namespace Acore::ChatCommands;
 
@@ -48,12 +49,53 @@ char const* KindName(AdventureActivityKind kind)
     return kind == AdventureActivityKind::Dungeon ? "Dungeon" : "Raid";
 }
 
+// Player readiness is deliberately separate from encounter support. "Guild Ready" answers
+// whether this fork trusts the bots/content; this answers whether the activity makes sense for
+// THIS player right now. It is progression/level aware only for now. Gear-aware advice can be
+// layered on later without pretending we already have a reliable item-level model.
+int PlayerReadinessRank(Player* player, AdventureActivity const& activity, bool* unlockedOut = nullptr)
+{
+    std::string reason;
+    bool const unlocked = AdventureCatalog::IsUnlocked(player, activity, reason);
+    if (unlockedOut)
+        *unlockedOut = unlocked;
+    if (!unlocked)
+        return 2; // LOCKED
+
+    uint8 const progression = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+    uint8 const level = player->GetLevel();
+
+    if (activity.kind == AdventureActivityKind::Raid)
+    {
+        // Raids are recommended when they belong to the player's current progression tier.
+        if (progression == activity.minProgression)
+            return 0;
+    }
+    else
+    {
+        // Dungeons are recommended around their natural level band. At level cap this naturally
+        // promotes the level-80 catch-up/endgame dungeons while keeping older unlocked dungeons
+        // available as normal READY choices.
+        if (level >= activity.minLevel && level <= uint8(std::min<uint32>(80u, uint32(activity.minLevel) + 3u)))
+            return 0;
+    }
+
+    return 1; // READY, but not the current sweet spot.
+}
+
+char const* PlayerReadinessName(Player* player, AdventureActivity const& activity, bool unlocked)
+{
+    if (!unlocked)
+        return "LOCKED";
+    return PlayerReadinessRank(player, activity) == 0 ? "RECOMMENDED" : "READY";
+}
+
 void PrintReadyLine(ChatHandler* handler, Player* player, AdventureActivity const& activity)
 {
     std::string reason;
-    bool unlocked = AdventureCatalog::IsUnlocked(player, activity, reason);
+    bool const unlocked = AdventureCatalog::IsUnlocked(player, activity, reason);
     handler->PSendSysMessage(
-        "[AG] {}|{}|{}|{}|{}|{}|{}|{}",
+        "[AG] {}|{}|{}|{}|{}|{}|{}|{}|{}",
         activity.alias,
         activity.name,
         KindName(activity.kind),
@@ -61,7 +103,8 @@ void PrintReadyLine(ChatHandler* handler, Player* player, AdventureActivity cons
         uint32(activity.minLevel),
         uint32(activity.preferredSize),
         unlocked ? "UNLOCKED" : "LOCKED",
-        unlocked ? activity.supportNote : reason);
+        unlocked ? activity.supportNote : reason,
+        PlayerReadinessName(player, activity, unlocked));
 }
 }
 
@@ -85,13 +128,33 @@ bool AdventureGuideCommand::HandleFinder(ChatHandler* handler, Optional<std::str
     if (!player)
         return false;
 
-    handler->SendSysMessage("[AG] BEGIN|FINDER");
+    // Finder is ordered for the current player instead of dumping the static catalog in expansion
+    // order. Current sweet-spot activities come first, then other unlocked Guild Ready content,
+    // then the nearest locked activities so the UI also shows what the player is working toward.
+    std::vector<AdventureActivity const*> rows;
     for (AdventureActivity const& activity : AdventureCatalog::All())
     {
-        if (activity.support != AdventureSupport::Ready || !MatchesKind(activity, kind))
-            continue;
-        PrintReadyLine(handler, player, activity);
+        if (activity.support == AdventureSupport::Ready && MatchesKind(activity, kind))
+            rows.push_back(&activity);
     }
+
+    std::stable_sort(rows.begin(), rows.end(), [player](AdventureActivity const* a, AdventureActivity const* b)
+    {
+        int const ar = PlayerReadinessRank(player, *a);
+        int const br = PlayerReadinessRank(player, *b);
+        if (ar != br)
+            return ar < br;
+
+        if (a->minProgression != b->minProgression)
+            return ar == 2 ? a->minProgression < b->minProgression : a->minProgression > b->minProgression;
+        if (a->minLevel != b->minLevel)
+            return ar == 2 ? a->minLevel < b->minLevel : a->minLevel > b->minLevel;
+        return a->name < b->name;
+    });
+
+    handler->SendSysMessage("[AG] BEGIN|FINDER");
+    for (AdventureActivity const* activity : rows)
+        PrintReadyLine(handler, player, *activity);
     handler->SendSysMessage("[AG] END|FINDER");
     return true;
 }
