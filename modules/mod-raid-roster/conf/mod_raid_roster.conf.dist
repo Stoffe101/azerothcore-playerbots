@@ -41,24 +41,25 @@ AdventureStart.StarterKit = 1
 AdventureStart.StartingGold = 50
 
 # AdventureStart.BasicGear / BasicGearItemLevel
-#   Immediately equip a modest green starter set so the level-60 character does not reach the
-#   Dark Portal naked. ilvl 58 is deliberately replaceable by early Outland quest/dungeon loot.
+#   Immediately equip a modest green set while the custom EraTalents tree has no committed spec.
+#   This temporary set is replaced by the raider set once enough talent points are spent.
 AdventureStart.BasicGear = 1
 AdventureStart.BasicGearItemLevel = 58
 
 # AdventureStart.AutoGear
 #   Once the player commits enough points to one of the custom TBC talent trees, replace the basic
-#   set once with Playerbots' spec-aware rare gear selection.
+#   set once with a complete Playerbots-scored EPIC set appropriate to that spec.
 AdventureStart.AutoGear = 1
 
 # AdventureStart.GearMinTalentPoints
-#   Number of total era-talent points required before choosing the spec-aware starter set.
+#   Number of total era-talent points required before choosing the spec-aware raider set.
 AdventureStart.GearMinTalentPoints = 5
 
 # AdventureStart.GearItemLevel
-#   Target ilvl for that one-time blue set. 65 is strong enough to start Outland without making
-#   Hellfire/Ramparts/Blood Furnace upgrades pointless.
-AdventureStart.GearItemLevel = 65
+#   Power target for the one-time epic set. ilvl 88 models a successful late-Vanilla AQ40/Naxx40
+#   raider entering Outland: excellent starting gear that should still be replaced through TBC.
+#   Selection is spec/era aware, but is intentionally not hard-coded to exact named raid drops.
+AdventureStart.GearItemLevel = 88
 
 # AdventureStart.Teleport.Enable
 #   Teleport the fresh TBC character to the Blasted Lands side of the Dark Portal after
