@@ -1,0 +1,125 @@
+diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/LootRollAction.cpp b/modules/mod-playerbots/src/Ai/Base/Actions/LootRollAction.cpp
+index fd0674c..0b2dc75 100644
+--- a/modules/mod-playerbots/src/Ai/Base/Actions/LootRollAction.cpp
++++ b/modules/mod-playerbots/src/Ai/Base/Actions/LootRollAction.cpp
+@@ -9,8 +9,89 @@
+ #include "LootAction.h"
+ #include "ObjectMgr.h"
+ #include "PlayerbotAIConfig.h"
+ #include "Playerbots.h"
++#include "StatsWeightCalculator.h"
++
++namespace
++{
++std::vector<uint8> HumanUpgradeSlots(ItemTemplate const* proto)
++{
++    if (!proto)
++        return {};
++
++    switch (proto->InventoryType)
++    {
++        case INVTYPE_HEAD: return {EQUIPMENT_SLOT_HEAD};
++        case INVTYPE_NECK: return {EQUIPMENT_SLOT_NECK};
++        case INVTYPE_SHOULDERS: return {EQUIPMENT_SLOT_SHOULDERS};
++        case INVTYPE_CHEST:
++        case INVTYPE_ROBE: return {EQUIPMENT_SLOT_CHEST};
++        case INVTYPE_WAIST: return {EQUIPMENT_SLOT_WAIST};
++        case INVTYPE_LEGS: return {EQUIPMENT_SLOT_LEGS};
++        case INVTYPE_FEET: return {EQUIPMENT_SLOT_FEET};
++        case INVTYPE_WRISTS: return {EQUIPMENT_SLOT_WRISTS};
++        case INVTYPE_HANDS: return {EQUIPMENT_SLOT_HANDS};
++        case INVTYPE_FINGER: return {EQUIPMENT_SLOT_FINGER1, EQUIPMENT_SLOT_FINGER2};
++        case INVTYPE_TRINKET: return {EQUIPMENT_SLOT_TRINKET1, EQUIPMENT_SLOT_TRINKET2};
++        case INVTYPE_CLOAK: return {EQUIPMENT_SLOT_BACK};
++        case INVTYPE_WEAPON: return {EQUIPMENT_SLOT_MAINHAND, EQUIPMENT_SLOT_OFFHAND};
++        case INVTYPE_2HWEAPON:
++        case INVTYPE_WEAPONMAINHAND: return {EQUIPMENT_SLOT_MAINHAND};
++        case INVTYPE_WEAPONOFFHAND:
++        case INVTYPE_SHIELD:
++        case INVTYPE_HOLDABLE: return {EQUIPMENT_SLOT_OFFHAND};
++        case INVTYPE_RANGED:
++        case INVTYPE_THROWN:
++        case INVTYPE_RANGEDRIGHT:
++        case INVTYPE_RELIC: return {EQUIPMENT_SLOT_RANGED};
++        default: return {};
++    }
++}
++
++bool HumanMainSpecUpgrade(Player* player, ItemTemplate const* proto, uint32 itemId, int32 randomProperty)
++{
++    if (!player || !IsRealPlayer(player) || !proto)
++        return false;
++
++    // Tier/armor tokens are not equippable themselves. If the human's class is eligible, reserve
++    // the token for the human instead of letting an AI companion Need against them.
++    if (proto->Class == ITEM_CLASS_MISC && proto->SubClass == ITEM_SUBCLASS_JUNK &&
++        proto->Quality == ITEM_QUALITY_EPIC)
++    {
++        uint32 const classMask = 1u << (player->getClass() - 1);
++        return (proto->AllowableClass & classMask) != 0;
++    }
++
++    if (proto->Class != ITEM_CLASS_WEAPON && proto->Class != ITEM_CLASS_ARMOR)
++        return false;
++    if (player->CanUseItem(proto) != EQUIP_ERR_OK)
++        return false;
++
++    std::vector<uint8> const slots = HumanUpgradeSlots(proto);
++    if (slots.empty())
++        return false;
++
++    StatsWeightCalculator calc(player);
++    calc.SetPvpSpec(false);
++    calc.SetItemSetBonus(true);
++
++    for (uint8 slot : slots)
++    {
++        float const newScore = calc.CalculateItem(itemId, randomProperty, slot);
++        if (newScore <= 0.0f)
++            continue;
++
++        Item* equipped = player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
++        if (!equipped)
++            return true;
++
++        float const oldScore = calc.CalculateItem(equipped->GetEntry(), 0, slot);
++        // Ignore microscopic score noise. A 3% improvement is large enough to be a genuine
++        // main-spec upgrade while still protecting normal progression drops.
++        if (oldScore <= 0.0f || newScore > oldScore * 1.03f)
++            return true;
++    }
++
++    return false;
++}
++
++bool GroupHumanMainSpecUpgrade(Group* group, ItemTemplate const* proto, uint32 itemId, int32 randomProperty)
++{
++    if (!group)
++        return false;
++
++    bool protect = false;
++    group->DoForAllMembers([&](Player* member)
++    {
++        if (!protect && HumanMainSpecUpgrade(member, proto, itemId, randomProperty))
++            protect = true;
++    });
++    return protect;
++}
++}
+ 
+ bool LootRollAction::Execute(Event /*event*/)
+ {
+@@ -84,6 +165,12 @@ bool LootRollAction::Execute(Event /*event*/)
+             else if (sPlayerbotAIConfig.lootNeedRollLevel == 1)
+                 vote = GREED;
+         }
++
++        // Human-first smart loot: a bot never competes with a real group member for a meaningful
++        // main-spec equipment/token upgrade. The bot still GREEDs when enabled, so unwanted items
++        // remain useful to the party instead of being thrown away.
++        if (vote == NEED && GroupHumanMainSpecUpgrade(group, proto, itemId, randomProperty))
++            vote = GREED;
++
+         else if (vote == GREED && !sPlayerbotAIConfig.lootGreedRollLevel)
+             vote = PASS;
+ 
