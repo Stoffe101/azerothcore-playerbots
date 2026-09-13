@@ -161,6 +161,20 @@ bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStart
     if (data.teleport && player->IsInWorld())
         player->TeleportTo(data.map, data.x, data.y, data.z, data.o);
 
+    // A newly-created DK that is boosted while still in Ebon Hold only calculates the quest-gated
+    // DK talent pool (25 points at level 80). The raid-ready shortcut deliberately skips that intro,
+    // so an unspecced DK must receive the normal level-based WotLK pool instead. A far teleport is
+    // acknowledged asynchronously, so GetMapId() can still report Ebon Hold here; use the profile
+    // itself as the authority and only apply the fallback while no talents have been spent.
+    if (profile == AdventureStartProfile::WotlkRaidReady && player->getClass() == CLASS_DEATH_KNIGHT)
+    {
+        player->InitTalentForLevel();
+        uint32 const expectedTalentPoints = player->GetLevel() >= 10 ? player->GetLevel() - 9 : 0;
+        if (player->GetTalentMap().empty() && player->GetFreeTalentPoints() < expectedTalentPoints)
+            player->SetFreeTalentPoints(expectedTalentPoints);
+        player->SendTalentsInfoData(false);
+    }
+
     player->SaveToDB(false, false);
 
     LOG_INFO(
