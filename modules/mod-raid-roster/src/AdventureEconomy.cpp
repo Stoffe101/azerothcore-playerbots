@@ -12,6 +12,7 @@
 #include "RandomPlayerbotMgr.h"
 #include "WorldSession.h"
 
+#include <algorithm>
 #include <mutex>
 
 namespace
@@ -70,6 +71,57 @@ void ReleaseBossBounty(uint32 playerGuid, uint32 mapId, uint32 creatureEntry)
         mapId,
         creatureEntry);
 }
+
+uint32 ReserveDailyRepeatReward(uint32 playerGuid, uint32 requestedCopper, uint32 dailyCapCopper)
+{
+    if (!requestedCopper || !dailyCapCopper)
+        return 0;
+
+    std::lock_guard<std::mutex> lock(g_bountyClaimMutex);
+
+    uint32 alreadyEarned = 0;
+    if (QueryResult result = CharacterDatabase.Query(
+        "SELECT earned_copper FROM mod_adventure_daily_activity "
+        "WHERE player_guid = {} AND reward_date = CURDATE() LIMIT 1",
+        playerGuid))
+    {
+        Field* fields = result->Fetch();
+        alreadyEarned = fields[0].Get<uint32>();
+    }
+
+    if (alreadyEarned >= dailyCapCopper)
+        return 0;
+
+    uint32 const reserved = std::min(requestedCopper, dailyCapCopper - alreadyEarned);
+    CharacterDatabase.DirectExecute(
+        "INSERT INTO mod_adventure_daily_activity (player_guid, reward_date, earned_copper, boss_kills) "
+        "VALUES ({}, CURDATE(), {}, 1) "
+        "ON DUPLICATE KEY UPDATE earned_copper = earned_copper + {}, boss_kills = boss_kills + 1",
+        playerGuid,
+        reserved,
+        reserved);
+    return reserved;
+}
+
+void ReleaseDailyRepeatReward(uint32 playerGuid, uint32 rewardCopper)
+{
+    if (!rewardCopper)
+        return;
+
+    std::lock_guard<std::mutex> lock(g_bountyClaimMutex);
+    CharacterDatabase.DirectExecute(
+        "UPDATE mod_adventure_daily_activity "
+        "SET earned_copper = GREATEST(earned_copper - {}, 0), "
+        "boss_kills = IF(boss_kills > 0, boss_kills - 1, 0) "
+        "WHERE player_guid = {} AND reward_date = CURDATE()",
+        rewardCopper,
+        playerGuid);
+}
+
+bool AwardMoney(Player* player, uint32 rewardCopper)
+{
+    return player && rewardCopper && player->ModifyMoney(static_cast<int32>(rewardCopper));
+}
 }
 
 class AdventureEconomyPlayerScript : public PlayerScript
@@ -96,53 +148,93 @@ public:
             return;
 
         // KillRewarder passes isDungeon=false for an ungrouped killer. Use the actual map type so
-        // a legitimate solo/cleanup boss kill cannot silently miss its first-kill bounty.
+        // a legitimate solo/cleanup boss kill cannot silently miss its activity reward.
         bool const isRaid = map->IsRaid();
-        uint32 rewardGold = isRaid
-            ? g_AdventureEconomyRaidBossFirstKillGold
-            : g_AdventureEconomyDungeonBossFirstKillGold;
-
-        if (!rewardGold)
-            return;
-
         uint32 const playerGuid = player->GetGUID().GetCounter();
         uint32 const mapId = map->GetId();
         uint32 const creatureEntry = boss->GetEntry();
-        uint32 const rewardCopper = rewardGold * COPPER_PER_GOLD;
 
-        // Persist the one-time claim before awarding currency. This closes the previous window in
-        // which ModifyMoney succeeded while an asynchronous claim INSERT was still queued.
-        if (!ClaimBossBounty(playerGuid, mapId, creatureEntry, rewardCopper))
+        uint32 const firstKillGold = isRaid
+            ? g_AdventureEconomyRaidBossFirstKillGold
+            : g_AdventureEconomyDungeonBossFirstKillGold;
+        uint32 const firstKillCopper = firstKillGold * COPPER_PER_GOLD;
+
+        // The persistent first-kill row is also the switch from milestone rewards to repeatable
+        // activity income. Record it even when the administrator configured the first-kill payout
+        // to zero, otherwise that boss could never enter the repeat-reward path.
+        if (ClaimBossBounty(playerGuid, mapId, creatureEntry, firstKillCopper))
+        {
+            if (!firstKillCopper)
+                return;
+
+            if (!AwardMoney(player, firstKillCopper))
+            {
+                ReleaseBossBounty(playerGuid, mapId, creatureEntry);
+                LOG_WARN(
+                    "server.loading",
+                    "[AdventureEconomy] Could not award {} copper to {} for boss {} on map {}; first-kill claim released",
+                    firstKillCopper,
+                    player->GetName(),
+                    creatureEntry,
+                    mapId);
+                return;
+            }
+
+            if (WorldSession* session = player->GetSession())
+            {
+                ChatHandler(session).PSendSysMessage(
+                    "Adventurer bounty: {} gold for your first defeat of {}.",
+                    firstKillGold,
+                    boss->GetName());
+            }
+
+            LOG_INFO(
+                "server.loading",
+                "[AdventureEconomy] {} earned {}g first-kill bounty for {} (entry {}, map {}, raid={})",
+                player->GetName(),
+                firstKillGold,
+                boss->GetName(),
+                creatureEntry,
+                mapId,
+                isRaid ? 1 : 0);
+            return;
+        }
+
+        uint32 const repeatGold = isRaid
+            ? g_AdventureEconomyRaidBossRepeatGold
+            : g_AdventureEconomyDungeonBossRepeatGold;
+        uint32 const requestedCopper = repeatGold * COPPER_PER_GOLD;
+        uint32 const dailyCapCopper = g_AdventureEconomyDailyRepeatCapGold * COPPER_PER_GOLD;
+        uint32 const rewardCopper = ReserveDailyRepeatReward(playerGuid, requestedCopper, dailyCapCopper);
+        if (!rewardCopper)
             return;
 
-        if (!player->ModifyMoney(static_cast<int32>(rewardCopper)))
+        if (!AwardMoney(player, rewardCopper))
         {
-            // Money-cap failure should not permanently consume the bounty. Release the claim
-            // synchronously so a later kill can retry once the player has room for the reward.
-            ReleaseBossBounty(playerGuid, mapId, creatureEntry);
+            ReleaseDailyRepeatReward(playerGuid, rewardCopper);
             LOG_WARN(
                 "server.loading",
-                "[AdventureEconomy] Could not award {} copper to {} for boss {} on map {}; bounty claim released",
+                "[AdventureEconomy] Could not award {} repeat copper to {}; daily reservation released",
                 rewardCopper,
-                player->GetName(),
-                creatureEntry,
-                mapId);
+                player->GetName());
             return;
         }
 
         if (WorldSession* session = player->GetSession())
         {
             ChatHandler(session).PSendSysMessage(
-                "Adventurer bounty: {} gold for your first defeat of {}.",
-                rewardGold,
-                boss->GetName());
+                "Adventurer activity: {}g {}s for defeating {}. Repeat rewards are capped at {}g per day.",
+                rewardCopper / COPPER_PER_GOLD,
+                (rewardCopper % COPPER_PER_GOLD) / 100,
+                boss->GetName(),
+                g_AdventureEconomyDailyRepeatCapGold);
         }
 
         LOG_INFO(
             "server.loading",
-            "[AdventureEconomy] {} earned {}g first-kill bounty for {} (entry {}, map {}, raid={})",
+            "[AdventureEconomy] {} earned {} repeat copper for {} (entry {}, map {}, raid={})",
             player->GetName(),
-            rewardGold,
+            rewardCopper,
             boss->GetName(),
             creatureEntry,
             mapId,
