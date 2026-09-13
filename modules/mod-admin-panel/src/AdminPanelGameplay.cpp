@@ -1,0 +1,251 @@
+#include "AdminPanelGameplay.h"
+
+#include "EraTalentIP.h"
+#include "EraTalents.h"
+#include "EraTalentsComms.h"
+#include "Group.h"
+#include "Log.h"
+#include "Pet.h"
+#include "Player.h"
+#include "PlayerbotAIConfig.h"
+#include "PlayerbotFactory.h"
+#include "RandomPlayerbotMgr.h"
+#include "WorldSession.h"
+#include "WorldSessionMgr.h"
+
+#include <algorithm>
+
+namespace
+{
+constexpr uint32 COPPER_PER_GOLD = 10000u;
+constexpr uint32 MAX_BOT_TARGET = 1000u;
+constexpr uint32 DEFAULT_BOT_BATCH = 10u;
+constexpr uint32 TBC_PRE_RAID_ILVL = 115u;
+
+void RestoreUnit(Unit* unit)
+{
+    if (!unit)
+        return;
+
+    unit->SetFullHealth();
+    Powers const primary = unit->getPowerType();
+    unit->SetPower(primary, unit->GetMaxPower(primary));
+    if (primary != POWER_MANA && unit->GetMaxPower(POWER_MANA) > 0)
+        unit->SetPower(POWER_MANA, unit->GetMaxPower(POWER_MANA));
+}
+
+void PrepareOne(Player* player)
+{
+    if (!player)
+        return;
+
+    if (!player->IsAlive())
+    {
+        player->ResurrectPlayer(1.0f);
+        player->SpawnCorpseBones();
+    }
+
+    player->DurabilityRepairAll(false, 0.0f, false);
+    RestoreUnit(player);
+    RestoreUnit(player->GetPet());
+
+    PlayerbotFactory factory(player, player->GetLevel());
+    factory.InitAmmo();
+    factory.InitPotions();
+    factory.InitFood();
+    factory.InitReagents();
+    player->SaveToDB(false, false);
+}
+}
+
+namespace AdminPanelGameplay
+{
+PopulationStats GetPopulationStats()
+{
+    PopulationStats stats;
+    stats.sessions = sWorldSessionMgr->GetActiveSessionCount();
+
+    for (auto const& entry : sWorldSessionMgr->GetAllSessions())
+    {
+        WorldSession* session = entry.second;
+        if (!session)
+            continue;
+        Player* player = session->GetPlayer();
+        if (!player || !player->IsInWorld())
+            continue;
+
+        if (session->IsBot())
+            ++stats.bots;
+        else
+            ++stats.realPlayers;
+    }
+
+    stats.botTarget = sPlayerbotAIConfig.maxRandomBots;
+    stats.botBatch = sPlayerbotAIConfig.randomBotsPerInterval;
+    stats.botActivity = sRandomPlayerbotMgr.getActivityPercentage();
+    return stats;
+}
+
+void SetBotTarget(uint32 target, uint32 batch)
+{
+    target = std::min(target, MAX_BOT_TARGET);
+    batch = std::max<uint32>(1, std::min<uint32>(batch ? batch : DEFAULT_BOT_BATCH, 50));
+
+    // Keep the manager enabled even at target=0 so it can actively drain existing random bots.
+    // The deliberately small batch is the fix for the old 150-bot login storm that starved the
+    // character DB and made real-player login hang for minutes.
+    sPlayerbotAIConfig.randomBotAutologin = true;
+    sPlayerbotAIConfig.minRandomBots = target;
+    sPlayerbotAIConfig.maxRandomBots = target;
+    sPlayerbotAIConfig.randomBotsPerInterval = batch;
+
+    LOG_INFO("server.loading", "[AdminPanel] Random-bot target={} batch={}", target, batch);
+}
+
+void SetBotActivity(float percent)
+{
+    percent = std::max(0.0f, std::min(100.0f, percent));
+    sRandomPlayerbotMgr.setActivityPercentage(percent);
+}
+
+bool GiveGold(Player* player, uint32 gold)
+{
+    if (!player || !gold)
+        return false;
+
+    uint64 const addCopper = uint64(gold) * COPPER_PER_GOLD;
+    uint64 const newMoney = std::min<uint64>(uint64(MAX_MONEY_AMOUNT), uint64(player->GetMoney()) + addCopper);
+    player->SetMoney(static_cast<uint32>(newMoney));
+    player->SaveToDB(false, false);
+    return true;
+}
+
+void Repair(Player* player)
+{
+    if (!player)
+        return;
+    player->DurabilityRepairAll(false, 0.0f, false);
+}
+
+void Restore(Player* player)
+{
+    if (!player)
+        return;
+    if (!player->IsAlive())
+    {
+        player->ResurrectPlayer(1.0f);
+        player->SpawnCorpseBones();
+    }
+    RestoreUnit(player);
+    RestoreUnit(player->GetPet());
+}
+
+void MaxSkills(Player* player)
+{
+    if (!player)
+        return;
+    player->UpdateSkillsToMaxSkillsForLevel();
+    player->SaveToDB(false, false);
+}
+
+void RefreshConsumables(Player* player)
+{
+    if (!player)
+        return;
+    PlayerbotFactory factory(player, player->GetLevel());
+    factory.InitAmmo();
+    factory.InitPotions();
+    factory.InitFood();
+    factory.InitReagents();
+    player->SaveToDB(false, false);
+}
+
+void ResetEraTalents(Player* player)
+{
+    if (!player)
+        return;
+    EraId const era = EraFromIP(player);
+    if (!EraHasTalentTrees(era))
+    {
+        player->resetTalents(true);
+        player->SendTalentsInfoData(false);
+        return;
+    }
+
+    EraTalents::Reset(player, era);
+    EraTalentsComms::SendSync(player);
+    player->SaveToDB(false, false);
+}
+
+void RegearTbcPreRaid(Player* player)
+{
+    if (!player)
+        return;
+    PlayerbotFactory::AutoGear(
+        player,
+        ITEM_QUALITY_EPIC,
+        TBC_PRE_RAID_ILVL,
+        false,
+        false,
+        true);
+    player->SaveToDB(false, false);
+}
+
+uint32 PrepareGroup(Player* leader)
+{
+    if (!leader)
+        return 0;
+
+    Group* group = leader->GetGroup();
+    if (!group)
+    {
+        PrepareOne(leader);
+        return 1;
+    }
+
+    uint32 prepared = 0;
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+    {
+        Player* member = ref->GetSource();
+        if (!member || !member->IsInWorld())
+            continue;
+        PrepareOne(member);
+        ++prepared;
+    }
+    return prepared;
+}
+
+uint32 SummonGroup(Player* leader)
+{
+    if (!leader)
+        return 0;
+
+    Group* group = leader->GetGroup();
+    if (!group)
+        return 0;
+
+    uint32 summoned = 0;
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+    {
+        Player* member = ref->GetSource();
+        if (!member || !member->IsInWorld() || member == leader)
+            continue;
+        if (member->TeleportTo(
+                leader->GetMapId(),
+                leader->GetPositionX(),
+                leader->GetPositionY(),
+                leader->GetPositionZ(),
+                leader->GetOrientation()))
+            ++summoned;
+    }
+    return summoned;
+}
+
+uint32 RaidNight(Player* leader)
+{
+    uint32 const prepared = PrepareGroup(leader);
+    // Raise activity while raiding without changing the configured population target.
+    SetBotActivity(100.0f);
+    return prepared;
+}
+}
