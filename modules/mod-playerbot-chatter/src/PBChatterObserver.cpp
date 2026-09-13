@@ -136,8 +136,19 @@ bool PBChatterObserver::OnPlayerCanUseChat(Player* player, uint32 /*type*/, uint
 
 bool PBChatterObserver::OnPlayerCanUseChat(Player* player, uint32 /*type*/, uint32 lang, std::string& msg, Channel* channel)
 {
-    if (channel && channel->GetChannelId() == GENERAL_CHANNEL_ID && BufferEligible(player, lang))
-        PBChatterAmbient::OnPlayerLine(AMB_ZONE, player->GetZoneId(),
-                                       player->GetGUID().GetCounter(), player->GetName(), msg);
+    if (channel && channel->GetChannelId() == GENERAL_CHANNEL_ID)
+    {
+        // General used to feed only the ambient conversation buffer, which meant a real player
+        // could type directly into General and get silence until an unrelated ambient timer fired.
+        // Treat it as a first-class reactive surface: one eligible bot currently in the same
+        // zone/faction General channel answers, while we still feed the line into ambient context.
+        if (Eligible(player, lang, msg))
+            for (Player* bot : PBChatterClassifier::ResolveGeneralTargets(player, msg))
+                Enqueue(bot, player, PBChatChannel::General, msg);
+
+        if (BufferEligible(player, lang))
+            PBChatterAmbient::OnPlayerLine(AMB_ZONE, player->GetZoneId(),
+                                           player->GetGUID().GetCounter(), player->GetName(), msg);
+    }
     return true; // never block
 }
