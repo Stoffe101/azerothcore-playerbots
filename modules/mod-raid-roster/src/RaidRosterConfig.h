@@ -61,6 +61,7 @@ extern bool g_WipeRecoveryEnable;
 extern uint32 g_WipeRecoveryDelayMs;
 extern bool g_WipeRecoveryResurrectHumans;
 extern bool g_AutoPrepEnable;
+extern bool g_AutoPrepRefillConsumables;
 extern bool g_AutoPrepWarlockSupport;
 extern bool g_AutoPrepSmartPets;
 
