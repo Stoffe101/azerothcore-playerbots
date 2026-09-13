@@ -20,7 +20,7 @@ diff --git a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp b/modules/mod
 index c438eb7..21763a9 100644
 --- a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
 +++ b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
-@@ -2530,5 +2530,42 @@ void RandomPlayerbotMgr::Init()
+@@ -2530,2 +2530,39 @@ void RandomPlayerbotMgr::Init()
      PlayerbotsDatabase.Execute("DELETE FROM playerbots_random_bots WHERE event = 'add'");
  }
 +
@@ -60,6 +60,3 @@ index c438eb7..21763a9 100644
 +        "Random-bot population recovery complete: candidates={} pendingLogins={} rndAccounts={}",
 +        currentBots.size(), botLoading.size(), rndBotTypeAccounts.size());
 +}
- 
- void RandomPlayerbotMgr::InitArenaTeams()
- {
