@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: Extended Character Stats
+## Notes: Native WoW 3.3.5a character-stat panel for this server.
+## Author: Skrra server project
+## Version: 1.0.0
+## SavedVariablesPerCharacter: ExtendedCharacterStats335DB
+
+ExtendedCharacterStats.lua
