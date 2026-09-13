@@ -3,6 +3,8 @@
 
 #include "Define.h"
 
+class Player;
+
 namespace AdminPanelExpansion
 {
 // TBC is the default live expansion. WotLK only becomes available after the administrator
@@ -11,6 +13,7 @@ bool IsWotlkReleased();
 void SetWotlkReleased(bool released);
 uint8 CurrentLevelCap();
 uint8 CurrentProgressionLimit();
+uint8 PlayerProgression(Player* player);
 char const* CurrentExpansionName();
 }
 
