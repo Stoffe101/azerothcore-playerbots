@@ -20,7 +20,7 @@ bool g_AdventureStartBasicGear = true;
 uint32 g_AdventureStartBasicGearItemLevel = 58;
 bool g_AdventureStartAutoGear = true;
 uint32 g_AdventureStartGearMinTalentPoints = 5;
-uint32 g_AdventureStartGearItemLevel = 65;
+uint32 g_AdventureStartGearItemLevel = 88;
 
 void RaidRosterLoadConfig()
 {
@@ -63,7 +63,7 @@ void RaidRosterLoadConfig()
     if (g_AdventureStartGearMinTalentPoints > 61)
         g_AdventureStartGearMinTalentPoints = 61;
 
-    g_AdventureStartGearItemLevel = sConfigMgr->GetOption<uint32>("AdventureStart.GearItemLevel", 65);
+    g_AdventureStartGearItemLevel = sConfigMgr->GetOption<uint32>("AdventureStart.GearItemLevel", 88);
     if (g_AdventureStartGearItemLevel < 1)
         g_AdventureStartGearItemLevel = 1;
     else if (g_AdventureStartGearItemLevel > 200)
@@ -72,7 +72,7 @@ void RaidRosterLoadConfig()
     LOG_INFO("server.loading", "[RaidRoster] Enable={}", g_RaidRosterEnable ? 1 : 0);
     LOG_INFO(
         "server.loading",
-        "[AdventureStart] Enable={}, Level={}, Progression={}, RevealMap={}, Teleport={}, Map={}, XYZ=({:.2f},{:.2f},{:.2f}), O={:.2f}, StarterKit={}, Gold={}g, BasicGear={}@{}, SpecGear={} after {} pts @{}",
+        "[AdventureStart] Enable={}, Level={}, Progression={}, RevealMap={}, Teleport={}, Map={}, XYZ=({:.2f},{:.2f},{:.2f}), O={:.2f}, StarterKit={}, Gold={}g, BasicGear={}@{}, RaiderGear={} after {} pts @{}",
         g_AdventureStartEnable ? 1 : 0,
         g_AdventureStartLevel,
         g_AdventureStartProgression,
