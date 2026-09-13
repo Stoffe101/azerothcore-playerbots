@@ -96,6 +96,7 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
     bool const wotlkRaidReady = IsWotlkRaidReady(profile);
     uint32 const startingGold = StartingGold(profile);
     uint32 const basicIlvl = BasicItemLevel(profile);
+    uint32 const finalIlvl = FinalItemLevel(profile);
 
     // Keep PlayerbotFactory isolated in this translation unit. AdventureStartControl.cpp includes
     // IndividualProgression.h, while PlayerbotFactory -> PlayerbotAI.h defines a conflicting
@@ -106,6 +107,9 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
     factory.InitSkills();
     factory.InitClassSpells();
     factory.InitAvailableSpells();
+
+    // Always fill empty bag slots before gearing. Raid-ready is an explicit convenience action,
+    // so the character should leave it with useful inventory space instead of only the backpack.
     factory.InitBags(false);
     factory.InitAmmo();
     factory.InitReagents();
@@ -131,9 +135,9 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
         player->SetSkill(SKILL_RIDING, 0, 150, 150);
     }
 
-    // Temporary gear prevents naked boosted characters while we wait for enough talent investment
-    // to identify their intended role. Both raid-ready modes start in good blues before the final
-    // spec-aware epic pass.
+    // Give a playable baseline immediately. For raid-ready modes use secondChance=true so old
+    // low-level equipment is replaced directly instead of depending on free bag slots to move it.
+    // This was the reason an existing character could reach level 70 yet appear to receive no gear.
     if (g_AdventureStartBasicGear)
     {
         PlayerbotFactory::AutoGear(
@@ -141,8 +145,22 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
             raidReady ? ITEM_QUALITY_RARE : ITEM_QUALITY_UNCOMMON,
             basicIlvl,
             false,
-            false,
+            raidReady,
             raidReady);
+    }
+
+    // A raid-ready button should actually produce raid-ready gear immediately, even before the
+    // player has chosen an EraTalents spec. Once enough era talent points are spent, the normal
+    // spec-aware pass below runs again and replaces this fallback set for the chosen role.
+    if (raidReady && g_AdventureStartAutoGear)
+    {
+        PlayerbotFactory::AutoGear(
+            player,
+            ITEM_QUALITY_EPIC,
+            finalIlvl,
+            false,
+            true,
+            true);
     }
 
     uint32 const targetCopper = startingGold * COPPER_PER_GOLD;
@@ -155,12 +173,13 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
 
     LOG_INFO(
         "server.loading",
-        "[AdventureStart] Starter kit granted to {} (profile={}, gold={}g, basicGear={}, basicIlvl={})",
+        "[AdventureStart] Starter kit granted to {} (profile={}, gold={}g, bags=1, basicGear={}, basicIlvl={}, immediateRaidIlvl={})",
         player->GetName(),
         AdventureStartControl::ProfileName(profile),
         startingGold,
         g_AdventureStartBasicGear ? 1 : 0,
-        basicIlvl);
+        basicIlvl,
+        raidReady && g_AdventureStartAutoGear ? finalIlvl : 0);
     return true;
 }
 
@@ -187,12 +206,13 @@ bool TryGiveSpecStarterGear(Player* player)
 
     // Adventure mode gets late-Vanilla raid epics. TBC raid-ready gets a pre-Kara ilvl-115 set.
     // WotLK raid-ready gets ilvl-200 epics, positioning Naxx as the first meaningful Wrath raid.
+    // Raid-ready refreshes replace the fallback set directly so a full inventory cannot block it.
     PlayerbotFactory::AutoGear(
         player,
         ITEM_QUALITY_EPIC,
         targetIlvl,
         false,
-        false,
+        IsRaidReady(profile),
         IsRaidReady(profile));
 
     AdventureProgressionStore::MarkStarterGearGranted(guid, specTab);
