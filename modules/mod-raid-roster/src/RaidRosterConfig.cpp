@@ -70,6 +70,9 @@ uint32 g_BadLuckUpgradeWindowSeconds = 120;
 bool g_AdventureEconomyEnable = true;
 uint32 g_AdventureEconomyDungeonBossFirstKillGold = 5;
 uint32 g_AdventureEconomyRaidBossFirstKillGold = 20;
+uint32 g_AdventureEconomyDungeonBossRepeatGold = 1;
+uint32 g_AdventureEconomyRaidBossRepeatGold = 3;
+uint32 g_AdventureEconomyDailyRepeatCapGold = 30;
 
 namespace
 {
@@ -185,6 +188,12 @@ void RaidRosterLoadConfig()
         sConfigMgr->GetOption<uint32>("AdventureEconomy.DungeonBossFirstKillGold", 5), 0, 1000);
     g_AdventureEconomyRaidBossFirstKillGold = ClampU32(
         sConfigMgr->GetOption<uint32>("AdventureEconomy.RaidBossFirstKillGold", 20), 0, 5000);
+    g_AdventureEconomyDungeonBossRepeatGold = ClampU32(
+        sConfigMgr->GetOption<uint32>("AdventureEconomy.DungeonBossRepeatGold", 1), 0, 100);
+    g_AdventureEconomyRaidBossRepeatGold = ClampU32(
+        sConfigMgr->GetOption<uint32>("AdventureEconomy.RaidBossRepeatGold", 3), 0, 500);
+    g_AdventureEconomyDailyRepeatCapGold = ClampU32(
+        sConfigMgr->GetOption<uint32>("AdventureEconomy.DailyRepeatCapGold", 30), 0, 1000);
 
     LOG_INFO("server.loading", "[RaidRoster] Enable={}", g_RaidRosterEnable ? 1 : 0);
     LOG_INFO(
@@ -215,8 +224,11 @@ void RaidRosterLoadConfig()
     LOG_INFO("server.loading", "[SmartLoot] Enable={}, BotNeedUpgrades={}, BotGreedUseful={}, BadLuckProtection={}, UpgradeWindow={}s",
         g_SmartLootEnable ? 1 : 0, g_SmartLootBotNeedUpgrades ? 1 : 0,
         g_SmartLootBotGreedUseful ? 1 : 0, g_BadLuckProtectionEnable ? 1 : 0, g_BadLuckUpgradeWindowSeconds);
-    LOG_INFO("server.loading", "[AdventureEconomy] Enable={}, dungeonFirstKill={}g, raidFirstKill={}g",
+    LOG_INFO("server.loading", "[AdventureEconomy] Enable={}, firstKill(dungeon={}g, raid={}g), repeat(dungeon={}g, raid={}g, dailyCap={}g)",
         g_AdventureEconomyEnable ? 1 : 0,
         g_AdventureEconomyDungeonBossFirstKillGold,
-        g_AdventureEconomyRaidBossFirstKillGold);
+        g_AdventureEconomyRaidBossFirstKillGold,
+        g_AdventureEconomyDungeonBossRepeatGold,
+        g_AdventureEconomyRaidBossRepeatGold,
+        g_AdventureEconomyDailyRepeatCapGold);
 }
