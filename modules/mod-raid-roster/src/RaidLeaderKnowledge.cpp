@@ -183,6 +183,300 @@ std::vector<Encounter> Build()
             "Bots split Channeler tanks, mark DPS priority, CC Burning Abyssals, position/spread on Magtheridon, move from debris and schedule Manticron Cube use for Blast Nova.",
             "Cube handling is deterministic in the pinned strategy, but an assigned bot can still fail to complete an interaction if its cube GameObject cannot be resolved or reached. Treat the mechanic as automated, not infallible."
         },
+
+        // WotLK 3.3.5a. These summaries deliberately mirror actions that exist in the pinned
+        // Playerbots strategy tree. The language model may phrase these instructions, but it is
+        // never the source of truth for movement, targeting, encounter state or assignments.
+        {
+            "Naxxramas", "Anub'Rekhan", {"anubrekhan", "anub rekhan"}, Readiness::GuildReady,
+            "naxx",
+            "Positioning encounter with a dedicated Anub'Rekhan strategy trigger.",
+            "Follow the coded tank position and keep the boss oriented consistently.",
+            "Keep the active tank stable and move with the raid when the strategy repositions.",
+            "Stay with the raid's chosen position and avoid freelancing away from the coded movement plan.",
+            "Bots run the Anub'Rekhan positioning action from the Naxx strategy.",
+            "The raid leader should explain the position plan, not invent replacement coordinates."
+        },
+        {
+            "Naxxramas", "Grand Widow Faerlina", {"faerlina", "grand widow"}, Readiness::GuildReady,
+            "naxx",
+            "The pinned strategy provides encounter detection plus generic AOE avoidance.",
+            "Keep control of your assigned target and do not drag hazards through the group.",
+            "Keep tanks covered while respecting the same movement hazards as the raid.",
+            "Follow target calls and move out of avoidable AOE.",
+            "Bots use the Faerlina trigger with the shared avoid-AOE action.",
+            "Automation is intentionally described conservatively because the pinned strategy does not expose a larger Faerlina-specific action set."
+        },
+        {
+            "Naxxramas", "Maexxna", {"maexxna"}, Readiness::GuildReady,
+            "naxx",
+            "Positioning encounter where the pinned strategy combines rear-flank behavior with AOE avoidance.",
+            "Keep Maexxna controlled while allowing the raid to occupy the rear-flank position.",
+            "Keep the tank stable and react to damage without abandoning safe positioning.",
+            "Stay on the rear flank when appropriate and move out of avoidable AOE.",
+            "Bots execute rear-flank and avoid-AOE actions while Maexxna is active.",
+            "Do not claim automation for mechanics that are not represented in the pinned strategy."
+        },
+        {
+            "Naxxramas", "Patchwerk", {"patchwerk", "patch"}, Readiness::Playable,
+            "naxx",
+            "Patchwerk is present in the Naxx strategy source, but the dedicated tank/ranged/non-tank trigger block is commented out in the pinned revision.",
+            "Treat this as a normal manually supervised tanking check rather than relying on special Patchwerk positioning automation.",
+            "Keep the tanks stable and do not assume a disabled strategy block will rescue bad positioning.",
+            "Attack normally while respecting the human raid leader's positioning.",
+            "No active Patchwerk-specific trigger set is claimed by this fork at the pinned commit.",
+            "Marked Playable instead of Guild Ready in the encounter brief so the assistant never overstates automation."
+        },
+        {
+            "Naxxramas", "Grobbulus", {"grobbulus", "grobb"}, Readiness::GuildReady,
+            "naxx",
+            "Movement encounter centered on Mutating Injection and poison-cloud positioning.",
+            "Rotate Grobbulus cleanly as the cloud logic requests and preserve room for the raid.",
+            "Keep the moving raid stable and react to players displaced by Mutating Injection.",
+            "If the strategy moves you for Mutating Injection, finish the movement before returning to normal positioning.",
+            "Bots distinguish melee/ranged injection handling, move injected players away/behind, return them after removal, and rotate the boss around clouds.",
+            "The movement comes from deterministic triggers: mutating injection melee/ranged/removed and grobbulus cloud."
+        },
+        {
+            "Naxxramas", "Gluth", {"gluth"}, Readiness::GuildReady,
+            "naxx",
+            "Targeting and positioning encounter with add-slow support and tank swap assistance.",
+            "Follow the strategy position and be ready for the coded taunt response when the main tank accumulates Mortal Wound pressure.",
+            "Track the tank handoff and keep the raid stable while adds are controlled.",
+            "Attack the strategy-selected target; if assigned to add control, follow the slowdown/position behavior rather than tunneling.",
+            "Bots choose targets, position for Gluth, slow adds and trigger a taunt when the main-tank Mortal Wound condition fires.",
+            "The taunt is strategy-driven, not an LLM decision."
+        },
+        {
+            "Naxxramas", "Thaddius", {"thaddius", "thad"}, Readiness::GuildReady,
+            "naxx",
+            "Multi-phase encounter with platform transition and polarity movement.",
+            "Follow the phase target and transition movement; do not fight the polarity positioning logic once Thaddius is active.",
+            "Keep the active platform/tank targets stable through the transition and move with polarity assignments afterwards.",
+            "Finish the platform transition, then obey the polarity movement instead of staying planted for extra casts.",
+            "Bots attack the nearest platform target, recover lost tank aggro, move to the Thaddius platform and run the polarity movement action.",
+            "Polarity placement is deterministic in Playerbots and must not be reassigned conversationally."
+        },
+        {
+            "Naxxramas", "Instructor Razuvious", {"razuvious", "instructor"}, Readiness::GuildReady,
+            "naxx",
+            "Special-control encounter with explicit obedience-crystal tank behavior.",
+            "If the strategy assigns the tank job, let the obedience-crystal action own it rather than forcing a conventional tank plan.",
+            "Keep the controlled tank target stable and avoid disrupting the special-control flow.",
+            "Use the strategy-selected target and do not pull threat away from the controlled tank plan.",
+            "Tank bots use the obedience-crystal action; non-tanks use the Razuvious target action.",
+            "This is a coded special-role encounter, so conversational AI must not improvise a different control method."
+        },
+        {
+            "Naxxramas", "Gothik the Harvester", {"gothik", "harvester"}, Readiness::Playable,
+            "naxx",
+            "Gothik support exists in the Naxx codebase, but the Gothik generic multiplier is commented out in the pinned strategy revision.",
+            "Supervise positioning manually and do not assume full encounter-specific automation.",
+            "Treat the fight as human-supervised until runtime validation proves the remaining behavior reliable.",
+            "Follow the human raid leader's target and side plan.",
+            "This fork does not claim the commented Gothik multiplier as active automation.",
+            "Marked Playable to keep the raid leader honest about the pinned implementation."
+        },
+        {
+            "Naxxramas", "The Four Horsemen", {"four horsemen", "horsemen", "4 horsemen"}, Readiness::GuildReady,
+            "naxx",
+            "Assignment encounter with dedicated attractor and attack-order logic.",
+            "Take the tank/attractor assignment produced by the deterministic strategy and hold it instead of chasing another corner.",
+            "Track split assignments and keep each active tank group stable.",
+            "Attack in the strategy order and stay with your assigned group.",
+            "Bots divide attractor roles and alternate them while the rest of the raid attacks in the coded order.",
+            "Assignments are deterministic. The LLM is allowed to explain them, never reshuffle them."
+        },
+        {
+            "Naxxramas", "Loatheb", {"loatheb"}, Readiness::GuildReady,
+            "naxx",
+            "Position and target-selection encounter backed by a dedicated Loatheb multiplier.",
+            "Hold the coded position and avoid pulling the boss away from the planned group layout.",
+            "Use the encounter's healing windows while staying with the strategy position.",
+            "Follow the chosen target and position rather than creating a second formation.",
+            "Bots run Loatheb positioning/target actions plus the dedicated Loatheb multiplier.",
+            "Healing-window details remain the encounter's responsibility; this brief does not fabricate extra timers."
+        },
+        {
+            "Naxxramas", "Heigan the Unclean", {"heigan", "heigan the unclean"}, Readiness::GuildReady,
+            "naxx",
+            "Movement encounter with separate coded dance behavior for melee and ranged roles.",
+            "Keep the boss controlled while following the appropriate dance path.",
+            "Heal while following the ranged/melee movement logic; survival movement takes priority over squeezing in another cast.",
+            "Follow the dance movement for your role and do not stand still waiting for a chat call.",
+            "Bots trigger separate heigan dance melee and heigan dance ranged actions.",
+            "The dance path is code-driven. Natural-language callouts are only commentary on top."
+        },
+        {
+            "Naxxramas", "Sapphiron", {"sapphiron", "sapph"}, Readiness::GuildReady,
+            "naxx",
+            "Ground and flight phases have separate deterministic positioning actions.",
+            "Use the ground position and keep orientation stable until the flight-phase logic takes over.",
+            "Move with the ground/flight formation and keep the raid stable through phase changes.",
+            "Follow the phase position instead of anchoring yourself to the previous formation.",
+            "Bots use dedicated Sapphiron ground-position and flight-position actions.",
+            "The raid leader can announce the phase change, but the actual positions come from Playerbots."
+        },
+        {
+            "Naxxramas", "Kel'Thuzad", {"kelthuzad", "kel thuzad", "kt"}, Readiness::GuildReady,
+            "naxx",
+            "Final encounter with dedicated position and target-selection actions.",
+            "Follow the coded position and keep tanking assignments consistent when targets change.",
+            "Maintain the formation while covering the active target/tank.",
+            "Use the strategy-selected target and preserve spacing/positioning instead of chasing independently.",
+            "Bots continuously run Kel'Thuzad position and target-selection actions while the encounter trigger is active.",
+            "This brief intentionally does not invent unverified handling beyond the pinned strategy."
+        },
+        {
+            "The Obsidian Sanctum", "Sartharion", {"sartharion", "sarth", "obsidian sanctum"}, Readiness::GuildReady,
+            "wotlk-os",
+            "Sartharion strategy covers tank placement, fissure/tsunami avoidance, target priority, melee flank positioning and twilight portals.",
+            "Hold the coded tank position and do not drag Sartharion through the raid's movement lanes.",
+            "Follow fissure/tsunami movement while keeping the tank and portal group stable.",
+            "Avoid Twilight Fissure and Flame Tsunami, follow attack priority, and use portal movement when the deterministic triggers assign it.",
+            "Bots tank-position Sartharion, dodge fissures/tsunami, rear-flank in melee, pick attack priority and enter/exit twilight portals.",
+            "The current Adventure Guide keeps the upstream drake caveat visible. Do not promise unsupported drake orders through chat."
+        },
+        {
+            "The Eye of Eternity", "Malygos", {"malygos", "eye of eternity", "eoe"}, Readiness::GuildReady,
+            "wotlk-eoe",
+            "Malygos strategy covers boss positioning/targeting plus the flying-drake phase.",
+            "Follow the Malygos positioning action until the vehicle phase takes over.",
+            "Stay with the group formation and continue supporting the transition into the drake phase.",
+            "Follow target calls in the ground phase; once mounted, let the drake-combat behavior handle the vehicle rotation.",
+            "Bots position/target Malygos, fly the encounter drakes and run the drake attack action in vehicle combat.",
+            "Vehicle handling is explicitly coded in the pinned strategy, so the LLM only narrates the transition."
+        },
+        {
+            "Onyxia's Lair", "Onyxia", {"onyxia", "ony", "onyxias lair"}, Readiness::GuildReady,
+            "onyxia",
+            "Onyxia strategy handles tail avoidance, egg avoidance, Deep Breath safety, fireball splash spacing and whelp targeting.",
+            "Keep Onyxia controlled without placing the raid near her tail or egg areas.",
+            "Move with Deep Breath safety/spread calls while keeping the tank and whelp pressure stable.",
+            "Stay off the tail, avoid eggs, move to the Deep Breath safe zone, spread for incoming fireball splash and swap to whelps when they spawn.",
+            "Bots move to Onyxia's side near the tail, avoid eggs, move to a safe zone for Deep Breath, spread for fireball splash and kill spawned whelps.",
+            "The strategy source marks its own phase thresholds. The raid leader should not invent different ones."
+        },
+        {
+            "Icecrown Citadel", "Lord Marrowgar", {"marrowgar", "lord marrowgar"}, Readiness::GuildReady,
+            "icc",
+            "ICC opens with dedicated tank positioning and Bone Spike target handling.",
+            "Use the ICC Marrowgar tank position and keep the boss consistently placed.",
+            "Keep tanks stable and react immediately when the spike target changes.",
+            "Swap to the spike target when the strategy calls it, then return to the boss.",
+            "Bots run icc lm tank position and icc spike actions.",
+            "Target selection and position come from the ICC strategy, not the chat model."
+        },
+        {
+            "Icecrown Citadel", "Lady Deathwhisper", {"deathwhisper", "lady deathwhisper"}, Readiness::GuildReady,
+            "icc",
+            "Dedicated ICC actions cover ranged positioning, adds, shades and Dark Reckoning movement.",
+            "Hold the active tank assignment and allow the strategy to control add/boss priority.",
+            "Cover add pressure while moving out for Dark Reckoning when the encounter trigger fires.",
+            "Follow the strategy's add/shade priority and ranged-position logic instead of tunneling the boss.",
+            "Bots use ranged-position, add, shade and Dark Reckoning actions for Lady Deathwhisper.",
+            "The deterministic triggers own target/movement choices."
+        },
+        {
+            "Icecrown Citadel", "Gunship Battle", {"gunship", "gunship battle"}, Readiness::GuildReady,
+            "icc",
+            "Vehicle encounter with explicit cannon, rocket-jump and rocket-pack setup actions.",
+            "Follow the role assigned by the encounter strategy rather than trying to tank from an unplanned position.",
+            "Support the group split and keep players alive through transitions between ships.",
+            "Use the cannon or rocket-jump role the strategy gives you and do not fight the vehicle logic.",
+            "Bots enter/fire cannons, set up rocket packs and execute rocket jumps through the ICC strategy.",
+            "This is real coded vehicle behavior, not an LLM-scripted imitation."
+        },
+        {
+            "Icecrown Citadel", "Deathbringer Saurfang", {"saurfang", "deathbringer", "dbs"}, Readiness::GuildReady,
+            "icc",
+            "Tank positioning and add handling are explicit, including tank-taunt logic around Rune of Blood.",
+            "Use the coded tank position and let the encounter's Rune of Blood taunt logic handle the swap.",
+            "Keep the active tank stable while the raid handles adds.",
+            "Follow the Blood Beast/add priority instead of tunneling Saurfang.",
+            "Bots run DBS tank positioning/add actions; Rune of Blood boss taunt handling lives inside the tank-position action.",
+            "The swap is code-driven and must not be delegated to free-form chat."
+        },
+        {
+            "Icecrown Citadel", "Festergut", {"festergut", "fester"}, Readiness::GuildReady,
+            "icc",
+            "Group positioning, spore movement and Malleable Goo avoidance are explicit ICC actions.",
+            "Keep the boss controlled while allowing the group/spore formations to move around you.",
+            "Follow the group/spore positioning and keep the raid stable while dodging Malleable Goo.",
+            "Move with your assigned spore/group position and dodge Malleable Goo when triggered.",
+            "Bots use festergut group position, spore and avoid-malleable-goo actions.",
+            "Callouts may sound human, but movement decisions are deterministic."
+        },
+        {
+            "Icecrown Citadel", "Rotface", {"rotface", "rot"}, Readiness::GuildReady,
+            "icc",
+            "Tank/group positioning is paired with explosion and Vile Gas avoidance.",
+            "Use the Rotface tank position and avoid dragging the boss into the group's hazard movement.",
+            "Keep the group stable while following explosion/Vile Gas avoidance.",
+            "Follow the group position and immediately move for explosion or Vile Gas avoidance when triggered.",
+            "Bots run dedicated tank/group position, explosion-avoidance and Vile Gas actions.",
+            "This brief does not invent extra ooze assignments beyond what the pinned strategy exposes."
+        },
+        {
+            "Icecrown Citadel", "Professor Putricide", {"putricide", "professor", "pp"}, Readiness::GuildReady,
+            "icc",
+            "The ICC strategy has explicit actions for Volatile Ooze, Gas Cloud, Growing Ooze Puddle, Mutated Plague, Malleable Goo and the abomination role.",
+            "Hold the active tank job and do not override the encounter's specialized target/movement actions.",
+            "Track the active hazard/add target and keep the group alive while the strategy moves people around puddles and goo.",
+            "Follow ooze/cloud target changes and move for puddles/Malleable Goo instead of tunneling.",
+            "Bots have dedicated Putricide actions for both add types, puddles, plague, Malleable Goo and abomination control.",
+            "The LLM must not improvise target priority or abomination behavior."
+        },
+        {
+            "Icecrown Citadel", "Blood Prince Council", {"blood prince council", "princes", "bpc"}, Readiness::GuildReady,
+            "icc",
+            "Special tank roles plus Empowered Vortex, Kinetic Bomb and Ball of Flame actions are coded.",
+            "Use the main-tank or Keleseth-tank role assigned by the ICC strategy.",
+            "Keep both tank roles covered while reacting to the council's movement mechanics.",
+            "Handle the strategy-selected mechanic target, especially Kinetic Bomb and Ball of Flame, and move for Empowered Vortex.",
+            "Bots separate Keleseth/main tank duties and run dedicated vortex, kinetic-bomb and ball-of-flame actions.",
+            "Tank assignments are deterministic and should only be explained by the raid leader."
+        },
+        {
+            "Icecrown Citadel", "Blood-Queen Lana'thel", {"blood queen", "lanathel", "blood queen lanathel", "bql"}, Readiness::GuildReady,
+            "icc",
+            "Group positioning, Pact of the Darkfallen and Vampiric Bite are explicit ICC strategy actions.",
+            "Keep the boss controlled while preserving the group formation.",
+            "Keep pact/bite targets alive while following the same movement plan.",
+            "Follow Pact movement and the strategy's Vampiric Bite action instead of selecting your own target ad hoc.",
+            "Bots run BQL group position, pact and vampiric-bite actions with encounter priorities.",
+            "Bite handling is deterministic. The LLM never chooses a bite target."
+        },
+        {
+            "Icecrown Citadel", "Valithria Dreamwalker", {"valithria", "dreamwalker", "vdw"}, Readiness::GuildReady,
+            "icc",
+            "A specialized healing encounter with group, zombie-kite, portal, heal and dream-cloud actions.",
+            "If tanking, follow the encounter target plan rather than trying to tank the friendly objective.",
+            "Healers should follow the Valithria heal/portal/cloud roles produced by the deterministic strategy.",
+            "DPS follows the add plan while assigned healers use the portal/cloud flow.",
+            "Bots have dedicated Valithria group, zombie-kite, portal, heal and dream-cloud actions.",
+            "Role decisions come from code. Chat only explains the plan."
+        },
+        {
+            "Icecrown Citadel", "Sindragosa", {"sindragosa", "sindra"}, Readiness::GuildReady,
+            "icc",
+            "The ICC strategy covers group position, Frost Beacon, Blistering Cold, Unchained Magic, Chilled to the Bone, Mystic Buffet and Frost Bomb movement.",
+            "Hold the coded position and allow the phase/mechanic movement to reposition the group.",
+            "Follow the same mechanic movement while keeping tanks and beacon targets stable.",
+            "Move for Frost Beacon, Blistering Cold and Frost Bomb; respect Unchained Magic/Chilled/Mystic Buffet actions when they trigger.",
+            "Bots run dedicated Sindragosa actions for the major movement/debuff mechanics listed in the pinned ICC strategy.",
+            "The mechanic triggers are code-owned, not inferred by an LLM from boss chat."
+        },
+        {
+            "Icecrown Citadel", "The Lich King", {"lich king", "the lich king", "arthas", "lk"}, Readiness::GuildReady,
+            "icc",
+            "The pinned ICC strategy explicitly handles Shadow Trap, Necrotic Plague, transition winter, adds and Spirit Bomb behavior.",
+            "Hold the active tank assignment while letting the encounter strategy control transitions/add movement.",
+            "Keep tanks and mechanic targets stable while following transition/plague movement.",
+            "Move for Shadow Trap, obey Necrotic Plague handling, follow transition/add targets and react to Spirit Bomb movement.",
+            "Bots have explicit Lich King actions for Shadow Trap, Necrotic Plague, winter transitions, adds and Spirit Bombs.",
+            "This is the key safety boundary: Defile-style or other lethal movement must come from actual strategy code when supported, never from the LLM inventing a call."
+        },
     };
 }
 }
