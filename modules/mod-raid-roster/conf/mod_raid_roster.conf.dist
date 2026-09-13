@@ -104,8 +104,12 @@ BadLuckProtection.UpgradeWindowSeconds = 120
 # Adventurer economy
 ########################################
 
-# One-time character/boss bounties make normal dungeon and raid adventuring financially viable
-# without turning every trash kill into a gold faucet.
+# First-ever boss kills remain meaningful milestones. Repeat boss kills pay a much smaller activity
+# reward with a shared per-character daily ceiling, so normal dungeon/raid play can cover repairs,
+# consumables and travel without becoming an unlimited gold faucet or replacing the AH economy.
 AdventureEconomy.Enable = 1
 AdventureEconomy.DungeonBossFirstKillGold = 5
 AdventureEconomy.RaidBossFirstKillGold = 20
+AdventureEconomy.DungeonBossRepeatGold = 1
+AdventureEconomy.RaidBossRepeatGold = 3
+AdventureEconomy.DailyRepeatCapGold = 30
