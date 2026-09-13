@@ -50,13 +50,14 @@ float g_AdventureStartWotlkRaidReadyTeleportO = 1.64f;
 
 bool g_GuildDirectorEnable = true;
 bool g_GuildDirectorAutoTravel = true;
-uint32 g_GuildDirectorReadyTimeoutMs = 15000;
+uint32 g_GuildDirectorReadyTimeoutMs = 30000;
 
 bool g_EncounterLifecycleEnable = true;
 bool g_WipeRecoveryEnable = true;
 uint32 g_WipeRecoveryDelayMs = 5000;
 bool g_WipeRecoveryResurrectHumans = true;
 bool g_AutoPrepEnable = true;
+bool g_AutoPrepRefillConsumables = true;
 bool g_AutoPrepWarlockSupport = true;
 bool g_AutoPrepSmartPets = true;
 
@@ -153,7 +154,7 @@ void RaidRosterLoadConfig()
     g_GuildDirectorEnable = sConfigMgr->GetOption<bool>("GuildDirector.Enable", true);
     g_GuildDirectorAutoTravel = sConfigMgr->GetOption<bool>("GuildDirector.AutoTravel", true);
     g_GuildDirectorReadyTimeoutMs = ClampU32(
-        sConfigMgr->GetOption<uint32>("GuildDirector.ReadyTimeoutMs", 15000), 5000, 60000);
+        sConfigMgr->GetOption<uint32>("GuildDirector.ReadyTimeoutMs", 30000), 5000, 60000);
 
     g_EncounterLifecycleEnable = sConfigMgr->GetOption<bool>("EncounterLifecycle.Enable", true);
     g_WipeRecoveryEnable = sConfigMgr->GetOption<bool>("WipeRecovery.Enable", true);
@@ -161,6 +162,7 @@ void RaidRosterLoadConfig()
         sConfigMgr->GetOption<uint32>("WipeRecovery.DelayMs", 5000), 2000, 30000);
     g_WipeRecoveryResurrectHumans = sConfigMgr->GetOption<bool>("WipeRecovery.ResurrectHumans", true);
     g_AutoPrepEnable = sConfigMgr->GetOption<bool>("AutoPrep.Enable", true);
+    g_AutoPrepRefillConsumables = sConfigMgr->GetOption<bool>("AutoPrep.RefillConsumables", true);
     g_AutoPrepWarlockSupport = sConfigMgr->GetOption<bool>("AutoPrep.WarlockSupport", true);
     g_AutoPrepSmartPets = sConfigMgr->GetOption<bool>("AutoPrep.SmartPets", true);
 
@@ -206,9 +208,9 @@ void RaidRosterLoadConfig()
         g_AdventureStartWotlkRaidReadyGearItemLevel);
     LOG_INFO("server.loading", "[GuildDirector] Enable={}, AutoTravel={}, ReadyTimeoutMs={}",
         g_GuildDirectorEnable ? 1 : 0, g_GuildDirectorAutoTravel ? 1 : 0, g_GuildDirectorReadyTimeoutMs);
-    LOG_INFO("server.loading", "[EncounterLifecycle] Enable={}, WipeRecovery={}, Delay={}ms, ResurrectHumans={}, AutoPrep={}, WarlockSupport={}, SmartPets={}",
+    LOG_INFO("server.loading", "[EncounterLifecycle] Enable={}, WipeRecovery={}, Delay={}ms, ResurrectHumans={}, AutoPrep={}, RefillConsumables={}, WarlockSupport={}, SmartPets={}",
         g_EncounterLifecycleEnable ? 1 : 0, g_WipeRecoveryEnable ? 1 : 0, g_WipeRecoveryDelayMs,
-        g_WipeRecoveryResurrectHumans ? 1 : 0, g_AutoPrepEnable ? 1 : 0,
+        g_WipeRecoveryResurrectHumans ? 1 : 0, g_AutoPrepEnable ? 1 : 0, g_AutoPrepRefillConsumables ? 1 : 0,
         g_AutoPrepWarlockSupport ? 1 : 0, g_AutoPrepSmartPets ? 1 : 0);
     LOG_INFO("server.loading", "[SmartLoot] Enable={}, BotNeedUpgrades={}, BotGreedUseful={}, BadLuckProtection={}, UpgradeWindow={}s",
         g_SmartLootEnable ? 1 : 0, g_SmartLootBotNeedUpgrades ? 1 : 0,
