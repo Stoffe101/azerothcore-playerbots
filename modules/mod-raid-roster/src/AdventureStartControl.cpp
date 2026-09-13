@@ -24,17 +24,17 @@ struct ProfileData
 
 ProfileData DataFor(AdventureStartProfile profile)
 {
-    if (profile == AdventureStartProfile::RaidReady)
+    if (profile == AdventureStartProfile::TbcRaidReady)
     {
         return {
-            g_AdventureStartRaidReadyLevel,
-            g_AdventureStartRaidReadyProgression,
-            g_AdventureStartRaidReadyTeleport,
-            g_AdventureStartRaidReadyTeleportMap,
-            g_AdventureStartRaidReadyTeleportX,
-            g_AdventureStartRaidReadyTeleportY,
-            g_AdventureStartRaidReadyTeleportZ,
-            g_AdventureStartRaidReadyTeleportO,
+            g_AdventureStartTbcRaidReadyLevel,
+            g_AdventureStartTbcRaidReadyProgression,
+            g_AdventureStartTbcRaidReadyTeleport,
+            g_AdventureStartTbcRaidReadyTeleportMap,
+            g_AdventureStartTbcRaidReadyTeleportX,
+            g_AdventureStartTbcRaidReadyTeleportY,
+            g_AdventureStartTbcRaidReadyTeleportZ,
+            g_AdventureStartTbcRaidReadyTeleportO,
         };
     }
 
@@ -61,8 +61,8 @@ namespace AdventureStartControl
 {
 AdventureStartProfile GetDefaultProfile()
 {
-    return g_AdventureStartDefaultProfile == static_cast<uint8>(AdventureStartProfile::RaidReady)
-        ? AdventureStartProfile::RaidReady
+    return g_AdventureStartDefaultProfile == static_cast<uint8>(AdventureStartProfile::TbcRaidReady)
+        ? AdventureStartProfile::TbcRaidReady
         : AdventureStartProfile::TbcAdventure;
 }
 
@@ -74,7 +74,7 @@ void SetDefaultProfile(AdventureStartProfile profile)
 
 char const* ProfileName(AdventureStartProfile profile)
 {
-    return profile == AdventureStartProfile::RaidReady ? "raidready" : "tbc";
+    return profile == AdventureStartProfile::TbcRaidReady ? "tbcraid" : "tbc";
 }
 
 bool MatchesProfile(Player* player, AdventureStartProfile profile)
@@ -106,8 +106,9 @@ bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStart
         levelChanged = true;
     }
 
-    // Match the verified faction-leader expansion flow: only force the IP state. mod-era-talents
-    // notices the era crossing and performs its own talent/spell/glyph reconciliation.
+    // Both current start profiles stay entirely inside TBC. Progression stage 8 means the TBC
+    // world is open while Karazhan/Gruul/Mag remain the first raid tier. The server-wide expansion
+    // gate separately prevents stage 13 / WotLK until the administrator deliberately releases it.
     if (data.progression > 0 && player->IsInWorld())
     {
         uint8 const current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
@@ -119,8 +120,6 @@ bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStart
         }
     }
 
-    // Keep the core/native talent-point state coherent with the boosted level. The era module owns
-    // TBC's custom tree and independently syncs it after a progression crossing.
     if (levelChanged)
         player->InitTalentForLevel();
 
