@@ -1,5 +1,6 @@
 #include "AdminPanelGameplay.h"
 
+#include "DatabaseEnv.h"
 #include "EraTalentIP.h"
 #include "EraTalents.h"
 #include "EraTalentsComms.h"
@@ -9,6 +10,8 @@
 #include "Player.h"
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotFactory.h"
+#include "QueryResult.h"
+#include "RandomPlayerbotFactory.h"
 #include "RandomPlayerbotMgr.h"
 #include "WorldSession.h"
 #include "WorldSessionMgr.h"
@@ -22,6 +25,28 @@ constexpr uint32 COPPER_PER_GOLD = 10000u;
 constexpr uint32 MAX_BOT_TARGET = 1000u;
 constexpr uint32 DEFAULT_BOT_BATCH = 10u;
 constexpr uint32 TBC_PRE_RAID_ILVL = 115u;
+
+uint32 CountBotAccounts()
+{
+    QueryResult result = LoginDatabase.Query(
+        "SELECT COUNT(*) FROM account WHERE username LIKE '{}%%'",
+        sPlayerbotAIConfig.randomBotAccountPrefix.c_str());
+    return result ? static_cast<uint32>(result->Fetch()[0].Get<uint64>()) : 0u;
+}
+
+uint32 CountAssignedBotAccounts()
+{
+    QueryResult result = PlayerbotsDatabase.Query(
+        "SELECT COUNT(*) FROM playerbots_account_type WHERE account_type = 1");
+    return result ? static_cast<uint32>(result->Fetch()[0].Get<uint64>()) : 0u;
+}
+
+uint32 RequiredBotAccounts()
+{
+    if (!sPlayerbotAIConfig.maxRandomBots)
+        return 0u;
+    return RandomPlayerbotFactory::CalculateTotalAccountCount();
+}
 
 void RestoreUnit(Unit* unit)
 {
@@ -85,7 +110,57 @@ PopulationStats GetPopulationStats()
     stats.botTarget = sPlayerbotAIConfig.maxRandomBots;
     stats.botBatch = sPlayerbotAIConfig.randomBotsPerInterval;
     stats.botActivity = sRandomPlayerbotMgr.getActivityPercentage();
+    stats.botEngineEnabled = sPlayerbotAIConfig.enabled;
+    stats.botAutologinEnabled = sPlayerbotAIConfig.randomBotAutologin;
+    stats.botAccounts = CountBotAccounts();
+    stats.assignedBotAccounts = CountAssignedBotAccounts();
+    stats.requiredBotAccounts = stats.botTarget ? RequiredBotAccounts() : 0u;
     return stats;
+}
+
+void RepairBotPopulation()
+{
+    if (!sPlayerbotAIConfig.maxRandomBots)
+        return;
+
+    uint32 const beforeAccounts = CountBotAccounts();
+    uint32 const beforeAssigned = CountAssignedBotAccounts();
+    uint32 const required = RequiredBotAccounts();
+
+    // MaxRandomBots is consumed by RandomPlayerbotFactory during PlayerbotAIConfig startup. The
+    // Admin Panel changes that value later at runtime. If the realm booted with MaxRandomBots=0,
+    // or booted with a smaller pool than the persisted AdminPanel target, simply changing the
+    // manager's min/max leaves it with zero (or too few) account/character candidates forever.
+    // Re-run the upstream idempotent factory when capacity is missing, then refresh account types.
+    if (beforeAccounts < required || beforeAssigned == 0)
+    {
+        LOG_WARN(
+            "server.loading",
+            "[AdminPanel] RNDbot pool insufficient: accounts={} assigned={} required={}; extending pool now",
+            beforeAccounts,
+            beforeAssigned,
+            required);
+        RandomPlayerbotFactory::CreateRandomBots();
+    }
+
+    sRandomPlayerbotMgr.AssignAccountTypes();
+
+    // Force two manager passes for the same reason as the old workaround: the first pass can seed
+    // fresh random-bot events and the second can consume them. Normal world ticks take over after
+    // this kick, so we do not run a busy retry loop here.
+    sRandomPlayerbotMgr.UpdateAIInternal(0, false);
+    sRandomPlayerbotMgr.UpdateAIInternal(0, false);
+
+    LOG_INFO(
+        "server.loading",
+        "[AdminPanel] RNDbot repair complete: accounts {}->{} assigned {}->{} required={} target={} batch={}",
+        beforeAccounts,
+        CountBotAccounts(),
+        beforeAssigned,
+        CountAssignedBotAccounts(),
+        required,
+        sPlayerbotAIConfig.maxRandomBots,
+        sPlayerbotAIConfig.randomBotsPerInterval);
 }
 
 void SetBotTarget(uint32 target, uint32 batch)
@@ -93,8 +168,8 @@ void SetBotTarget(uint32 target, uint32 batch)
     target = std::min(target, MAX_BOT_TARGET);
     batch = std::max<uint32>(1, std::min<uint32>(batch ? batch : DEFAULT_BOT_BATCH, 50));
 
-    // Runtime population control has to enable BOTH switches. Setting only randomBotAutologin is
-    // not enough because RandomPlayerbotMgr::UpdateAIInternal also exits when enabled == false.
+    // RandomPlayerbotMgr exits early unless both switches are on. AdminPanel is intentionally
+    // authoritative for runtime population, even if an older persistent playerbots.conf says off.
     sPlayerbotAIConfig.enabled = true;
     sPlayerbotAIConfig.randomBotAutologin = true;
     sPlayerbotAIConfig.minRandomBots = target;
@@ -102,25 +177,17 @@ void SetBotTarget(uint32 target, uint32 batch)
     sPlayerbotAIConfig.randomBotsPerInterval = batch;
 
     if (target > 0)
-    {
-        // Account-type assignment is calculated from MaxRandomBots. A realm that booted with a
-        // zero target may therefore have every RNDbot account marked unassigned. The first manager
-        // tick creates/populates the random-bot event set, but its login candidate snapshot was
-        // taken before those events existed. A second immediate throttled tick consumes that fresh
-        // set and actually starts the first login batch instead of leaving the admin button at 0/N.
-        sRandomPlayerbotMgr.AssignAccountTypes();
-        sRandomPlayerbotMgr.UpdateAIInternal(0, false);
-        sRandomPlayerbotMgr.UpdateAIInternal(0, false);
-    }
+        RepairBotPopulation();
 
     LOG_INFO(
         "server.loading",
-        "[AdminPanel] Random-bot target={} batch={} enabled={} autologin={} assigned-refresh={}",
+        "[AdminPanel] Random-bot target={} batch={} enabled={} autologin={} accounts={} assigned={}",
         target,
         batch,
         sPlayerbotAIConfig.enabled ? 1 : 0,
         sPlayerbotAIConfig.randomBotAutologin ? 1 : 0,
-        target > 0 ? 1 : 0);
+        CountBotAccounts(),
+        CountAssignedBotAccounts());
 }
 
 void SetBotActivity(float percent)
@@ -174,8 +241,6 @@ uint32 MaxProfessions(Player* player)
     if (!player)
         return 0;
 
-    // Only touch professions/secondary skills the character already knows. This preserves the
-    // normal two-primary-profession choice while making the admin shortcut genuinely useful.
     static constexpr std::array<uint16, 14> professionSkills = {
         SKILL_ALCHEMY,
         SKILL_BLACKSMITHING,
@@ -199,9 +264,6 @@ uint32 MaxProfessions(Player* player)
         if (!player->HasSkill(skill))
             continue;
 
-        // WotLK Grand Master cap. Setting step 6 keeps the profession rank coherent even if the
-        // character learned the profession before being boosted. We intentionally do NOT teach
-        // every recipe; this is a skill/rank max button, not an unlock-every-recipe cheat.
         constexpr uint16 WOTLK_PROFESSION_CAP = 450;
         if (player->GetPureSkillValue(skill) != WOTLK_PROFESSION_CAP ||
             player->GetPureMaxSkillValue(skill) != WOTLK_PROFESSION_CAP ||
@@ -251,8 +313,6 @@ void RegearTbcPreRaid(Player* player)
     if (!player)
         return;
 
-    // Make room first, then directly replace the old set. secondChance=true avoids the factory
-    // needing to autostore every equipped item into the backpack before it can equip the new set.
     PlayerbotFactory factory(player, player->GetLevel());
     factory.InitBags(false);
     PlayerbotFactory::AutoGear(
@@ -318,7 +378,6 @@ uint32 SummonGroup(Player* leader)
 uint32 RaidNight(Player* leader)
 {
     uint32 const prepared = PrepareGroup(leader);
-    // Raise activity while raiding without changing the configured population target.
     SetBotActivity(100.0f);
     return prepared;
 }
