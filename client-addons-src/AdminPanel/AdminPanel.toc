@@ -1,8 +1,8 @@
 ## Interface: 30300
 ## Title: Azeroth Control
-## Notes: Clean GM control center for the TBC-first AzerothCore realm.
+## Notes: Expansion-aware GM control center for the private AzerothCore realm.
 ## Author: Skrra server project
-## Version: 2.0.0
+## Version: 2.1.0
 ## SavedVariables: AzerothAdminPanelDB
 
 AdminPanel.lua
