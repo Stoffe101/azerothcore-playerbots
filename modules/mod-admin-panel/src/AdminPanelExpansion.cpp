@@ -2,6 +2,7 @@
 
 #include "IndividualProgression.h"
 #include "Log.h"
+#include "Player.h"
 
 namespace
 {
@@ -26,7 +27,6 @@ void SetWotlkReleased(bool released)
     sIndividualProgression->progressionLimit = released ? 0 : TBC_PROGRESSION_LIMIT;
 
     // Keep random/playerbot accounts from naturally levelling past the live expansion as well.
-    // Existing over-levelled test bots can be recycled/reset separately; newly progressing bots stop here.
     sIndividualProgression->BotAccountsMaxLevel = released ? 80 : 70;
 
     LOG_INFO(
@@ -45,6 +45,11 @@ uint8 CurrentLevelCap()
 uint8 CurrentProgressionLimit()
 {
     return g_wotlkReleased ? 18 : TBC_PROGRESSION_LIMIT;
+}
+
+uint8 PlayerProgression(Player* player)
+{
+    return player ? sIndividualProgression->GetPlayerProgressionFromQuests(player) : 0;
 }
 
 char const* CurrentExpansionName()
