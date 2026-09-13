@@ -1,18 +1,22 @@
+#include "AdminPanelExpansion.h"
+#include "AdminPanelGameplay.h"
 #include "AdventureStartControl.h"
 
-#include "AccountMgr.h"
 #include "Chat.h"
 #include "CommandScript.h"
 #include "Config.h"
 #include "DatabaseEnv.h"
 #include "Field.h"
+#include "GameTime.h"
 #include "Log.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "QueryResult.h"
 #include "ScriptMgr.h"
+#include "UpdateTime.h"
 #include "World.h"
 #include "WorldSession.h"
+#include "WorldSessionMgr.h"
 
 #include <algorithm>
 #include <array>
@@ -31,9 +35,13 @@ float g_AdminPanelMaxRate = 100.0f;
 
 constexpr char XP_KEY[] = "xp_rate";
 constexpr char REP_KEY[] = "rep_rate";
-constexpr char GOLD_KEY[] = "gold_rate";
+constexpr char GOLD_RATE_KEY[] = "gold_rate";
 constexpr char STARTER_KEY[] = "starter_profile";
+constexpr char WOTLK_KEY[] = "wotlk_released";
+constexpr char BOT_TARGET_KEY[] = "bot_target";
+constexpr char BOT_ACTIVITY_KEY[] = "bot_activity";
 constexpr char PREFIX[] = "[AdminPanel]";
+constexpr uint32 COPPER_PER_GOLD = 10000u;
 
 struct TeleportPoint
 {
@@ -44,17 +52,18 @@ struct TeleportPoint
     float y;
     float z;
     float o;
+    bool requiresWotlk;
 };
 
 std::array<TeleportPoint, 8> const kTeleports = {{
-    { "darkportal", "Dark Portal", 0, -11894.80f, -3206.52f, -14.62f, 0.00f },
-    { "stormwind",  "Stormwind",   0, -8833.38f,   628.62f,  94.00f, 0.70f },
-    { "ironforge",  "Ironforge",   0, -4981.25f,  -881.54f, 501.66f, 5.40f },
-    { "orgrimmar",  "Orgrimmar",   1,  1629.36f, -4373.39f,  31.26f, 3.00f },
-    { "thunderbluff", "Thunder Bluff", 1, -1274.45f, 71.86f, 128.16f, 2.80f },
-    { "shattrath",  "Shattrath", 530, -1838.16f,  5301.79f, -12.43f, 5.95f },
-    { "dalaran",    "Dalaran",   571,  5807.75f,   588.27f, 660.94f, 1.64f },
-    { "argent",     "Argent Tournament", 571, 8475.70f, 891.54f, 547.29f, 0.00f },
+    { "darkportal", "Dark Portal", 0, -11894.80f, -3206.52f, -14.62f, 0.00f, false },
+    { "stormwind",  "Stormwind",   0, -8833.38f,   628.62f,  94.00f, 0.70f, false },
+    { "ironforge",  "Ironforge",   0, -4981.25f,  -881.54f, 501.66f, 5.40f, false },
+    { "orgrimmar",  "Orgrimmar",   1,  1629.36f, -4373.39f,  31.26f, 3.00f, false },
+    { "thunderbluff", "Thunder Bluff", 1, -1274.45f, 71.86f, 128.16f, 2.80f, false },
+    { "shattrath",  "Shattrath", 530, -1838.16f,  5301.79f, -12.43f, 5.95f, false },
+    { "dalaran",    "Dalaran",   571,  5807.75f,   588.27f, 660.94f, 1.64f, true },
+    { "argent",     "Argent Tournament", 571, 8475.70f, 891.54f, 547.29f, 0.00f, true },
 }};
 
 std::string Lower(std::string value)
@@ -107,6 +116,23 @@ bool ParseRate(std::string const& raw, float& value)
     return value >= 0.01f && value <= g_AdminPanelMaxRate;
 }
 
+bool ParseU32(std::string const& raw, uint32& value)
+{
+    try
+    {
+        size_t used = 0;
+        unsigned long parsed = std::stoul(raw, &used);
+        if (used != raw.size())
+            return false;
+        value = static_cast<uint32>(std::min<unsigned long>(parsed, 0xFFFFFFFFul));
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
 void ApplyXpRate(float value)
 {
     sWorld->setRate(RATE_XP_KILL, value);
@@ -143,9 +169,46 @@ TeleportPoint const* FindTeleport(std::string key)
     return nullptr;
 }
 
-bool TeleportPlayer(Player* player, TeleportPoint const& point)
+std::string StarterName()
 {
-    return player && player->TeleportTo(point.map, point.x, point.y, point.z, point.o);
+    return AdventureStartControl::GetDefaultProfile() == AdventureStartProfile::TbcRaidReady ? "tbcraid" : "tbc";
+}
+
+void ApplyPreset(std::string const& preset)
+{
+    if (preset == "normal")
+    {
+        ApplyXpRate(1.0f);
+        ApplyRepRate(1.0f);
+        ApplyGoldRate(1.0f);
+        AdminPanelGameplay::SetBotActivity(25.0f);
+        SaveSetting(XP_KEY, "1");
+        SaveSetting(REP_KEY, "1");
+        SaveSetting(GOLD_RATE_KEY, "1");
+        SaveSetting(BOT_ACTIVITY_KEY, "25");
+    }
+    else if (preset == "fast")
+    {
+        ApplyXpRate(3.0f);
+        ApplyRepRate(2.0f);
+        ApplyGoldRate(2.0f);
+        AdminPanelGameplay::SetBotActivity(40.0f);
+        SaveSetting(XP_KEY, "3");
+        SaveSetting(REP_KEY, "2");
+        SaveSetting(GOLD_RATE_KEY, "2");
+        SaveSetting(BOT_ACTIVITY_KEY, "40");
+    }
+    else if (preset == "raid")
+    {
+        ApplyXpRate(1.0f);
+        ApplyRepRate(1.0f);
+        ApplyGoldRate(1.0f);
+        AdminPanelGameplay::SetBotActivity(100.0f);
+        SaveSetting(XP_KEY, "1");
+        SaveSetting(REP_KEY, "1");
+        SaveSetting(GOLD_RATE_KEY, "1");
+        SaveSetting(BOT_ACTIVITY_KEY, "100");
+    }
 }
 
 void LoadPersistedSettings()
@@ -157,25 +220,47 @@ void LoadPersistedSettings()
         ApplyXpRate(rate);
     if (LoadSetting(REP_KEY, raw) && ParseRate(raw, rate))
         ApplyRepRate(rate);
-    if (LoadSetting(GOLD_KEY, raw) && ParseRate(raw, rate))
+    if (LoadSetting(GOLD_RATE_KEY, raw) && ParseRate(raw, rate))
         ApplyGoldRate(rate);
 
+    // Migration: the previous experimental "raidready" value meant WotLK level 80. Treat it as the
+    // corrected TBC raid-ready profile rather than silently resurrecting the wrong design.
     if (LoadSetting(STARTER_KEY, raw))
     {
         std::string const mode = Lower(raw);
-        if (mode == "raid" || mode == "raidready" || mode == "80")
-            AdventureStartControl::SetDefaultProfile(AdventureStartProfile::RaidReady);
-        else if (mode == "tbc" || mode == "60")
+        if (mode == "tbcraid" || mode == "raid" || mode == "raidready" || mode == "70")
+            AdventureStartControl::SetDefaultProfile(AdventureStartProfile::TbcRaidReady);
+        else
             AdventureStartControl::SetDefaultProfile(AdventureStartProfile::TbcAdventure);
     }
 
+    bool wotlkReleased = false;
+    if (LoadSetting(WOTLK_KEY, raw))
+        wotlkReleased = raw == "1" || Lower(raw) == "true";
+    AdminPanelExpansion::SetWotlkReleased(wotlkReleased);
+
+    uint32 botTarget = 0;
+    if (LoadSetting(BOT_TARGET_KEY, raw) && ParseU32(raw, botTarget))
+        AdminPanelGameplay::SetBotTarget(botTarget, 10);
+
+    uint32 activity = 25;
+    if (LoadSetting(BOT_ACTIVITY_KEY, raw) && ParseU32(raw, activity))
+        AdminPanelGameplay::SetBotActivity(static_cast<float>(std::min<uint32>(activity, 100)));
+
+    auto const pop = AdminPanelGameplay::GetPopulationStats();
     LOG_INFO(
         "server.loading",
-        "[AdminPanel] Runtime settings loaded: xp={:.2f} rep={:.2f} gold={:.2f} starter={}",
+        "[AdminPanel] Ready: era={} cap={} xp={:.2f} rep={:.2f} gold={:.2f} starter={} bots={}/{} batch={} activity={:.0f}%",
+        AdminPanelExpansion::CurrentExpansionName(),
+        AdminPanelExpansion::CurrentLevelCap(),
         sWorld->getRate(RATE_XP_KILL),
         sWorld->getRate(RATE_REPUTATION_GAIN),
         sWorld->getRate(RATE_DROP_MONEY),
-        AdventureStartControl::ProfileName(AdventureStartControl::GetDefaultProfile()));
+        StarterName(),
+        pop.bots,
+        pop.botTarget,
+        pop.botBatch,
+        pop.botActivity);
 }
 
 class AdminPanelWorldScript : public WorldScript
@@ -207,19 +292,34 @@ public:
     {
         static ChatCommandTable sub =
         {
-            { "status",    HandleStatus,    SEC_GAMEMASTER, Console::No },
-            { "xp",        HandleXp,        SEC_GAMEMASTER, Console::No },
-            { "rep",       HandleRep,       SEC_GAMEMASTER, Console::No },
-            { "gold",      HandleGold,      SEC_GAMEMASTER, Console::No },
-            { "reset",     HandleReset,     SEC_GAMEMASTER, Console::No },
-            { "starter",   HandleStarter,   SEC_GAMEMASTER, Console::No },
-            { "raidready", HandleRaidReady, SEC_GAMEMASTER, Console::No },
-            { "tp",        HandleTeleport,  SEC_GAMEMASTER, Console::No },
-            { "goto",      HandleGoto,      SEC_GAMEMASTER, Console::No },
-            { "summon",    HandleSummon,    SEC_GAMEMASTER, Console::No },
-            { "save",      HandleSave,      SEC_GAMEMASTER, Console::No },
-            { "gosaved",   HandleGoSaved,   SEC_GAMEMASTER, Console::No },
-            { "saved",     HandleSaved,     SEC_GAMEMASTER, Console::No },
+            { "status",        HandleStatus,       SEC_GAMEMASTER, Console::No },
+            { "health",        HandleHealth,       SEC_GAMEMASTER, Console::No },
+            { "xp",            HandleXp,           SEC_GAMEMASTER, Console::No },
+            { "rep",           HandleRep,          SEC_GAMEMASTER, Console::No },
+            { "gold",          HandleGoldRate,     SEC_GAMEMASTER, Console::No },
+            { "givegold",      HandleGiveGold,     SEC_GAMEMASTER, Console::No },
+            { "reset",         HandleResetRates,   SEC_GAMEMASTER, Console::No },
+            { "preset",        HandlePreset,       SEC_GAMEMASTER, Console::No },
+            { "starter",       HandleStarter,      SEC_GAMEMASTER, Console::No },
+            { "tbcraidready",  HandleTbcRaidReady, SEC_GAMEMASTER, Console::No },
+            { "releasewotlk",  HandleReleaseWotlk, SEC_GAMEMASTER, Console::No },
+            { "repair",        HandleRepair,       SEC_GAMEMASTER, Console::No },
+            { "restore",       HandleRestore,      SEC_GAMEMASTER, Console::No },
+            { "maxskills",     HandleMaxSkills,    SEC_GAMEMASTER, Console::No },
+            { "consumables",   HandleConsumables,  SEC_GAMEMASTER, Console::No },
+            { "resettalents",  HandleResetTalents, SEC_GAMEMASTER, Console::No },
+            { "regear",        HandleRegear,       SEC_GAMEMASTER, Console::No },
+            { "bots",          HandleBots,         SEC_GAMEMASTER, Console::No },
+            { "botactivity",   HandleBotActivity,  SEC_GAMEMASTER, Console::No },
+            { "raidnight",     HandleRaidNight,    SEC_GAMEMASTER, Console::No },
+            { "groupprep",     HandleGroupPrep,    SEC_GAMEMASTER, Console::No },
+            { "groupsummon",   HandleGroupSummon,  SEC_GAMEMASTER, Console::No },
+            { "tp",            HandleTeleport,     SEC_GAMEMASTER, Console::No },
+            { "goto",          HandleGoto,         SEC_GAMEMASTER, Console::No },
+            { "summon",        HandleSummon,       SEC_GAMEMASTER, Console::No },
+            { "save",          HandleSave,         SEC_GAMEMASTER, Console::No },
+            { "gosaved",       HandleGoSaved,      SEC_GAMEMASTER, Console::No },
+            { "saved",         HandleSaved,        SEC_GAMEMASTER, Console::No },
         };
         static ChatCommandTable root =
         {
@@ -242,6 +342,7 @@ private:
     {
         if (!EnsureEnabled(handler))
             return true;
+
         float value = 0.0f;
         if (!ParseRate(raw, value))
         {
@@ -265,13 +366,50 @@ private:
     {
         if (!EnsureEnabled(handler))
             return true;
+
+        Player* player = CommandPlayer(handler);
+        auto const pop = AdminPanelGameplay::GetPopulationStats();
+        uint8 const stage = AdminPanelExpansion::PlayerProgression(player);
+        double const moneyGold = player ? double(player->GetMoney()) / COPPER_PER_GOLD : 0.0;
+
         handler->PSendSysMessage(
-            "{} STATUS xp={:.2f} rep={:.2f} gold={:.2f} starter={}",
+            "{} STATUS era={} wotlk={} levelcap={} progressionlimit={} stage={} level={} money={:.2f} xp={:.2f} rep={:.2f} goldrate={:.2f} starter={} players={} bots={} bottarget={} botbatch={} botactivity={:.0f}",
             PREFIX,
+            AdminPanelExpansion::CurrentExpansionName(),
+            AdminPanelExpansion::IsWotlkReleased() ? 1 : 0,
+            AdminPanelExpansion::CurrentLevelCap(),
+            AdminPanelExpansion::CurrentProgressionLimit(),
+            stage,
+            player ? player->GetLevel() : 0,
+            moneyGold,
             sWorld->getRate(RATE_XP_KILL),
             sWorld->getRate(RATE_REPUTATION_GAIN),
             sWorld->getRate(RATE_DROP_MONEY),
-            AdventureStartControl::ProfileName(AdventureStartControl::GetDefaultProfile()));
+            StarterName(),
+            pop.realPlayers,
+            pop.bots,
+            pop.botTarget,
+            pop.botBatch,
+            pop.botActivity);
+        return true;
+    }
+
+    static bool HandleHealth(ChatHandler* handler)
+    {
+        if (!EnsureEnabled(handler))
+            return true;
+        auto const pop = AdminPanelGameplay::GetPopulationStats();
+        handler->PSendSysMessage(
+            "{} HEALTH uptime={} sessions={} players={} bots={} tick={} mean={} p95={} p99={}",
+            PREFIX,
+            uint32(GameTime::GetUptime().count()),
+            pop.sessions,
+            pop.realPlayers,
+            pop.bots,
+            sWorldUpdateTime.GetLastUpdateTime(),
+            sWorldUpdateTime.GetAverageUpdateTime(),
+            sWorldUpdateTime.GetPercentile(95),
+            sWorldUpdateTime.GetPercentile(99));
         return true;
     }
 
@@ -285,22 +423,48 @@ private:
         return SetRate(handler, std::string(value), REP_KEY, "Reputation");
     }
 
-    static bool HandleGold(ChatHandler* handler, std::string_view value)
+    static bool HandleGoldRate(ChatHandler* handler, std::string_view value)
     {
-        return SetRate(handler, std::string(value), GOLD_KEY, "Gold");
+        return SetRate(handler, std::string(value), GOLD_RATE_KEY, "Gold");
     }
 
-    static bool HandleReset(ChatHandler* handler)
+    static bool HandleGiveGold(ChatHandler* handler, std::string_view rawValue)
     {
         if (!EnsureEnabled(handler))
             return true;
-        ApplyXpRate(1.0f);
-        ApplyRepRate(1.0f);
-        ApplyGoldRate(1.0f);
-        SaveSetting(XP_KEY, "1");
-        SaveSetting(REP_KEY, "1");
-        SaveSetting(GOLD_KEY, "1");
-        handler->PSendSysMessage("{} XP, reputation and gold reset to 1.00x.", PREFIX);
+        uint32 amount = 0;
+        if (!ParseU32(std::string(rawValue), amount) || amount == 0 || amount > 200000)
+        {
+            handler->PSendSysMessage("{} givegold accepts 1-200000 gold.", PREFIX);
+            return true;
+        }
+        Player* player = CommandPlayer(handler);
+        if (AdminPanelGameplay::GiveGold(player, amount))
+            handler->PSendSysMessage("{} Added {} gold. Current total: {:.2f}g.", PREFIX, amount, double(player->GetMoney()) / COPPER_PER_GOLD);
+        return true;
+    }
+
+    static bool HandleResetRates(ChatHandler* handler)
+    {
+        if (!EnsureEnabled(handler))
+            return true;
+        ApplyPreset("normal");
+        handler->PSendSysMessage("{} Normal preset applied: rates 1x, bot activity 25%.", PREFIX);
+        return true;
+    }
+
+    static bool HandlePreset(ChatHandler* handler, std::string_view rawPreset)
+    {
+        if (!EnsureEnabled(handler))
+            return true;
+        std::string const preset = Lower(std::string(rawPreset));
+        if (preset != "normal" && preset != "fast" && preset != "raid")
+        {
+            handler->PSendSysMessage("{} preset must be normal, fast or raid.", PREFIX);
+            return true;
+        }
+        ApplyPreset(preset);
+        handler->PSendSysMessage("{} '{}' preset applied and saved.", PREFIX, preset);
         return true;
     }
 
@@ -310,13 +474,13 @@ private:
             return true;
         std::string const mode = Lower(std::string(rawMode));
         AdventureStartProfile profile;
-        if (mode == "tbc" || mode == "60")
+        if (mode == "tbc" || mode == "60" || mode == "adventure")
             profile = AdventureStartProfile::TbcAdventure;
-        else if (mode == "raid" || mode == "raidready" || mode == "80")
-            profile = AdventureStartProfile::RaidReady;
+        else if (mode == "tbcraid" || mode == "raid" || mode == "raidready" || mode == "70")
+            profile = AdventureStartProfile::TbcRaidReady;
         else
         {
-            handler->PSendSysMessage("{} starter must be 'tbc' or 'raidready'.", PREFIX);
+            handler->PSendSysMessage("{} starter must be 'tbc' or 'tbcraid'.", PREFIX);
             return true;
         }
 
@@ -328,7 +492,7 @@ private:
         return true;
     }
 
-    static bool HandleRaidReady(ChatHandler* handler)
+    static bool HandleTbcRaidReady(ChatHandler* handler)
     {
         if (!EnsureEnabled(handler))
             return true;
@@ -336,15 +500,142 @@ private:
         if (!player)
             return true;
 
-        if (!AdventureStartControl::MakeRaidReady(player))
+        if (!AdventureStartControl::MakeTbcRaidReady(player))
         {
-            handler->PSendSysMessage("{} Could not apply the raid-ready profile.", PREFIX);
+            handler->PSendSysMessage("{} Could not apply the TBC raid-ready profile.", PREFIX);
             return true;
         }
 
         handler->PSendSysMessage(
-            "{} Raid-ready profile applied: level 80, WotLK stage 13, Dalaran, max-level starter kit. Spend at least 5 talent points to trigger the spec-aware ilvl-200 epic set.",
+            "{} TBC raid-ready applied: level 70, stage 8, Shattrath, max TBC riding and starter supplies. Spend at least 5 talent points to trigger the spec-aware ilvl-115 final set.",
             PREFIX);
+        return true;
+    }
+
+    static bool HandleReleaseWotlk(ChatHandler* handler, std::string_view rawConfirm)
+    {
+        if (!EnsureEnabled(handler))
+            return true;
+        if (AdminPanelExpansion::IsWotlkReleased())
+        {
+            handler->PSendSysMessage("{} Wrath of the Lich King is already LIVE.", PREFIX);
+            return true;
+        }
+        if (Lower(std::string(rawConfirm)) != "confirm")
+        {
+            handler->PSendSysMessage("{} This permanently opens WotLK progression. Use: .ap releasewotlk confirm", PREFIX);
+            return true;
+        }
+
+        AdminPanelExpansion::SetWotlkReleased(true);
+        SaveSetting(WOTLK_KEY, "1");
+        sWorldSessionMgr->SendServerMessage(
+            SERVER_MSG_STRING,
+            "Wrath of the Lich King has been released! Northrend and level 80 progression are now available.");
+        handler->PSendSysMessage("{} WOTLK RELEASED. The expansion gate is permanently saved as open.", PREFIX);
+        return true;
+    }
+
+    static bool HandleRepair(ChatHandler* handler)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        AdminPanelGameplay::Repair(CommandPlayer(handler));
+        handler->PSendSysMessage("{} All equipped/inventory gear repaired for free.", PREFIX);
+        return true;
+    }
+
+    static bool HandleRestore(ChatHandler* handler)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        AdminPanelGameplay::Restore(CommandPlayer(handler));
+        handler->PSendSysMessage("{} Health/power restored; resurrected if needed.", PREFIX);
+        return true;
+    }
+
+    static bool HandleMaxSkills(ChatHandler* handler)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        AdminPanelGameplay::MaxSkills(CommandPlayer(handler));
+        handler->PSendSysMessage("{} Weapon/class skills maxed for current level.", PREFIX);
+        return true;
+    }
+
+    static bool HandleConsumables(ChatHandler* handler)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        AdminPanelGameplay::RefreshConsumables(CommandPlayer(handler));
+        handler->PSendSysMessage("{} Ammo/reagents/food/potions refreshed.", PREFIX);
+        return true;
+    }
+
+    static bool HandleResetTalents(ChatHandler* handler)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        AdminPanelGameplay::ResetEraTalents(CommandPlayer(handler));
+        handler->PSendSysMessage("{} Current-era talents reset for free and resynced.", PREFIX);
+        return true;
+    }
+
+    static bool HandleRegear(ChatHandler* handler)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        AdminPanelGameplay::RegearTbcPreRaid(CommandPlayer(handler));
+        handler->PSendSysMessage("{} Regeared for the current spec at the TBC pre-raid ilvl-115 target.", PREFIX);
+        return true;
+    }
+
+    static bool HandleBots(ChatHandler* handler, std::string_view rawTarget)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        uint32 target = 0;
+        if (!ParseU32(std::string(rawTarget), target) || target > 1000)
+        {
+            handler->PSendSysMessage("{} bots target must be 0-1000.", PREFIX);
+            return true;
+        }
+        AdminPanelGameplay::SetBotTarget(target, 10);
+        SaveSetting(BOT_TARGET_KEY, std::to_string(target));
+        handler->PSendSysMessage("{} Random-bot target set to {} with a safe 10-bot ramp batch.", PREFIX, target);
+        return true;
+    }
+
+    static bool HandleBotActivity(ChatHandler* handler, std::string_view rawActivity)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        uint32 activity = 0;
+        if (!ParseU32(std::string(rawActivity), activity) || activity > 100)
+        {
+            handler->PSendSysMessage("{} botactivity must be 0-100.", PREFIX);
+            return true;
+        }
+        AdminPanelGameplay::SetBotActivity(static_cast<float>(activity));
+        SaveSetting(BOT_ACTIVITY_KEY, std::to_string(activity));
+        handler->PSendSysMessage("{} Bot activity set to {}% and saved.", PREFIX, activity);
+        return true;
+    }
+
+    static bool HandleRaidNight(ChatHandler* handler)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        uint32 const prepared = AdminPanelGameplay::RaidNight(CommandPlayer(handler));
+        SaveSetting(BOT_ACTIVITY_KEY, "100");
+        handler->PSendSysMessage("{} RAID NIGHT ready: {} group member(s) resurrected/restored/repaired/resupplied; bot activity 100%.", PREFIX, prepared);
+        return true;
+    }
+
+    static bool HandleGroupPrep(ChatHandler* handler)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        uint32 const prepared = AdminPanelGameplay::PrepareGroup(CommandPlayer(handler));
+        handler->PSendSysMessage("{} Prepared {} current group member(s).", PREFIX, prepared);
+        return true;
+    }
+
+    static bool HandleGroupSummon(ChatHandler* handler)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        uint32 const summoned = AdminPanelGameplay::SummonGroup(CommandPlayer(handler));
+        handler->PSendSysMessage("{} Summoned {} group member(s) to you.", PREFIX, summoned);
         return true;
     }
 
@@ -356,10 +647,15 @@ private:
         TeleportPoint const* point = FindTeleport(std::string(destination));
         if (!point)
         {
-            handler->PSendSysMessage("{} Unknown destination. Use: darkportal, stormwind, ironforge, orgrimmar, thunderbluff, shattrath, dalaran, argent.", PREFIX);
+            handler->PSendSysMessage("{} Unknown destination. Use: darkportal, shattrath, stormwind, ironforge, orgrimmar, thunderbluff, dalaran, argent.", PREFIX);
             return true;
         }
-        if (TeleportPlayer(player, *point))
+        if (point->requiresWotlk && !AdminPanelExpansion::IsWotlkReleased())
+        {
+            handler->PSendSysMessage("{} {} is locked until WotLK is released.", PREFIX, point->label);
+            return true;
+        }
+        if (player && player->TeleportTo(point->map, point->x, point->y, point->z, point->o))
             handler->PSendSysMessage("{} Teleported to {}.", PREFIX, point->label);
         return true;
     }
@@ -370,7 +666,7 @@ private:
             return true;
         std::string const name(rawName);
         Player* player = CommandPlayer(handler);
-        Player* target = ObjectAccessor::FindPlayerByName(name);
+        Player* target = ObjectAccessor::FindPlayerByName(name, false);
         if (!player || !target)
         {
             handler->PSendSysMessage("{} Player '{}' is not online.", PREFIX, name);
@@ -387,7 +683,7 @@ private:
             return true;
         std::string const name(rawName);
         Player* player = CommandPlayer(handler);
-        Player* target = ObjectAccessor::FindPlayerByName(name);
+        Player* target = ObjectAccessor::FindPlayerByName(name, false);
         if (!player || !target)
         {
             handler->PSendSysMessage("{} Player '{}' is not online.", PREFIX, name);
@@ -478,7 +774,7 @@ private:
 
 void Addmod_admin_panelScripts()
 {
-    LOG_INFO("server.loading", "[AdminPanel] Registering scripts.");
+    LOG_INFO("server.loading", "[AdminPanel] Registering TBC-first server control center.");
     new AdminPanelWorldScript();
     new AdminPanelCommandScript();
 }
