@@ -1,8 +1,8 @@
 ## Interface: 30300
-## Title: Azeroth Admin Panel
-## Notes: GM-only quality-of-life controls for this AzerothCore server.
+## Title: Azeroth Control
+## Notes: Clean GM control center for the TBC-first AzerothCore realm.
 ## Author: Skrra server project
-## Version: 1.0.0
+## Version: 2.0.0
 ## SavedVariables: AzerothAdminPanelDB
 
 AdminPanel.lua
