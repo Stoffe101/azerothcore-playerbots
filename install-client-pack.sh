@@ -5,6 +5,14 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WOW_PATH="${1:-}"
+KNOWN_WSL_WOW="/mnt/d/wow private server/TheraWoW wotlk"
+KNOWN_WIN_WOW='D:\wow private server\TheraWoW wotlk'
+
+# Prefer the exact private-server client we have already verified on this machine. An explicit first
+# argument still wins, and the PowerShell installer independently validates the selected root again.
+if [[ -z "$WOW_PATH" && -f "$KNOWN_WSL_WOW/Wow.exe" ]]; then
+  WOW_PATH="$KNOWN_WIN_WOW"
+fi
 
 echo "==> Building complete client pack"
 bash "$ROOT/build-client-pack.sh"
@@ -23,6 +31,7 @@ PS_WIN="$(wslpath -w "$ROOT/windows/Install-Client-Pack.ps1")"
 
 echo "==> Installing pack into the Windows WoW client"
 if [[ -n "$WOW_PATH" ]]; then
+  echo "    Target: $WOW_PATH"
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PS_WIN" -PackZip "$ZIP_WIN" -WowPath "$WOW_PATH"
 else
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PS_WIN" -PackZip "$ZIP_WIN"
