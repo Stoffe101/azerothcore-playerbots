@@ -57,6 +57,18 @@ local function StatusColor(status)
     return 1.00, 0.25, 0.25
 end
 
+local function ReadinessColor(readiness)
+    if readiness == "RECOMMENDED" then return 0.20, 1.00, 0.45 end
+    if readiness == "READY" then return 1.00, 0.82, 0.25 end
+    return 0.62, 0.62, 0.62
+end
+
+local function ReadinessLabel(readiness)
+    if readiness == "RECOMMENDED" then return "Recommended" end
+    if readiness == "READY" then return "Ready" end
+    return "Locked"
+end
+
 local function MakeButton(parent, text, width, height)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     b:SetWidth(width)
@@ -89,7 +101,7 @@ title:SetText("Adventure Guide")
 
 local subtitle = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
-subtitle:SetText("Guild Ready content only in Finder. Experimental content stays clearly marked.")
+subtitle:SetText("Recommended content is matched to your current level/progression. Encounter support stays server-validated.")
 
 local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
 close:SetPoint("TOPRIGHT", -6, -6)
@@ -329,7 +341,8 @@ function AG.UpdateDetails()
         return
     end
 
-    detailText:SetText(selected.name .. "\n" .. selected.note)
+    local readiness = selected.readiness or (selected.unlocked == "UNLOCKED" and "READY" or "LOCKED")
+    detailText:SetText(selected.name .. "  •  " .. ReadinessLabel(readiness) .. "\n" .. selected.note)
     local ready = selected.unlocked == "UNLOCKED" and selected.status == "Guild Ready"
     if ready then
         formBtn:Enable()
@@ -396,9 +409,9 @@ function AG.Refresh()
 
     local data = CurrentRows()
     if mode == "compat" then
-        header:SetText("Compatibility: green = Finder Ready, yellow = experimental, red = not ready")
+        header:SetText("Compatibility: encounter support green/yellow/red; player readiness is separate")
     else
-        header:SetText("Supported Finder: only Guild Ready dungeons and raids")
+        header:SetText("Recommended = current sweet spot • Ready = unlocked • Locked = future progression")
     end
 
     local maxPage = math.max(1, math.ceil(#data / ROWS_PER_PAGE))
@@ -419,7 +432,10 @@ function AG.Refresh()
             row.name:SetText(entry.name)
             row.kind:SetText(entry.kind)
             row.group:SetText(entry.size .. "-player")
-            row.state:SetText(entry.unlocked == "UNLOCKED" and "Unlocked" or "Locked")
+            local readiness = entry.readiness or (entry.unlocked == "UNLOCKED" and "READY" or "LOCKED")
+            local sr, sg, sb = ReadinessColor(readiness)
+            row.state:SetTextColor(sr, sg, sb)
+            row.state:SetText(ReadinessLabel(readiness))
             local r, g, b = StatusColor(entry.status)
             row.support:SetTextColor(r, g, b)
             row.support:SetText(entry.status)
@@ -533,6 +549,7 @@ local function ParseAG(msg)
         local entry = {
             alias=p[1], name=p[2], kind=p[3], status=p[4],
             level=p[5], size=p[6], unlocked=p[7], note=p[8],
+            readiness=p[9] or (p[7] == "UNLOCKED" and "READY" or "LOCKED"),
         }
         if activeStream == "compat" then
             compatRows[#compatRows + 1] = entry
