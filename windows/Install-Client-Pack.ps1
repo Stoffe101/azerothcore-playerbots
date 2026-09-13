@@ -83,6 +83,7 @@ $RequiredClientFiles = @(
     "Interface\AddOns\ElvUI\ElvUI.toc",
     "Interface\AddOns\ElvUI_OptionsUI\ElvUI_OptionsUI.toc",
     "Interface\AddOns\AdminPanel\AdminPanel.toc",
+    "Interface\AddOns\AdventureGuide\AdventureGuide.toc",
     "Interface\AddOns\ExtendedCharacterStats\ExtendedCharacterStats.toc",
     "Interface\AddOns\EraTalents\EraTalents.toc",
     "Interface\AddOns\DBM-Core\DBM-Core.toc",
@@ -245,7 +246,7 @@ try {
     Write-Host "    Installed client validation: OK" -ForegroundColor Green
     Write-Host "    Found $($detectedAddons.Count) top-level addon folders with a .toc"
 
-    foreach ($mustShow in @('ElvUI', 'ElvUI_OptionsUI', 'AdminPanel', 'ExtendedCharacterStats', 'EraTalents', 'DBM-Core', 'TidyPlates', 'Pawn', 'MinimapButtonButton')) {
+    foreach ($mustShow in @('ElvUI', 'ElvUI_OptionsUI', 'AdminPanel', 'AdventureGuide', 'ExtendedCharacterStats', 'EraTalents', 'DBM-Core', 'TidyPlates', 'Pawn', 'MinimapButtonButton')) {
         if ($detectedAddons -notcontains $mustShow) {
             throw "Post-install scan could not see '$mustShow' in $FixedAddOnsRoot"
         }
@@ -285,7 +286,7 @@ try {
     Write-Host "  $backupRoot"
     Write-Host ""
     Write-Host "Start: D:\wow private server\TheraWoW wotlk\Wow.exe" -ForegroundColor Yellow
-    Write-Host "At character select, AddOns should include ElvUI, Azeroth Control, Pawn, MinimapButtonButton and the rest."
+    Write-Host "At character select, AddOns should include ElvUI, Azeroth Control, Adventure Guide, Pawn, MinimapButtonButton and the rest."
 }
 finally {
     if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue }
