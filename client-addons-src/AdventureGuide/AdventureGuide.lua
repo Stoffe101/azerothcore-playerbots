@@ -8,7 +8,7 @@ local TRAVEL_ROWS_PER_PAGE = 18
 
 local finderRows = {}
 local compatRows = {}
-local roadmap = { level = "?", progression = "?", now = "", next = "" }
+local roadmap = { level = "?", progression = "?", itemlevel = "?", now = "", next = "" }
 local mode = "finder"
 local page = 1
 local travelPage = 1
@@ -60,12 +60,14 @@ end
 local function ReadinessColor(readiness)
     if readiness == "RECOMMENDED" then return 0.20, 1.00, 0.45 end
     if readiness == "READY" then return 1.00, 0.82, 0.25 end
+    if readiness == "GEAR LOW" then return 1.00, 0.35, 0.20 end
     return 0.62, 0.62, 0.62
 end
 
 local function ReadinessLabel(readiness)
     if readiness == "RECOMMENDED" then return "Recommended" end
     if readiness == "READY" then return "Ready" end
+    if readiness == "GEAR LOW" then return "Gear low" end
     return "Locked"
 end
 
@@ -101,7 +103,7 @@ title:SetText("Adventure Guide")
 
 local subtitle = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
-subtitle:SetText("Recommended content is matched to your current level/progression. Encounter support stays server-validated.")
+subtitle:SetText("Recommendations use level, progression and advisory gear bands. Encounter support stays server-validated.")
 
 local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
 close:SetPoint("TOPRIGHT", -6, -6)
@@ -335,14 +337,19 @@ end
 
 function AG.UpdateDetails()
     if not selected then
-        detailText:SetText("Select an activity to see its support note and actions.")
+        detailText:SetText("Select an activity to see its support note, gear guidance and actions.")
         formBtn:Disable()
         travelBtn:Disable()
         return
     end
 
     local readiness = selected.readiness or (selected.unlocked == "UNLOCKED" and "READY" or "LOCKED")
-    detailText:SetText(selected.name .. "  •  " .. ReadinessLabel(readiness) .. "\n" .. selected.note)
+    local gearText = ""
+    local target = tonumber(selected.targetIlvl or "0") or 0
+    if target > 0 then
+        gearText = "  •  Gear " .. (selected.itemLevel or "?") .. " / " .. target .. " ilvl"
+    end
+    detailText:SetText(selected.name .. "  •  " .. ReadinessLabel(readiness) .. gearText .. "\n" .. selected.note)
     local ready = selected.unlocked == "UNLOCKED" and selected.status == "Guild Ready"
     if ready then
         formBtn:Enable()
@@ -396,7 +403,7 @@ function AG.Refresh()
     for _, row in ipairs(rows) do row:SetShown(not isRoad and not isTravel) end
 
     if isRoad then
-        roadmapMeta:SetText("Level " .. roadmap.level .. "  •  Progression stage " .. roadmap.progression)
+        roadmapMeta:SetText("Level " .. roadmap.level .. "  •  Progression stage " .. roadmap.progression .. "  •  Equipped ilvl " .. roadmap.itemlevel)
         nowText:SetText(roadmap.now ~= "" and roadmap.now or "Loading...")
         nextText:SetText(roadmap.next ~= "" and roadmap.next or "Loading...")
         return
@@ -411,7 +418,7 @@ function AG.Refresh()
     if mode == "compat" then
         header:SetText("Compatibility: encounter support green/yellow/red; player readiness is separate")
     else
-        header:SetText("Recommended = current sweet spot • Ready = unlocked • Locked = future progression")
+        header:SetText("Recommended = sweet spot • Ready = unlocked • Gear low = advisory warning • Locked = future")
     end
 
     local maxPage = math.max(1, math.ceil(#data / ROWS_PER_PAGE))
@@ -536,6 +543,8 @@ local function ParseAG(msg)
             roadmap.level = p[3] or "?"
         elseif p[2] == "PROGRESSION" then
             roadmap.progression = p[3] or "?"
+        elseif p[2] == "ITEMLEVEL" then
+            roadmap.itemlevel = p[3] or "?"
         elseif p[2] == "NOW" then
             roadmap.now = p[3] or ""
         elseif p[2] == "NEXT" then
@@ -550,6 +559,7 @@ local function ParseAG(msg)
             alias=p[1], name=p[2], kind=p[3], status=p[4],
             level=p[5], size=p[6], unlocked=p[7], note=p[8],
             readiness=p[9] or (p[7] == "UNLOCKED" and "READY" or "LOCKED"),
+            itemLevel=p[10] or "?", targetIlvl=p[11] or "0",
         }
         if activeStream == "compat" then
             compatRows[#compatRows + 1] = entry
