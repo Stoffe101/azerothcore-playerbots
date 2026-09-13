@@ -2,7 +2,7 @@ diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/LootRollAction.cpp b/mod
 index fd0674c..0b2dc75 100644
 --- a/modules/mod-playerbots/src/Ai/Base/Actions/LootRollAction.cpp
 +++ b/modules/mod-playerbots/src/Ai/Base/Actions/LootRollAction.cpp
-@@ -9,8 +9,89 @@
+@@ -11,7 +11,88 @@
  #include "LootAction.h"
  #include "ObjectMgr.h"
  #include "PlayerbotAIConfig.h"
