@@ -7,6 +7,8 @@
 #include "ObjectAccessor.h"
 #include "ObjectGuid.h"
 #include "Player.h"
+#include "Playerbots.h"
+#include "ScriptMgr.h"
 #include "Mgr/Guild/PlayerbotGuildMgr.h"
 
 namespace RaidRosterGuild
@@ -118,4 +120,71 @@ SyncResult SyncRosterToOwnerGuild(Player* owner, std::vector<RaidRosterRow> cons
 
     return result;
 }
+}
+
+namespace
+{
+void SyncExistingRoster(Player* player)
+{
+    if (!player || !IsRealPlayer(player) || !player->GetGuildId())
+        return;
+
+    uint32 const ownerGuid = player->GetGUID().GetCounter();
+    std::vector<RaidRosterRow> const rows = RaidRosterStore::Load(ownerGuid);
+    if (rows.empty())
+        return;
+
+    RaidRosterGuild::SyncResult const result = RaidRosterGuild::SyncRosterToOwnerGuild(player, rows);
+    if (!result.Complete())
+    {
+        LOG_WARN(
+            "server.loading",
+            "[RaidRoster] Owner-guild migration incomplete for {}: guild={} managed={}/{} blocked-real={} failed={}",
+            player->GetName(),
+            result.guildId,
+            result.Managed(),
+            uint32(rows.size()),
+            result.blockedRealGuild,
+            result.failed);
+    }
+}
+
+class RaidRosterGuildPlayerScript final : public PlayerScript
+{
+public:
+    RaidRosterGuildPlayerScript()
+        : PlayerScript("RaidRosterGuildPlayerScript", { PLAYERHOOK_ON_LOGIN }) { }
+
+    void OnPlayerLogin(Player* player) override
+    {
+        // Migrates rosters created before real guild membership was enforced. It is idempotent,
+        // and does nothing for bots or humans without a guild/roster.
+        SyncExistingRoster(player);
+    }
+};
+
+class RaidRosterGuildScript final : public GuildScript
+{
+public:
+    RaidRosterGuildScript()
+        : GuildScript("RaidRosterGuildScript", { GUILDHOOK_ON_ADD_MEMBER, GUILDHOOK_ON_CREATE }) { }
+
+    void OnAddMember(Guild* /*guild*/, Player* player, uint8& /*rank*/) override
+    {
+        // Handles a human joining a guild after their persistent roster already existed.
+        SyncExistingRoster(player);
+    }
+
+    void OnCreate(Guild* /*guild*/, Player* leader, std::string const& /*name*/) override
+    {
+        // Handles creating the player's guild after their persistent roster already existed.
+        SyncExistingRoster(leader);
+    }
+};
+}
+
+void AddRaidRosterGuildScripts()
+{
+    new RaidRosterGuildPlayerScript();
+    new RaidRosterGuildScript();
 }
