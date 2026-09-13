@@ -5,7 +5,48 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_WIN_WOW='D:\wow private server\TheraWoW wotlk'
-WOW_WIN="${1:-$DEFAULT_WIN_WOW}"
+WOW_WIN=""
+ALLOW_UNKNOWN=0
+
+usage() {
+  cat <<EOF
+Usage: $0 [WINDOWS_WOW_PATH] [--allow-unknown-version]
+
+Examples:
+  $0
+  $0 'E:\Games\WoW 3.3.5a'
+  $0 'E:\Games\WoW 3.3.5a' --allow-unknown-version
+
+The last flag is only for a private 3.3.5a client whose Wow.exe has stripped version metadata.
+No WoW installation is auto-discovered.
+EOF
+}
+
+for arg in "$@"; do
+  case "$arg" in
+    --allow-unknown-version)
+      ALLOW_UNKNOWN=1
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --*)
+      echo "ERROR: Unknown option: $arg" >&2
+      usage >&2
+      exit 2
+      ;;
+    *)
+      if [[ -n "$WOW_WIN" ]]; then
+        echo "ERROR: More than one WoW path was supplied." >&2
+        usage >&2
+        exit 2
+      fi
+      WOW_WIN="$arg"
+      ;;
+  esac
+done
+WOW_WIN="${WOW_WIN:-$DEFAULT_WIN_WOW}"
 
 command -v powershell.exe >/dev/null 2>&1 || {
   echo "ERROR: powershell.exe is not available from this WSL environment." >&2
@@ -45,4 +86,10 @@ ZIP_WIN="$(wslpath -w "$ROOT/client-addons.zip")"
 PS_WIN="$(wslpath -w "$ROOT/windows/Install-Client-Pack.ps1")"
 
 echo "==> Installing pack into the selected private 3.3.5a client"
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PS_WIN" -PackZip "$ZIP_WIN" -WowPath "$WOW_WIN"
+if [[ "$ALLOW_UNKNOWN" == "1" ]]; then
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PS_WIN" \
+    -PackZip "$ZIP_WIN" -WowPath "$WOW_WIN" -AllowUnknownClientVersion
+else
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PS_WIN" \
+    -PackZip "$ZIP_WIN" -WowPath "$WOW_WIN"
+fi
