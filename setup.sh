@@ -131,6 +131,15 @@ if old_roster not in text:
     raise SystemExit("ERROR: pinned setup body no longer matches expected RaidRoster.Enable line")
 text = text.replace(old_roster, new_roster, 1)
 
+# The historical bootstrap predates the Docker-safe Ollama default. Inside ac-worldserver,
+# localhost is the container itself. Match .env.example and the lore sidecar by defaulting to
+# Docker Desktop's host gateway unless the operator explicitly supplies CHATTER_URL/OLLAMA_IP.
+old_chatter_url = '${CHATTER_URL:-http://${OLLAMA_IP:-localhost}:11434/api/generate}'
+new_chatter_url = '${CHATTER_URL:-http://${OLLAMA_IP:-host.docker.internal}:11434/api/generate}'
+if old_chatter_url not in text:
+    raise SystemExit("ERROR: pinned setup body no longer matches expected chatter URL default")
+text = text.replace(old_chatter_url, new_chatter_url, 1)
+
 path.write_text(text, encoding="utf-8")
 PY
 
