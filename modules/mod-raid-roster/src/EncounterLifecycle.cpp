@@ -8,6 +8,7 @@
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "PlayerbotAI.h"
+#include "PlayerbotFactory.h"
 #include "Playerbots.h"
 #include "RaidRosterConfig.h"
 #include "RBAC.h"
@@ -295,10 +296,23 @@ void EncounterLifecycle::PrepareGroup(Player* anchor)
         if (!ai)
             return;
 
-        // Repair companions as part of prep without conjuring money or requiring a vendor trip.
-        // AzerothCore's paid repair path charges each bot its normal durability cost and simply
-        // leaves an item unrepaired when that bot cannot afford it.
+        // Repair companions as part of prep without requiring a vendor trip. AzerothCore's paid
+        // repair path charges the bot its normal durability cost and leaves gear unrepaired when
+        // that bot cannot afford it.
         member->DurabilityRepairAll(true, 1.0f, false);
+
+        // Reuse Playerbots' own level/class-aware stock builders rather than hard-coding item IDs.
+        // These are the same maintenance routines Playerbots uses after leveling/training, so ammo,
+        // reagents, food/drink, class consumables and potions stay appropriate for WotLK characters.
+        if (g_AutoPrepRefillConsumables)
+        {
+            PlayerbotFactory factory(member, member->GetLevel());
+            factory.InitAmmo();
+            factory.InitReagents();
+            factory.InitFood();
+            factory.InitConsumables();
+            factory.InitPotions();
+        }
 
         ai->ChangeEngineOnNonCombat();
         ai->ChangeStrategy("+follow,-stay,-passive", BOT_STATE_NON_COMBAT);
