@@ -14,6 +14,7 @@ mkdir -p "$DEST"
 
 command -v curl  >/dev/null || { echo "ERROR: 'curl' is required (e.g. sudo apt install curl)"; exit 1; }
 command -v unzip >/dev/null || { echo "ERROR: 'unzip' is required (e.g. sudo apt install unzip)"; exit 1; }
+command -v sed   >/dev/null || { echo "ERROR: 'sed' is required"; exit 1; }
 
 fail() {
   echo "ERROR: $*" >&2
@@ -111,6 +112,21 @@ stage_pinned_root_addon() {
   rm -rf "$tmp"
 }
 
+force_enable_pack() {
+  local pack="$1"
+  local addon toc
+  for addon in "$pack"/*/; do
+    [[ -d "$addon" ]] || continue
+    for toc in "$addon"/*.toc; do
+      [[ -f "$toc" ]] || continue
+      # Several legacy DBM encounter modules intentionally ship with DefaultState disabled.
+      # Our earlier Windows client installer stripped that marker so the complete encounter pack
+      # was immediately usable; keep the unified zip behavior identical.
+      sed -i '/^[[:space:]]*##[[:space:]]*DefaultState:[[:space:]]*disabled[[:space:]]*$/d' "$toc"
+    done
+  done
+}
+
 # UI foundation. These are the exact pins from the earlier client-ui-pack work,
 # now folded into the same bundle as our custom server addons instead of living on
 # a disconnected draft branch.
@@ -145,6 +161,7 @@ stage_pinned_folders \
   DBM-Hyjal DBM-Serpentshrine DBM-TheEye DBM-Sunwell DBM-Outlands DBM-Party-BC \
   DBM-Naxx DBM-Onyxia DBM-VoA DBM-EyeOfEternity DBM-Ulduar DBM-Coliseum \
   DBM-ChamberOfAspects DBM-Icecrown DBM-Party-WotLK
+force_enable_pack "$DEST/DBM-Pack"
 
 echo
 echo "==> Adding project/server addons and client data patches"
@@ -163,7 +180,7 @@ cat <<EOF
    - TidyPlates + ThreatPlates
    - RestedXP Guides
    - WeakAuras
-   - DBM (Vanilla/TBC/WotLK modules included by the pinned addon pack)
+   - DBM (Vanilla/TBC/WotLK modules included and enabled by the pinned addon pack)
    - MultiBot + PlayerBotManager
    - Questie, Atlas, AtlasLoot, Grid2, World Dungeon Maps
    - EraTalents + this fork's local addons
