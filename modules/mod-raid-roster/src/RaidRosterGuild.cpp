@@ -8,8 +8,32 @@
 #include "ObjectGuid.h"
 #include "Player.h"
 #include "Playerbots.h"
+#include "RandomPlayerbotMgr.h"
 #include "ScriptMgr.h"
 #include "Mgr/Guild/PlayerbotGuildMgr.h"
+
+namespace
+{
+// PlayerbotGuildMgr::IsRealGuild() is backed by its own cache, which is intentionally refreshed
+// only periodically. For a safety decision such as "may we move this bot out of its current
+// guild?", classify from the current guild leader/account instead. Unknown state is treated as
+// real and therefore protected. This makes it impossible for a stale/missing bot-guild cache entry
+// to cause us to steal a companion from somebody else's newly-created human guild.
+bool IsHumanLedGuild(uint32 guildId)
+{
+    Guild* guild = guildId ? sGuildMgr->GetGuildById(guildId) : nullptr;
+    if (!guild)
+        return true;
+
+    CharacterCacheEntry const* leader = sCharacterCache->GetCharacterCacheByGuid(guild->GetLeaderGUID());
+    if (!leader || !leader->AccountId)
+        return true;
+
+    bool const randomBotAccount = sRandomPlayerbotMgr.IsAccountType(leader->AccountId, 1);
+    bool const addClassAccount = sRandomPlayerbotMgr.IsAccountType(leader->AccountId, 2);
+    return !randomBotAccount && !addClassAccount;
+}
+}
 
 namespace RaidRosterGuild
 {
@@ -61,14 +85,15 @@ SyncResult SyncRosterToGuild(Player* owner, Guild* targetGuild, std::vector<Raid
         bool movedFromBotGuild = false;
         if (currentGuildId)
         {
-            // Never rip a reserved character out of another real player's guild. This can only
-            // happen after a manual guild move because roster creation already excludes such bots.
-            if (PlayerbotGuildMgr::instance().IsRealGuild(currentGuildId))
+            // Never rip a reserved character out of another real player's guild. The decision is
+            // deliberately made from the current guild leader account, not PlayerbotGuildMgr's
+            // eventually-consistent guild cache.
+            if (IsHumanLedGuild(currentGuildId))
             {
                 ++result.blockedRealGuild;
                 LOG_WARN(
                     "server.loading",
-                    "[RaidRoster] Guild sync skipped bot guid {}: already belongs to real guild {} (owner guild {})",
+                    "[RaidRoster] Guild sync skipped bot guid {}: already belongs to human-led guild {} (owner guild {})",
                     row.botGuid,
                     currentGuildId,
                     targetGuildId);
