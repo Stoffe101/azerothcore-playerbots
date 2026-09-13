@@ -295,6 +295,11 @@ void EncounterLifecycle::PrepareGroup(Player* anchor)
         if (!ai)
             return;
 
+        // Repair companions as part of prep without conjuring money or requiring a vendor trip.
+        // AzerothCore's paid repair path charges each bot its normal durability cost and simply
+        // leaves an item unrepaired when that bot cannot afford it.
+        member->DurabilityRepairAll(true, 1.0f, false);
+
         ai->ChangeEngineOnNonCombat();
         ai->ChangeStrategy("+follow,-stay,-passive", BOT_STATE_NON_COMBAT);
 
