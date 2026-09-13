@@ -52,6 +52,22 @@ uint8 PlayerProgression(Player* player)
     return player ? sIndividualProgression->GetPlayerProgressionFromQuests(player) : 0;
 }
 
+bool SetPlayerProgression(Player* player, uint8 stage)
+{
+    if (!player || !player->IsInWorld())
+        return false;
+
+    // This control center starts in TBC, so never use it to rewind into Vanilla. While WotLK is
+    // locked, stage 12 is a hard ceiling; once released, the full IP range becomes available.
+    if (stage < PROGRESSION_PRE_TBC || stage > CurrentProgressionLimit())
+        return false;
+
+    sIndividualProgression->ForceUpdateProgressionState(player, static_cast<ProgressionState>(stage));
+    sIndividualProgression->checkIPPhasing(player, player->GetAreaId());
+    player->SaveToDB(false, false);
+    return PlayerProgression(player) == stage;
+}
+
 char const* CurrentExpansionName()
 {
     return g_wotlkReleased ? "WOTLK" : "TBC";
