@@ -1,0 +1,35 @@
+diff --git a/modules/mod-playerbots/src/Mgr/Guild/PlayerbotGuildMgr.cpp b/modules/mod-playerbots/src/Mgr/Guild/PlayerbotGuildMgr.cpp
+index c01b02a..52dfaf4 100644
+--- a/modules/mod-playerbots/src/Mgr/Guild/PlayerbotGuildMgr.cpp
++++ b/modules/mod-playerbots/src/Mgr/Guild/PlayerbotGuildMgr.cpp
+@@ -263,11 +263,25 @@ bool PlayerbotGuildMgr::IsRealGuild(uint32 guildId)
+ 
+     auto it = _guildCache.find(guildId);
+-    if (it == _guildCache.end())
+-        return false;
++    if (it != _guildCache.end())
++        return it->second.hasRealPlayer;
+ 
+-    // A "real guild" is one whose leader's account is not in the bot accounts list.
+-    // Guild membership by real players does not affect this, only the leader's account type does.
+-    return it->second.hasRealPlayer;
++    // The cache is refreshed only once per hour. A human-created guild can therefore exist in
++    // GuildMgr long before it appears here. Returning false for every cache miss makes callers
++    // treat that brand-new human guild as a synthetic bot guild, which is unsafe for roster
++    // selection/migration. Fall back to the live Guild + CharacterCache state instead.
++    Guild* guild = sGuildMgr->GetGuildById(guildId);
++    if (!guild)
++        return false;
++
++    CharacterCacheEntry const* leaderEntry = sCharacterCache->GetCharacterCacheByGuid(guild->GetLeaderGUID());
++    if (!leaderEntry)
++    {
++        // Unknown should be conservative for callers asking whether it is safe to take a member.
++        LOG_WARN("playerbots", "Guild {} is missing its leader from CharacterCache; treating it as real", guildId);
++        return true;
++    }
++
++    return !sPlayerbotAIConfig.IsInRandomAccountList(leaderEntry->AccountId);
+ }
+ 
+ class BotGuildCacheWorldScript : public WorldScript
