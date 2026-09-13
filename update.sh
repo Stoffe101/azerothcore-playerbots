@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pull the latest AzerothCore fork + modules and rebuild. Run ON THE SERVER.
-# Safe to re-run. Your config (env/dist/etc/*.conf) and database volume are preserved.
+# Safe to re-run. Existing config values and the database volume are preserved.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -82,6 +82,44 @@ apply_patches () {
   fi
 }
 
+# Module .conf.dist files are compiled into Docker images, but an existing install keeps its
+# persistent env/dist/etc/modules directory. Seed entirely new module configs and append only
+# newly introduced keys to existing configs. Existing operator values are never overwritten.
+sync_module_configs () {
+  local dest_dir="$AC_DIR/env/dist/etc/modules"
+  mkdir -p "$dest_dir"
+
+  local dist base dest line key
+  while IFS= read -r -d '' dist; do
+    base="$(basename "$dist")"
+    dest="$dest_dir/${base%.dist}"
+
+    if [[ ! -f "$dest" ]]; then
+      cp "$dist" "$dest"
+      echo "==> Created module config: $(basename "$dest")"
+      continue
+    fi
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      [[ "$line" =~ ^[[:space:]]*[A-Za-z0-9_.-]+[[:space:]]*= ]] || continue
+      key="${line%%=*}"
+      key="$(printf '%s' "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+
+      if ! awk -F= -v wanted="$key" '
+        {
+          lhs=$1
+          gsub(/^[ \t]+|[ \t]+$/, "", lhs)
+          if (lhs == wanted) found=1
+        }
+        END { exit(found ? 0 : 1) }
+      ' "$dest"; then
+        printf '\n%s\n' "$line" >> "$dest"
+        echo "    Added config key: $(basename "$dest") -> $key"
+      fi
+    done < "$dist"
+  done < <(find "$AC_DIR/modules" -type f -path '*/conf/*.conf.dist' -print0)
+}
+
 update_repo "$AC_DIR" "AzerothCore (playerbots fork)"
 for moddir in "$AC_DIR"/modules/*/; do
   [[ -d "$moddir/.git" ]] || continue
@@ -97,6 +135,10 @@ for lm in mod-playerbot-chatter mod-raid-roster mod-admin-panel mod-ahbot-price 
     cp -a "$ROOT/modules/$lm" "$AC_DIR/modules/$lm"
   fi
 done
+
+# Persistent module configs are outside the image build context's generated reference tree. Keep
+# them compatible with newly added modules/options before restarting containers.
+sync_module_configs
 
 cd "$AC_DIR"
 
@@ -122,8 +164,7 @@ cat <<EOF
  Update complete.
  Watch the world come back up:  docker compose logs -f ac-worldserver
 
- Note: new config options added by an update are NOT auto-merged into
- your existing env/dist/etc/*.conf (they keep compiled defaults). To pick
- up brand-new settings, compare against the .conf.dist files in that dir.
+ Module configs are now forward-merged automatically: new files/keys are
+ added without replacing values you already customized.
 ==================================================================
 EOF
