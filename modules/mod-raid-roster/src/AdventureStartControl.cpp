@@ -153,6 +153,11 @@ bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStart
     if (!AdventureStartKit::GrantInitial(player, profile))
         return false;
 
+    // Existing characters often already have a committed spec when the GM presses a raid-ready
+    // button. Give the final spec-aware set immediately in that case instead of making the player
+    // relog or spend another talent point just to trigger the normal starter-gear poller.
+    AdventureStartKit::TryGiveSpecStarterGear(player);
+
     if (data.teleport && player->IsInWorld())
         player->TeleportTo(data.map, data.x, data.y, data.z, data.o);
 
