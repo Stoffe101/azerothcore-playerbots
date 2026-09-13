@@ -1,21 +1,19 @@
 #include "ScriptMgr.h"
 #include "Player.h"
+#include "WorldSession.h"
 #include "Log.h"
 #include "IndividualProgression.h"
-#include "Playerbots.h"
-#include "RandomPlayerbotMgr.h"
 #include "RaidRosterConfig.h"
 
 namespace
 {
 bool IsPlayerbot(Player* player)
 {
-    if (!player)
-        return true;
-
-    return sRandomPlayerbotMgr.IsRandomBot(player)
-        || sRandomPlayerbotMgr.IsAddclassBot(player)
-        || sPlayerbotsMgr.GetPlayerbotAI(player) != nullptr;
+    // mod-playerbots marks bot sessions before the playerbot AI object itself is attached.
+    // Using the session flag avoids pulling Playerbots.h/PlayerbotAI.h into the same translation
+    // unit as IndividualProgression.h, whose global GENERAL enumerator otherwise collides with
+    // PlayerbotAI.h's GENERAL enumerator at compile time.
+    return !player || !player->GetSession() || player->GetSession()->IsBot();
 }
 
 void RevealAllMap(Player* player)
