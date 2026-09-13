@@ -4,10 +4,21 @@
 #include "PBChatterJson.h"
 #include "Log.h"
 #include <nlohmann/json.hpp>
+#include <atomic>
+#include <chrono>
 #include <regex>
 
 namespace
 {
+    constexpr int64_t OLLAMA_FAILURE_BACKOFF_MS = 15000;
+    std::atomic<int64_t> g_ollamaBackoffUntilMs{0};
+
+    int64_t SteadyNowMs()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+    }
+
     std::string Sanitize(std::string s)
     {
         // 1. Strip any <think>...</think> (defensive; reasoning despite think=false).
@@ -39,6 +50,10 @@ namespace
 
 std::string PBChatterOllama::Ask(std::string const& systemPrompt, std::string const& prompt)
 {
+    int64_t const nowMs = SteadyNowMs();
+    if (nowMs < g_ollamaBackoffUntilMs.load(std::memory_order_relaxed))
+        return "";
+
     std::string body =
         std::string("{") +
         "\"model\":\""  + PBJsonEscape(g_PBChatModel)  + "\"," +
@@ -53,7 +68,16 @@ std::string PBChatterOllama::Ask(std::string const& systemPrompt, std::string co
 
     std::string raw = PBChatterHttp::Post(g_PBChatUrl, body);
     if (raw.empty())
+    {
+        // One unreachable Ollama endpoint previously made every queued reactive/ambient job spend
+        // its own connection timeout, producing a log storm and delaying the local reactive
+        // fallback. Back off briefly after the first failed probe; reactive jobs then fall through
+        // immediately to the local fallback while one new model probe is allowed every 15 seconds.
+        g_ollamaBackoffUntilMs.store(nowMs + OLLAMA_FAILURE_BACKOFF_MS, std::memory_order_relaxed);
         return "";
+    }
+
+    g_ollamaBackoffUntilMs.store(0, std::memory_order_relaxed);
 
     std::string reply;
     try
