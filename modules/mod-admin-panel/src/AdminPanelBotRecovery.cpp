@@ -13,6 +13,7 @@ namespace
 constexpr uint32 WATCHDOG_TICK_MS = 5000;
 constexpr uint32 FIRST_REPAIR_DELAY_MS = 15000;
 constexpr uint32 RETRY_DELAY_MS = 30000;
+constexpr uint32 SAFE_STARTUP_BATCH = 10;
 constexpr uint8 MAX_AUTOMATIC_REPAIRS = 4;
 
 void PrintBotDiagnostics(ChatHandler* handler)
@@ -41,6 +42,25 @@ class AdminPanelBotRecoveryWorld final : public WorldScript
 {
 public:
     AdminPanelBotRecoveryWorld() : WorldScript("AdminPanelBotRecoveryWorld") { }
+
+    void OnStartup() override
+    {
+        AdminPanelGameplay::PopulationStats const stats = AdminPanelGameplay::GetPopulationStats();
+        if (!stats.botTarget || stats.botBatch <= SAFE_STARTUP_BATCH)
+            return;
+
+        // Fresh installs and older .env files may still carry the historical
+        // RANDOM_BOTS_PER_INTERVAL=150 tuning. That value was useful for steady-state maintenance
+        // at huge populations but is brutal during a cold login ramp. AdminPanel is now the
+        // population authority, so clamp the live startup ramp before the first normal world tick.
+        LOG_WARN(
+            "server.loading",
+            "[AdminPanel] Clamping unsafe cold-start bot batch {} -> {} for target {}",
+            stats.botBatch,
+            SAFE_STARTUP_BATCH,
+            stats.botTarget);
+        AdminPanelGameplay::SetBotTarget(stats.botTarget, SAFE_STARTUP_BATCH);
+    }
 
     void OnUpdate(uint32 diff) override
     {
