@@ -31,6 +31,35 @@ AdventureStart.Progression = 8
 #   Reveal all world-map exploration tiles on the player's first login.
 AdventureStart.RevealMap = 1
 
+# AdventureStart.StarterKit
+#   Gives real players their level-appropriate class skills/spells, bags, ammo where relevant,
+#   food, combat potions and fast-ground Riding. Professions and flying are intentionally excluded.
+AdventureStart.StarterKit = 1
+
+# AdventureStart.StartingGold
+#   Minimum money after the starter kit. Existing money is never reduced.
+AdventureStart.StartingGold = 50
+
+# AdventureStart.BasicGear / BasicGearItemLevel
+#   Immediately equip a modest green starter set so the level-60 character does not reach the
+#   Dark Portal naked. ilvl 58 is deliberately replaceable by early Outland quest/dungeon loot.
+AdventureStart.BasicGear = 1
+AdventureStart.BasicGearItemLevel = 58
+
+# AdventureStart.AutoGear
+#   Once the player commits enough points to one of the custom TBC talent trees, replace the basic
+#   set once with Playerbots' spec-aware rare gear selection.
+AdventureStart.AutoGear = 1
+
+# AdventureStart.GearMinTalentPoints
+#   Number of total era-talent points required before choosing the spec-aware starter set.
+AdventureStart.GearMinTalentPoints = 5
+
+# AdventureStart.GearItemLevel
+#   Target ilvl for that one-time blue set. 65 is strong enough to start Outland without making
+#   Hellfire/Ramparts/Blood Furnace upgrades pointless.
+AdventureStart.GearItemLevel = 65
+
 # AdventureStart.Teleport.Enable
 #   Teleport the fresh TBC character to the Blasted Lands side of the Dark Portal after
 #   level/progression initialization. This only runs from the first-login hook.
