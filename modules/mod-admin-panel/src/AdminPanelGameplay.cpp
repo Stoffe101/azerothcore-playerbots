@@ -104,10 +104,12 @@ void SetBotTarget(uint32 target, uint32 batch)
     if (target > 0)
     {
         // Account-type assignment is calculated from MaxRandomBots. A realm that booted with a
-        // zero target may therefore have every RNDbot account marked unassigned; merely changing
-        // maxRandomBots at runtime leaves the manager with an empty account pool. Rebuild that pool
-        // now, then run one throttled manager tick so the GUI button has an immediate visible effect.
+        // zero target may therefore have every RNDbot account marked unassigned. The first manager
+        // tick creates/populates the random-bot event set, but its login candidate snapshot was
+        // taken before those events existed. A second immediate throttled tick consumes that fresh
+        // set and actually starts the first login batch instead of leaving the admin button at 0/N.
         sRandomPlayerbotMgr.AssignAccountTypes();
+        sRandomPlayerbotMgr.UpdateAIInternal(0, false);
         sRandomPlayerbotMgr.UpdateAIInternal(0, false);
     }
 
