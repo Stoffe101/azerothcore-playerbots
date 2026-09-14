@@ -37,8 +37,9 @@ namespace
     }
 
     // Never leave a real player talking into a void merely because Ollama is restarting/offline.
-    // This is intentionally tiny and only used for REACTIVE jobs after the LLM path failed;
-    // ambient chatter still requires the model so fallback lines cannot become background spam.
+    // This is intentionally tiny and only used for ordinary REACTIVE jobs after any caller-owned
+    // deterministic fallback has had first refusal. Ambient chatter still requires the model so
+    // fallback lines cannot become background spam.
     std::string FallbackReply(PBChatJob const& job)
     {
         std::string const m = Lower(job.playerMessage);
@@ -80,12 +81,18 @@ namespace
             reply = PBChatterLore::Ask(job.lorePayload);   // sidecar first
         if (reply.empty())                                  // disabled/miss/timeout -> reactive LLM fallback
             reply = PBChatterOllama::Ask(job.systemPrompt, job.prompt);
+
+        // Safety-critical producers may provide their own grounded text. This must win over the
+        // generic conversational fallback, which is intentionally casual and therefore unsuitable
+        // for mechanics/assignment announcements.
+        if (reply.empty() && !job.fallbackReply.empty())
+            reply = job.fallbackReply;
         if (reply.empty() && !job.ambient)
             reply = FallbackReply(job);                     // model unavailable -> tiny local safety net
 
         if (!reply.empty())
         {
-            if (!job.ambient)
+            if (!job.ambient && job.storeMemory)
                 PBChatterMemory::Append(job.botGuid, job.playerGuid, job.playerMessage, reply);
             std::lock_guard<std::mutex> lock(g_resultMutex);
             PBChatResult r;
