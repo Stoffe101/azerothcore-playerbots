@@ -103,6 +103,50 @@ if old_chatter_url not in text:
     raise SystemExit("ERROR: pinned setup body no longer matches expected chatter URL default")
 text = text.replace(old_chatter_url, new_chatter_url, 1)
 
+# Upstream 7da03710 fixes addon downloads by mounting the containing directory instead of a
+# single zip file. A file bind mount pins the old inode, so fetch-client-addons.sh replacing the
+# archive could leave webreg serving stale data (or /dev/null forever). Keep our pinned bootstrap
+# body, but apply the upstream fix deterministically to the generated runtime.
+old_webreg = r'''      WEBREG_ADDONS_ZIP_PATH: "/data/addons.zip"
+      WEBREG_ADDONS_ZIP_LABEL: "\${ADDONS_ZIP_LABEL:-Download bot addons}"
+      WEBREG_BOT_PREFIX: "\${WEBREG_BOT_PREFIX:-rndbot}"
+    ports:
+      - "\${WEBREG_LAN_PORT:-8090}:8090"
+    volumes:
+      - "\${CLIENT_ZIP_PATH:-/dev/null}:/data/client.zip:ro"
+      - "\${ADDONS_ZIP_PATH:-/dev/null}:/data/addons.zip:ro"
+YAML
+  # The main `docker compose up` (above) ran before this service was appended and
+  # before its secrets existed, so it must be built + started now. Idempotent:
+  # re-running reconciles the container with the regenerated override.
+  # If fetch-client-addons.sh has produced the bundle, mount it by default so the
+  # "Download bot addons" button works without editing .env. An explicit
+  # ADDONS_ZIP_PATH still wins; absent, the compose default (/dev/null) applies.
+  if [[ -z "${ADDONS_ZIP_PATH:-}" && -f "$ROOT/client-addons.zip" ]]; then
+    export ADDONS_ZIP_PATH="$ROOT/client-addons.zip"
+  fi
+'''
+new_webreg = r'''      WEBREG_ADDONS_ZIP_PATH: "/data/dist/client-addons.zip"
+      WEBREG_ADDONS_ZIP_LABEL: "\${ADDONS_ZIP_LABEL:-Download bot addons}"
+      WEBREG_BOT_PREFIX: "\${WEBREG_BOT_PREFIX:-rndbot}"
+    ports:
+      - "\${WEBREG_LAN_PORT:-8090}:8090"
+    volumes:
+      - "\${CLIENT_ZIP_PATH:-/dev/null}:/data/client.zip:ro"
+      # DIRECTORY mount, not a file mount: replacing client-addons.zip must be visible live.
+      - "$ROOT/client-dist:/data/dist:ro"
+YAML
+  # The main `docker compose up` (above) ran before this service was appended and
+  # before its secrets existed, so it must be built + started now. Idempotent:
+  # re-running reconciles the container with the regenerated override.
+  # fetch-client-addons.sh writes client-dist/client-addons.zip atomically. Create the
+  # directory here so Docker never creates it as root and webreg sees rebuilt zips live.
+  mkdir -p "$ROOT/client-dist"
+'''
+if old_webreg not in text:
+    raise SystemExit("ERROR: pinned setup body no longer matches expected webreg addon mount block")
+text = text.replace(old_webreg, new_webreg, 1)
+
 path.write_text(text, encoding="utf-8")
 PY
 
@@ -116,6 +160,8 @@ if [[ "${SETUP_PREFLIGHT_ONLY:-0}" == "1" ]]; then
   grep -Fq 'RaidRoster.Enable" "1"' "$RUNTIME"
   grep -Fq 'host.docker.internal' "$RUNTIME"
   grep -Fq 'git -C "$AC_DIR" apply --check "$patch"' "$RUNTIME"
+  grep -Fq 'WEBREG_ADDONS_ZIP_PATH: "/data/dist/client-addons.zip"' "$RUNTIME"
+  grep -Fq '$ROOT/client-dist:/data/dist:ro' "$RUNTIME"
   echo "Setup bootstrap preflight passed."
   exit 0
 fi
