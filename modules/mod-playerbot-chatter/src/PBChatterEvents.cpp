@@ -23,20 +23,11 @@
 namespace
 {
     struct Seed { uint32_t ms; std::string hint; };
-    std::unordered_map<uint64_t, Seed> g_seeds; // bot GUID counter -> last event
-
-    // The event hooks below fire from Unit kill/level/quest handling inside Map::Update, which
-    // AzerothCore runs on MapUpdater WORKER THREADS (AiPlayerbot drives ~2000 bots across many
-    // maps in parallel). Take() runs on the world thread. So g_seeds is touched concurrently
-    // from multiple threads and MUST be serialized — an unlocked std::unordered_map mutated
-    // from two map threads at once corrupts the heap and crashes the server, even with no
-    // players online. This mutex is the single guard for every g_seeds access.
+    std::unordered_map<uint64_t, Seed> g_seeds;
     std::mutex g_seedsMutex;
 
     bool IsBot(Player* p)
     {
-        // upstream 17214b3 renamed PlayerbotAI::IsRealPlayer() (which meant "selfbot") to the
-        // free IsSelfBot(Player*); the free IsRealPlayer(Player*) now means "no bot AI at all".
         PlayerbotAI* ai = GET_PLAYERBOT_AI(p);
         return ai && !IsSelfBot(p);
     }
@@ -85,8 +76,6 @@ namespace
             return a->GetGUID().GetCounter() < b->GetGUID().GetCounter();
         });
 
-        // A persistent family memory belongs to the guild, not every random bot that happened
-        // to be in a group. A bot qualifies if it shares a non-zero guild with any real player.
         group->DoForAllMembers([&](Player* member)
         {
             if (!member || !IsBot(member) || !member->GetGuildId())
@@ -158,7 +147,7 @@ namespace
 
             for (Player* human : party.humans)
                 PBAIGuildStore::TouchRelationship(
-                    botGuid, 0, human->GetGUID().GetCounter(), 4, 1, 2, false);
+                    botGuid, 0, human->GetGUID().GetCounter(), 4, 1, 2, true);
         }
     }
 
@@ -192,8 +181,6 @@ namespace
             return;
         }
 
-        // Individual bot deaths are too noisy to keep forever. Human deaths are useful social
-        // texture because they support grounded teasing / callbacks without inventing history.
         if (!IsRealPlayer(killed))
             return;
 
@@ -238,12 +225,6 @@ namespace
     class PBChatterEventScript : public PlayerScript
     {
     public:
-        // NOTE: deliberately NO PLAYERHOOK_ON_LOOT_ITEM. OnPlayerLootItem fired on the
-        // playerbots bot-loot path (PlayerbotHolder::HandleBotPackets -> StoreLootItem) with an
-        // Item* that is NOT safe to dereference there — item->GetTemplate() segfaulted the world
-        // thread under heavy bot loot ~90s after start, even with the module disabled (confirmed
-        // via gdb: GetUInt32Value <- Item::GetTemplate <- OnPlayerLootItem). Loot riffs are an
-        // optional flavor; the remaining hooks dereference objects that are valid for the hook.
         PBChatterEventScript() : PlayerScript("PBChatterEventScript", {
             PLAYERHOOK_ON_LEVEL_CHANGED,
             PLAYERHOOK_ON_PLAYER_COMPLETE_QUEST,
@@ -292,8 +273,6 @@ namespace
             if (!BuildSocialParty(player, party))
                 return;
 
-            // KillRewarder invokes this once for each credited real player. Only the canonical
-            // human writes the shared event so a two-human party does not duplicate memories.
             if (party.anchorHuman != player)
                 return;
 
