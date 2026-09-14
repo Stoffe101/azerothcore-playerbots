@@ -168,6 +168,8 @@ done
 # them compatible with newly added modules/options before restarting containers.
 sync_module_configs
 migrate_full_adventure_config
+chmod +x "$ROOT/configure-living-world-bots.sh"
+"$ROOT/configure-living-world-bots.sh"
 
 cd "$AC_DIR"
 
