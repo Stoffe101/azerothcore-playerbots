@@ -40,6 +40,47 @@ namespace
         return "trusted";
     }
 
+    char const* LoyaltyLabel(uint16 value)
+    {
+        if (value < 10) return "new guild ties";
+        if (value < 40) return "steady guild loyalty";
+        return "strong guild loyalty";
+    }
+
+    char const* RivalryLabel(uint16 value)
+    {
+        if (value < 5) return "no real rivalry";
+        if (value < 20) return "a light competitive streak";
+        return "an established friendly rivalry";
+    }
+
+    std::string BuildRelationshipHistory(PBAIGuildStore::Relationship const& relationship)
+    {
+        std::string history;
+        auto add = [&](std::string const& text)
+        {
+            if (!history.empty())
+                history += ", ";
+            history += text;
+        };
+
+        if (relationship.sharedMinutes)
+            add(Acore::StringFormat("{} shared minute{}", relationship.sharedMinutes, relationship.sharedMinutes == 1 ? "" : "s"));
+        if (relationship.sharedRuns)
+            add(Acore::StringFormat("{} shared run{}", relationship.sharedRuns, relationship.sharedRuns == 1 ? "" : "s"));
+        if (relationship.bossKills)
+            add(Acore::StringFormat("{} boss kill{}", relationship.bossKills, relationship.bossKills == 1 ? "" : "s"));
+        if (relationship.sharedDeaths)
+            add(Acore::StringFormat("{} remembered death{}", relationship.sharedDeaths, relationship.sharedDeaths == 1 ? "" : "s"));
+        if (relationship.wipes)
+            add(Acore::StringFormat("{} wipe{}", relationship.wipes, relationship.wipes == 1 ? "" : "s"));
+        if (relationship.lootMoments)
+            add(Acore::StringFormat("{} loot moment{}", relationship.lootMoments, relationship.lootMoments == 1 ? "" : "s"));
+        if (relationship.duels)
+            add(Acore::StringFormat("{} duel{}", relationship.duels, relationship.duels == 1 ? "" : "s"));
+        return history;
+    }
+
     std::string BuildPrompt(Player* bot, Player* sender, std::string const& msg)
     {
         uint32 botGuid = bot->GetGUID().GetCounter();
@@ -52,14 +93,19 @@ namespace
         if (relationship.exists)
         {
             p += Acore::StringFormat(
-                "\nYour persisted relationship with {} is {}, {}, and {} ({} shared run{} recorded). "
-                "Treat this as a tone hint only; never pretend greater closeness or invent events.",
+                "\nYour persisted relationship with {} is {}, {}, {}, {}, and has {}. ",
                 sender->GetName(),
                 FamiliarityLabel(relationship.familiarity),
                 AffinityLabel(relationship.affinity),
                 TrustLabel(relationship.trust),
-                relationship.sharedRuns,
-                relationship.sharedRuns == 1 ? "" : "s");
+                LoyaltyLabel(relationship.guildLoyalty),
+                RivalryLabel(relationship.rivalry));
+
+            std::string history = BuildRelationshipHistory(relationship);
+            if (!history.empty())
+                p += "Grounded relationship history counters: " + history + ". ";
+
+            p += "Use these only as tone/history hints. Never invent an event, friendship, grudge, romance or rivalry beyond the persisted values and memories below.";
         }
 
         auto grounded = PBAIGuildStore::GetMemoriesRelatedTo(botGuid, 0, senderGuid, 3);
