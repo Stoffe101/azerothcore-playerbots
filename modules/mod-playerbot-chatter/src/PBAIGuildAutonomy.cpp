@@ -61,7 +61,7 @@ bool IsHuman(Player* player)
     return player && player->IsInWorld() && player->GetSession() && !player->GetSession()->IsBot();
 }
 
-bool DoAction(Player* bot, char const* action)
+bool DoAction(Player* bot, char const* action, std::string const& param = {})
 {
     if (!bot || bot->IsInCombat())
         return false;
@@ -70,7 +70,7 @@ bool DoAction(Player* bot, char const* action)
     if (!ai)
         return false;
 
-    return ai->DoSpecificAction(action, Event("ai guild autonomy"), true);
+    return ai->DoSpecificAction(action, Event("ai guild autonomy", param), true);
 }
 
 void GuildSay(Player* bot, std::string const& text)
@@ -201,8 +201,6 @@ void RunProfessionSession(GuildSnapshot const& guild)
 
         if (IsCrafter(bot))
         {
-            // This is Playerbots' actual recipe caster. Reagents are checked/consumed by the spell
-            // system, so even the background profession loop remains resource-backed.
             acted |= DoAction(bot, "craft random item");
             acted |= DoAction(bot, "rpg trade useful");
         }
@@ -212,8 +210,6 @@ void RunProfessionSession(GuildSnapshot const& guild)
             acted |= DoAction(bot, "move to travel target");
         }
 
-        // A bounded background contribution turns actual bot-made/gathered inventory into conserved
-        // guild stock. Only one stack can move per worker/activity and queued requests get priority.
         if (g_economyEnable && urand(0, 3) == 0 && PBAIGuildServices::ContributeSurplusFromBot(bot))
         {
             acted = true;
@@ -249,7 +245,10 @@ void RunSupplySession(GuildSnapshot const& guild)
     acted |= DoAction(bot, "check mail");
     acted |= DoAction(bot, "rpg trade useful");
     acted |= DoAction(bot, "rpg sell");
-    acted |= DoAction(bot, "guild bank");
+    // Playerbots' GuildBankAction requires an item-selection payload. "materials" resolves the
+    // bot's actual trade-material stacks and moves them through the real guild-bank API when a
+    // guild bank is nearby and the bot rank has deposit rights.
+    acted |= DoAction(bot, "guild bank", "materials");
 
     if (g_auctionEnable)
         acted |= PBAIGuildServices::ListSurplusOnAuction(bot);
@@ -407,9 +406,6 @@ public:
 
         for (GuildSnapshot const& guild : BuildSnapshots())
         {
-            // Queued service work is intentionally checked every autonomy tick rather than only on
-            // big social-activity ticks. This lets a newly listed AH stack or freshly contributed
-            // material satisfy a request without waiting another 5-12 minutes.
             if (g_economyEnable)
                 PBAIGuildServices::ProcessQueuedGuild(guild.guildId);
 
