@@ -1,0 +1,44 @@
+name: Living World + Titan Rune build
+
+on:
+  pull_request:
+    branches:
+      - feature/living-world-titan-runes
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout feature repo
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build git \
+            default-libmysqlclient-dev libssl-dev libbz2-dev libreadline-dev \
+            libncurses-dev libboost-all-dev zlib1g-dev
+
+      - name: Prepare pinned AzerothCore + Playerbots
+        run: |
+          git clone --filter=blob:none --branch Playerbot https://github.com/mod-playerbots/azerothcore-wotlk.git core
+          git -C core fetch --depth 1 origin 413bea61a85e20d9caef7d66fc601a661fdddd9d
+          git -C core checkout --detach 413bea61a85e20d9caef7d66fc601a661fdddd9d
+          git clone --filter=blob:none https://github.com/mod-playerbots/mod-playerbots.git core/modules/mod-playerbots
+          git -C core/modules/mod-playerbots fetch --depth 1 origin b949b50bfcdd4fab937781bac2d7765e39330e4b
+          git -C core/modules/mod-playerbots checkout --detach b949b50bfcdd4fab937781bac2d7765e39330e4b
+          cp -a modules/mod-titan-rune core/modules/mod-titan-rune
+          cp -a modules/mod-living-world core/modules/mod-living-world
+
+      - name: Configure
+        run: |
+          cmake -S core -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DTOOLS=0 \
+            -DSCRIPTS=static \
+            -DMODULES=static
+
+      - name: Compile worldserver
+        run: cmake --build build --target worldserver -j 2
