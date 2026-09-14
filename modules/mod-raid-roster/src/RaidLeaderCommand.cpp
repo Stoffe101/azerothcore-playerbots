@@ -43,6 +43,23 @@ void PrintGroundedBrief(ChatHandler* handler, Player* player, RaidLeaderKnowledg
     if (!encounter.caveat.empty())
         handler->PSendSysMessage("CAVEAT: {}", encounter.caveat);
 }
+
+void PrintEncounterSet(ChatHandler* handler, std::vector<RaidLeaderKnowledge::Encounter> const& encounters,
+                       std::string& currentRaid)
+{
+    for (RaidLeaderKnowledge::Encounter const& encounter : encounters)
+    {
+        if (encounter.raid != currentRaid)
+        {
+            currentRaid = encounter.raid;
+            handler->PSendSysMessage("{}:", currentRaid);
+        }
+        handler->PSendSysMessage(
+            "  [{}] {}",
+            RaidLeaderKnowledge::ReadinessName(encounter.readiness),
+            encounter.boss);
+    }
+}
 }
 
 ChatCommandTable RaidLeaderCommand::GetCommands() const
@@ -59,20 +76,14 @@ ChatCommandTable RaidLeaderCommand::GetCommands() const
 
 bool RaidLeaderCommand::HandleList(ChatHandler* handler)
 {
-    handler->SendSysMessage("Grounded raid briefs currently available (TBC + WotLK):");
+    handler->SendSysMessage("Grounded raid briefs currently available (TBC + WotLK, including current Ulduar/RS/VoA strategy coverage):");
     std::string currentRaid;
-    for (RaidLeaderKnowledge::Encounter const& encounter : RaidLeaderKnowledge::Encounters())
-    {
-        if (encounter.raid != currentRaid)
-        {
-            currentRaid = encounter.raid;
-            handler->PSendSysMessage("{}:", currentRaid);
-        }
-        handler->PSendSysMessage(
-            "  [{}] {}",
-            RaidLeaderKnowledge::ReadinessName(encounter.readiness),
-            encounter.boss);
-    }
+    PrintEncounterSet(handler, RaidLeaderKnowledge::Encounters(), currentRaid);
+    // Supplemental rows deliberately come after the historical table. A raid header is printed
+    // again when needed, which is clearer than pretending the two independently audited sets are
+    // one source revision.
+    currentRaid.clear();
+    PrintEncounterSet(handler, RaidLeaderKnowledge::SupplementalEncounters(), currentRaid);
     handler->SendSysMessage("Use .raidbrief boss <alias> for deterministic truth, or .raidbrief ai <alias> for a local-model pre-pull callout grounded only in that truth.");
     return true;
 }
@@ -89,7 +100,7 @@ bool RaidLeaderCommand::HandleBoss(ChatHandler* handler, Optional<std::string> b
         return true;
     }
 
-    RaidLeaderKnowledge::Encounter const* encounter = RaidLeaderKnowledge::Find(*boss);
+    RaidLeaderKnowledge::Encounter const* encounter = RaidLeaderKnowledge::FindAny(*boss);
     if (!encounter)
     {
         handler->SendSysMessage("No unambiguous grounded encounter brief matched that alias. Use .raidbrief list.");
@@ -112,7 +123,7 @@ bool RaidLeaderCommand::HandleAi(ChatHandler* handler, Optional<std::string> bos
         return true;
     }
 
-    RaidLeaderKnowledge::Encounter const* encounter = RaidLeaderKnowledge::Find(*boss);
+    RaidLeaderKnowledge::Encounter const* encounter = RaidLeaderKnowledge::FindAny(*boss);
     if (!encounter)
     {
         handler->SendSysMessage("No unambiguous grounded encounter brief matched that alias. Use .raidbrief list.");
