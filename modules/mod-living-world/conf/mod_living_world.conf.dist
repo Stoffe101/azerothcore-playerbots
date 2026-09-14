@@ -1,0 +1,6 @@
+# Autonomous player-guild life director.
+LivingWorld.Enable = 1
+# Seconds between director decisions. Minimum 60.
+LivingWorld.TickSeconds = 300
+# On restart, summarize at most this many hours of missed guild-life planning.
+LivingWorld.OfflineSimulationCapHours = 48
