@@ -661,7 +661,7 @@ void TitanRune::OnUnitDamage(Unit* attacker, Unit* victim, uint32& damage)
         damage = static_cast<uint32>(damage * 1.25f);
     if (ps.rallyExpires > now)
         damage = static_cast<uint32>(damage * 1.20f);
-    if (GetProtocol(player) != Protocol::Alpha && GetFamily(player->GetMapId()) == Family::Titan && ps.purifiedStacks)
+    if (protocol != Protocol::Alpha && GetFamily(player->GetMapId()) == Family::Titan && ps.purifiedStacks)
         damage = static_cast<uint32>(static_cast<float>(damage) * (1.0f + 0.01f * ps.purifiedStacks));
     if (ps.confessorStacks)
     {

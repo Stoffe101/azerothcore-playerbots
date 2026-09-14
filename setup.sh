@@ -31,7 +31,7 @@ MODULES=(
 )
 
 # Modules we author and ship from THIS repo (copied in, not git-cloned). Kept by the reconcile.
-LOCAL_MODULES=( "mod-playerbot-chatter" "mod-raid-roster" "mod-ahbot-price" "mod-wintergrasp-bots" "mod-arena-roster" )
+LOCAL_MODULES=( "mod-playerbot-chatter" "mod-raid-roster" "mod-ahbot-price" "mod-wintergrasp-bots" "mod-arena-roster" "mod-living-world" "mod-titan-rune" )
 
 # Optional commit pins (repo-pins.txt): freeze the fork and/or a module at a known-good commit
 # instead of its branch tip — used to hold a stable upstream when the latest HEAD is broken.
