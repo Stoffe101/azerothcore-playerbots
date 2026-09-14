@@ -26,9 +26,13 @@ namespace
     std::unordered_map<uint64_t, Seed> g_seeds;
     std::mutex g_seedsMutex;
 
+    std::unordered_map<uint64, uint32> g_socialTimeMs;
+    std::mutex g_socialTimeMutex;
+    constexpr uint32 SHARED_TIME_SAMPLE_MS = 60000;
+
     bool IsBot(Player* p)
     {
-        PlayerbotAI* ai = GET_PLAYERBOT_AI(p);
+        PlayerbotAI* ai = p ? GET_PLAYERBOT_AI(p) : nullptr;
         return ai && !IsSelfBot(p);
     }
 
@@ -94,6 +98,43 @@ namespace
         return !out.guildBots.empty();
     }
 
+    void TouchBotPeers(SocialParty const& party, uint16 familiarity, int16 affinity, uint16 trust,
+                       bool sharedRun, PBAIGuildStore::RelationshipSignal signal)
+    {
+        for (Player* bot : party.guildBots)
+        {
+            if (!bot)
+                continue;
+            for (Player* peer : party.guildBots)
+            {
+                if (!peer || peer == bot || peer->GetGuildId() != bot->GetGuildId())
+                    continue;
+
+                uint32 const botGuid = bot->GetGUID().GetCounter();
+                uint32 const peerGuid = peer->GetGUID().GetCounter();
+                PBAIGuildStore::TouchRelationship(botGuid, 1, peerGuid, familiarity, affinity, trust, sharedRun);
+                PBAIGuildStore::NoteRelationshipSignal(botGuid, 1, peerGuid, signal);
+            }
+        }
+    }
+
+    void RememberSharedTime(SocialParty const& party, uint32 minutes)
+    {
+        if (!party.anchorHuman || !minutes)
+            return;
+
+        for (Player* bot : party.guildBots)
+        {
+            uint32 const botGuid = bot->GetGUID().GetCounter();
+            for (Player* human : party.humans)
+                PBAIGuildStore::NoteRelationshipSignal(
+                    botGuid, 0, human->GetGUID().GetCounter(), PBAIGuildStore::RelationshipSignal::SharedMinute, minutes);
+        }
+
+        for (uint32 i = 0; i < minutes; ++i)
+            TouchBotPeers(party, 0, 0, 0, false, PBAIGuildStore::RelationshipSignal::SharedMinute);
+    }
+
     bool PartyIsFullyDead(Group* group)
     {
         if (!group)
@@ -146,9 +187,15 @@ namespace
                 summary);
 
             for (Player* human : party.humans)
-                PBAIGuildStore::TouchRelationship(
-                    botGuid, 0, human->GetGUID().GetCounter(), 4, 1, 2, true);
+            {
+                uint32 const humanGuid = human->GetGUID().GetCounter();
+                PBAIGuildStore::TouchRelationship(botGuid, 0, humanGuid, 4, 1, 2, true);
+                PBAIGuildStore::NoteRelationshipSignal(
+                    botGuid, 0, humanGuid, PBAIGuildStore::RelationshipSignal::BossKill);
+            }
         }
+
+        TouchBotPeers(party, 4, 1, 2, true, PBAIGuildStore::RelationshipSignal::BossKill);
     }
 
     void RememberDeathOrWipe(SocialParty const& party, Creature* killer, Player* killed)
@@ -172,12 +219,18 @@ namespace
 
             for (Player* bot : party.guildBots)
             {
+                uint32 const botGuid = bot->GetGUID().GetCounter();
                 PBAIGuildStore::AddMemory(
-                    bot->GetGUID().GetCounter(), eventId, "group_wipe", 75, 2, killer->GetEntry(), summary);
+                    botGuid, eventId, "group_wipe", 75, 2, killer->GetEntry(), summary);
                 for (Player* human : party.humans)
-                    PBAIGuildStore::TouchRelationship(
-                        bot->GetGUID().GetCounter(), 0, human->GetGUID().GetCounter(), 2, 0, 1, false);
+                {
+                    uint32 const humanGuid = human->GetGUID().GetCounter();
+                    PBAIGuildStore::TouchRelationship(botGuid, 0, humanGuid, 2, 0, 1, false);
+                    PBAIGuildStore::NoteRelationshipSignal(
+                        botGuid, 0, humanGuid, PBAIGuildStore::RelationshipSignal::Wipe);
+                }
             }
+            TouchBotPeers(party, 2, 0, 1, false, PBAIGuildStore::RelationshipSignal::Wipe);
             return;
         }
 
@@ -198,11 +251,80 @@ namespace
 
         for (Player* bot : party.guildBots)
         {
+            uint32 const botGuid = bot->GetGUID().GetCounter();
+            uint32 const killedGuid = killed->GetGUID().GetCounter();
             PBAIGuildStore::AddMemory(
-                bot->GetGUID().GetCounter(), eventId, "player_death", 30, 0,
-                killed->GetGUID().GetCounter(), summary);
-            PBAIGuildStore::TouchRelationship(
-                bot->GetGUID().GetCounter(), 0, killed->GetGUID().GetCounter(), 1, 0, 0, false);
+                botGuid, eventId, "player_death", 30, 0, killedGuid, summary);
+            PBAIGuildStore::TouchRelationship(botGuid, 0, killedGuid, 1, 0, 0, false);
+            PBAIGuildStore::NoteRelationshipSignal(
+                botGuid, 0, killedGuid, PBAIGuildStore::RelationshipSignal::SharedDeath);
+        }
+    }
+
+    void RememberLootMoment(Player* winner, Item* item, uint32 count)
+    {
+        if (!winner || !item || !item->GetTemplate() || !IsRealPlayer(winner))
+            return;
+
+        SocialParty party;
+        if (!BuildSocialParty(winner, party))
+            return;
+
+        ItemTemplate const* proto = item->GetTemplate();
+        std::string summary = Acore::StringFormat(
+            "{} won {}x {} while grouped with the guild.",
+            winner->GetName(), count, proto->Name1);
+        uint64 const eventId = PBAIGuildStore::RecordEvent(
+            "loot_moment", winner->GetGUID().GetCounter(), 0, winner->GetMapId(), proto->ItemId, summary);
+        uint8 const importance = proto->Quality >= ITEM_QUALITY_EPIC ? 70 :
+            (proto->Quality >= ITEM_QUALITY_RARE ? 45 : 25);
+
+        for (Player* bot : party.guildBots)
+        {
+            uint32 const botGuid = bot->GetGUID().GetCounter();
+            uint32 const winnerGuid = winner->GetGUID().GetCounter();
+            PBAIGuildStore::AddMemory(botGuid, eventId, "loot_moment", importance, 0, winnerGuid, summary);
+            PBAIGuildStore::NoteRelationshipSignal(
+                botGuid, 0, winnerGuid, PBAIGuildStore::RelationshipSignal::LootMoment);
+        }
+    }
+
+    void RememberDuel(Player* winner, Player* loser, DuelCompleteType type)
+    {
+        if (!winner || !loser || type != DUEL_WON)
+            return;
+
+        bool const winnerBot = IsBot(winner);
+        bool const loserBot = IsBot(loser);
+        bool const winnerHuman = IsRealPlayer(winner);
+        bool const loserHuman = IsRealPlayer(loser);
+        if ((!winnerBot && !loserBot) || (!winnerHuman && !loserHuman && winner->GetGuildId() != loser->GetGuildId()))
+            return;
+
+        std::string summary = Acore::StringFormat("{} defeated {} in a duel.", winner->GetName(), loser->GetName());
+        uint64 const eventId = PBAIGuildStore::RecordEvent(
+            "duel", winner->GetGUID().GetCounter(), loser->GetGUID().GetCounter(), winner->GetMapId(), 0, summary);
+
+        auto rememberForBot = [&](Player* bot, Player* other, uint8 relatedType)
+        {
+            if (!bot || !other || !IsBot(bot))
+                return;
+            uint32 const botGuid = bot->GetGUID().GetCounter();
+            uint32 const otherGuid = other->GetGUID().GetCounter();
+            PBAIGuildStore::AddMemory(botGuid, eventId, "duel", 35, relatedType, otherGuid, summary);
+            PBAIGuildStore::TouchRelationship(botGuid, relatedType, otherGuid, 2, 0, 0, false);
+            PBAIGuildStore::NoteRelationshipSignal(
+                botGuid, relatedType, otherGuid, PBAIGuildStore::RelationshipSignal::Duel);
+        };
+
+        if (winnerBot && loserHuman)
+            rememberForBot(winner, loser, 0);
+        if (loserBot && winnerHuman)
+            rememberForBot(loser, winner, 0);
+        if (winnerBot && loserBot && winner->GetGuildId() && winner->GetGuildId() == loser->GetGuildId())
+        {
+            rememberForBot(winner, loser, 1);
+            rememberForBot(loser, winner, 1);
         }
     }
 }
@@ -225,13 +347,7 @@ namespace
     class PBChatterEventScript : public PlayerScript
     {
     public:
-        PBChatterEventScript() : PlayerScript("PBChatterEventScript", {
-            PLAYERHOOK_ON_LEVEL_CHANGED,
-            PLAYERHOOK_ON_PLAYER_COMPLETE_QUEST,
-            PLAYERHOOK_ON_CREATURE_KILL,
-            PLAYERHOOK_ON_PLAYER_KILLED_BY_CREATURE,
-            PLAYERHOOK_ON_REWARD_KILL_REWARDER,
-        }) {}
+        PBChatterEventScript() : PlayerScript("PBChatterEventScript") {}
 
         void OnPlayerLevelChanged(Player* player, uint8 /*oldLevel*/) override
         {
@@ -289,6 +405,46 @@ namespace
                 return;
 
             RememberDeathOrWipe(party, killer, killed);
+        }
+
+        void OnPlayerGroupRollRewardItem(Player* player, Item* item, uint32 count, RollVote /*voteType*/, Roll* /*roll*/) override
+        {
+            if (!g_PBChatEnable)
+                return;
+            RememberLootMoment(player, item, count);
+        }
+
+        void OnPlayerDuelEnd(Player* winner, Player* loser, DuelCompleteType type) override
+        {
+            if (!g_PBChatEnable)
+                return;
+            RememberDuel(winner, loser, type);
+        }
+
+        void OnPlayerUpdate(Player* player, uint32 diff) override
+        {
+            if (!g_PBChatEnable || !IsRealPlayer(player) || !player->GetGroup())
+                return;
+
+            SocialParty party;
+            if (!BuildSocialParty(player, party) || party.anchorHuman != player || !party.group)
+                return;
+
+            uint64 const groupKey = party.group->GetGUID().GetRawValue();
+            uint32 minutes = 0;
+            {
+                std::lock_guard<std::mutex> lock(g_socialTimeMutex);
+                uint32& elapsed = g_socialTimeMs[groupKey];
+                elapsed += diff;
+                if (elapsed >= SHARED_TIME_SAMPLE_MS)
+                {
+                    minutes = elapsed / SHARED_TIME_SAMPLE_MS;
+                    elapsed %= SHARED_TIME_SAMPLE_MS;
+                }
+            }
+
+            if (minutes)
+                RememberSharedTime(party, minutes);
         }
     };
 }
