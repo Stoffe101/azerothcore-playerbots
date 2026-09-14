@@ -126,18 +126,39 @@ bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStart
         levelChanged = true;
     }
 
-    // Progression is exact to the profile's opening tier: stage 8 for TBC, stage 13 for WotLK.
-    // The Admin Panel separately prevents the WotLK profile from being selected before the realm's
-    // persistent WotLK release gate is open.
-    if (data.progression > 0 && player->IsInWorld())
+    // Starter profiles are normal forward progression, not a back-door around Individual
+    // Progression. Respect IP enablement and the configured live-expansion ceiling. The Admin
+    // Panel already opens that ceiling before WotLK raid-ready can be selected.
+    if (data.progression > 0 && player->IsInWorld() && sIndividualProgression->enabled)
     {
         uint8 const current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
         if (current < data.progression)
+            sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(data.progression));
+
+        // Individual Progression's normal login hook runs before OnPlayerFirstLogin. Reapply the
+        // progression-derived state immediately after changing the hidden progression quests so a
+        // new starter does not wait for a later zone/equipment event to receive correct phasing.
+        sIndividualProgression->CheckAdjustments(player);
+        sIndividualProgression->checkIPPhasing(player, player->GetAreaId());
+
+        uint8 const applied = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+        if (applied < data.progression)
         {
-            sIndividualProgression->ForceUpdateProgressionState(
-                player,
-                static_cast<ProgressionState>(data.progression));
+            LOG_WARN(
+                "server.loading",
+                "[AdventureStart] {} requested profile={} progression={} but IP applied only {} (enabled={}, limit={})",
+                player->GetName(), ProfileName(profile), data.progression, applied,
+                sIndividualProgression->enabled ? 1 : 0, sIndividualProgression->progressionLimit);
+            return false;
         }
+    }
+    else if (data.progression > 0 && player->IsInWorld())
+    {
+        LOG_WARN(
+            "server.loading",
+            "[AdventureStart] Refusing profile={} progression={} for {} because Individual Progression is disabled.",
+            ProfileName(profile), data.progression, player->GetName());
+        return false;
     }
 
     if (levelChanged)
