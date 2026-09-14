@@ -2,6 +2,7 @@
 #include "Log.h"
 #include "AdventureCommand.h"
 #include "AdventureGuideCommand.h"
+#include "AutoDungeonClear.h"
 #include "EncounterLifecycle.h"
 #include "GuildGroupDirector.h"
 #include "RaidLeaderCommand.h"
@@ -32,6 +33,7 @@ void Addmod_raid_rosterScripts()
     AddRaidRosterGuildScripts();
     AddGuildGroupDirectorScripts();
     AddEncounterLifecycleScripts();
+    AddAutoDungeonClearScripts();
     AddSmartLootScripts();
     AddAdventureEconomyScripts();
 }
