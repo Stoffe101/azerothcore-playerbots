@@ -10,6 +10,7 @@
 #include <mutex>
 #include <queue>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 namespace
@@ -34,6 +35,68 @@ namespace
         if (lines.empty())
             return "";
         return lines[urand(0, static_cast<uint32>(lines.size() - 1))];
+    }
+
+    std::unordered_set<std::string> TokenSet(std::string const& value)
+    {
+        static std::unordered_set<std::string> const ignored = {
+            "this", "that", "with", "from", "into", "onto", "than", "then", "when", "while",
+            "your", "ours", "their", "they", "them", "have", "has", "will", "would", "should",
+            "could", "must", "need", "just", "keep", "make", "before", "after", "during", "through",
+            "over", "under", "around", "there", "here", "where", "what", "which", "were", "been",
+            "being", "only", "also", "more", "most", "very", "some", "each", "everyone", "anyone",
+            "raid", "pull", "retry", "plan", "boss", "team", "guys", "okay", "alright", "please",
+            "lets", "dont", "doesnt", "again"
+        };
+
+        std::unordered_set<std::string> tokens;
+        std::string word;
+        auto flush = [&]()
+        {
+            if (word.size() >= 4 && ignored.find(word) == ignored.end())
+                tokens.insert(word);
+            word.clear();
+        };
+
+        for (unsigned char c : value)
+        {
+            if (std::isalnum(c))
+                word.push_back(static_cast<char>(std::tolower(c)));
+            else
+                flush();
+        }
+        flush();
+        return tokens;
+    }
+
+    // Safety gate for grounded system speech. Ollama is allowed to smooth phrasing, but it cannot
+    // introduce a new content word that does not occur in the validated fallback, and it must retain
+    // most of the fallback's meaningful vocabulary. A rejected rewrite silently becomes the exact
+    // deterministic fallback. This gives the raid leader local-model personality without allowing
+    // the model to manufacture mechanics, assignments or spell names.
+    bool GroundedReplyAllowed(std::string const& reply, std::string const& fallback)
+    {
+        if (reply.empty() || fallback.empty())
+            return false;
+
+        std::unordered_set<std::string> const allowed = TokenSet(fallback);
+        std::unordered_set<std::string> const proposed = TokenSet(reply);
+        if (allowed.empty())
+            return reply.size() <= fallback.size() + 24;
+
+        for (std::string const& token : proposed)
+            if (allowed.find(token) == allowed.end())
+                return false;
+
+        uint32 kept = 0;
+        for (std::string const& token : allowed)
+            if (proposed.find(token) != proposed.end())
+                ++kept;
+
+        // Require 60% content-word coverage. For very short plans require at least one grounded
+        // content word so an empty/generic acknowledgement can never replace the actual brief.
+        uint32 const required = std::max<uint32>(1, (uint32(allowed.size()) * 3u + 4u) / 5u);
+        return kept >= required;
     }
 
     // Never leave a real player talking into a void merely because Ollama is restarting/offline.
@@ -81,6 +144,14 @@ namespace
             reply = PBChatterLore::Ask(job.lorePayload);   // sidecar first
         if (reply.empty())                                  // disabled/miss/timeout -> reactive LLM fallback
             reply = PBChatterOllama::Ask(job.systemPrompt, job.prompt);
+
+        if (job.groundedAgainstFallback && !job.fallbackReply.empty() &&
+            !GroundedReplyAllowed(reply, job.fallbackReply))
+        {
+            if (g_PBChatDebug && !reply.empty())
+                LOG_INFO("server.loading", "[PlayerbotChatter] Rejected ungrounded system rewrite for bot {}; using deterministic fallback.", job.botGuid);
+            reply = job.fallbackReply;
+        }
 
         // Safety-critical producers may provide their own grounded text. This must win over the
         // generic conversational fallback, which is intentionally casual and therefore unsuitable
