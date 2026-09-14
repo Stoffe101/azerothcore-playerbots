@@ -792,17 +792,31 @@ void ActivateForPlayer(Player* player)
             return;
     }
 
-    TitanRuneMode selected = TitanRuneMode::Off;
-    if (Group* group = player->GetGroup())
+    // Frozen Halls shipped in the Gamma phase with Scourgestone rewards active by default while
+    // preserving ordinary Heroic health, damage and mechanics. Treat that as an instance property,
+    // not as a mutation of anyone's persisted next-dungeon selection.
+    TitanRuneMode selected = IsFrozenHalls(map->GetId()) ? TitanRuneMode::Gamma : TitanRuneMode::Off;
+    bool hasRealLeader = false;
+
+    if (!IsFrozenHalls(map->GetId()))
     {
-        if (Player* leader = ObjectAccessor::FindPlayer(group->GetLeaderGUID()))
+        if (Group* group = player->GetGroup())
         {
-            if (leader->GetSession() && !leader->GetSession()->IsBot())
-                selected = LoadSelectedMode(leader);
+            if (Player* leader = ObjectAccessor::FindPlayer(group->GetLeaderGUID()))
+            {
+                if (leader->GetSession() && !leader->GetSession()->IsBot())
+                {
+                    hasRealLeader = true;
+                    selected = LoadSelectedMode(leader);
+                }
+            }
         }
+
+        // A real group leader is authoritative even when their explicit selection is Off. Only
+        // groups without a real online leader fall back to the entering human's personal setting.
+        if (!hasRealLeader)
+            selected = LoadSelectedMode(player);
     }
-    if (selected == TitanRuneMode::Off)
-        selected = LoadSelectedMode(player);
 
     if (selected == TitanRuneMode::Off)
         return;
