@@ -1,8 +1,11 @@
 # The AzerothCore fork + modules are cloned by setup.sh on the server.
 azerothcore-wotlk/
 
-# Client addons are fetched by fetch-client-addons.sh.
+# Client addons are fetched by fetch-client-addons.sh; client-dist/ is the folder
+# it drops client-addons.zip into (folder-mounted read-only into ac-webreg, so a
+# rebuilt zip is served live without recreating the container).
 client-addons/
+client-dist/
 client-addons.zip
 
 # Database backups produced by backup.sh.

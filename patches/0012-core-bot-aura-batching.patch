@@ -1,8 +1,8 @@
 diff --git a/src/server/game/Entities/Unit/Unit.cpp b/src/server/game/Entities/Unit/Unit.cpp
-index 47d331ad..ba85cf82 100644
+index 161d31ec..a861310e 100644
 --- a/src/server/game/Entities/Unit/Unit.cpp
 +++ b/src/server/game/Entities/Unit/Unit.cpp
-@@ -4004,6 +4004,22 @@ void Unit::_UpdateSpells(uint32 time)
+@@ -4006,6 +4006,22 @@ void Unit::_UpdateSpells(uint32 time)
          }
      }
  
@@ -26,10 +26,10 @@ index 47d331ad..ba85cf82 100644
      // are deleted later in _DeleteRemovedAuras)
      m_auraUpdateSnapshot.clear();
 diff --git a/src/server/game/Entities/Unit/Unit.h b/src/server/game/Entities/Unit/Unit.h
-index 7a717918..3fefc990 100644
+index edaf3e9e..f3c6c3c6 100644
 --- a/src/server/game/Entities/Unit/Unit.h
 +++ b/src/server/game/Entities/Unit/Unit.h
-@@ -2234,6 +2234,7 @@ private:
+@@ -2235,6 +2235,7 @@ private:
      uint32 m_state;                                     // Even derived shouldn't modify
      uint32 m_CombatTimer;
      uint32 m_lastManaUse;                               // msecs
