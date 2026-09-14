@@ -165,17 +165,6 @@ void AppendStockCredit(CharacterDatabaseTransaction const& trans, uint32 guildId
         guildId, itemId, count);
 }
 
-void AddStock(uint32 guildId, uint32 itemId, uint32 count)
-{
-    if (!guildId || !itemId || !count)
-        return;
-
-    CharacterDatabase.DirectExecute(
-        "INSERT INTO mod_ai_guild_stock (guild_id, item_id, item_count) VALUES ({}, {}, {}) "
-        "ON DUPLICATE KEY UPDATE item_count = item_count + VALUES(item_count), updated_at = CURRENT_TIMESTAMP",
-        guildId, itemId, count);
-}
-
 void AppendStockDebit(CharacterDatabaseTransaction const& trans, uint32 guildId, uint32 itemId, uint32 count)
 {
     if (!trans || !guildId || !itemId || !count)
@@ -307,7 +296,7 @@ bool DeliverStockMail(uint32 guildId, uint32 senderGuid, uint32 targetGuid, Item
         return false;
     if (requestId)
         AppendRequestStatus(trans, requestId, "fulfilled");
-    CharacterDatabase.CommitTransaction(trans);
+    CharacterDatabase.DirectCommitTransaction(trans);
     return true;
 }
 
@@ -328,14 +317,12 @@ AuctionHouseId HouseIdForCharacter(uint32 guid)
 
     switch (result->Fetch()[0].Get<uint8>())
     {
-        // 3.3.5 Alliance races: Human, Dwarf, Night Elf, Gnome, Draenei.
         case 1:
         case 3:
         case 4:
         case 7:
         case 11:
             return AuctionHouseId::Alliance;
-        // Horde races: Orc, Undead, Tauren, Troll, Blood Elf.
         case 2:
         case 5:
         case 6:
@@ -400,15 +387,13 @@ bool BuyRealAuction(PendingRequest const& request)
     auction->bidder = ObjectGuid::Create<HighGuid::Player>(request.targetGuid);
     auction->bid = auction->buyout;
 
-    // Mirror AzerothCore's normal buyout path. The virtual guild treasury is the payer, but the
-    // item and seller payout remain the real auction records, with the same mail/cut/script hooks.
     sAuctionMgr->SendAuctionSalePendingMail(auction, trans);
     sAuctionMgr->SendAuctionSuccessfulMail(auction, trans);
     sAuctionMgr->SendAuctionWonMail(auction, trans);
     sScriptMgr->OnAuctionSuccessful(house, auction);
     auction->DeleteFromDB(trans);
     AppendRequestStatus(trans, request.id, "fulfilled");
-    CharacterDatabase.CommitTransaction(trans);
+    CharacterDatabase.DirectCommitTransaction(trans);
 
     sAuctionMgr->RemoveAItem(auction->item_guid);
     house->RemoveAuction(auction);
@@ -434,8 +419,6 @@ bool FulfillRequest(PendingRequest const& request)
         return true;
     }
 
-    // First choice is conserved guild stock. The stock decrement, physical mail item creation and
-    // request completion now share one CharacterDatabase transaction, so none can commit alone.
     if (StockCount(request.guildId, request.itemId) >= count)
     {
         if (!DeliverStockMail(request.guildId, request.requesterGuid, request.targetGuid, proto, count,
@@ -445,14 +428,9 @@ bool FulfillRequest(PendingRequest const& request)
         return true;
     }
 
-    // Shopping requests may spend the virtual guild treasury, but only by purchasing an existing
-    // exact-stack auction. The old synthetic fallback that created arbitrary items from vendor-price
-    // estimates is intentionally gone.
     if (request.type == "buy")
         return BuyRealAuction(request);
 
-    // Craft requests remain queued until an actual guild bot with the recipe and reagents crafts the
-    // item and contributes the physical result to stock.
     return false;
 }
 
@@ -480,7 +458,6 @@ uint32 ProcessQueued(uint32 guildId, uint32 limit = 20)
         request.quotedCopper = f[7].Get<uint64>();
         if (FulfillRequest(request))
             ++processed;
-        // Do not let one unavailable craft/material request block unrelated real-stock or AH work.
     } while (result->NextRow());
     return processed;
 }
@@ -562,7 +539,7 @@ bool MoveWholeStackToStock(Player* bot, Item* item)
     CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
     bot->SaveInventoryAndGoldToDB(trans);
     AppendStockCredit(trans, guildId, entry, count);
-    CharacterDatabase.CommitTransaction(trans);
+    CharacterDatabase.DirectCommitTransaction(trans);
 
     LOG_INFO("server.loading", "[AIGuildEconomy] {} contributed real item {} x{} to guild {} stock.",
         bot->GetName(), entry, count, guildId);
@@ -702,8 +679,6 @@ bool ContributeSurplusFromBot(Player* bot)
     {
         if (!IsTradablePhysicalItem(item) || !IsEconomySurplus(item->GetTemplate()))
             continue;
-        // A queued exact request gets first refusal through SupplyQueuedFromBot. Do not divert it
-        // to generic stock/AH paths here.
         if (RequestExists(bot->GetGuildId(), item->GetEntry()))
             continue;
         if (item->GetTemplate()->Class != ITEM_CLASS_RECIPE && item->GetCount() < 2)
@@ -781,7 +756,7 @@ bool ListSurplusOnAuction(Player* bot)
     candidate->SaveToDB(trans);
     auction->SaveToDB(trans);
     bot->SaveInventoryAndGoldToDB(trans);
-    CharacterDatabase.CommitTransaction(trans);
+    CharacterDatabase.DirectCommitTransaction(trans);
 
     LOG_INFO("server.loading", "[AIGuildEconomy] {} listed real item {} x{} on AH for {} copper buyout.",
         bot->GetName(), auction->item_template, auction->itemCount, auction->buyout);
@@ -855,7 +830,7 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
         CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
         player->SaveGoldToDB(trans);
         AppendBankCredit(trans, guildId, copper, true);
-        CharacterDatabase.CommitTransaction(trans);
+        CharacterDatabase.DirectCommitTransaction(trans);
 
         uint32 const processed = ProcessQueued(guildId);
         Reply(player, "[AI Guild] Donated " + std::to_string(gold) + "g. Treasury is now " +
@@ -969,7 +944,7 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
         CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
         player->SaveInventoryAndGoldToDB(trans);
         AppendStockCredit(trans, guildId, itemId, count);
-        CharacterDatabase.CommitTransaction(trans);
+        CharacterDatabase.DirectCommitTransaction(trans);
 
         uint32 const processed = ProcessQueued(guildId);
         Reply(player, "[AI Guild] Deposited " + std::to_string(count) + "x " + proto->Name1 +
