@@ -11,5 +11,6 @@ public:
 
     static bool HandleSearch(ChatHandler* handler, Acore::ChatCommands::Tail text);
     static bool HandleItem(ChatHandler* handler, uint32 itemId);
+    static bool HandleEconomy(ChatHandler* handler);
 };
 #endif
