@@ -1,10 +1,13 @@
 #include "AdventureProgressionStore.h"
 #include "RaidRosterConfig.h"
 
+#include "Config.h"
 #include "Log.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "WorldSession.h"
+
+bool g_AdventureProgressionCachesEnable = true;
 
 namespace
 {
@@ -12,6 +15,20 @@ bool IsRealPlayer(Player* player)
 {
     return player && player->GetSession() && !player->GetSession()->IsBot();
 }
+
+class AdventureProgressionConfigScript final : public WorldScript
+{
+public:
+    AdventureProgressionConfigScript() : WorldScript("AdventureProgressionConfigScript") { }
+
+    void OnAfterConfigLoad(bool /*reload*/) override
+    {
+        g_AdventureProgressionCachesEnable =
+            sConfigMgr->GetOption<bool>("AdventureProgression.Caches.Enable", true);
+        LOG_INFO("server.loading", "[AdventureProgression] Caches.Enable={}",
+            g_AdventureProgressionCachesEnable ? 1 : 0);
+    }
+};
 
 class AdventureProgressionRewardScript final : public PlayerScript
 {
@@ -61,5 +78,6 @@ public:
 
 void AddAdventureProgressionRewardScripts()
 {
+    new AdventureProgressionConfigScript();
     new AdventureProgressionRewardScript();
 }
