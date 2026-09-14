@@ -6,8 +6,9 @@
 #include "PBChatterQueue.h"
 #include "PBChatterLore.h"
 #include "PBChatterAmbient.h"
-#include "PBChatterAmbientPrompt.h"   // StyleExamples() — shared few-shot style block
+#include "PBChatterAmbientPrompt.h"
 #include "PBAIGuildServices.h"
+#include "PBAIGuildStore.h"
 #include "Player.h"
 #include "Group.h"
 #include "Guild.h"
@@ -17,24 +18,83 @@
 
 namespace
 {
+    char const* FamiliarityLabel(uint16 value)
+    {
+        if (value < 5) return "barely acquainted";
+        if (value < 20) return "acquainted";
+        if (value < 60) return "familiar";
+        return "long-time familiar";
+    }
+
+    char const* AffinityLabel(int16 value)
+    {
+        if (value <= -50) return "strained";
+        if (value >= 50) return "warm";
+        return "neutral";
+    }
+
+    char const* TrustLabel(uint16 value)
+    {
+        if (value < 10) return "untested";
+        if (value < 40) return "some trust";
+        return "trusted";
+    }
+
     std::string BuildPrompt(Player* bot, Player* sender, std::string const& msg)
     {
-        std::string p = PBChatterContext::BuildSnapshot(bot);
-        auto recent = PBChatterMemory::Recent(bot->GetGUID().GetCounter(), sender->GetGUID().GetCounter());
+        uint32 botGuid = bot->GetGUID().GetCounter();
+        uint32 senderGuid = sender->GetGUID().GetCounter();
+
+        std::string p = PBChatterContext::BuildIdentity(bot);
+        p += "\n\nCurrent grounded state: " + PBChatterContext::BuildSnapshot(bot);
+
+        PBAIGuildStore::Relationship relationship = PBAIGuildStore::GetRelationship(botGuid, 0, senderGuid);
+        if (relationship.exists)
+        {
+            p += Acore::StringFormat(
+                "\nYour persisted relationship with {} is {}, {}, and {} ({} shared run{} recorded). "
+                "Treat this as a tone hint only; never pretend greater closeness or invent events.",
+                sender->GetName(),
+                FamiliarityLabel(relationship.familiarity),
+                AffinityLabel(relationship.affinity),
+                TrustLabel(relationship.trust),
+                relationship.sharedRuns,
+                relationship.sharedRuns == 1 ? "" : "s");
+        }
+
+        auto grounded = PBAIGuildStore::GetMemoriesRelatedTo(botGuid, 0, senderGuid, 3);
+        if (!grounded.empty())
+        {
+            p += Acore::StringFormat("\nActual gameplay memories specifically involving {}:", sender->GetName());
+            for (PBAIGuildStore::Memory const& memory : grounded)
+                p += " [" + memory.summary + "]";
+            p += " You may mention these naturally when relevant, but add no unstated details.";
+        }
+
+        auto recent = PBChatterMemory::Recent(botGuid, senderGuid);
         if (!recent.empty())
         {
             p += Acore::StringFormat(
                 "\n\nYou and {} have talked before. This is your memory of those earlier "
-                "chats (oldest first) — you DO remember this person, so stay consistent and "
-                "never claim it's the first time you've met:", sender->GetName());
+                "chats (oldest first). Stay consistent and never claim it is the first time you met:",
+                sender->GetName());
             for (auto const& ex : recent)
                 p += Acore::StringFormat("\n{}: {}\nYou: {}", sender->GetName(), ex.first, ex.second);
         }
+
         p += Acore::StringFormat("\n\n{} just said to you: \"{}\"\nReply briefly, like a normal player chatting back{}.",
                                  sender->GetName(), msg,
-                                 recent.empty() ? "" : ", using what you remember above");
+                                 (recent.empty() && grounded.empty()) ? "" : ", using only the grounded history above when relevant");
         p += PBChatterAmbientPrompt::StyleExamples(2);
         return p;
+    }
+
+    void TouchDirectRelationship(Player* bot, Player* sender)
+    {
+        if (!bot || !sender)
+            return;
+        PBAIGuildStore::TouchRelationship(
+            bot->GetGUID().GetCounter(), 0, sender->GetGUID().GetCounter(), 1, 0, 0, false);
     }
 
     void Enqueue(Player* bot, Player* sender, PBChatChannel channel, std::string const& msg)
@@ -47,11 +107,10 @@ namespace
         job.systemPrompt  = g_PBChatSystemPrompt;
         job.prompt        = BuildPrompt(bot, sender, msg);
         job.playerMessage = msg;
+        TouchDirectRelationship(bot, sender);
         PBChatterQueue::Submit(std::move(job));
     }
 
-    // Whisper path: route a likely factual question to the lore sidecar. Carries the
-    // normal reactive prompt as the in-worker fallback, so a sidecar miss still replies.
     void EnqueueLore(Player* bot, Player* sender, std::string const& msg)
     {
         PBChatJob job;
@@ -60,15 +119,14 @@ namespace
         job.playerName    = sender->GetName();
         job.channel       = PBChatChannel::Whisper;
         job.systemPrompt  = g_PBChatSystemPrompt;
-        job.prompt        = BuildPrompt(bot, sender, msg);   // reactive fallback
+        job.prompt        = BuildPrompt(bot, sender, msg);
         job.playerMessage = msg;
         job.lore          = true;
         job.lorePayload   = PBChatterLore::BuildPayload(bot, sender, msg);
+        TouchDirectRelationship(bot, sender);
         PBChatterQueue::Submit(std::move(job));
     }
 
-    // Drop addon traffic (DBM/Recount/the MultiBot control addon, etc.): it rides the
-    // same chat channels but must never become a spoken AI reply. lang carries this.
     bool Eligible(Player* sender, uint32 lang, std::string const& msg)
     {
         return g_PBChatEnable
@@ -77,12 +135,8 @@ namespace
             && !PBChatterClassifier::IsCommand(msg);
     }
 
-    // Core ChatChannels.dbc id for the per-zone General channel.
     constexpr uint32 GENERAL_CHANNEL_ID = 1;
 
-    // Lighter gate for ambient buffer feeds: a real player, non-addon line. (Unlike
-    // Eligible(), this does NOT drop command-like text — General/guild banter is fair
-    // game to react to.)
     bool BufferEligible(Player* sender, uint32 lang)
     {
         return g_PBChatEnable && g_PBChatAmbientEnable
@@ -96,7 +150,7 @@ bool PBChatterObserver::OnPlayerCanUseChat(Player* player, uint32 type, uint32 l
     if (Eligible(player, lang, msg) && (type == CHAT_MSG_SAY || type == CHAT_MSG_YELL))
         for (Player* bot : PBChatterClassifier::ResolveSayTargets(player, msg))
             Enqueue(bot, player, PBChatChannel::Say, msg);
-    return true; // never block
+    return true;
 }
 
 bool PBChatterObserver::OnPlayerCanUseChat(Player* player, uint32 /*type*/, uint32 lang, std::string& msg, Player* receiver)
@@ -109,7 +163,7 @@ bool PBChatterObserver::OnPlayerCanUseChat(Player* player, uint32 /*type*/, uint
             else
                 Enqueue(bot, player, PBChatChannel::Whisper, msg);
         }
-    return true; // never block
+    return true;
 }
 
 bool PBChatterObserver::OnPlayerCanUseChat(Player* player, uint32 type, uint32 lang, std::string& msg, Group* group)
@@ -124,15 +178,11 @@ bool PBChatterObserver::OnPlayerCanUseChat(Player* player, uint32 type, uint32 l
     if (group && BufferEligible(player, lang))
         PBChatterAmbient::OnPlayerLine(AMB_GROUP, group->GetGUID().GetRawValue(),
                                        player->GetGUID().GetCounter(), player->GetName(), msg);
-    return true; // never block
+    return true;
 }
 
 bool PBChatterObserver::OnPlayerCanUseChat(Player* player, uint32 /*type*/, uint32 lang, std::string& msg, Guild* guild)
 {
-    // Service commands intentionally use a prefix that the normal chatter classifier treats as
-    // control traffic. Handle them first, and only for real client-controlled characters. The
-    // original guild line is still allowed through to the client, but it does not enter ambient
-    // memory or wake a conversational responder.
     if (guild && lang != LANG_ADDON && PBChatterClassifier::IsRealPlayerSender(player) &&
         PBAIGuildServices::HandleGuildMessage(player, guild, msg))
         return true;
@@ -144,17 +194,13 @@ bool PBChatterObserver::OnPlayerCanUseChat(Player* player, uint32 /*type*/, uint
     if (guild && BufferEligible(player, lang))
         PBChatterAmbient::OnPlayerLine(AMB_GUILD, guild->GetId(),
                                        player->GetGUID().GetCounter(), player->GetName(), msg);
-    return true; // never block
+    return true;
 }
 
 bool PBChatterObserver::OnPlayerCanUseChat(Player* player, uint32 /*type*/, uint32 lang, std::string& msg, Channel* channel)
 {
     if (channel && channel->GetChannelId() == GENERAL_CHANNEL_ID)
     {
-        // General used to feed only the ambient conversation buffer, which meant a real player
-        // could type directly into General and get silence until an unrelated ambient timer fired.
-        // Treat it as a first-class reactive surface: one eligible bot currently in the same
-        // zone/faction General channel answers, while we still feed the line into ambient context.
         if (Eligible(player, lang, msg))
             for (Player* bot : PBChatterClassifier::ResolveGeneralTargets(player, msg))
                 Enqueue(bot, player, PBChatChannel::General, msg);
@@ -163,5 +209,5 @@ bool PBChatterObserver::OnPlayerCanUseChat(Player* player, uint32 /*type*/, uint
             PBChatterAmbient::OnPlayerLine(AMB_ZONE, player->GetZoneId(),
                                            player->GetGUID().GetCounter(), player->GetName(), msg);
     }
-    return true; // never block
+    return true;
 }

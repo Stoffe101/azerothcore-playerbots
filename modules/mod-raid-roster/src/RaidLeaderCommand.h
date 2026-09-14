@@ -12,6 +12,7 @@ public:
 
     static bool HandleList(ChatHandler* handler);
     static bool HandleBoss(ChatHandler* handler, Optional<std::string> boss);
+    static bool HandleAi(ChatHandler* handler, Optional<std::string> boss);
 };
 
 #endif

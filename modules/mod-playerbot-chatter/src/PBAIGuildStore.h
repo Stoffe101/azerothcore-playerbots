@@ -28,8 +28,19 @@ struct Memory
     std::string summary;
 };
 
+struct Relationship
+{
+    bool exists = false;
+    uint16 familiarity = 0;
+    int16 affinity = 0;
+    uint16 trust = 0;
+    uint32 sharedRuns = 0;
+};
+
 Profile GetOrCreateProfile(uint32 botGuid);
 std::vector<Memory> GetRecentImportantMemories(uint32 botGuid, uint32 limit = 5);
+std::vector<Memory> GetMemoriesRelatedTo(uint32 botGuid, uint8 relatedType, uint32 relatedGuid, uint32 limit = 3);
+Relationship GetRelationship(uint32 botGuid, uint8 targetType, uint32 targetGuid);
 uint64 RecordEvent(std::string eventType, uint32 actorGuid, uint32 targetGuid,
                    uint32 mapId, uint32 encounterId, std::string summary);
 void AddMemory(uint32 botGuid, uint64 eventId, std::string memoryType, uint8 importance,

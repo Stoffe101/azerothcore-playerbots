@@ -25,7 +25,6 @@ uint32 Mix(uint32 value)
 
 uint8 StableTrait(uint32 seed, uint32 salt)
 {
-    // Keep defaults recognizable without generating cartoonishly extreme personalities.
     return static_cast<uint8>(25 + (Mix(seed ^ salt) % 51));
 }
 
@@ -42,13 +41,22 @@ std::string PreferredContent(uint32 seed)
 
 uint64 NextEventId()
 {
-    // Event hooks may execute on AzerothCore map worker threads. Generate the key locally so
-    // RecordEvent can remain an asynchronous DB write instead of blocking a map thread waiting
-    // for AUTO_INCREMENT/LAST_INSERT_ID. 16 sequence bits allow 65,536 events per millisecond.
     uint64 nowMs = static_cast<uint64>(std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count());
     uint64 sequence = static_cast<uint64>(g_eventSequence.fetch_add(1, std::memory_order_relaxed) & 0xFFFFu);
     return (nowMs << 16) | sequence;
+}
+
+Memory ReadMemory(Field* fields)
+{
+    Memory memory;
+    memory.memoryId = fields[0].Get<uint64>();
+    memory.type = fields[1].Get<std::string>();
+    memory.importance = fields[2].Get<uint8>();
+    memory.relatedType = fields[3].Get<uint8>();
+    memory.relatedGuid = fields[4].Get<uint32>();
+    memory.summary = fields[5].Get<std::string>();
+    return memory;
 }
 }
 
@@ -71,8 +79,6 @@ Profile GetOrCreateProfile(uint32 botGuid)
         profile.sociability = StableTrait(profile.personaSeed, 0x40U);
         profile.preferredContent = PreferredContent(profile.personaSeed);
 
-        // The read below depends on this insert having completed. Execute() is asynchronous in
-        // AzerothCore, so use DirectExecute() here instead of racing the canonical reread.
         CharacterDatabase.DirectExecute(
             "INSERT IGNORE INTO mod_ai_guild_profile "
             "(bot_guid, persona_seed, temperament, humor, confidence, sociability, preferred_content) "
@@ -85,8 +91,6 @@ Profile GetOrCreateProfile(uint32 botGuid)
             profile.sociability,
             profile.preferredContent);
 
-        // Another world thread/process may have inserted first. Read the canonical persisted row
-        // only after INSERT IGNORE has actually completed.
         result = CharacterDatabase.Query(
             "SELECT persona_seed, temperament, humor, confidence, sociability, preferred_content "
             "FROM mod_ai_guild_profile WHERE bot_guid = {}",
@@ -122,18 +126,52 @@ std::vector<Memory> GetRecentImportantMemories(uint32 botGuid, uint32 limit)
 
     do
     {
-        Field* fields = result->Fetch();
-        Memory memory;
-        memory.memoryId = fields[0].Get<uint64>();
-        memory.type = fields[1].Get<std::string>();
-        memory.importance = fields[2].Get<uint8>();
-        memory.relatedType = fields[3].Get<uint8>();
-        memory.relatedGuid = fields[4].Get<uint32>();
-        memory.summary = fields[5].Get<std::string>();
-        memories.push_back(std::move(memory));
+        memories.push_back(ReadMemory(result->Fetch()));
     } while (result->NextRow());
 
     return memories;
+}
+
+std::vector<Memory> GetMemoriesRelatedTo(uint32 botGuid, uint8 relatedType, uint32 relatedGuid, uint32 limit)
+{
+    std::vector<Memory> memories;
+    limit = std::clamp<uint32>(limit, 1, 10);
+
+    QueryResult result = CharacterDatabase.Query(
+        "SELECT memory_id, memory_type, importance, related_type, related_guid, summary "
+        "FROM mod_ai_guild_memory WHERE bot_guid = {} AND related_type = {} AND related_guid = {} "
+        "ORDER BY importance DESC, occurred_at DESC LIMIT {}",
+        botGuid, relatedType, relatedGuid, limit);
+
+    if (!result)
+        return memories;
+
+    do
+    {
+        memories.push_back(ReadMemory(result->Fetch()));
+    } while (result->NextRow());
+
+    return memories;
+}
+
+Relationship GetRelationship(uint32 botGuid, uint8 targetType, uint32 targetGuid)
+{
+    Relationship relationship;
+    QueryResult result = CharacterDatabase.Query(
+        "SELECT familiarity, affinity, trust, shared_runs FROM mod_ai_guild_relationship "
+        "WHERE bot_guid = {} AND target_type = {} AND target_guid = {} LIMIT 1",
+        botGuid, targetType, targetGuid);
+
+    if (!result)
+        return relationship;
+
+    Field* fields = result->Fetch();
+    relationship.exists = true;
+    relationship.familiarity = fields[0].Get<uint16>();
+    relationship.affinity = fields[1].Get<int16>();
+    relationship.trust = fields[2].Get<uint16>();
+    relationship.sharedRuns = fields[3].Get<uint32>();
+    return relationship;
 }
 
 uint64 RecordEvent(std::string eventType, uint32 actorGuid, uint32 targetGuid,
