@@ -1,9 +1,11 @@
 #include "PBChatterEvents.h"
 #include "PBChatterAmbient.h"
 #include "PBChatterConfig.h"
+#include "PBChatterRelationships.h"
 #include "ScriptMgr.h"
 #include "Player.h"
 #include "Creature.h"
+#include "Group.h"
 #include "Item.h"
 #include "ItemTemplate.h"
 #include "QuestDef.h"
@@ -69,18 +71,19 @@ namespace
         // playerbots bot-loot path (PlayerbotHolder::HandleBotPackets -> StoreLootItem) with an
         // Item* that is NOT safe to dereference there — item->GetTemplate() segfaulted the world
         // thread under heavy bot loot ~90s after start, even with the module disabled (confirmed
-        // via gdb: GetUInt32Value <- Item::GetTemplate <- OnPlayerLootItem). Loot riffs are an
-        // optional flavor; the remaining seeds (ding/quest/boss-kill) deref objects that ARE
-        // valid for the duration of their hook.
+        // via gdb: GetUInt32Value <- Item::GetTemplate <- OnPlayerLootItem).
+        //
+        // Group-roll rewards are different: PLAYERHOOK_ON_GROUP_ROLL_REWARD_ITEM fires after the
+        // reward item exists in the winner's inventory, so it is safe for relationship memory.
         PBChatterEventScript() : PlayerScript("PBChatterEventScript", {
             PLAYERHOOK_ON_LEVEL_CHANGED,
             PLAYERHOOK_ON_PLAYER_COMPLETE_QUEST,
             PLAYERHOOK_ON_CREATURE_KILL,
+            PLAYERHOOK_ON_PLAYER_JUST_DIED,
+            PLAYERHOOK_ON_DUEL_END,
+            PLAYERHOOK_ON_GROUP_ROLL_REWARD_ITEM,
         }) {}
 
-        // Each hook bails on the enable flags BEFORE touching any game object, so a disabled
-        // module does zero work (and never dereferences a hook argument). The check used to live
-        // only in Stamp(), which ran last — letting the deref crash even when disabled.
         void OnPlayerLevelChanged(Player* player, uint8 /*oldLevel*/) override
         {
             if (!g_PBChatEnable || !g_PBChatAmbientEnable)
@@ -99,13 +102,40 @@ namespace
 
         void OnPlayerCreatureKill(Player* killer, Creature* killed) override
         {
-            if (!g_PBChatEnable || !g_PBChatAmbientEnable)
+            if (!g_PBChatEnable || !killed)
                 return;
-            if (!killed)
+
+            // Persistent relationship history is not merely ambient flavor. A boss kill should
+            // still count even if spontaneous chatter is disabled.
+            PBChatterRelationships::RecordBossKill(killer, killed);
+
+            if (!g_PBChatAmbientEnable)
                 return;
             if (!killed->isElite() && !killed->isWorldBoss())
-                return; // only notable kills become flavor
+                return; // only notable kills become immediate flavor
             Stamp(killer, "you just took down " + killed->GetName());
+        }
+
+        void OnPlayerJustDied(Player* player) override
+        {
+            if (!g_PBChatEnable)
+                return;
+            PBChatterRelationships::RecordDeath(player);
+            if (g_PBChatAmbientEnable)
+                Stamp(player, "you just died during the run");
+        }
+
+        void OnPlayerDuelEnd(Player* winner, Player* loser, DuelCompleteType /*type*/) override
+        {
+            if (g_PBChatEnable)
+                PBChatterRelationships::RecordDuel(winner, loser);
+        }
+
+        void OnPlayerGroupRollRewardItem(Player* player, Item* item, uint32 count,
+                                         RollVote /*voteType*/, Roll* /*roll*/) override
+        {
+            if (g_PBChatEnable)
+                PBChatterRelationships::RecordLoot(player, item, count);
         }
     };
 }
