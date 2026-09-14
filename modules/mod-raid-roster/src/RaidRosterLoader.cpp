@@ -1,5 +1,6 @@
 #include "ScriptMgr.h"
 #include "Log.h"
+#include "AdventureCacheCommand.h"
 #include "AdventureCatchupCommand.h"
 #include "AdventureCommand.h"
 #include "AdventureControlCommand.h"
@@ -16,6 +17,7 @@
 
 void AddAdventureStartScripts();
 void AddAdventureControlPlayerScripts();
+void AddAdventureProgressionRewardScripts();
 void AddAdventureEconomyScripts();
 
 class RaidRosterWorld : public WorldScript
@@ -33,10 +35,12 @@ void Addmod_raid_rosterScripts()
     new AdventureCommand();
     new AdventureControlCommand();
     new AdventureCatchupCommand();
+    new AdventureCacheCommand();
     new AdventureGuideCommand();
     new RaidLeaderCommand();
     AddAdventureStartScripts();
     AddAdventureControlPlayerScripts();
+    AddAdventureProgressionRewardScripts();
     AddRaidRosterGuildScripts();
     AddGuildGroupDirectorScripts();
     AddEncounterLifecycleScripts();
