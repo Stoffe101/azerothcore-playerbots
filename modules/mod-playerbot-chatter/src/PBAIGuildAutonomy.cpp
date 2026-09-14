@@ -7,6 +7,7 @@
 #include "Log.h"
 #include "ObjectAccessor.h"
 #include "ObjectGuid.h"
+#include "PBAIGuildServices.h"
 #include "PBAIGuildStore.h"
 #include "Player.h"
 #include "PlayerbotAI.h"
@@ -27,6 +28,8 @@
 namespace
 {
 bool g_enable = true;
+bool g_economyEnable = true;
+bool g_auctionEnable = true;
 uint32 g_tickMs = 60000;
 uint32 g_minActivityMinutes = 5;
 uint32 g_maxActivityMinutes = 12;
@@ -176,11 +179,30 @@ void RunProfessionSession(GuildSnapshot const& guild)
 
     Player* announcer = workers[urand(0, uint32(workers.size() - 1))];
     uint32 actions = 0;
+    uint32 economyActions = 0;
     for (Player* bot : workers)
     {
         bool acted = false;
+
+        if (g_economyEnable)
+        {
+            if (PBAIGuildServices::SupplyQueuedFromBot(bot))
+            {
+                acted = true;
+                ++economyActions;
+            }
+
+            if (IsCrafter(bot) && PBAIGuildServices::TryCraftQueuedFromBot(bot))
+            {
+                acted = true;
+                ++economyActions;
+            }
+        }
+
         if (IsCrafter(bot))
         {
+            // This is Playerbots' actual recipe caster. Reagents are checked/consumed by the spell
+            // system, so even the background profession loop remains resource-backed.
             acted |= DoAction(bot, "craft random item");
             acted |= DoAction(bot, "rpg trade useful");
         }
@@ -189,6 +211,15 @@ void RunProfessionSession(GuildSnapshot const& guild)
             acted |= DoAction(bot, "choose travel target");
             acted |= DoAction(bot, "move to travel target");
         }
+
+        // A bounded background contribution turns actual bot-made/gathered inventory into conserved
+        // guild stock. Only one stack can move per worker/activity and queued requests get priority.
+        if (g_economyEnable && urand(0, 3) == 0 && PBAIGuildServices::ContributeSurplusFromBot(bot))
+        {
+            acted = true;
+            ++economyActions;
+        }
+
         if (acted)
             ++actions;
     }
@@ -196,9 +227,13 @@ void RunProfessionSession(GuildSnapshot const& guild)
     if (!actions)
         return;
 
+    if (g_economyEnable)
+        PBAIGuildServices::ProcessQueuedGuild(guild.guildId);
+
     GuildSay(announcer, "doing a profession and mats run for the guild, shout if you need something crafted");
     Remember(announcer, guild, "guild_profession",
-        std::to_string(actions) + " guild bots performed real crafting, gathering or material-trade actions.", 55);
+        std::to_string(actions) + " guild bots performed real crafting, gathering or material-trade actions; " +
+        std::to_string(economyActions) + " conserved-stock/craft request actions were completed.", 55);
 }
 
 void RunSupplySession(GuildSnapshot const& guild)
@@ -208,10 +243,17 @@ void RunSupplySession(GuildSnapshot const& guild)
         return;
 
     bool acted = false;
+    if (g_economyEnable)
+        acted |= PBAIGuildServices::SupplyQueuedFromBot(bot);
+
     acted |= DoAction(bot, "check mail");
     acted |= DoAction(bot, "rpg trade useful");
     acted |= DoAction(bot, "rpg sell");
     acted |= DoAction(bot, "guild bank");
+
+    if (g_auctionEnable)
+        acted |= PBAIGuildServices::ListSurplusOnAuction(bot);
+
     if (!acted)
     {
         acted |= DoAction(bot, "choose travel target");
@@ -221,9 +263,29 @@ void RunSupplySession(GuildSnapshot const& guild)
     if (!acted)
         return;
 
-    GuildSay(bot, "sorting mail, spare mats and guild-bank supplies for a bit");
+    if (g_economyEnable)
+        PBAIGuildServices::ProcessQueuedGuild(guild.guildId);
+
+    GuildSay(bot, "sorting mail, spare mats, market listings and guild supplies for a bit");
     Remember(bot, guild, "guild_supply",
-        "Handled real mail, useful-item trades, vendor activity or guild-bank interaction for the guild.", 50);
+        "Handled real mail, useful-item trades, vendor/guild-bank activity or an actual auction listing for the guild.", 50);
+}
+
+void RunMarketSession(GuildSnapshot const& guild)
+{
+    if (!g_auctionEnable)
+        return;
+
+    Player* bot = RandomAvailable(guild.bots);
+    if (!bot)
+        return;
+
+    if (!PBAIGuildServices::ListSurplusOnAuction(bot))
+        return;
+
+    GuildSay(bot, "put a spare stack on the auction house instead of vendoring it");
+    Remember(bot, guild, "guild_market",
+        "Listed a real inventory stack on the AzerothCore auction house and paid the normal deposit.", 45);
 }
 
 void RunSocialSession(GuildSnapshot const& guild)
@@ -241,7 +303,7 @@ void RunSocialSession(GuildSnapshot const& guild)
 
     GuildSay(bot, "if you meet someone solid out there, bring them along rather than leaving them solo");
     Remember(bot, guild, "guild_social",
-        "Handled real nearby guild-management, recruitment or spontaneous grouping actions.", 45);
+        "Handled real nearby guild-management, promotion/demotion, recruitment or spontaneous grouping actions.", 45);
 }
 
 void RunGroupSession(GuildSnapshot const& guild, bool raid)
@@ -291,14 +353,17 @@ void RunGuildActivity(GuildSnapshot const& guild)
         return;
 
     StrengthenSharedGuildHistory(guild);
+    if (g_economyEnable)
+        PBAIGuildServices::ProcessQueuedGuild(guild.guildId);
 
-    switch (urand(0, 6))
+    switch (urand(0, 7))
     {
         case 0: RunProfessionSession(guild); break;
         case 1: RunSupplySession(guild); break;
         case 2: RunSocialSession(guild); break;
         case 3: RunGroupSession(guild, false); break;
         case 4: RunGroupSession(guild, true); break;
+        case 5: RunMarketSession(guild); break;
         default:
         {
             Player* bot = RandomAvailable(guild.bots);
@@ -322,6 +387,8 @@ public:
     void OnAfterConfigLoad(bool /*reload*/) override
     {
         g_enable = sConfigMgr->GetOption<bool>("PlayerbotChatter.GuildAutonomyEnable", true);
+        g_economyEnable = sConfigMgr->GetOption<bool>("PlayerbotChatter.GuildEconomyEnable", true);
+        g_auctionEnable = sConfigMgr->GetOption<bool>("PlayerbotChatter.GuildAuctionEnable", true);
         g_tickMs = std::max<uint32>(30000, sConfigMgr->GetOption<uint32>("PlayerbotChatter.GuildAutonomyTickSeconds", 60) * 1000u);
         g_minActivityMinutes = std::max<uint32>(1, sConfigMgr->GetOption<uint32>("PlayerbotChatter.GuildAutonomyMinMinutes", 5));
         g_maxActivityMinutes = std::max<uint32>(g_minActivityMinutes,
@@ -340,6 +407,12 @@ public:
 
         for (GuildSnapshot const& guild : BuildSnapshots())
         {
+            // Queued service work is intentionally checked every autonomy tick rather than only on
+            // big social-activity ticks. This lets a newly listed AH stack or freshly contributed
+            // material satisfy a request without waiting another 5-12 minutes.
+            if (g_economyEnable)
+                PBAIGuildServices::ProcessQueuedGuild(guild.guildId);
+
             uint32& remaining = g_nextGuildActivityMs[guild.guildId];
             if (remaining > g_tickMs)
             {
@@ -360,6 +433,6 @@ private:
 
 void AddPBAIGuildAutonomyScripts()
 {
-    LOG_INFO("server.loading", "[GuildAutonomy] Registering real Playerbot guild-life actions.");
+    LOG_INFO("server.loading", "[GuildAutonomy] Registering real Playerbot guild-life, profession and auction actions.");
     new PBAIGuildAutonomyWorldScript();
 }
