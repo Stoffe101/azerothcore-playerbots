@@ -10,8 +10,10 @@
 #include "RaidRosterConfig.h"
 #include "ScriptMgr.h"
 #include "Bot/Engine/WorldPacket/Event.h"
+#include "Ai/Dungeon/DungeonClear/Util/DcLeaderSignal.h"
 
 #include <mutex>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -36,7 +38,11 @@ uint32 g_autoDriveTick = 0;
 
 bool IsSupportedInstance(Player* player)
 {
-    return player && player->GetMap() && player->GetMap()->IsDungeon();
+    if (!player || !player->GetMap() || !player->GetMap()->IsDungeon())
+        return false;
+    if (player->GetMap()->IsRaid() && !g_AutoDungeonClearRaids)
+        return false;
+    return true;
 }
 
 bool SameInstanceGroup(Player* anchor, uint32 mapId)
@@ -77,7 +83,7 @@ bool GroupFullyDead(Player* participant)
 
 void Queue(Player* human, uint32 readyAfterMs)
 {
-    if (!g_EncounterLifecycleEnable || !human || !IsRealPlayer(human) || !IsSupportedInstance(human) || !human->GetGroup())
+    if (!g_AutoDungeonClearEnable || !human || !IsRealPlayer(human) || !IsSupportedInstance(human) || !human->GetGroup())
         return;
 
     PendingAutoDrive pending;
@@ -91,45 +97,26 @@ void Queue(Player* human, uint32 readyAfterMs)
 
 bool TryStart(Player* anchor)
 {
-    if (!anchor || !anchor->GetGroup() || !anchor->IsAlive() || anchor->IsInCombat() || !IsSupportedInstance(anchor))
+    if (!g_AutoDungeonClearEnable || !anchor || !anchor->GetGroup() || !anchor->IsAlive() ||
+        anchor->IsInCombat() || !IsSupportedInstance(anchor))
         return false;
 
-    Group* group = anchor->GetGroup();
-    uint32 mapId = anchor->GetMapId();
-    bool hasAliveBotTank = false;
-    std::vector<PlayerbotAI*> bots;
-
-    group->DoForAllMembers([&](Player* member)
-    {
-        if (!member || member->GetMapId() != mapId || !member->IsAlive() || member->IsInCombat() || IsRealPlayer(member))
-            return;
-
-        PlayerbotAI* ai = GET_PLAYERBOT_AI(member);
-        if (!ai)
-            return;
-
-        bots.push_back(ai);
-        if (PlayerbotAI::IsTank(member, true))
-            hasAliveBotTank = true;
-    });
-
-    // mod-dungeon-clear deliberately drives a bot tank. If the human is the only tank we leave
-    // combat ownership with the human instead of forcing a DPS/healer bot to become a bad puller.
-    // A future navigator-only path can cover human-tank groups without stealing their role.
-    if (!hasAliveBotTank || bots.empty())
+    // Delegate leadership to mod-dungeon-clear itself. Parties choose their sole bot tank; raids
+    // use the module's Main Tank / best-geared election. This is intentionally not reimplemented
+    // here because duplicate leader rules are exactly how two bots end up fighting over a route.
+    Player* leader = DcLeaderSignal::FindLeaderTank(anchor);
+    if (!leader || !leader->IsAlive() || leader->IsInCombat())
         return false;
 
-    // Party chat normally fans "dc on" to every bot. Do the same server-side so the module's own
-    // leader election remains authoritative: followers install their follow-tank strategies while
-    // exactly one bot tank becomes the route/pull leader. The real player is the Event owner, so
-    // mod-dungeon-clear's authorization rules are satisfied without GM shortcuts or fake masters.
-    bool anyAccepted = false;
-    for (PlayerbotAI* ai : bots)
-    {
-        Event event("raid-roster auto dungeon clear", std::string(), anchor);
-        anyAccepted = ai->DoSpecificAction("dc on", event, true) || anyAccepted;
-    }
-    return anyAccepted;
+    PlayerbotAI* leaderAI = GET_PLAYERBOT_AI(leader);
+    if (!leaderAI)
+        return false;
+
+    // Use the real player as Event owner so dungeon-clear's normal authorization path is obeyed.
+    // The action is idempotent enough for our short retry window, and its own map/boss validation
+    // decides whether the current instance actually has a supported route.
+    Event event("raid-roster auto dungeon clear", std::string(), anchor);
+    return leaderAI->DoSpecificAction("dc on", event, true);
 }
 
 class AutoDungeonClearPlayerScript : public PlayerScript
@@ -160,7 +147,7 @@ public:
 
     void OnUpdate(uint32 diff) override
     {
-        if (!g_EncounterLifecycleEnable)
+        if (!g_AutoDungeonClearEnable)
             return;
 
         g_autoDriveTick += diff;
