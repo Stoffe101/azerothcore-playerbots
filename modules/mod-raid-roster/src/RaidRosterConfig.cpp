@@ -61,6 +61,9 @@ bool g_AutoPrepRefillConsumables = true;
 bool g_AutoPrepWarlockSupport = true;
 bool g_AutoPrepSmartPets = true;
 
+bool g_AutoDungeonClearEnable = true;
+bool g_AutoDungeonClearRaids = true;
+
 bool g_SmartLootEnable = true;
 bool g_SmartLootBotNeedUpgrades = true;
 bool g_SmartLootBotGreedUseful = true;
@@ -169,6 +172,9 @@ void RaidRosterLoadConfig()
     g_AutoPrepWarlockSupport = sConfigMgr->GetOption<bool>("AutoPrep.WarlockSupport", true);
     g_AutoPrepSmartPets = sConfigMgr->GetOption<bool>("AutoPrep.SmartPets", true);
 
+    g_AutoDungeonClearEnable = sConfigMgr->GetOption<bool>("AutoDungeonClear.Enable", true);
+    g_AutoDungeonClearRaids = sConfigMgr->GetOption<bool>("AutoDungeonClear.Raids", true);
+
     g_SmartLootEnable = sConfigMgr->GetOption<bool>("SmartLoot.Enable", true);
     g_SmartLootBotNeedUpgrades = sConfigMgr->GetOption<bool>("SmartLoot.BotNeedUpgrades", true);
     g_SmartLootBotGreedUseful = sConfigMgr->GetOption<bool>("SmartLoot.BotGreedUseful", true);
@@ -221,6 +227,8 @@ void RaidRosterLoadConfig()
         g_EncounterLifecycleEnable ? 1 : 0, g_WipeRecoveryEnable ? 1 : 0, g_WipeRecoveryDelayMs,
         g_WipeRecoveryResurrectHumans ? 1 : 0, g_AutoPrepEnable ? 1 : 0, g_AutoPrepRefillConsumables ? 1 : 0,
         g_AutoPrepWarlockSupport ? 1 : 0, g_AutoPrepSmartPets ? 1 : 0);
+    LOG_INFO("server.loading", "[AutoDungeonClear] Enable={}, Raids={}",
+        g_AutoDungeonClearEnable ? 1 : 0, g_AutoDungeonClearRaids ? 1 : 0);
     LOG_INFO("server.loading", "[SmartLoot] Enable={}, BotNeedUpgrades={}, BotGreedUseful={}, BadLuckProtection={}, UpgradeWindow={}s",
         g_SmartLootEnable ? 1 : 0, g_SmartLootBotNeedUpgrades ? 1 : 0,
         g_SmartLootBotGreedUseful ? 1 : 0, g_BadLuckProtectionEnable ? 1 : 0, g_BadLuckUpgradeWindowSeconds);
