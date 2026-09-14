@@ -2,7 +2,9 @@
 
 #include "Chat.h"
 #include "Creature.h"
+#include "Group.h"
 #include "Map.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "WorldSession.h"
@@ -31,11 +33,22 @@ void EnsureFrozenHallsGammaRewards(Player* player)
     // Blizzard shipped the three Frozen Halls heroics with Gamma rewards enabled BY DEFAULT while
     // deliberately preserving their normal Heroic health, damage and mechanics. Activate our
     // existing reward-only Gamma mode without changing the player's chosen protocol for the next
-    // ordinary Titan Rune dungeon.
-    TitanRuneMode const selected = TitanRune::LoadSelectedMode(player);
-    TitanRune::SaveSelectedMode(player, TitanRuneMode::Gamma);
+    // ordinary Titan Rune dungeon. ActivateForPlayer normally lets a real group leader's selection
+    // win, so temporarily override whichever real player is actually the selector, then restore it.
+    Player* selector = player;
+    if (Group* group = player->GetGroup())
+    {
+        if (Player* leader = ObjectAccessor::FindPlayer(group->GetLeaderGUID()))
+        {
+            if (leader->GetSession() && !leader->GetSession()->IsBot())
+                selector = leader;
+        }
+    }
+
+    TitanRuneMode const selected = TitanRune::LoadSelectedMode(selector);
+    TitanRune::SaveSelectedMode(selector, TitanRuneMode::Gamma);
     TitanRune::ActivateForPlayer(player);
-    TitanRune::SaveSelectedMode(player, selected);
+    TitanRune::SaveSelectedMode(selector, selected);
 }
 
 uint32 FinalBossEntry(uint32 mapId)
@@ -93,16 +106,16 @@ public:
         // Wrath Classic Defense Protocol Alpha awards one Emblem of Conquest for the final boss.
         // The 3.3.5 item exists natively, so unlike Sidereal/Scourgestone no custom currency shim is
         // necessary. Standard heroic/phase loot remains owned by the core/progression stack.
-        map->DoForAllPlayers([&](Player* player)
+        map->DoForAllPlayers([&](Player* rewardPlayer)
         {
-            if (!player || !player->GetSession() || player->GetSession()->IsBot())
+            if (!rewardPlayer || !rewardPlayer->GetSession() || rewardPlayer->GetSession()->IsBot())
                 return;
 
-            if (player->AddItem(EMBLEM_OF_CONQUEST, 1))
-                ChatHandler(player->GetSession()).SendSysMessage(
+            if (rewardPlayer->AddItem(EMBLEM_OF_CONQUEST, 1))
+                ChatHandler(rewardPlayer->GetSession()).SendSysMessage(
                     "[Titan Rune] Defense Protocol Alpha completed: +1 Emblem of Conquest.");
             else
-                ChatHandler(player->GetSession()).SendSysMessage(
+                ChatHandler(rewardPlayer->GetSession()).SendSysMessage(
                     "[Titan Rune] Alpha completion reward could not fit in your bags. Make room before the next run.");
         });
     }
