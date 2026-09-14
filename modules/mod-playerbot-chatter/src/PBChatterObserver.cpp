@@ -3,6 +3,7 @@
 #include "PBChatterClassifier.h"
 #include "PBChatterContext.h"
 #include "PBChatterMemory.h"
+#include "PBChatterRelationships.h"
 #include "PBChatterQueue.h"
 #include "PBChatterLore.h"
 #include "PBChatterAmbient.h"
@@ -29,6 +30,14 @@ namespace
             for (auto const& ex : recent)
                 p += Acore::StringFormat("\n{}: {}\nYou: {}", sender->GetName(), ex.first, ex.second);
         }
+
+        // Chat history remembers what was said; relationship memory remembers what was lived.
+        // Keep those concerns separate so pruning the rolling chat transcript never erases forty
+        // hours of dungeon/raid history, friendship, rivalry or memorable loot moments.
+        p += PBChatterRelationships::PromptContext(bot->GetGUID().GetCounter(),
+                                                   sender->GetGUID().GetCounter(),
+                                                   sender->GetName());
+
         p += Acore::StringFormat("\n\n{} just said to you: \"{}\"\nReply briefly, like a normal player chatting back{}.",
                                  sender->GetName(), msg,
                                  recent.empty() ? "" : ", using what you remember above");
