@@ -12,7 +12,6 @@
 #include "Playerbots.h"
 #include "ScriptMgr.h"
 
-#include <algorithm>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -42,7 +41,9 @@ std::unordered_map<uint64, BossState> g_states;
 
 uint64 StateKey(Creature* creature)
 {
-    return (static_cast<uint64>(creature->GetInstanceId()) << 32) |
+    if (!creature || !creature->GetMap())
+        return 0;
+    return (static_cast<uint64>(creature->GetMap()->GetInstanceId()) << 32) |
            static_cast<uint64>(creature->GetGUID().GetCounter());
 }
 
@@ -203,7 +204,7 @@ public:
         if (!creature || !creature->GetMap() || !creature->GetMap()->IsRaid() || !creature->IsDungeonBoss())
             return;
 
-        RaidLeaderKnowledge::Encounter const* encounter = RaidLeaderKnowledge::Find(creature->GetName());
+        RaidLeaderKnowledge::Encounter const* encounter = RaidLeaderKnowledge::FindAny(creature->GetName());
         if (!encounter || encounter->readiness == RaidLeaderKnowledge::Readiness::NotReady)
             return;
 
