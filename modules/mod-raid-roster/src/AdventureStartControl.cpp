@@ -161,6 +161,25 @@ bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStart
     if (data.teleport && player->IsInWorld())
         player->TeleportTo(data.map, data.x, data.y, data.z, data.o);
 
+    // A newly-created DK that is boosted while still in Ebon Hold only calculates the quest-gated
+    // DK talent pool (25 points at level 80). The raid-ready shortcut deliberately skips that intro,
+    // so an unspecced DK must receive the normal level-based WotLK pool instead. The stock LFG
+    // manager also hard-locks every DK out of dungeon finder until the faction-specific final intro
+    // quest is rewarded (13188 Alliance / 13189 Horde), so mark that final gate as completed as part
+    // of the same intentional starter-zone skip.
+    if (profile == AdventureStartProfile::WotlkRaidReady && player->getClass() == CLASS_DEATH_KNIGHT)
+    {
+        uint32 const dkIntroCompletionQuest = player->GetTeamId() == TEAM_ALLIANCE ? 13188u : 13189u;
+        if (!player->IsQuestRewarded(dkIntroCompletionQuest))
+            player->SetRewardedQuest(dkIntroCompletionQuest);
+
+        player->InitTalentForLevel();
+        uint32 const expectedTalentPoints = player->GetLevel() >= 10 ? player->GetLevel() - 9 : 0;
+        if (player->GetTalentMap().empty() && player->GetFreeTalentPoints() < expectedTalentPoints)
+            player->SetFreeTalentPoints(expectedTalentPoints);
+        player->SendTalentsInfoData(false);
+    }
+
     player->SaveToDB(false, false);
 
     LOG_INFO(

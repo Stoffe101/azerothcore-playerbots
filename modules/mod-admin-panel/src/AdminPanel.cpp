@@ -28,6 +28,8 @@
 
 using namespace Acore::ChatCommands;
 
+void AddAdminPanelBotRecoveryScripts();
+
 namespace
 {
 bool g_AdminPanelEnabled = true;
@@ -330,6 +332,7 @@ public:
             { "repair",          HandleRepair,          SEC_GAMEMASTER, Console::No },
             { "restore",         HandleRestore,         SEC_GAMEMASTER, Console::No },
             { "maxskills",       HandleMaxSkills,       SEC_GAMEMASTER, Console::No },
+            { "maxprofessions",  HandleMaxProfessions,  SEC_GAMEMASTER, Console::No },
             { "consumables",     HandleConsumables,     SEC_GAMEMASTER, Console::No },
             { "resettalents",    HandleResetTalents,    SEC_GAMEMASTER, Console::No },
             { "regear",          HandleRegear,          SEC_GAMEMASTER, Console::No },
@@ -658,6 +661,14 @@ private:
         return true;
     }
 
+    static bool HandleMaxProfessions(ChatHandler* handler)
+    {
+        if (!EnsureEnabled(handler)) return true;
+        uint32 const changed = AdminPanelGameplay::MaxProfessions(CommandPlayer(handler));
+        handler->PSendSysMessage("{} Maxed {} learned profession/secondary skill(s) to 450/450. Unlearned professions and recipes were left alone.", PREFIX, changed);
+        return true;
+    }
+
     static bool HandleConsumables(ChatHandler* handler)
     {
         if (!EnsureEnabled(handler)) return true;
@@ -875,4 +886,5 @@ void Addmod_admin_panelScripts()
     LOG_INFO("server.loading", "[AdminPanel] Registering expansion-aware server control center.");
     new AdminPanelWorldScript();
     new AdminPanelCommandScript();
+    AddAdminPanelBotRecoveryScripts();
 }

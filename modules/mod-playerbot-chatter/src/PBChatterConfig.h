@@ -8,7 +8,7 @@
 extern bool        g_PBChatEnable;
 extern bool        g_PBChatDebug;
 extern std::string g_PBChatUrl;          // full /api/generate URL
-extern std::string g_PBChatModel;        // gemma4:e4b
+extern std::string g_PBChatModel;        // configured Ollama model
 extern bool        g_PBChatThink;        // false -> send "think": false
 extern std::string g_PBChatSystemPrompt;
 extern uint32_t    g_PBChatReplyMaxLen;  // chars
@@ -47,7 +47,7 @@ extern uint32_t    g_PBChatAmbientWGeneric;    // content weight: generic small 
 extern uint32_t    g_PBChatAmbientWReact;      // content weight: react to recent
 extern uint32_t    g_PBChatAmbientWFlavor;     // content weight: class/zone/level
 extern uint32_t    g_PBChatAmbientWEvent;      // content weight: event riff
-extern uint32_t    g_PBChatAmbientWBanter;      // content weight: social/off-topic banter
+extern uint32_t    g_PBChatAmbientWBanter;     // content weight: social/off-topic banter
 
 extern std::vector<std::string> g_PBChatCommandKeywords; // lowercased
 

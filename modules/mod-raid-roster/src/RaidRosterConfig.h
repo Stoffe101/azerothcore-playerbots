@@ -19,8 +19,6 @@ extern float g_AdventureStartTeleportY;
 extern float g_AdventureStartTeleportZ;
 extern float g_AdventureStartTeleportO;
 
-// TBC starter package. The first gear set is modest and immediate; the second pass waits for
-// talent investment so Playerbots' spec bridge can choose role-appropriate late-Vanilla epics.
 extern bool g_AdventureStartStarterKit;
 extern uint32 g_AdventureStartStartingGold;
 extern bool g_AdventureStartBasicGear;
@@ -29,8 +27,6 @@ extern bool g_AdventureStartAutoGear;
 extern uint32 g_AdventureStartGearMinTalentPoints;
 extern uint32 g_AdventureStartGearItemLevel;
 
-// TBC max-level/raid-ready profile. It remains at stage 8 so Karazhan/Gruul/Mag are still the
-// first progression raids; this is a convenience gear/level shortcut, not a progression skip.
 extern uint32 g_AdventureStartTbcRaidReadyLevel;
 extern uint8 g_AdventureStartTbcRaidReadyProgression;
 extern uint32 g_AdventureStartTbcRaidReadyStartingGold;
@@ -43,8 +39,6 @@ extern float g_AdventureStartTbcRaidReadyTeleportY;
 extern float g_AdventureStartTbcRaidReadyTeleportZ;
 extern float g_AdventureStartTbcRaidReadyTeleportO;
 
-// WotLK max-level/raid-ready profile. This is only exposed by the Admin Panel after WotLK has
-// actually been released. Stage 13 opens Northrend/Naxx without skipping the Wrath raid ladder.
 extern uint32 g_AdventureStartWotlkRaidReadyLevel;
 extern uint8 g_AdventureStartWotlkRaidReadyProgression;
 extern uint32 g_AdventureStartWotlkRaidReadyStartingGold;
@@ -56,6 +50,33 @@ extern float g_AdventureStartWotlkRaidReadyTeleportX;
 extern float g_AdventureStartWotlkRaidReadyTeleportY;
 extern float g_AdventureStartWotlkRaidReadyTeleportZ;
 extern float g_AdventureStartWotlkRaidReadyTeleportO;
+
+// Player-facing activity assembly and recovery systems.
+extern bool g_GuildDirectorEnable;
+extern bool g_GuildDirectorAutoTravel;
+extern uint32 g_GuildDirectorReadyTimeoutMs;
+
+extern bool g_EncounterLifecycleEnable;
+extern bool g_WipeRecoveryEnable;
+extern uint32 g_WipeRecoveryDelayMs;
+extern bool g_WipeRecoveryResurrectHumans;
+extern bool g_AutoPrepEnable;
+extern bool g_AutoPrepRefillConsumables;
+extern bool g_AutoPrepWarlockSupport;
+extern bool g_AutoPrepSmartPets;
+
+extern bool g_SmartLootEnable;
+extern bool g_SmartLootBotNeedUpgrades;
+extern bool g_SmartLootBotGreedUseful;
+extern bool g_BadLuckProtectionEnable;
+extern uint32 g_BadLuckUpgradeWindowSeconds;
+
+extern bool g_AdventureEconomyEnable;
+extern uint32 g_AdventureEconomyDungeonBossFirstKillGold;
+extern uint32 g_AdventureEconomyRaidBossFirstKillGold;
+extern uint32 g_AdventureEconomyDungeonBossRepeatGold;
+extern uint32 g_AdventureEconomyRaidBossRepeatGold;
+extern uint32 g_AdventureEconomyDailyRepeatCapGold;
 
 void RaidRosterLoadConfig();
 #endif

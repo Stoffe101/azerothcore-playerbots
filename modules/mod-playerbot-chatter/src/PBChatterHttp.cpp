@@ -25,7 +25,7 @@ std::string PBChatterHttp::Post(std::string const& url, std::string const& jsonB
     std::string path = m[4].matched ? std::string(m[4]) : "/";
 
     httplib::Client cli(host, port);
-    cli.set_connection_timeout(5, 0);
+    cli.set_connection_timeout(3, 0);
     cli.set_read_timeout(readTimeoutSec, 0);
     cli.set_write_timeout(10, 0);
 
@@ -33,12 +33,25 @@ std::string PBChatterHttp::Post(std::string const& url, std::string const& jsonB
     auto res = cli.Post(path, jsonBody, "application/json");
     if (!res)
     {
-        LOG_WARN("server.loading", "[PlayerbotChatter] Ollama POST failed (no response).");
+        // Include the actual destination. The old generic message made a stale container-local
+        // localhost URL indistinguishable from a dead model host and cost several debugging loops.
+        LOG_WARN(
+            "server.loading",
+            "[PlayerbotChatter] Ollama POST failed (no response) to http://{}:{}{}.",
+            host,
+            port,
+            path);
         return "";
     }
     if (res->status != 200)
     {
-        LOG_WARN("server.loading", "[PlayerbotChatter] Ollama HTTP {}.", res->status);
+        LOG_WARN(
+            "server.loading",
+            "[PlayerbotChatter] Ollama HTTP {} from http://{}:{}{}.",
+            res->status,
+            host,
+            port,
+            path);
         return "";
     }
     return res->body;

@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: Adventure Guide
+## Notes: Supported dungeon/raid finder, compatibility, roadmap and travel board for the custom server.
+## Author: Stoffe101 server fork
+## Version: 0.1.0
+## SavedVariables: AdventureGuideDB
+
+AdventureGuide.lua

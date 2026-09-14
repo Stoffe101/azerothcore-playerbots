@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pull the latest AzerothCore fork + modules and rebuild. Run ON THE SERVER.
-# Safe to re-run. Your config (env/dist/etc/*.conf) and database volume are preserved.
+# Safe to re-run. Existing config values and the database volume are preserved.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -47,20 +47,87 @@ apply_patches () {
   for patch in "$pdir"/*.patch; do
     [[ -e "$patch" ]] || continue
     name="$(basename "$patch")"
+
+    # All overlay diffs are rooted at the AzerothCore checkout. This includes patches whose
+    # paths begin with modules/mod-playerbots/... or modules/mod-individual-progression/....
+    # Applying those from inside the nested module repository makes the prefixed path invalid.
     if git -C "$AC_DIR" apply --reverse --check "$patch" >/dev/null 2>&1; then
       echo "    Patch already applied: $name"
     elif git -C "$AC_DIR" apply --check "$patch" >/dev/null 2>&1; then
       git -C "$AC_DIR" apply "$patch"
       echo "    Applied patch: $name"
     else
-      echo "    ERROR: $name no longer applies (upstream moved?). Regenerate it against the" >&2
-      echo "           current fork or remove it from patches/. Refusing to build without it." >&2
+      echo "    ERROR: $name no longer applies to the pinned integration tree (upstream moved?)." >&2
+      echo "           Regenerate it against the pinned repos or remove it from patches/." >&2
       exit 1
     fi
   done
   if [[ -x "$AC_DIR/modules/mod-era-talents/apply-patches.sh" ]]; then
     "$AC_DIR/modules/mod-era-talents/apply-patches.sh" "$AC_DIR"
   fi
+}
+
+# Module .conf.dist files are compiled into Docker images, but an existing install keeps its
+# persistent env/dist/etc/modules directory. Seed entirely new module configs and append only
+# newly introduced keys to existing configs. Existing operator values are never overwritten.
+sync_module_configs () {
+  local dest_dir="$AC_DIR/env/dist/etc/modules"
+  mkdir -p "$dest_dir"
+
+  local dist base dest line key
+  while IFS= read -r -d '' dist; do
+    base="$(basename "$dist")"
+    dest="$dest_dir/${base%.dist}"
+
+    if [[ ! -f "$dest" ]]; then
+      cp "$dist" "$dest"
+      echo "==> Created module config: $(basename "$dest")"
+      continue
+    fi
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      [[ "$line" =~ ^[[:space:]]*[A-Za-z0-9_.-]+[[:space:]]*= ]] || continue
+      key="${line%%=*}"
+      key="$(printf '%s' "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+
+      if ! awk -F= -v wanted="$key" '
+        {
+          lhs=$1
+          gsub(/^[ \t]+|[ \t]+$/, "", lhs)
+          if (lhs == wanted) found=1
+        }
+        END { exit(found ? 0 : 1) }
+      ' "$dest"; then
+        printf '\n%s\n' "$line" >> "$dest"
+        echo "    Added config key: $(basename "$dest") -> $key"
+      fi
+    done < "$dist"
+  done < <(find "$AC_DIR/modules" -type f -path '*/conf/*.conf.dist' -print0)
+}
+
+# One-time migration for installs created before the Adventure Guide / Guild Director became the
+# normal player-facing path. Old installs intentionally shipped RaidRoster.Enable=0, which makes
+# the new Form Group / Prepare Raid buttons look broken even though the code is present. Promote
+# that legacy value once, then leave the marker behind so a later deliberate operator opt-out is
+# respected on every future update.
+migrate_full_adventure_config () {
+  local marker="$AC_DIR/env/dist/etc/.full_adventure_stack_v1"
+  local conf="$AC_DIR/env/dist/etc/modules/mod_raid_roster.conf"
+  [[ -f "$marker" ]] && return 0
+
+  if [[ ! -f "$conf" ]]; then
+    echo "    ERROR: full-adventure migration expected $conf but it does not exist." >&2
+    exit 1
+  fi
+
+  if grep -qE '^[[:space:]]*RaidRoster\.Enable[[:space:]]*=' "$conf"; then
+    sed -i -E 's|^[[:space:]]*RaidRoster\.Enable[[:space:]]*=.*|RaidRoster.Enable = 1|' "$conf"
+  else
+    printf '\nRaidRoster.Enable = 1\n' >> "$conf"
+  fi
+
+  : > "$marker"
+  echo "==> Full adventure migration: RaidRoster enabled for Guild Director / Adventure Guide."
 }
 
 update_repo "$AC_DIR" "AzerothCore (playerbots fork)"
@@ -71,13 +138,18 @@ done
 apply_patches
 
 # Re-sync every in-repo module before rebuild. Keep this list in step with setup.sh LOCAL_MODULES.
-for lm in mod-playerbot-chatter mod-raid-roster mod-admin-panel mod-ahbot-price mod-wintergrasp-bots mod-arena-roster; do
+for lm in mod-playerbot-chatter mod-raid-roster mod-admin-panel mod-ahbot-price mod-wintergrasp-bots mod-arena-roster mod-titan-rune; do
   if [[ -d "$ROOT/modules/$lm" ]]; then
     echo "==> Syncing local module: $lm"
     rm -rf "$AC_DIR/modules/$lm"
     cp -a "$ROOT/modules/$lm" "$AC_DIR/modules/$lm"
   fi
 done
+
+# Persistent module configs are outside the image build context's generated reference tree. Keep
+# them compatible with newly added modules/options before restarting containers.
+sync_module_configs
+migrate_full_adventure_config
 
 cd "$AC_DIR"
 
@@ -103,8 +175,7 @@ cat <<EOF
  Update complete.
  Watch the world come back up:  docker compose logs -f ac-worldserver
 
- Note: new config options added by an update are NOT auto-merged into
- your existing env/dist/etc/*.conf (they keep compiled defaults). To pick
- up brand-new settings, compare against the .conf.dist files in that dir.
+ Module configs are now forward-merged automatically: new files/keys are
+ added without replacing values you already customized.
 ==================================================================
 EOF
