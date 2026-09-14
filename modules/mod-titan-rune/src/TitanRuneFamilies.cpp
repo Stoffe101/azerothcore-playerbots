@@ -487,7 +487,8 @@ public:
                     state.fireStacks = 0;
                 else if (now >= state.nextFireTick)
                 {
-                    uint32 const amount = std::max<uint32>(1, uint32((uint64(player->GetMaxHealth()) * 10u * state.fireStacks) / 100u));
+                    // July 6 live hotfix: Fire Blast was reduced from 10% to 6% max health per second.
+                    uint32 const amount = std::max<uint32>(1, uint32((uint64(player->GetMaxHealth()) * 6u * state.fireStacks) / 100u));
                     state.nextFireTick = now + std::chrono::seconds(1);
                     if (amount >= player->GetHealth())
                         player->KillSelf(false);
@@ -698,17 +699,26 @@ public:
         }
         else if (IsArcaneMap(mapId) && ConsumeFamilyProc(creature))
         {
-            TempSummon* image = creature->SummonCreature(MIRROR_IMAGE_ENTRY,
-                creature->GetPositionX() + 1.5f, creature->GetPositionY(), creature->GetPositionZ(), creature->GetOrientation(),
-                TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 20 * IN_MILLISECONDS);
-            if (image)
+            // Classic Alpha creates two images; Beta/Gamma create three. Role-specific caster,
+            // melee-fixate and healer behavior is handled separately from the count itself.
+            uint8 const imageCount = mode == TitanRuneMode::Alpha ? 2 : 3;
+            for (uint8 i = 0; i < imageCount; ++i)
             {
-                image->SetFaction(creature->GetFaction());
-                image->SetLevel(creature->GetLevel());
-                image->SetMaxHealth(1);
-                image->SetHealth(1);
-                if (image->AI())
-                    image->AI()->AttackStart(player);
+                float const angle = (6.2831853f * float(i)) / float(imageCount);
+                TempSummon* image = creature->SummonCreature(MIRROR_IMAGE_ENTRY,
+                    creature->GetPositionX() + std::cos(angle) * 1.5f,
+                    creature->GetPositionY() + std::sin(angle) * 1.5f,
+                    creature->GetPositionZ(), creature->GetOrientation(),
+                    TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 20 * IN_MILLISECONDS);
+                if (image)
+                {
+                    image->SetFaction(creature->GetFaction());
+                    image->SetLevel(creature->GetLevel());
+                    image->SetMaxHealth(1);
+                    image->SetHealth(1);
+                    if (image->AI())
+                        image->AI()->AttackStart(player);
+                }
             }
         }
         else if (IsPlagueMap(mapId) && ConsumeFamilyProc(creature))
@@ -757,14 +767,14 @@ public:
             return;
 
         TimePoint const now = Clock::now();
+        TitanRuneMode const mode = TitanRune::GetActiveMode(creature->GetMap());
         if (creature->GetEntry() == MIRROR_IMAGE_ENTRY && IsArcaneMap(creature->GetMapId()) &&
-            TitanRune::GetActiveMode(creature->GetMap()) != TitanRuneMode::Off)
+            (mode == TitanRuneMode::Beta || mode == TitanRuneMode::Gamma))
         {
             GrantArcaneTempo(creature->GetMap(), now);
             return;
         }
 
-        TitanRuneMode const mode = TitanRune::GetActiveMode(creature->GetMap());
         if (IsPlagueMap(creature->GetMapId()) && creature->IsDungeonBoss() &&
             (mode == TitanRuneMode::Beta || mode == TitanRuneMode::Gamma))
         {
