@@ -223,10 +223,10 @@ public:
     }
 };
 
-class TitanRuneLootGlobalScript final : public GlobalScript
+class TitanRuneLootMiscScript final : public MiscScript
 {
 public:
-    TitanRuneLootGlobalScript() : GlobalScript("TitanRuneLootGlobalScript") { }
+    TitanRuneLootMiscScript() : MiscScript("TitanRuneLootMiscScript") { }
 
     void OnAfterLootTemplateProcess(Loot* loot, LootTemplate const* /*tab*/, LootStore const& /*store*/,
         Player* lootOwner, bool /*personal*/, bool /*noEmptyError*/, uint16 lootMode) override
@@ -271,5 +271,5 @@ public:
 void AddTitanRuneLootScripts()
 {
     new TitanRuneLootWorldScript();
-    new TitanRuneLootGlobalScript();
+    new TitanRuneLootMiscScript();
 }
