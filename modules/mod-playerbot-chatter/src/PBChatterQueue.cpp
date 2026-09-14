@@ -39,21 +39,39 @@ namespace
 
     std::unordered_set<std::string> TokenSet(std::string const& value)
     {
+        // Function/chat glue is ignored, but encounter vocabulary is intentionally NOT. Three-letter
+        // mechanic words such as aoe, orb, ice, los and dps therefore participate in the gate. A
+        // small set of two-character phase/mechanic shorthands is kept as well so an LLM cannot add
+        // an unsupported phase or mind-control instruction by hiding it in a short token.
         static std::unordered_set<std::string> const ignored = {
-            "this", "that", "with", "from", "into", "onto", "than", "then", "when", "while",
-            "your", "ours", "their", "they", "them", "have", "has", "will", "would", "should",
-            "could", "must", "need", "just", "keep", "make", "before", "after", "during", "through",
-            "over", "under", "around", "there", "here", "where", "what", "which", "were", "been",
-            "being", "only", "also", "more", "most", "very", "some", "each", "everyone", "anyone",
-            "raid", "pull", "retry", "plan", "boss", "team", "guys", "okay", "alright", "please",
-            "lets", "dont", "doesnt", "again"
+            "the", "and", "for", "you", "your", "our", "ours", "their", "they", "them", "this",
+            "that", "with", "from", "into", "onto", "than", "then", "when", "while", "have", "has",
+            "will", "would", "should", "could", "must", "need", "just", "keep", "make", "before",
+            "after", "during", "through", "over", "under", "around", "there", "here", "where", "what",
+            "which", "were", "been", "being", "only", "also", "more", "most", "very", "some", "each",
+            "everyone", "anyone", "raid", "pull", "retry", "plan", "boss", "team", "guys", "okay",
+            "alright", "please", "lets", "dont", "doesnt", "again", "now", "get", "got", "use"
+        };
+        static std::unordered_set<std::string> const sensitiveShort = {
+            "mc", "p1", "p2", "p3", "p4", "p5"
         };
 
         std::unordered_set<std::string> tokens;
         std::string word;
         auto flush = [&]()
         {
-            if (word.size() >= 4 && ignored.find(word) == ignored.end())
+            if (word.empty())
+                return;
+
+            bool const hasDigit = std::any_of(word.begin(), word.end(), [](unsigned char c)
+            {
+                return std::isdigit(c) != 0;
+            });
+
+            bool const meaningful =
+                (word.size() >= 3 || (hasDigit && word.size() >= 2) || sensitiveShort.find(word) != sensitiveShort.end()) &&
+                ignored.find(word) == ignored.end();
+            if (meaningful)
                 tokens.insert(word);
             word.clear();
         };
@@ -73,7 +91,7 @@ namespace
     // introduce a new content word that does not occur in the validated fallback, and it must retain
     // most of the fallback's meaningful vocabulary. A rejected rewrite silently becomes the exact
     // deterministic fallback. This gives the raid leader local-model personality without allowing
-    // the model to manufacture mechanics, assignments or spell names.
+    // the model to manufacture mechanics, assignments, phase numbers or spell names.
     bool GroundedReplyAllowed(std::string const& reply, std::string const& fallback)
     {
         if (reply.empty() || fallback.empty())
