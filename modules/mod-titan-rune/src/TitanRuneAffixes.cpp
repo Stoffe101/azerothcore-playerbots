@@ -3,6 +3,7 @@
 #include "Chat.h"
 #include "CommandScript.h"
 #include "Creature.h"
+#include "GameObject.h"
 #include "Map.h"
 #include "Player.h"
 #include "ScriptMgr.h"
@@ -15,12 +16,16 @@
 #include <cstdint>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 using namespace Acore::ChatCommands;
 
 namespace
 {
+constexpr uint32 MYSTERIOUS_CAULDRON_ENTRY = 900120;
+constexpr uint32 CAULDRON_LIFETIME_SECONDS = 24 * 60 * 60;
+
 enum class TitanRuneFamily : uint8
 {
     None = 0,
@@ -108,6 +113,15 @@ std::mutex g_affixMutex;
 std::vector<BloodPool> g_bloodPools;
 std::unordered_map<uint32, BrewState> g_brewStates;
 std::unordered_map<uint64, SteadyClock::time_point> g_poisonDamageTicks;
+std::unordered_set<uint64> g_bloodEntranceCauldronInstances;
+std::unordered_set<uint64> g_bloodBossCauldrons;
+
+void NotifyPlayer(Player* player, std::string const& message)
+{
+    if (!player || !player->GetSession())
+        return;
+    ChatHandler(player->GetSession()).PSendSysMessage("[Titan Rune] {}", message);
+}
 
 void PruneBloodPoolsLocked(SteadyClock::time_point now)
 {
@@ -149,6 +163,60 @@ bool WithinBloodPool(float x, float y, float z, BloodPool const& pool)
     float const dy = y - pool.y;
     float const dz = z - pool.z;
     return (dx * dx + dy * dy + dz * dz) <= 25.0f; // 5-yard radius
+}
+
+GameObject* SummonMysteriousCauldron(WorldObject* source, float x, float y, float z, float orientation)
+{
+    if (!source || !source->IsInWorld())
+        return nullptr;
+
+    float const half = orientation * 0.5f;
+    return source->SummonGameObject(MYSTERIOUS_CAULDRON_ENTRY, x, y, z, orientation,
+        0.0f, 0.0f, std::sin(half), std::cos(half), CAULDRON_LIFETIME_SECONDS);
+}
+
+void EnsureEntranceCauldron(Player* player)
+{
+    if (!player || !player->IsInWorld() || !player->GetSession() || player->GetSession()->IsBot() ||
+        !IsActiveBloodBetaOrGamma(player->GetMap()))
+        return;
+
+    uint64 const key = InstanceKey(player->GetMap());
+    {
+        std::lock_guard<std::mutex> lock(g_affixMutex);
+        if (!g_bloodEntranceCauldronInstances.insert(key).second)
+            return;
+    }
+
+    // Spawn at the first real player's actual entrance location instead of hard-coding coordinates.
+    // This keeps the feature correct across both Drak'Tharon and Gundrak and across DB revisions.
+    float const orientation = player->GetOrientation();
+    float const x = player->GetPositionX() + std::cos(orientation) * 2.0f;
+    float const y = player->GetPositionY() + std::sin(orientation) * 2.0f;
+    if (!SummonMysteriousCauldron(player, x, y, player->GetPositionZ(), orientation))
+    {
+        std::lock_guard<std::mutex> lock(g_affixMutex);
+        g_bloodEntranceCauldronInstances.erase(key);
+    }
+}
+
+void SpawnBossCauldron(Creature* boss)
+{
+    if (!boss || !boss->IsDungeonBoss() || !IsActiveBloodBetaOrGamma(boss->GetMap()))
+        return;
+
+    uint64 const key = CreatureKey(boss);
+    {
+        std::lock_guard<std::mutex> lock(g_affixMutex);
+        if (!g_bloodBossCauldrons.insert(key).second)
+            return;
+    }
+
+    if (!SummonMysteriousCauldron(boss, boss->GetPositionX(), boss->GetPositionY(), boss->GetPositionZ(), boss->GetOrientation()))
+    {
+        std::lock_guard<std::mutex> lock(g_affixMutex);
+        g_bloodBossCauldrons.erase(key);
+    }
 }
 
 void CreateBloodPool(Creature* creature)
@@ -324,11 +392,20 @@ void ClearAffixStateForMap(Map const* map)
     std::lock_guard<std::mutex> lock(g_affixMutex);
     g_bloodPools.erase(std::remove_if(g_bloodPools.begin(), g_bloodPools.end(),
         [key](BloodPool const& pool) { return pool.instanceKey == key; }), g_bloodPools.end());
+    g_bloodEntranceCauldronInstances.erase(key);
 
     for (auto itr = g_poisonDamageTicks.begin(); itr != g_poisonDamageTicks.end(); )
     {
         if (uint32(itr->first >> 32) == instanceId)
             itr = g_poisonDamageTicks.erase(itr);
+        else
+            ++itr;
+    }
+
+    for (auto itr = g_bloodBossCauldrons.begin(); itr != g_bloodBossCauldrons.end(); )
+    {
+        if (uint32(*itr >> 32) == instanceId)
+            itr = g_bloodBossCauldrons.erase(itr);
         else
             ++itr;
     }
@@ -378,6 +455,9 @@ public:
 
         // Every defeated hostile creature in the Blood family leaves Blood of the Loa for 10 sec.
         CreateBloodPool(creature);
+
+        // Beta/Gamma place another Mysterious Cauldron after every boss.
+        SpawnBossCauldron(creature);
     }
 };
 
@@ -386,8 +466,21 @@ class TitanRuneAffixPlayerScript final : public PlayerScript
 public:
     TitanRuneAffixPlayerScript() : PlayerScript("TitanRuneAffixPlayerScript") { }
 
+    void OnPlayerLogin(Player* player) override
+    {
+        EnsureEntranceCauldron(player);
+    }
+
+    void OnPlayerMapChanged(Player* player) override
+    {
+        EnsureEntranceCauldron(player);
+    }
+
     void OnPlayerUpdate(Player* player, uint32 /*diff*/) override
     {
+        // Fallback for hook ordering: if the protocol was activated by another PlayerScript during
+        // the same map change, the first update guarantees that the entrance cauldron appears.
+        EnsureEntranceCauldron(player);
         TickBloodBrew(player);
     }
 
@@ -411,8 +504,26 @@ public:
     }
 };
 
-// Temporary GM-facing activation hook for validating the Brew backend before the in-dungeon
-// cauldron creature is wired. It deliberately refuses to activate outside a Blood Beta/Gamma run.
+class go_titan_blood_cauldron final : public GameObjectScript
+{
+public:
+    go_titan_blood_cauldron() : GameObjectScript("go_titan_blood_cauldron") { }
+
+    bool OnGossipHello(Player* player, GameObject* /*gameObject*/) override
+    {
+        if (!GrantBloodBrew(player))
+        {
+            NotifyPlayer(player, "The Mysterious Cauldron only responds during an active Blood-family Beta/Gamma protocol.");
+            return true;
+        }
+
+        NotifyPlayer(player,
+            "Witch Doctor's Brew refreshed for 5 minutes. It costs 5% maximum health every 5 seconds; step in Blood of the Loa to poison the pool.");
+        return true;
+    }
+};
+
+// GM-only diagnostic fallback. Normal gameplay obtains Brew by clicking a Mysterious Cauldron.
 class TitanRuneAffixCommandScript final : public CommandScript
 {
 public:
@@ -450,5 +561,6 @@ void AddTitanRuneAffixScripts()
     new TitanRuneAffixUnitScript();
     new TitanRuneAffixPlayerScript();
     new TitanRuneAffixMapScript();
+    new go_titan_blood_cauldron();
     new TitanRuneAffixCommandScript();
 }
