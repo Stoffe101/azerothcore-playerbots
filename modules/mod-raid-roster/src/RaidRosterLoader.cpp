@@ -5,6 +5,7 @@
 #include "AutoDungeonClear.h"
 #include "EncounterLifecycle.h"
 #include "GuildGroupDirector.h"
+#include "RaidLeaderAuto.h"
 #include "RaidLeaderCommand.h"
 #include "RaidRosterCommand.h"
 #include "RaidRosterConfig.h"
@@ -34,6 +35,7 @@ void Addmod_raid_rosterScripts()
     AddGuildGroupDirectorScripts();
     AddEncounterLifecycleScripts();
     AddAutoDungeonClearScripts();
+    AddRaidLeaderAutoScripts();
     AddSmartLootScripts();
     AddAdventureEconomyScripts();
 }
