@@ -252,7 +252,9 @@ public:
         if (now < state.lockedUntil)
             return;
         state.stacks = std::min<uint8>(5, uint8(state.stacks + 1));
-        state.expires = now + std::chrono::seconds(10);
+        // Confessor's Wrath charges persist until the next harmful cast. That cast opens the
+        // five-second damage window below, matching the live Gamma helper-buff behavior.
+        state.expires = TimePoint::max();
     }
 
     void OnDamage(Unit* attacker, Unit* victim, uint32& damage) override
