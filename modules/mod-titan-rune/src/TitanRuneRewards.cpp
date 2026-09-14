@@ -11,6 +11,33 @@ namespace
 {
 constexpr uint32 EMBLEM_OF_CONQUEST = 45624;
 
+bool IsFrozenHalls(uint32 mapId)
+{
+    return mapId == 632 || mapId == 658 || mapId == 668; // Forge of Souls / Pit of Saron / Halls of Reflection
+}
+
+bool IsFrozenHallsHeroic(Player* player)
+{
+    Map* map = player ? player->GetMap() : nullptr;
+    return map && map->IsDungeon() && map->GetDifficulty() == DUNGEON_DIFFICULTY_HEROIC && IsFrozenHalls(map->GetId());
+}
+
+void EnsureFrozenHallsGammaRewards(Player* player)
+{
+    if (!player || !player->IsInWorld() || !IsFrozenHallsHeroic(player) ||
+        TitanRune::GetActiveMode(player->GetMap()) != TitanRuneMode::Off)
+        return;
+
+    // Blizzard shipped the three Frozen Halls heroics with Gamma rewards enabled BY DEFAULT while
+    // deliberately preserving their normal Heroic health, damage and mechanics. Activate our
+    // existing reward-only Gamma mode without changing the player's chosen protocol for the next
+    // ordinary Titan Rune dungeon.
+    TitanRuneMode const selected = TitanRune::LoadSelectedMode(player);
+    TitanRune::SaveSelectedMode(player, TitanRuneMode::Gamma);
+    TitanRune::ActivateForPlayer(player);
+    TitanRune::SaveSelectedMode(player, selected);
+}
+
 uint32 FinalBossEntry(uint32 mapId)
 {
     switch (mapId)
@@ -30,6 +57,22 @@ uint32 FinalBossEntry(uint32 mapId)
         default: return 0;
     }
 }
+
+class TitanRuneFrozenHallsPlayerScript final : public PlayerScript
+{
+public:
+    TitanRuneFrozenHallsPlayerScript() : PlayerScript("TitanRuneFrozenHallsPlayerScript") { }
+
+    void OnPlayerLogin(Player* player) override
+    {
+        EnsureFrozenHallsGammaRewards(player);
+    }
+
+    void OnPlayerMapChanged(Player* player) override
+    {
+        EnsureFrozenHallsGammaRewards(player);
+    }
+};
 
 class TitanRuneAlphaRewardScript final : public UnitScript
 {
@@ -68,5 +111,6 @@ public:
 
 void AddTitanRuneRewardScripts()
 {
+    new TitanRuneFrozenHallsPlayerScript();
     new TitanRuneAlphaRewardScript();
 }
