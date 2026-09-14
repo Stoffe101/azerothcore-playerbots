@@ -181,4 +181,16 @@ set +e
 bash "$RUNTIME" "$@"
 rc=$?
 set -e
+
+if [[ "$rc" -eq 0 ]]; then
+  # Fresh installs have now generated their persistent playerbots.conf. Apply the same one-time
+  # living-world defaults used by update.sh, then restart worldserver so the first playable boot
+  # already has level-bracket distribution and safe random-bot recycling active.
+  chmod +x "$ROOT/configure-living-world-bots.sh"
+  "$ROOT/configure-living-world-bots.sh"
+  if [[ -d "$ROOT/azerothcore-wotlk" ]]; then
+    (cd "$ROOT/azerothcore-wotlk" && docker compose restart ac-worldserver)
+  fi
+fi
+
 exit "$rc"
