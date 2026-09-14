@@ -1,6 +1,8 @@
 #include "ScriptMgr.h"
 #include "Log.h"
+#include "AdventureCatchupCommand.h"
 #include "AdventureCommand.h"
+#include "AdventureControlCommand.h"
 #include "AdventureGuideCommand.h"
 #include "AutoDungeonClear.h"
 #include "EncounterLifecycle.h"
@@ -13,6 +15,7 @@
 #include "SmartLootSystem.h"
 
 void AddAdventureStartScripts();
+void AddAdventureControlPlayerScripts();
 void AddAdventureEconomyScripts();
 
 class RaidRosterWorld : public WorldScript
@@ -28,9 +31,12 @@ void Addmod_raid_rosterScripts()
     new RaidRosterWorld();
     new RaidRosterCommand();
     new AdventureCommand();
+    new AdventureControlCommand();
+    new AdventureCatchupCommand();
     new AdventureGuideCommand();
     new RaidLeaderCommand();
     AddAdventureStartScripts();
+    AddAdventureControlPlayerScripts();
     AddRaidRosterGuildScripts();
     AddGuildGroupDirectorScripts();
     AddEncounterLifecycleScripts();
