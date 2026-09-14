@@ -2,9 +2,7 @@
 
 #include "Chat.h"
 #include "Creature.h"
-#include "Group.h"
 #include "Map.h"
-#include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "WorldSession.h"
@@ -12,44 +10,6 @@
 namespace
 {
 constexpr uint32 EMBLEM_OF_CONQUEST = 45624;
-
-bool IsFrozenHalls(uint32 mapId)
-{
-    return mapId == 632 || mapId == 658 || mapId == 668; // Forge of Souls / Pit of Saron / Halls of Reflection
-}
-
-bool IsFrozenHallsHeroic(Player* player)
-{
-    Map* map = player ? player->GetMap() : nullptr;
-    return map && map->IsDungeon() && map->GetDifficulty() == DUNGEON_DIFFICULTY_HEROIC && IsFrozenHalls(map->GetId());
-}
-
-void EnsureFrozenHallsGammaRewards(Player* player)
-{
-    if (!player || !player->IsInWorld() || !IsFrozenHallsHeroic(player) ||
-        TitanRune::GetActiveMode(player->GetMap()) != TitanRuneMode::Off)
-        return;
-
-    // Blizzard shipped the three Frozen Halls heroics with Gamma rewards enabled BY DEFAULT while
-    // deliberately preserving their normal Heroic health, damage and mechanics. Activate our
-    // existing reward-only Gamma mode without changing the player's chosen protocol for the next
-    // ordinary Titan Rune dungeon. ActivateForPlayer normally lets a real group leader's selection
-    // win, so temporarily override whichever real player is actually the selector, then restore it.
-    Player* selector = player;
-    if (Group* group = player->GetGroup())
-    {
-        if (Player* leader = ObjectAccessor::FindPlayer(group->GetLeaderGUID()))
-        {
-            if (leader->GetSession() && !leader->GetSession()->IsBot())
-                selector = leader;
-        }
-    }
-
-    TitanRuneMode const selected = TitanRune::LoadSelectedMode(selector);
-    TitanRune::SaveSelectedMode(selector, TitanRuneMode::Gamma);
-    TitanRune::ActivateForPlayer(player);
-    TitanRune::SaveSelectedMode(selector, selected);
-}
 
 uint32 FinalBossEntry(uint32 mapId)
 {
@@ -71,22 +31,6 @@ uint32 FinalBossEntry(uint32 mapId)
     }
 }
 
-class TitanRuneFrozenHallsPlayerScript final : public PlayerScript
-{
-public:
-    TitanRuneFrozenHallsPlayerScript() : PlayerScript("TitanRuneFrozenHallsPlayerScript") { }
-
-    void OnPlayerLogin(Player* player) override
-    {
-        EnsureFrozenHallsGammaRewards(player);
-    }
-
-    void OnPlayerMapChanged(Player* player) override
-    {
-        EnsureFrozenHallsGammaRewards(player);
-    }
-};
-
 class TitanRuneAlphaRewardScript final : public UnitScript
 {
 public:
@@ -106,10 +50,12 @@ public:
         // Wrath Classic Defense Protocol Alpha awards one Emblem of Conquest for the final boss.
         // The 3.3.5 item exists natively, so unlike Sidereal/Scourgestone no custom currency shim is
         // necessary. Standard heroic/phase loot remains owned by the core/progression stack.
-        map->DoForAllPlayers([&](Player* rewardPlayer)
+        Map::PlayerList const& players = map->GetPlayers();
+        for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
         {
+            Player* rewardPlayer = itr->GetSource();
             if (!rewardPlayer || !rewardPlayer->GetSession() || rewardPlayer->GetSession()->IsBot())
-                return;
+                continue;
 
             if (rewardPlayer->AddItem(EMBLEM_OF_CONQUEST, 1))
                 ChatHandler(rewardPlayer->GetSession()).SendSysMessage(
@@ -117,13 +63,12 @@ public:
             else
                 ChatHandler(rewardPlayer->GetSession()).SendSysMessage(
                     "[Titan Rune] Alpha completion reward could not fit in your bags. Make room before the next run.");
-        });
+        }
     }
 };
 }
 
 void AddTitanRuneRewardScripts()
 {
-    new TitanRuneFrozenHallsPlayerScript();
     new TitanRuneAlphaRewardScript();
 }
