@@ -17,7 +17,7 @@ jobs:
   integration:
     name: Pinned patch stack and WotLK build
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     steps:
       - name: Checkout integration repository
@@ -124,6 +124,8 @@ jobs:
           test -f modules/mod-playerbot-chatter/src/PBAIGuildServices.cpp
           test -f modules/mod-titan-rune/src/TitanRuneSystem.cpp
           test -f modules/mod-titan-rune/src/TitanRuneAffixes.cpp
+          test -f modules/mod-titan-rune/src/TitanRuneFamilies.cpp
+          test -f modules/mod-titan-rune/src/TitanRuneGamma.cpp
           grep -q '2.18f' modules/mod-titan-rune/src/TitanRuneSystem.cpp
           grep -q '6.80f' modules/mod-titan-rune/src/TitanRuneSystem.cpp
           grep -q '9.80f' modules/mod-titan-rune/src/TitanRuneSystem.cpp
@@ -148,6 +150,8 @@ jobs:
           test -f audit/ac/modules/mod-playerbot-chatter/src/PBAIGuildServices.cpp
           test -f audit/ac/modules/mod-titan-rune/src/TitanRuneSystem.cpp
           test -f audit/ac/modules/mod-titan-rune/src/TitanRuneAffixes.cpp
+          test -f audit/ac/modules/mod-titan-rune/src/TitanRuneFamilies.cpp
+          test -f audit/ac/modules/mod-titan-rune/src/TitanRuneGamma.cpp
 
       - name: Install AzerothCore build dependencies
         shell: bash
