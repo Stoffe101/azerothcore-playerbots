@@ -3,11 +3,13 @@
 #include "AHPriceCalc.h"
 #include "Chat.h"
 #include "CommandScript.h"
+#include "Config.h"
 #include "RBAC.h"
 #include "DatabaseEnv.h"
 #include "ObjectMgr.h"
 #include "ItemTemplate.h"
 #include "StringFormat.h"
+#include "World.h"
 #include <string>
 #include <cctype>
 
@@ -20,8 +22,9 @@ ChatCommandTable AHPriceCommand::GetCommands() const
     // AddonChannelCommandHandler, which pipes SendSysMessage output back to the client.
     static ChatCommandTable sub =
     {
-        { "search", HandleSearch, SEC_PLAYER, Console::Yes },
-        { "item",   HandleItem,   SEC_PLAYER, Console::Yes },
+        { "search",  HandleSearch,  SEC_PLAYER, Console::Yes },
+        { "item",    HandleItem,    SEC_PLAYER, Console::Yes },
+        { "economy", HandleEconomy, SEC_PLAYER, Console::Yes },
     };
     static ChatCommandTable root = { { "ahprice", sub } };
     return root;
@@ -45,10 +48,6 @@ bool AHPriceCommand::HandleSearch(ChatHandler* handler, Tail text)
     std::string esc = clean;
     WorldDatabase.EscapeString(esc);
 
-    // Items that can never be listed on the AH are meaningless here (the bot can't buy
-    // them from a player), so hide them from search unless configured otherwise. Mirrors
-    // the core's auction-sell checks (AuctionHouseHandler.cpp): soulbound/quest-bound
-    // (bonding 1/4/5), conjured (Flags & ITEM_FLAG_CONJURED=0x2), and limited-duration.
     std::string filterClause = g_AHPriceHideUnauctionable
         ? " AND bonding NOT IN (1,4,5) AND (Flags & 2) = 0 AND duration = 0"
         : "";
@@ -59,7 +58,7 @@ bool AHPriceCommand::HandleSearch(ChatHandler* handler, Tail text)
 
     if (!result)
     {
-        handler->SendSysMessage(Acore::StringFormat("N\t{}", clean).c_str()); // N = no results
+        handler->SendSysMessage(Acore::StringFormat("N\t{}", clean).c_str());
         return true;
     }
 
@@ -69,7 +68,6 @@ bool AHPriceCommand::HandleSearch(ChatHandler* handler, Tail text)
         uint32 entry   = f[0].Get<uint32>();
         std::string nm = f[1].Get<std::string>();
         uint32 quality = f[2].Get<uint32>();
-        // R\t<itemID>\t<quality>\t<name>
         handler->SendSysMessage(Acore::StringFormat("R\t{}\t{}\t{}", entry, quality, nm).c_str());
     } while (result->NextRow());
 
@@ -81,13 +79,60 @@ bool AHPriceCommand::HandleItem(ChatHandler* handler, uint32 itemId)
     if (!g_AHPriceEnable) { handler->SendSysMessage("AHPrice is disabled (set AHBotPrice.Enable=1)."); return true; }
 
     ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
-    if (!proto) { handler->SendSysMessage(Acore::StringFormat("E\t{}", itemId).c_str()); return true; } // E = not found
+    if (!proto) { handler->SendSysMessage(Acore::StringFormat("E\t{}", itemId).c_str()); return true; }
 
     AHPriceBand band = AHPriceComputeBand(proto);
     uint32 maxStack = proto->GetMaxStackSize();
-    // P\t<itemID>\t<quality>\t<name>\t<sellPrice>\t<minBuy>\t<maxBuy>\t<maxStack>
     handler->SendSysMessage(Acore::StringFormat("P\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
         proto->ItemId, proto->Quality, proto->Name1, proto->SellPrice,
         band.minCopper, band.maxCopper, maxStack).c_str());
+    return true;
+}
+
+bool AHPriceCommand::HandleEconomy(ChatHandler* handler)
+{
+    float const moneyRate = sWorld->getRate(RATE_DROP_MONEY);
+    bool const capQuestMoney = sConfigMgr->GetOption<bool>("IndividualProgression.QuestMoneyAtLevelCap", true);
+
+    bool const seller = sConfigMgr->GetOption<bool>("AuctionHouseBot.EnableSeller", false);
+    bool const buyer = sConfigMgr->GetOption<bool>("AuctionHouseBot.Buyer.Enabled", false);
+    std::string const candidates = sConfigMgr->GetOption<std::string>(
+        "AuctionHouseBot.Buyer.BuyCandidatesPerBuyCycle", "1");
+    float const acceptable = sConfigMgr->GetOption<float>("AuctionHouseBot.Buyer.AcceptablePriceModifier", 1.0f);
+    uint32 const itemsPerCycle = sConfigMgr->GetOption<uint32>("AuctionHouseBot.ItemsPerCycle", 150);
+    uint32 const maxAlliance = sConfigMgr->GetOption<uint32>("AuctionHouseBot.Alliance.MaxItems", 15000);
+    uint32 const maxHorde = sConfigMgr->GetOption<uint32>("AuctionHouseBot.Horde.MaxItems", 15000);
+    uint32 const maxNeutral = sConfigMgr->GetOption<uint32>("AuctionHouseBot.Neutral.MaxItems", 15000);
+    float const reduce = sConfigMgr->GetOption<float>("AuctionHouseBot.BuyoutVariationReducePercent", 0.15f);
+    float const add = sConfigMgr->GetOption<float>("AuctionHouseBot.BuyoutVariationAddPercent", 0.25f);
+
+    handler->PSendSysMessage(
+        "Economy: creature money x{}, extra quest money at current progression level cap: {}.",
+        moneyRate,
+        capQuestMoney ? "ON" : "OFF");
+    handler->PSendSysMessage(
+        "AHBot: seller {}, buyer {}, buyer candidates {}/AH/cycle, acceptable-price modifier x{}.",
+        seller ? "ON" : "OFF",
+        buyer ? "ON" : "OFF",
+        candidates,
+        acceptable);
+    handler->PSendSysMessage(
+        "AH stock targets: Alliance {}, Horde {}, Neutral {}; seller refills up to {} item(s) per cycle.",
+        maxAlliance,
+        maxHorde,
+        maxNeutral,
+        itemsPerCycle);
+    handler->PSendSysMessage(
+        "AH calculated buyout variation: -{} / +{} around the computed center price.",
+        reduce,
+        add);
+
+    if (buyer && candidates == "1")
+    {
+        handler->SendSysMessage(
+            "Economy warning: AH buyer is only evaluating 1 candidate per house/cycle. "
+            "With many playerbot listings, real-player auctions may take too long to sell.");
+    }
+
     return true;
 }
