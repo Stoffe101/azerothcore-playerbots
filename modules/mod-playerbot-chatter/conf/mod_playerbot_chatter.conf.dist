@@ -27,11 +27,8 @@ PlayerbotChatter.Think = 0
 #   Path (as seen by the worldserver process) to a plain-text file of few-shot STYLE lines
 #   fed to the model as "match this tone/length, not the content" anchors, on both the
 #   ambient and reactive paths. One example per line; blank lines and '#' comments skipped.
-#   Live-editable: edit the file and restart ac-worldserver — no rebuild. If empty or the
-#   file can't be read, the module falls back to its built-in list. The overlay module is
-#   bind-mounted read-only at /azerothcore/modules, so its shipped copy lives at the path
-#   below (edit modules/mod-playerbot-chatter/data/style-examples.txt in the repo, or the
-#   deployed copy on the server). Set from .env CHATTER_STYLE_EXAMPLES_FILE by setup.sh.
+#   Live-editable: edit the file and restart ac-worldserver; no rebuild. If empty or the
+#   file can't be read, the module falls back to its built-in list.
 PlayerbotChatter.StyleExamplesFile = /azerothcore/modules/mod-playerbot-chatter/data/style-examples.txt
 
 # PlayerbotChatter.SystemPrompt   The character charter sent as the Ollama "system" field.
@@ -50,20 +47,46 @@ PlayerbotChatter.GroupMaxBots = 2
 PlayerbotChatter.GroupChance = 50
 # PlayerbotChatter.GroupGuaranteeOne
 #   1 -> in party/raid chat, if the per-bot GroupChance roll picks nobody (and you didn't
-#   name a bot), force one random party bot to reply. Stops a small party from going silent
-#   when you talk to it without using a name. Named bots still always answer. Default 1.
+#   name a bot), force one random party bot to reply. Named bots still always answer.
 PlayerbotChatter.GroupGuaranteeOne = 1
 PlayerbotChatter.WhisperChance = 100
 PlayerbotChatter.HistoryLen = 10
 
 # PlayerbotChatter.CommandKeywords
-#   Comma-separated. A message whose first word/phrase matches is treated as a playerbot
-#   command and left for playerbots to handle (no AI reply). Seeded from playerbots'
-#   ChatCommandHandlerStrategy trigger names. Lowercased on load.
+#   Comma-separated. Messages beginning with one of these are left for Playerbots commands.
 PlayerbotChatter.CommandKeywords = "follow,stay,flee,grind,attack,tank attack,do attack,accept,talk,reset,runaway,summon,q,c,u,e,ue,t,nt,s,b,r,rep,items,inv,pvp stats,add all loot,move from group,enter vehicle,leave vehicle,buy,sell,trade,cast,co,nc,rti,los,ll"
 
 ########################################
-# Ambient (self-initiated) chatter — Phase 2
+# Persistent guild autonomy
+########################################
+
+# Runs real Playerbot actions for player-led guilds: crafting, gathering/travel,
+# useful trades, mail, vendor activity, guild-bank interaction, recruitment and
+# spontaneous dungeon/raid group formation. It does not mint passive profession gold.
+PlayerbotChatter.GuildAutonomyEnable = 1
+PlayerbotChatter.GuildAutonomyTickSeconds = 60
+# Random delay between larger autonomous guild activities. Relationship/group-history
+# maintenance still runs on the normal tick while the larger activity timer is cooling down.
+PlayerbotChatter.GuildAutonomyMinMinutes = 5
+PlayerbotChatter.GuildAutonomyMaxMinutes = 12
+
+########################################
+# Grounded raid leader
+########################################
+
+# Pre-pull briefs + retry advice only. Mid-fight mechanic callouts are intentionally left
+# to WeakAuras. Unknown/unvalidated bosses stay silent rather than receiving invented tactics.
+PlayerbotChatter.RaidLeaderEnable = 1
+PlayerbotChatter.RaidLeaderBriefOnPull = 1
+PlayerbotChatter.RaidLeaderRetryAdvice = 1
+
+# When enabled and PlayerbotChatter.Enable=1, Ollama may rewrite the server-validated facts
+# into one natural raid-chat line. The deterministic validated line is always the fallback.
+# Set to 0 for strictly deterministic wording with no model involvement.
+PlayerbotChatter.RaidLeaderUseOllama = 1
+
+########################################
+# Ambient (self-initiated) chatter - Phase 2
 ########################################
 
 # PlayerbotChatter.AmbientEnable
@@ -89,18 +112,13 @@ PlayerbotChatter.AmbientBotStreakMax = 4
 PlayerbotChatter.AmbientCooldown = 75
 PlayerbotChatter.AmbientPerBotCooldown = 120
 
-# Global safety ceiling (server-wide ambient messages per minute). Raise for livelier
-# channels, lower if the Ollama GPU is the bottleneck.
+# Global safety ceiling (server-wide ambient messages per minute).
 PlayerbotChatter.AmbientMaxPerMin = 25
 
 # Per-context rolling buffer depth (recent lines fed to react mode).
 PlayerbotChatter.AmbientBufferLen = 8
 
-# Content-mode weights (relative; react needs buffer, event needs a fresh event, both fall
-# back to generic when unavailable). Banter (social/community/takes/off-topic) is weighted
-# highest so bots hang out and talk instead of narrating their play session; Flavor ("what
-# I'm doing right now") is nearly off for the same reason. React stays high so bots answer
-# each other once a channel is active.
+# Content-mode weights.
 PlayerbotChatter.AmbientWeightBanter = 40
 PlayerbotChatter.AmbientWeightGeneric = 10
 PlayerbotChatter.AmbientWeightReact = 35
@@ -108,21 +126,16 @@ PlayerbotChatter.AmbientWeightFlavor = 3
 PlayerbotChatter.AmbientWeightEvent = 8
 
 ########################################
-# Lore sidecar — factual Q&A (Tier-2)
+# Lore sidecar - factual Q&A (Tier-2)
 ########################################
 
 # PlayerbotChatter.LoreEnable
-#   When 1, a whispered message that looks like a factual question is sent to the
-#   lore sidecar (ac-lore), which answers from real game data. On any miss/timeout
-#   the bot falls back to a normal reactive reply. Default 0. setup.sh ties this to
-#   .env LORE_ENABLE.
+#   When 1, likely factual whispered questions are routed through the local lore sidecar.
 PlayerbotChatter.LoreEnable = 0
 
-# PlayerbotChatter.LoreUrl   Full /ask URL of the sidecar. Default http://ac-lore:8091/ask
+# PlayerbotChatter.LoreUrl   Full /ask URL of the sidecar.
 PlayerbotChatter.LoreUrl = http://ac-lore:8091/ask
 
 # PlayerbotChatter.LoreTimeout
-#   Seconds to wait for the sidecar before falling back to a normal reply. The sidecar
-#   makes TWO sequential model calls (classify + phrase), so keep this comfortably above
-#   2x a single generation on your hardware. Default 60.
+#   Seconds to wait for the sidecar before falling back to a normal reply.
 PlayerbotChatter.LoreTimeout = 60
