@@ -22,6 +22,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -49,6 +50,7 @@ struct ScaledCreature
     TitanRuneMode mode = TitanRuneMode::Off;
 };
 
+std::mutex g_stateMutex;
 std::unordered_map<uint64, TitanRuneMode> g_instanceModes;
 std::unordered_map<uint64, ScaledCreature> g_scaledCreatures;
 std::array<std::vector<VendorItem>, 3> g_vendorItems;
@@ -67,24 +69,62 @@ uint64 CreatureScaleKey(Creature const* creature)
     return (uint64(creature->GetMap()->GetInstanceId()) << 32) | uint64(creature->GetGUID().GetCounter());
 }
 
-float HealthMultiplier(TitanRuneMode mode)
+bool IsShadowMap(uint32 mapId)
 {
+    return mapId == 601 || mapId == 619; // Azjol-Nerub / Ahn'kahet
+}
+
+bool IsBloodMap(uint32 mapId)
+{
+    return mapId == 600 || mapId == 604; // Drak'Tharon / Gundrak
+}
+
+bool IsTitanMap(uint32 mapId)
+{
+    return mapId == 599 || mapId == 602; // Halls of Stone / Halls of Lightning
+}
+
+bool IsFrozenHalls(uint32 mapId)
+{
+    return mapId == 632 || mapId == 658 || mapId == 668; // FoS / PoS / HoR
+}
+
+float HealthMultiplier(uint32 mapId, TitanRuneMode mode)
+{
+    // In Classic Phase 4, the Frozen Halls are intentionally normal Heroic difficulty while
+    // participating in the Gamma reward track. Never apply protocol stat scaling there.
+    if (mode == TitanRuneMode::Gamma && IsFrozenHalls(mapId))
+        return 1.0f;
+
     switch (mode)
     {
-        case TitanRuneMode::Alpha: return 2.00f; // +100% health
-        case TitanRuneMode::Beta:  return 2.20f; // +120% health
-        case TitanRuneMode::Gamma: return 3.15f; // +215% health
-        default: return 1.0f;
+        // Final post-hotfix Alpha tuning. Halls of Stone/Lightning use the special Titan family.
+        case TitanRuneMode::Alpha: return IsTitanMap(mapId) ? 2.18f : 1.50f;
+        case TitanRuneMode::Beta:
+            if (IsTitanMap(mapId))  return 6.80f;
+            if (IsBloodMap(mapId))  return 2.80f;
+            if (IsShadowMap(mapId)) return 2.50f;
+            return 2.20f;
+        case TitanRuneMode::Gamma:
+            if (IsTitanMap(mapId))  return 9.80f;
+            if (IsBloodMap(mapId))  return 4.05f;
+            if (IsShadowMap(mapId)) return 3.60f;
+            return 3.15f;
+        default:
+            return 1.0f;
     }
 }
 
-float DamageMultiplier(TitanRuneMode mode)
+float DamageMultiplier(uint32 mapId, TitanRuneMode mode)
 {
+    if (mode == TitanRuneMode::Gamma && IsFrozenHalls(mapId))
+        return 1.0f;
+
     switch (mode)
     {
-        case TitanRuneMode::Alpha: return 1.30f; // +30% damage
-        case TitanRuneMode::Beta:  return 1.40f; // +40% damage
-        case TitanRuneMode::Gamma: return 1.70f; // +70% damage
+        case TitanRuneMode::Alpha: return IsTitanMap(mapId) ? 1.05f : 1.17f;
+        case TitanRuneMode::Beta:  return 1.40f;
+        case TitanRuneMode::Gamma: return 1.70f;
         default: return 1.0f;
     }
 }
@@ -127,14 +167,21 @@ void BroadcastMode(Map* map, TitanRuneMode mode)
 {
     if (!map)
         return;
+
+    std::string message;
+    if (mode == TitanRuneMode::Gamma && IsFrozenHalls(map->GetId()))
+        message = "Defense Protocol Gamma reward track active. Frozen Halls remain normal Heroic difficulty; no Titan Rune stat scaling or affix is applied.";
+    else
+        message = std::string("Defense Protocol ") + TitanRune::ModeName(mode) +
+            " active. Protocol health/damage tuning is applied to hostile dungeon enemies; Beta/Gamma currency rewards are enabled.";
+
     Map::PlayerList const& players = map->GetPlayers();
     for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
     {
         Player* player = itr->GetSource();
         if (!player || !player->GetSession() || player->GetSession()->IsBot())
             continue;
-        Notify(player, std::string("Defense Protocol ") + TitanRune::ModeName(mode) +
-            " active. Enemies have Titan Rune health/damage scaling; Beta/Gamma boss currency rewards are enabled.");
+        Notify(player, message);
     }
 }
 
@@ -212,12 +259,9 @@ bool SpawnPersistentNpc(uint32 entry, float x, float y, float z, float o)
 
 void EnsureDalaranNpcs()
 {
-    // Deliberately clustered beside the project's Dalaran arrival point so the exchanges are easy
-    // to find on a private realm. We keep the Classic vendor identities/reward model without
-    // requiring a custom map/DBC patch.
-    SpawnPersistentNpc(TitanRune::COORDINATOR_ENTRY,       5808.0f, 590.5f, VENDOR_Z, 4.70f);
-    SpawnPersistentNpc(TitanRune::SIDEREAL_VENDOR_ENTRY,   5811.0f, 590.5f, VENDOR_Z, 4.70f);
-    SpawnPersistentNpc(TitanRune::SCOURGESTONE_VENDOR_ENTRY, 5814.0f, 590.5f, VENDOR_Z, 4.70f);
+    SpawnPersistentNpc(TitanRune::COORDINATOR_ENTRY,          5808.0f, 590.5f, VENDOR_Z, 4.70f);
+    SpawnPersistentNpc(TitanRune::SIDEREAL_VENDOR_ENTRY,      5811.0f, 590.5f, VENDOR_Z, 4.70f);
+    SpawnPersistentNpc(TitanRune::SCOURGESTONE_VENDOR_ENTRY,  5814.0f, 590.5f, VENDOR_Z, 4.70f);
 }
 
 uint32 CurrencyForVendor(uint8 vendor)
@@ -365,6 +409,31 @@ public:
     }
 };
 
+class TitanRuneMapScript final : public AllMapScript
+{
+public:
+    TitanRuneMapScript() : AllMapScript("TitanRuneMapScript") { }
+
+    void OnDestroyMap(Map* map) override
+    {
+        if (!map || !map->GetInstanceId())
+            return;
+
+        uint64 const instanceKey = InstanceKey(map);
+        uint32 const instanceId = map->GetInstanceId();
+        std::lock_guard<std::mutex> lock(g_stateMutex);
+        g_instanceModes.erase(instanceKey);
+
+        for (auto itr = g_scaledCreatures.begin(); itr != g_scaledCreatures.end(); )
+        {
+            if (uint32(itr->first >> 32) == instanceId)
+                itr = g_scaledCreatures.erase(itr);
+            else
+                ++itr;
+        }
+    }
+};
+
 class TitanRuneCreatureScript final : public AllCreatureScript
 {
 public:
@@ -380,30 +449,46 @@ public:
         if (mode == TitanRuneMode::Off)
             return;
 
-        uint64 key = CreatureScaleKey(creature);
-        auto itr = g_scaledCreatures.find(key);
-        if (itr == g_scaledCreatures.end())
-        {
-            uint32 baseMax = creature->GetMaxHealth();
-            if (!baseMax)
-                return;
-            uint64 scaled64 = uint64(std::llround(double(baseMax) * HealthMultiplier(mode)));
-            uint32 targetMax = uint32(std::min<uint64>(scaled64, 0xFFFFFFFFull));
-            g_scaledCreatures.emplace(key, ScaledCreature{baseMax, targetMax, mode});
+        float const multiplier = HealthMultiplier(map->GetId(), mode);
+        if (multiplier == 1.0f)
+            return;
 
-            uint32 oldMax = creature->GetMaxHealth();
-            uint32 oldHealth = creature->GetHealth();
-            creature->SetMaxHealth(targetMax);
-            if (oldHealth >= oldMax)
-                creature->SetHealth(targetMax);
+        uint64 const key = CreatureScaleKey(creature);
+        ScaledCreature state;
+        bool inserted = false;
+        {
+            std::lock_guard<std::mutex> lock(g_stateMutex);
+            auto itr = g_scaledCreatures.find(key);
+            if (itr == g_scaledCreatures.end())
+            {
+                uint32 const baseMax = creature->GetMaxHealth();
+                if (!baseMax)
+                    return;
+                uint64 const scaled64 = uint64(std::llround(double(baseMax) * multiplier));
+                uint32 const targetMax = uint32(std::min<uint64>(scaled64, 0xFFFFFFFFull));
+                state = {baseMax, targetMax, mode};
+                g_scaledCreatures.emplace(key, state);
+                inserted = true;
+            }
             else
-                creature->SetHealth(std::max<uint32>(1, uint32((uint64(oldHealth) * targetMax) / std::max<uint32>(1, oldMax))));
+                state = itr->second;
+        }
+
+        if (inserted)
+        {
+            uint32 const oldMax = creature->GetMaxHealth();
+            uint32 const oldHealth = creature->GetHealth();
+            creature->SetMaxHealth(state.targetMaxHealth);
+            if (oldHealth >= oldMax)
+                creature->SetHealth(state.targetMaxHealth);
+            else
+                creature->SetHealth(std::max<uint32>(1, uint32((uint64(oldHealth) * state.targetMaxHealth) /
+                    std::max<uint32>(1, oldMax))));
             return;
         }
 
-        // Core respawns can restore the stock max health on the same creature object. Reapply the
-        // protocol outside combat without multiplying an already-scaled value a second time.
-        ScaledCreature const& state = itr->second;
+        // Core respawns can restore stock max health on the same creature object. Reapply outside
+        // combat without multiplying an already-scaled max-health value a second time.
         if (!creature->IsInCombat() && creature->GetMaxHealth() != state.targetMaxHealth &&
             creature->GetMaxHealth() <= uint32(double(state.baseMaxHealth) * 1.10))
         {
@@ -425,27 +510,32 @@ public:
         return TitanRune::GetActiveMode(attacker->GetMap());
     }
 
+    static float AttackerDamageMultiplier(Unit* attacker, TitanRuneMode mode)
+    {
+        return attacker && attacker->GetMap() ? DamageMultiplier(attacker->GetMapId(), mode) : 1.0f;
+    }
+
     void ModifyMeleeDamage(Unit* /*target*/, Unit* attacker, uint32& damage) override
     {
-        TitanRuneMode mode = AttackerMode(attacker);
+        TitanRuneMode const mode = AttackerMode(attacker);
         if (mode != TitanRuneMode::Off)
-            damage = uint32(std::min<double>(double(damage) * DamageMultiplier(mode), double(0xFFFFFFFFu)));
+            damage = uint32(std::min<double>(double(damage) * AttackerDamageMultiplier(attacker, mode), double(0xFFFFFFFFu)));
     }
 
     void ModifySpellDamageTaken(Unit* /*target*/, Unit* attacker, int32& damage, SpellInfo const* /*spellInfo*/) override
     {
         if (damage <= 0)
             return;
-        TitanRuneMode mode = AttackerMode(attacker);
+        TitanRuneMode const mode = AttackerMode(attacker);
         if (mode != TitanRuneMode::Off)
-            damage = int32(std::min<double>(double(damage) * DamageMultiplier(mode), double(0x7FFFFFFF)));
+            damage = int32(std::min<double>(double(damage) * AttackerDamageMultiplier(attacker, mode), double(0x7FFFFFFF)));
     }
 
     void ModifyPeriodicDamageAurasTick(Unit* /*target*/, Unit* attacker, uint32& damage, SpellInfo const* /*spellInfo*/) override
     {
-        TitanRuneMode mode = AttackerMode(attacker);
+        TitanRuneMode const mode = AttackerMode(attacker);
         if (mode != TitanRuneMode::Off)
-            damage = uint32(std::min<double>(double(damage) * DamageMultiplier(mode), double(0xFFFFFFFFu)));
+            damage = uint32(std::min<double>(double(damage) * AttackerDamageMultiplier(attacker, mode), double(0xFFFFFFFFu)));
     }
 
     void OnUnitDeath(Unit* unit, Unit* /*killer*/) override
@@ -455,12 +545,12 @@ public:
             return;
 
         Map* map = boss->GetMap();
-        TitanRuneMode mode = TitanRune::GetActiveMode(map);
+        TitanRuneMode const mode = TitanRune::GetActiveMode(map);
         if (mode == TitanRuneMode::Off || !map)
             return;
 
-        uint32 instanceId = map->GetInstanceId();
-        uint32 bossEntry = boss->GetEntry();
+        uint32 const instanceId = map->GetInstanceId();
+        uint32 const bossEntry = boss->GetEntry();
         if (RewardAlreadyGranted(instanceId, bossEntry, mode))
             return;
         MarkRewardGranted(instanceId, bossEntry, mode);
@@ -485,9 +575,12 @@ public:
         AddGossipItemFor(player, GOSSIP_ICON_CHAT,
             std::string("Current next-dungeon protocol: ") + TitanRune::ModeName(current), GOSSIP_SENDER_MAIN, 90000);
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Normal Heroic (disable Titan Rune)", GOSSIP_SENDER_MAIN, 100);
-        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Defense Protocol Alpha (+100% health, +30% damage)", GOSSIP_SENDER_MAIN, 101);
-        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Defense Protocol Beta (+120% health, +40% damage)", GOSSIP_SENDER_MAIN, 102);
-        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Defense Protocol Gamma (+215% health, +70% damage)", GOSSIP_SENDER_MAIN, 103);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT,
+            "Defense Protocol Alpha (final tuning; Titan-family dungeons scale differently)", GOSSIP_SENDER_MAIN, 101);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT,
+            "Defense Protocol Beta (+40% damage; health varies by rune family)", GOSSIP_SENDER_MAIN, 102);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT,
+            "Defense Protocol Gamma (+70% damage; family health; Frozen Halls reward-only)", GOSSIP_SENDER_MAIN, 103);
         SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
         return true;
     }
@@ -651,6 +744,7 @@ TitanRuneMode GetActiveMode(Map const* map)
 {
     if (!IsEligibleHeroicMap(map))
         return TitanRuneMode::Off;
+    std::lock_guard<std::mutex> lock(g_stateMutex);
     auto itr = g_instanceModes.find(InstanceKey(map));
     return itr == g_instanceModes.end() ? TitanRuneMode::Off : itr->second;
 }
@@ -674,8 +768,12 @@ bool IsSupportedDungeon(uint32 mapId, TitanRuneMode mode)
             return mode != TitanRuneMode::Off;
         case 650: // Trial of the Champion was added to Beta/Gamma, not Alpha
             return mode == TitanRuneMode::Beta || mode == TitanRuneMode::Gamma;
+        case 632: // Forge of Souls: Gamma rewards, normal Heroic difficulty
+        case 658: // Pit of Saron: Gamma rewards, normal Heroic difficulty
+        case 668: // Halls of Reflection: Gamma rewards, normal Heroic difficulty
+            return mode == TitanRuneMode::Gamma;
         default:
-            return false; // Frozen Halls deliberately stay normal Heroic catch-up content.
+            return false;
     }
 }
 
@@ -687,9 +785,12 @@ void ActivateForPlayer(Player* player)
     if (!IsEligibleHeroicMap(map))
         return;
 
-    uint64 key = InstanceKey(map);
-    if (g_instanceModes.find(key) != g_instanceModes.end())
-        return;
+    uint64 const key = InstanceKey(map);
+    {
+        std::lock_guard<std::mutex> lock(g_stateMutex);
+        if (g_instanceModes.find(key) != g_instanceModes.end())
+            return;
+    }
 
     TitanRuneMode selected = TitanRuneMode::Off;
     if (Group* group = player->GetGroup())
@@ -711,10 +812,18 @@ void ActivateForPlayer(Player* player)
         return;
     }
 
-    g_instanceModes.emplace(key, selected);
+    bool activated = false;
+    {
+        std::lock_guard<std::mutex> lock(g_stateMutex);
+        activated = g_instanceModes.emplace(key, selected).second;
+    }
+    if (!activated)
+        return;
+
     BroadcastMode(map, selected);
-    LOG_INFO("server.loading", "[TitanRune] Activated {} on map={} instance={} by {}",
-        ModeName(selected), map->GetId(), map->GetInstanceId(), player->GetName());
+    LOG_INFO("server.loading", "[TitanRune] Activated {} on map={} instance={} by {}{}",
+        ModeName(selected), map->GetId(), map->GetInstanceId(), player->GetName(),
+        selected == TitanRuneMode::Gamma && IsFrozenHalls(map->GetId()) ? " (reward-only Frozen Halls)" : "");
 }
 }
 
@@ -722,6 +831,7 @@ void AddTitanRuneScripts()
 {
     new TitanRuneWorldScript();
     new TitanRunePlayerScript();
+    new TitanRuneMapScript();
     new TitanRuneCreatureScript();
     new TitanRuneDamageScript();
     new npc_titan_rune_coordinator();
