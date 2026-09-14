@@ -65,6 +65,14 @@ AdventureStart.WotlkRaidReady.Teleport.Z = 660.94
 AdventureStart.WotlkRaidReady.Teleport.O = 1.64
 
 ########################################
+# Adventure progression rewards
+########################################
+
+# Persistent caches earned by naturally reaching levels 65 and 70. Intentional starter/admin
+# boosts do not receive skipped milestone caches. Use .cache status and .cache open in game.
+AdventureProgression.Caches.Enable = 1
+
+########################################
 # Guild Group Director
 ########################################
 
