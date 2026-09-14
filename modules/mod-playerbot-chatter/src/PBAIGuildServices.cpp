@@ -16,6 +16,7 @@
 #include "PlayerbotAI.h"
 #include "Playerbots.h"
 #include "QueryResult.h"
+#include "ScriptMgr.h"
 #include "SharedDefines.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
@@ -114,10 +115,15 @@ uint64 BankBalance(uint32 guildId)
     return result ? result->Fetch()[0].Get<uint64>() : 0;
 }
 
-void CreditBank(uint32 guildId, uint64 copper, bool earned)
+void AppendBankCredit(CharacterDatabaseTransaction const& trans, uint32 guildId, uint64 copper, bool earned)
 {
-    EnsureEconomy(guildId);
-    CharacterDatabase.DirectExecute(
+    if (!trans || !guildId || !copper)
+        return;
+
+    trans->Append(
+        "INSERT IGNORE INTO mod_ai_guild_economy (guild_id) VALUES ({})",
+        guildId);
+    trans->Append(
         "UPDATE mod_ai_guild_economy SET money_copper = money_copper + {}, "
         "earned_copper = earned_copper + {}, updated_at = CURRENT_TIMESTAMP WHERE guild_id = {}",
         copper,
@@ -125,28 +131,19 @@ void CreditBank(uint32 guildId, uint64 copper, bool earned)
         guildId);
 }
 
-void RefundBank(uint32 guildId, uint64 copper)
+void AppendBankDebit(CharacterDatabaseTransaction const& trans, uint32 guildId, uint64 copper)
 {
-    EnsureEconomy(guildId);
-    CharacterDatabase.DirectExecute(
-        "UPDATE mod_ai_guild_economy SET money_copper = money_copper + {}, "
-        "spent_copper = GREATEST(0, spent_copper - {}), updated_at = CURRENT_TIMESTAMP WHERE guild_id = {}",
-        copper, copper, guildId);
-}
+    if (!trans || !guildId || !copper)
+        return;
 
-bool DebitBank(uint32 guildId, uint64 copper)
-{
-    EnsureEconomy(guildId);
-    if (!copper || BankBalance(guildId) < copper)
-        return false;
-
-    CharacterDatabase.DirectExecute(
+    // Every service caller holds g_serviceMutex and verifies the current balance before appending
+    // this statement. Keeping the debit in the same CharacterDatabase transaction as the AH sale
+    // removes the old crash window where treasury money could be committed before the auction mail.
+    trans->Append(
         "UPDATE mod_ai_guild_economy SET money_copper = money_copper - {}, "
         "spent_copper = spent_copper + {}, updated_at = CURRENT_TIMESTAMP "
         "WHERE guild_id = {} AND money_copper >= {}",
         copper, copper, guildId, copper);
-
-    return BankBalance(guildId) + copper >= copper;
 }
 
 uint32 StockCount(uint32 guildId, uint32 itemId)
@@ -155,6 +152,17 @@ uint32 StockCount(uint32 guildId, uint32 itemId)
         "SELECT item_count FROM mod_ai_guild_stock WHERE guild_id = {} AND item_id = {}",
         guildId, itemId);
     return result ? result->Fetch()[0].Get<uint32>() : 0;
+}
+
+void AppendStockCredit(CharacterDatabaseTransaction const& trans, uint32 guildId, uint32 itemId, uint32 count)
+{
+    if (!trans || !guildId || !itemId || !count)
+        return;
+
+    trans->Append(
+        "INSERT INTO mod_ai_guild_stock (guild_id, item_id, item_count) VALUES ({}, {}, {}) "
+        "ON DUPLICATE KEY UPDATE item_count = item_count + VALUES(item_count), updated_at = CURRENT_TIMESTAMP",
+        guildId, itemId, count);
 }
 
 void AddStock(uint32 guildId, uint32 itemId, uint32 count)
@@ -168,18 +176,18 @@ void AddStock(uint32 guildId, uint32 itemId, uint32 count)
         guildId, itemId, count);
 }
 
-bool RemoveStock(uint32 guildId, uint32 itemId, uint32 count)
+void AppendStockDebit(CharacterDatabaseTransaction const& trans, uint32 guildId, uint32 itemId, uint32 count)
 {
-    if (!count || StockCount(guildId, itemId) < count)
-        return false;
-    CharacterDatabase.DirectExecute(
+    if (!trans || !guildId || !itemId || !count)
+        return;
+
+    trans->Append(
         "UPDATE mod_ai_guild_stock SET item_count = item_count - {}, updated_at = CURRENT_TIMESTAMP "
         "WHERE guild_id = {} AND item_id = {} AND item_count >= {}",
         count, guildId, itemId, count);
-    CharacterDatabase.DirectExecute(
+    trans->Append(
         "DELETE FROM mod_ai_guild_stock WHERE guild_id = {} AND item_id = {} AND item_count = 0",
         guildId, itemId);
-    return true;
 }
 
 bool IsServiceSafe(ItemTemplate const* proto)
@@ -220,10 +228,10 @@ uint32 ClampServiceCount(ItemTemplate const* proto, uint32 count)
     return std::min<uint32>(count, stack * MAX_SERVICE_STACKS);
 }
 
-bool SendItemMail(uint32 senderGuid, uint32 targetGuid, ItemTemplate const* proto, uint32 count,
-                  std::string const& subject, std::string const& body)
+bool AppendItemMail(CharacterDatabaseTransaction const& trans, uint32 senderGuid, uint32 targetGuid,
+                    ItemTemplate const* proto, uint32 count, std::string const& subject, std::string const& body)
 {
-    if (!proto || !targetGuid || !count)
+    if (!trans || !proto || !targetGuid || !count)
         return false;
 
     count = ClampServiceCount(proto, count);
@@ -231,7 +239,6 @@ bool SendItemMail(uint32 senderGuid, uint32 targetGuid, ItemTemplate const* prot
         return false;
 
     MailDraft draft(subject, body);
-    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
     uint32 remaining = count;
     uint32 const maxStack = std::max<uint32>(1, proto->GetMaxStackSize());
     uint32 attachments = 0;
@@ -253,7 +260,6 @@ bool SendItemMail(uint32 senderGuid, uint32 targetGuid, ItemTemplate const* prot
 
     MailSender sender(MAIL_NORMAL, senderGuid, MAIL_STATIONERY_GM);
     draft.SendMailTo(trans, MailReceiver(targetGuid), sender);
-    CharacterDatabase.CommitTransaction(trans);
     return true;
 }
 
@@ -270,12 +276,45 @@ uint64 CreateRequest(uint32 guildId, uint32 requesterGuid, uint32 targetGuid, st
     return requestId;
 }
 
+void AppendRequestStatus(CharacterDatabaseTransaction const& trans, uint64 requestId, char const* status)
+{
+    if (!trans || !requestId || !status)
+        return;
+
+    trans->Append(
+        "UPDATE mod_ai_guild_request SET status = '{}', fulfilled_at = CASE WHEN '{}' = 'fulfilled' "
+        "THEN CURRENT_TIMESTAMP ELSE fulfilled_at END WHERE request_id = {}",
+        status, status, requestId);
+}
+
 void SetRequestStatus(uint64 requestId, char const* status)
 {
     CharacterDatabase.DirectExecute(
         "UPDATE mod_ai_guild_request SET status = '{}', fulfilled_at = CASE WHEN '{}' = 'fulfilled' "
         "THEN CURRENT_TIMESTAMP ELSE fulfilled_at END WHERE request_id = {}",
         status, status, requestId);
+}
+
+bool DeliverStockMail(uint32 guildId, uint32 senderGuid, uint32 targetGuid, ItemTemplate const* proto,
+                      uint32 count, std::string const& subject, std::string const& body, uint64 requestId = 0)
+{
+    if (!guildId || !proto || !count || StockCount(guildId, proto->ItemId) < count)
+        return false;
+
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+    AppendStockDebit(trans, guildId, proto->ItemId, count);
+    if (!AppendItemMail(trans, senderGuid, targetGuid, proto, count, subject, body))
+        return false;
+    if (requestId)
+        AppendRequestStatus(trans, requestId, "fulfilled");
+    CharacterDatabase.CommitTransaction(trans);
+    return true;
+}
+
+uint32 CharacterAccountId(uint32 guid)
+{
+    QueryResult result = CharacterDatabase.Query("SELECT account FROM characters WHERE guid={} LIMIT 1", guid);
+    return result ? result->Fetch()[0].Get<uint32>() : 0;
 }
 
 AuctionHouseId HouseIdForCharacter(uint32 guid)
@@ -314,6 +353,7 @@ AuctionEntry* FindExactBuyout(uint32 targetGuid, uint32 itemId, uint32 count)
     if (!house)
         return nullptr;
 
+    uint32 const targetAccount = CharacterAccountId(targetGuid);
     AuctionEntry* best = nullptr;
     for (auto const& [auctionId, auction] : house->GetAuctions())
     {
@@ -321,6 +361,8 @@ AuctionEntry* FindExactBuyout(uint32 targetGuid, uint32 itemId, uint32 count)
         if (!auction || auction->item_template != itemId || auction->itemCount != count || !auction->buyout)
             continue;
         if (auction->owner.GetCounter() == targetGuid || auction->bidder)
+            continue;
+        if (targetAccount && CharacterAccountId(auction->owner.GetCounter()) == targetAccount)
             continue;
         if (!best || auction->buyout < best->buyout)
             best = auction;
@@ -352,20 +394,20 @@ bool BuyRealAuction(PendingRequest const& request)
     if (!auctionItem || auctionItem->GetEntry() != request.itemId || auctionItem->GetCount() != request.itemCount)
         return false;
 
-    if (!DebitBank(request.guildId, price))
-        return false;
-
     CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+    AppendBankDebit(trans, request.guildId, price);
+
     auction->bidder = ObjectGuid::Create<HighGuid::Player>(request.targetGuid);
     auction->bid = auction->buyout;
 
-    // Use AzerothCore's normal auction mail path. The guild treasury is the payer, but the item is
-    // still the seller's real auction item, the seller receives normal sale mail/cut handling, and
-    // the requesting character receives the normal won-auction item mail.
+    // Mirror AzerothCore's normal buyout path. The virtual guild treasury is the payer, but the
+    // item and seller payout remain the real auction records, with the same mail/cut/script hooks.
     sAuctionMgr->SendAuctionSalePendingMail(auction, trans);
     sAuctionMgr->SendAuctionSuccessfulMail(auction, trans);
     sAuctionMgr->SendAuctionWonMail(auction, trans);
+    sScriptMgr->OnAuctionSuccessful(house, auction);
     auction->DeleteFromDB(trans);
+    AppendRequestStatus(trans, request.id, "fulfilled");
     CharacterDatabase.CommitTransaction(trans);
 
     sAuctionMgr->RemoveAItem(auction->item_guid);
@@ -373,7 +415,6 @@ bool BuyRealAuction(PendingRequest const& request)
 
     LOG_INFO("server.loading", "[AIGuildEconomy] Guild {} bought real AH item {} x{} for {} copper for character {}.",
         request.guildId, request.itemId, request.itemCount, price, request.targetGuid);
-    SetRequestStatus(request.id, "fulfilled");
     return true;
 }
 
@@ -393,20 +434,14 @@ bool FulfillRequest(PendingRequest const& request)
         return true;
     }
 
-    // First choice is always conserved guild stock. Stock only increases when a human/bot gives up
-    // a real item stack, so creating the mail attachment here is a storage representation change,
-    // not item generation from nothing.
+    // First choice is conserved guild stock. The stock decrement, physical mail item creation and
+    // request completion now share one CharacterDatabase transaction, so none can commit alone.
     if (StockCount(request.guildId, request.itemId) >= count)
     {
-        if (!RemoveStock(request.guildId, request.itemId, count))
+        if (!DeliverStockMail(request.guildId, request.requesterGuid, request.targetGuid, proto, count,
+                              "AI Guild Service", "Your guild request was fulfilled from conserved guild stock.",
+                              request.id))
             return false;
-        if (!SendItemMail(request.requesterGuid, request.targetGuid, proto, count,
-                          "AI Guild Service", "Your guild request was fulfilled from conserved guild stock."))
-        {
-            AddStock(request.guildId, request.itemId, count);
-            return false;
-        }
-        SetRequestStatus(request.id, "fulfilled");
         return true;
     }
 
@@ -515,6 +550,7 @@ bool MoveWholeStackToStock(Player* bot, Item* item)
     if (!bot || !item || !bot->GetGuildId() || !IsTradablePhysicalItem(item))
         return false;
 
+    uint32 const guildId = bot->GetGuildId();
     uint32 const entry = item->GetEntry();
     uint32 const count = item->GetCount();
     uint8 const bag = item->GetBagSlot();
@@ -523,10 +559,13 @@ bool MoveWholeStackToStock(Player* bot, Item* item)
         return false;
 
     bot->DestroyItem(bag, slot, true);
-    bot->SaveToDB(false, false);
-    AddStock(bot->GetGuildId(), entry, count);
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+    bot->SaveInventoryAndGoldToDB(trans);
+    AppendStockCredit(trans, guildId, entry, count);
+    CharacterDatabase.CommitTransaction(trans);
+
     LOG_INFO("server.loading", "[AIGuildEconomy] {} contributed real item {} x{} to guild {} stock.",
-        bot->GetName(), entry, count, bot->GetGuildId());
+        bot->GetName(), entry, count, guildId);
     return true;
 }
 
@@ -812,8 +851,12 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
             Reply(player, "[AI Guild] Donation failed; your money was not changed.");
             return true;
         }
-        CreditBank(guildId, copper, true);
-        player->SaveToDB(false, false);
+
+        CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+        player->SaveGoldToDB(trans);
+        AppendBankCredit(trans, guildId, copper, true);
+        CharacterDatabase.CommitTransaction(trans);
+
         uint32 const processed = ProcessQueued(guildId);
         Reply(player, "[AI Guild] Donated " + std::to_string(gold) + "g. Treasury is now " +
             MoneyText(BankBalance(guildId)) + ". Processed " + std::to_string(processed) + " queued request(s).");
@@ -921,9 +964,13 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
             Reply(player, "[AI Guild] You do not have enough of that item.");
             return true;
         }
+
         player->DestroyItemCount(itemId, count, true, false);
-        player->SaveToDB(false, false);
-        AddStock(guildId, itemId, count);
+        CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+        player->SaveInventoryAndGoldToDB(trans);
+        AppendStockCredit(trans, guildId, itemId, count);
+        CharacterDatabase.CommitTransaction(trans);
+
         uint32 const processed = ProcessQueued(guildId);
         Reply(player, "[AI Guild] Deposited " + std::to_string(count) + "x " + proto->Name1 +
             ". Stock now has " + std::to_string(StockCount(guildId, itemId)) + ". Processed " +
@@ -952,16 +999,10 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
         else
             targetName = player->GetName();
 
-        if (!RemoveStock(guildId, itemId, count))
+        if (!DeliverStockMail(guildId, player->GetGUID().GetCounter(), targetGuid, proto, count,
+                              "Guild Stock Delivery", "Requested from the persistent AI guild stock."))
         {
-            Reply(player, "[AI Guild] The conserved stock does not have enough of that item.");
-            return true;
-        }
-        if (!SendItemMail(player->GetGUID().GetCounter(), targetGuid, proto, count,
-                          "Guild Stock Delivery", "Requested from the persistent AI guild stock."))
-        {
-            AddStock(guildId, itemId, count);
-            Reply(player, "[AI Guild] Mail creation failed; stock was restored.");
+            Reply(player, "[AI Guild] The conserved stock does not have enough of that item, or delivery could not be created.");
             return true;
         }
         Reply(player, "[AI Guild] Sent " + std::to_string(count) + "x " + proto->Name1 + " to " + targetName + ".");
