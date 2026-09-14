@@ -4,6 +4,7 @@
 #include "PBChatterConfig.h"
 #include "PBChatterQueue.h"
 
+#include "Config.h"
 #include "Creature.h"
 #include "Group.h"
 #include "Map.h"
@@ -21,6 +22,11 @@ namespace
 constexpr uint32 POLL_MS = 500;
 constexpr float PREPULL_RANGE = 55.0f;
 constexpr std::size_t CHAT_LIMIT = 230;
+
+bool g_enable = true;
+bool g_useOllama = true;
+bool g_briefOnPull = true;
+bool g_retryAdvice = true;
 
 struct BossState
 {
@@ -124,7 +130,7 @@ Participants FindParticipants(Creature* boss, bool requirePrepRange)
 std::string DeterministicLine(RaidLeaderKnowledge::Encounter const& encounter, Player* human, uint32 attempt)
 {
     std::string line = "[Raid Lead] ";
-    if (attempt > 1)
+    if (attempt > 1 && g_retryAdvice)
     {
         line += "Retry " + std::to_string(attempt) + " on " + encounter.boss + ". ";
         line += RoleJob(encounter, human);
@@ -155,9 +161,10 @@ void DeliverBrief(Creature* boss, RaidLeaderKnowledge::Encounter const& encounte
 
     std::string fallback = DeterministicLine(encounter, participants.human, attempt);
 
-    // Chatter disabled means there is no result-drain loop. Keep the raid leader fully functional
-    // with its deterministic source of truth instead of silently depending on Ollama.
-    if (!g_PBChatEnable)
+    // Chatter disabled means there is no result-drain loop. The local-model rewrite can also be
+    // disabled independently. In both cases the deterministic encounter record remains fully
+    // functional, so raid leading never depends on Ollama being online.
+    if (!g_useOllama || !g_PBChatEnable)
     {
         if (group->isRaidGroup())
             ai->SayToRaid(fallback);
@@ -174,6 +181,7 @@ void DeliverBrief(Creature* boss, RaidLeaderKnowledge::Encounter const& encounte
     job.playerMessage = "[automatic grounded raid brief]";
     job.storeMemory = false;
     job.fallbackReply = fallback;
+    job.groundedAgainstFallback = true;
     job.systemPrompt =
         "You are a local World of Warcraft raid-leader voice layer. The supplied encounter record is the only source of truth. "
         "Return exactly one concise raid-chat callout. Never add mechanics, timers, assignments, phase names, spell effects, or bot abilities not present in the record. "
@@ -194,6 +202,20 @@ void DeliverBrief(Creature* boss, RaidLeaderKnowledge::Encounter const& encounte
     PBChatterQueue::Submit(std::move(job));
 }
 
+class RaidLeaderAutoConfigScript final : public WorldScript
+{
+public:
+    RaidLeaderAutoConfigScript() : WorldScript("RaidLeaderAutoConfigScript") { }
+
+    void OnAfterConfigLoad(bool /*reload*/) override
+    {
+        g_enable = sConfigMgr->GetOption<bool>("PlayerbotChatter.RaidLeaderEnable", true);
+        g_useOllama = sConfigMgr->GetOption<bool>("PlayerbotChatter.RaidLeaderUseOllama", true);
+        g_briefOnPull = sConfigMgr->GetOption<bool>("PlayerbotChatter.RaidLeaderBriefOnPull", true);
+        g_retryAdvice = sConfigMgr->GetOption<bool>("PlayerbotChatter.RaidLeaderRetryAdvice", true);
+    }
+};
+
 class RaidLeaderAutoCreatureScript : public AllCreatureScript
 {
 public:
@@ -201,7 +223,8 @@ public:
 
     void OnAllCreatureUpdate(Creature* creature, uint32 diff) override
     {
-        if (!creature || !creature->GetMap() || !creature->GetMap()->IsRaid() || !creature->IsDungeonBoss())
+        if (!g_enable || !g_briefOnPull || !creature || !creature->GetMap() ||
+            !creature->GetMap()->IsRaid() || !creature->IsDungeonBoss())
             return;
 
         RaidLeaderKnowledge::Encounter const* encounter = RaidLeaderKnowledge::FindAny(creature->GetName());
@@ -274,5 +297,6 @@ public:
 
 void AddRaidLeaderAutoScripts()
 {
+    new RaidLeaderAutoConfigScript();
     new RaidLeaderAutoCreatureScript();
 }
