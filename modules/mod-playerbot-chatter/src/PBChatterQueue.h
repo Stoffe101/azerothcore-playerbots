@@ -22,6 +22,12 @@ struct PBChatJob
     // so a raid call can never degrade into an unrelated "yeah lol" style response.
     std::string  fallbackReply;
 
+    // When true, generated text is accepted only when it remains lexically grounded in
+    // fallbackReply and still preserves most of that fallback's content words. If the model adds
+    // a new mechanic/assignment term or drops too much of the validated plan, the deterministic
+    // fallback wins instead. Ordinary conversational jobs leave this disabled.
+    bool         groundedAgainstFallback = false;
+
     // Some generated system lines are not conversations and must not pollute the bot<->player
     // chat-memory window. Ordinary reactive jobs keep the historical default.
     bool         storeMemory = true;
