@@ -51,6 +51,9 @@ extern float g_AdventureStartWotlkRaidReadyTeleportY;
 extern float g_AdventureStartWotlkRaidReadyTeleportZ;
 extern float g_AdventureStartWotlkRaidReadyTeleportO;
 
+// Persistent milestone caches for naturally-levelled adventure characters.
+extern bool g_AdventureProgressionCachesEnable;
+
 // Player-facing activity assembly and recovery systems.
 extern bool g_GuildDirectorEnable;
 extern bool g_GuildDirectorAutoTravel;
