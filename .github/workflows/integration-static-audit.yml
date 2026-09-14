@@ -118,6 +118,12 @@ jobs:
           test -f modules/mod-raid-roster/src/EncounterLifecycle.cpp
           test -f modules/mod-raid-roster/src/RaidLeaderKnowledge.cpp
           test -f modules/mod-playerbot-chatter/src/PBAIGuildServices.cpp
+          test -f modules/mod-titan-rune/src/TitanRuneSystem.cpp
+          grep -q '2.18f' modules/mod-titan-rune/src/TitanRuneSystem.cpp
+          grep -q '6.80f' modules/mod-titan-rune/src/TitanRuneSystem.cpp
+          grep -q '9.80f' modules/mod-titan-rune/src/TitanRuneSystem.cpp
+          grep -q 'mapId == 632 || mapId == 658 || mapId == 668' modules/mod-titan-rune/src/TitanRuneSystem.cpp
+          grep -q 'Frozen Halls remain normal Heroic difficulty' modules/mod-titan-rune/src/TitanRuneSystem.cpp
           echo 'Static integration audit completed successfully.'
 
       - name: Stage local server modules into pinned core
@@ -131,6 +137,7 @@ jobs:
           done
           test -f audit/ac/modules/mod-raid-roster/src/EncounterLifecycle.cpp
           test -f audit/ac/modules/mod-playerbot-chatter/src/PBAIGuildServices.cpp
+          test -f audit/ac/modules/mod-titan-rune/src/TitanRuneSystem.cpp
 
       - name: Install AzerothCore build dependencies
         shell: bash
@@ -155,5 +162,5 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cmake --build audit/ac/build --config Release -- -j2
-          echo 'Pinned WotLK integration compiled successfully.'
+          cmake --build audit/ac/build --config Release --target worldserver authserver -- -j2
+          echo 'Pinned WotLK server targets compiled successfully.'
