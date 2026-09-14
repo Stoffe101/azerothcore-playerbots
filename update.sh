@@ -40,6 +40,19 @@ update_repo () {
   git -C "$dir" clean -fd -- src/ 2>/dev/null || true
 }
 
+ensure_git_module () {
+  local name="$1" url="$2" dir="$AC_DIR/modules/$name"
+  if [[ -d "$dir/.git" ]]; then
+    return
+  fi
+  if [[ -e "$dir" ]]; then
+    echo "==> Replacing stale non-git module copy: $name"
+    rm -rf "$dir"
+  fi
+  echo "==> Installing module: $name"
+  git clone "$url" "$dir"
+}
+
 apply_patches () {
   local pdir="$ROOT/patches"
   [[ -d "$pdir" && -d "$AC_DIR/.git" ]] || return 0
@@ -131,6 +144,11 @@ migrate_full_adventure_config () {
 }
 
 update_repo "$AC_DIR" "AzerothCore (playerbots fork)"
+
+# New upstream gameplay extensions must also be installed on an already-existing server. setup.sh
+# handles fresh installs through its MODULES list; this is the matching update-path bootstrap.
+ensure_git_module "mod-dungeon-clear" "https://github.com/jrad7/mod-dungeon-clear.git"
+
 for moddir in "$AC_DIR"/modules/*/; do
   [[ -d "$moddir/.git" ]] || continue
   update_repo "$moddir" "$(basename "$moddir")"
