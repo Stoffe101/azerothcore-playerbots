@@ -4,6 +4,7 @@
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "RBAC.h"
+#include "WorldSession.h"
 
 #include <algorithm>
 #include <array>
@@ -60,6 +61,11 @@ AdventureActivity const* FindReadyDungeon(std::string const& value)
     if (!activity || activity->kind != AdventureActivityKind::Dungeon || activity->support != AdventureSupport::Ready)
         return nullptr;
     return activity;
+}
+
+bool IsRealOnlinePlayer(Player* player)
+{
+    return player && player->GetSession() && !player->GetSession()->IsBot();
 }
 }
 
@@ -201,8 +207,9 @@ bool AdventureCommand::TravelToEntrance(ChatHandler* handler, AdventureActivity 
         for (GroupReference* reference = group->GetFirstMember(); reference; reference = reference->next())
         {
             Player* member = reference->GetSource();
-            if (!member)
+            if (!member || !member->IsInWorld())
                 continue;
+
             if (member->IsInCombat())
             {
                 handler->PSendSysMessage("{} is in combat. Travel was cancelled for the whole group.", member->GetName());
@@ -213,25 +220,48 @@ bool AdventureCommand::TravelToEntrance(ChatHandler* handler, AdventureActivity 
                 handler->PSendSysMessage("{} is dead. Travel was cancelled for the whole group.", member->GetName());
                 return true;
             }
+
+            // Real players retain individual progression. Do not drag a human through a dungeon
+            // they have not unlocked just because the group leader has. Playerbots follow the
+            // group/roster progression path and do not need human hidden-quest gating here.
+            if (IsRealOnlinePlayer(member))
+            {
+                std::string memberReason;
+                if (!AdventureCatalog::IsUnlocked(member, activity, memberReason))
+                {
+                    handler->PSendSysMessage(
+                        "{} cannot travel to {} yet: {} Travel was cancelled for the whole group.",
+                        member->GetName(), activity.name, memberReason);
+                    return true;
+                }
+            }
+
             travelers.push_back(member);
         }
     }
     else
-    {
         travelers.push_back(player);
-    }
 
+    uint32 moved = 0;
     for (Player* traveler : travelers)
     {
-        traveler->TeleportTo(
-            entrance->target_mapId,
-            entrance->target_X,
-            entrance->target_Y,
-            entrance->target_Z,
-            entrance->target_Orientation);
+        if (traveler->TeleportTo(
+                entrance->target_mapId,
+                entrance->target_X,
+                entrance->target_Y,
+                entrance->target_Z,
+                entrance->target_Orientation))
+            ++moved;
     }
 
-    handler->PSendSysMessage("Adventure travel: {} player(s) sent to the entrance of {}.",
-        uint32(travelers.size()), activity.name);
+    if (moved != travelers.size())
+    {
+        handler->PSendSysMessage(
+            "Adventure travel to {} was partially successful: {} of {} online traveler(s) moved. Failed teleports were not forced.",
+            activity.name, moved, uint32(travelers.size()));
+        return true;
+    }
+
+    handler->PSendSysMessage("Adventure travel: {} player(s) sent to the entrance of {}.", moved, activity.name);
     return true;
 }
