@@ -91,6 +91,21 @@ AutoPrep.WarlockSupport = 1
 AutoPrep.SmartPets = 1
 
 ########################################
+# Hands-off instance navigation
+########################################
+
+# When a real-player group enters an instance and an eligible bot tank is present, automatically
+# start the pinned mod-dungeon-clear route/pull driver. This removes the normal `.dc on` step.
+# The module itself handles navmesh routing, trash pulls, rest/loot/regroup, scripted doors/events,
+# resurrection holds and heroic tuning. Boss combat stays with Playerbots' encounter strategies.
+AutoDungeonClear.Enable = 1
+
+# mod-dungeon-clear also contains raid-run support and deliberately stands its route driver down
+# during raid boss combat so Playerbots' deterministic raid strategy owns mechanics. Leave enabled
+# for hands-off supported raid navigation; unsupported maps simply do not start a run.
+AutoDungeonClear.Raids = 1
+
+########################################
 # Smart loot protection
 ########################################
 
