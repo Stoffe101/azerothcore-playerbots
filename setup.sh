@@ -43,6 +43,15 @@ import sys
 path = Path(sys.argv[1])
 text = path.read_text(encoding="utf-8")
 
+# Add the autonomous dungeon-driving extension as a normal upstream git module. It remains pinned
+# in repo-pins.txt so setup/update stay reproducible, while still letting us consume upstream fixes
+# deliberately rather than vendoring a private copy.
+old_external_tail = '  "mod-era-talents|https://github.com/lathcf/azerothcore-mod-era-talents.git"\n)'
+new_external_tail = '  "mod-era-talents|https://github.com/lathcf/azerothcore-mod-era-talents.git"\n  "mod-dungeon-clear|https://github.com/jrad7/mod-dungeon-clear.git"\n)'
+if old_external_tail not in text:
+    raise SystemExit("ERROR: pinned setup body no longer matches expected external module tail")
+text = text.replace(old_external_tail, new_external_tail, 1)
+
 old_modules = 'LOCAL_MODULES=( "mod-playerbot-chatter" "mod-raid-roster" "mod-ahbot-price" "mod-wintergrasp-bots" "mod-arena-roster" )'
 new_modules = 'LOCAL_MODULES=( "mod-playerbot-chatter" "mod-raid-roster" "mod-admin-panel" "mod-ahbot-price" "mod-wintergrasp-bots" "mod-arena-roster" "mod-titan-rune" )'
 if old_modules not in text:
@@ -157,6 +166,7 @@ if [[ "${SETUP_PREFLIGHT_ONLY:-0}" == "1" ]]; then
   bash -n "$RUNTIME"
   grep -Fq 'mod-admin-panel' "$RUNTIME"
   grep -Fq 'mod-titan-rune' "$RUNTIME"
+  grep -Fq 'mod-dungeon-clear|https://github.com/jrad7/mod-dungeon-clear.git' "$RUNTIME"
   grep -Fq 'RaidRoster.Enable" "1"' "$RUNTIME"
   grep -Fq 'host.docker.internal' "$RUNTIME"
   grep -Fq 'git -C "$AC_DIR" apply --check "$patch"' "$RUNTIME"
