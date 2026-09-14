@@ -3,6 +3,7 @@
 
 void AddTitanRuneAffixScripts();
 void AddTitanRuneShadowScripts();
+void AddTitanRuneGammaScripts();
 
 void Addmod_titan_runeScripts()
 {
@@ -10,4 +11,5 @@ void Addmod_titan_runeScripts()
     AddTitanRuneScripts();
     AddTitanRuneAffixScripts();
     AddTitanRuneShadowScripts();
+    AddTitanRuneGammaScripts();
 }
