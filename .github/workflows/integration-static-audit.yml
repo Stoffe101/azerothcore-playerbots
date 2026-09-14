@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: integration-validation-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   integration:
     name: Pinned patch stack and WotLK build
@@ -119,11 +123,16 @@ jobs:
           test -f modules/mod-raid-roster/src/RaidLeaderKnowledge.cpp
           test -f modules/mod-playerbot-chatter/src/PBAIGuildServices.cpp
           test -f modules/mod-titan-rune/src/TitanRuneSystem.cpp
+          test -f modules/mod-titan-rune/src/TitanRuneAffixes.cpp
           grep -q '2.18f' modules/mod-titan-rune/src/TitanRuneSystem.cpp
           grep -q '6.80f' modules/mod-titan-rune/src/TitanRuneSystem.cpp
           grep -q '9.80f' modules/mod-titan-rune/src/TitanRuneSystem.cpp
           grep -q 'mapId == 632 || mapId == 658 || mapId == 668' modules/mod-titan-rune/src/TitanRuneSystem.cpp
           grep -q 'Frozen Halls remain normal Heroic difficulty' modules/mod-titan-rune/src/TitanRuneSystem.cpp
+          grep -q 'std::chrono::seconds(10)' modules/mod-titan-rune/src/TitanRuneAffixes.cpp
+          grep -q 'std::chrono::minutes(5)' modules/mod-titan-rune/src/TitanRuneAffixes.cpp
+          grep -q '0.05' modules/mod-titan-rune/src/TitanRuneAffixes.cpp
+          grep -q '0.01' modules/mod-titan-rune/src/TitanRuneAffixes.cpp
           echo 'Static integration audit completed successfully.'
 
       - name: Stage local server modules into pinned core
@@ -138,6 +147,7 @@ jobs:
           test -f audit/ac/modules/mod-raid-roster/src/EncounterLifecycle.cpp
           test -f audit/ac/modules/mod-playerbot-chatter/src/PBAIGuildServices.cpp
           test -f audit/ac/modules/mod-titan-rune/src/TitanRuneSystem.cpp
+          test -f audit/ac/modules/mod-titan-rune/src/TitanRuneAffixes.cpp
 
       - name: Install AzerothCore build dependencies
         shell: bash
