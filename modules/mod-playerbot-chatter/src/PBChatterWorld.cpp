@@ -1,6 +1,7 @@
 #include "PBChatterWorld.h"
 #include "PBChatterConfig.h"
 #include "PBChatterMemory.h"
+#include "PBChatterRelationships.h"
 #include "PBChatterQueue.h"
 #include "PBChatterAmbient.h"
 #include "PBChatterAreaBackfill.h"
@@ -17,7 +18,10 @@ void PBChatterWorld::OnAfterConfigLoad(bool /*reload*/)
 void PBChatterWorld::OnStartup()
 {
     if (g_PBChatEnable)
+    {
         PBChatterMemory::LoadAllFromDB();
+        PBChatterRelationships::LoadAllFromDB();
+    }
     // Resolve area/zone names for any new creature entries on every startup —
     // idempotent (PK + INSERT IGNORE + skip-already-resolved), throttled across
     // ticks, and silent when the table is already full. `.chatter backfillareas`
@@ -33,6 +37,7 @@ void PBChatterWorld::OnUpdate(uint32 diff)
         return;
 
     PBChatterAmbient::Tick(diff);
+    PBChatterRelationships::Tick(diff);
 
     for (PBChatResult const& r : PBChatterQueue::DrainResults())
     {
@@ -66,11 +71,15 @@ void PBChatterWorld::OnUpdate(uint32 diff)
     {
         _saveTimer = 0;
         PBChatterMemory::FlushToDB();
+        PBChatterRelationships::FlushToDB();
     }
 }
 
 void PBChatterWorld::OnShutdown()
 {
     if (g_PBChatEnable)
+    {
         PBChatterMemory::FlushToDB();
+        PBChatterRelationships::FlushToDB();
+    }
 }
