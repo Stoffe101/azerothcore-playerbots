@@ -64,6 +64,16 @@ PlayerbotChatter.CommandKeywords = "follow,stay,flee,grind,attack,tank attack,do
 # useful trades, mail, vendor activity, guild-bank interaction, recruitment and
 # spontaneous dungeon/raid group formation. It does not mint passive profession gold.
 PlayerbotChatter.GuildAutonomyEnable = 1
+
+# Persistent guild-service economy. When enabled, stock only grows when a real character/bot
+# gives up a physical item stack. Craft requests require a learned recipe + real reagents.
+# Buy requests may spend the pooled treasury only on an existing exact-stack AH listing.
+PlayerbotChatter.GuildEconomyEnable = 1
+
+# Let autonomous guild bots list real surplus consumables/materials/gems/recipes on the actual
+# AzerothCore auction house. The bot loses the item and pays the normal auction deposit.
+PlayerbotChatter.GuildAuctionEnable = 1
+
 PlayerbotChatter.GuildAutonomyTickSeconds = 60
 # Random delay between larger autonomous guild activities. Relationship/group-history
 # maintenance still runs on the normal tick while the larger activity timer is cooling down.
