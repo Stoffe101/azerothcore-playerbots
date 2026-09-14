@@ -110,20 +110,23 @@ Participants FindParticipants(Creature* boss, bool requirePrepRange)
         return out;
 
     Map* map = boss->GetMap();
-    map->DoForAllPlayers([&](Player* player)
+    Map::PlayerList const& players = map->GetPlayers();
+    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
     {
-        if (out.human || !player || !player->IsAlive() || !IsRealPlayer(player) || !player->GetGroup())
-            return;
+        Player* player = itr->GetSource();
+        if (!player || !player->IsAlive() || !IsRealPlayer(player) || !player->GetGroup())
+            continue;
         if (requirePrepRange && boss->GetDistance(player) > PREPULL_RANGE)
-            return;
+            continue;
 
         Player* speaker = PickBotSpeaker(player->GetGroup(), map);
         if (!speaker)
-            return;
+            continue;
 
         out.human = player;
         out.speaker = speaker;
-    });
+        break;
+    }
     return out;
 }
 
@@ -276,7 +279,7 @@ public:
             std::lock_guard<std::mutex> lock(g_stateMutex);
             BossState& state = g_states[key];
             if (state.briefed)
-                return; // another update/thread won the race
+                return;
             ++state.attempt;
             state.briefed = true;
             attempt = state.attempt;
