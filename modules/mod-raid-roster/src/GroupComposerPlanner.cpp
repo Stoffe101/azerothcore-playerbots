@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cmath>
 #include <limits>
 #include <set>
@@ -83,6 +84,20 @@ uint8 PopCount(uint32 value)
 bool MemberIsStable(Member const& member)
 {
     return member.human || member.pinned;
+}
+
+bool CrossFactionBlocked(Player* master, Player* other)
+{
+    if (!master || !other || master->IsGameMaster()) return false;
+    return !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP) && master->GetTeamId() != other->GetTeamId();
+}
+
+bool ConflictingInstances(Player* master, Player* other)
+{
+    if (!master || !other) return false;
+    uint32 masterInstance = master->GetInstanceId();
+    uint32 otherInstance = other->GetInstanceId();
+    return masterInstance && otherInstance && masterInstance != otherInstance;
 }
 
 void AddCoverage(Coverage& coverage, Member const& member)
@@ -253,10 +268,44 @@ bool AddHumanMembers(Player* master, Config const& config, Plan& plan,
             error = "Human player '" + request.name + "' must be online and must be a real player before being added.";
             return false;
         }
-        if (player->GetGroup() && player->GetGroup() != master->GetGroup())
+        bool alreadyWithMaster = master->GetGroup() && player->GetGroup() == master->GetGroup();
+        if (player->GetGroup() && !alreadyWithMaster)
         {
             error = "Human player '" + request.name + "' is already in another group.";
             return false;
+        }
+        if (!alreadyWithMaster)
+        {
+            if (player->IsSpectator())
+            {
+                error = "Human player '" + request.name + "' is currently spectating and cannot be invited.";
+                return false;
+            }
+            if (!player->IsAcceptGroupInvites())
+            {
+                error = "Human player '" + request.name + "' has group invites disabled.";
+                return false;
+            }
+            if (player->GetGroupInvite())
+            {
+                error = "Human player '" + request.name + "' already has a pending group invite.";
+                return false;
+            }
+            if (CrossFactionBlocked(master, player))
+            {
+                error = "Human player '" + request.name + "' is on the opposite faction while cross-faction groups are disabled.";
+                return false;
+            }
+            if (ConflictingInstances(master, player))
+            {
+                error = "Human player '" + request.name + "' is locked to a different active instance.";
+                return false;
+            }
+            if (player->IsBeingTeleported())
+            {
+                error = "Human player '" + request.name + "' is being teleported; wait a moment and search again.";
+                return false;
+            }
         }
         if (!addLive(player, Optional<uint8>(request.role))) return false;
     }
@@ -281,11 +330,13 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
     auto makeOnline = [&](Player* bot, bool alreadyGrouped)
     {
         if (!bot || !GET_PLAYERBOT_AI(bot) || bot == master) return;
-        if (bot->InBattleground() || bot->InBattlegroundQueue()) return;
+        if (bot->InBattleground() || bot->InBattlegroundQueue() || bot->IsSpectator()) return;
         if (bot->GetGroup() && bot->GetGroup() != masterGroup) return;
+        if (!alreadyGrouped && bot->GetGroupInvite()) return;
+        if (!alreadyGrouped && bot->IsBeingTeleported()) return;
         if (!alreadyGrouped && bot->GetInstanceId() != 0) return;
         if (!alreadyGrouped && std::abs(int(bot->GetLevel()) - int(master->GetLevel())) > 3) return;
-        if (!master->IsGameMaster() && !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP) && master->GetTeamId() != bot->GetTeamId()) return;
+        if (CrossFactionBlocked(master, bot)) return;
 
         Candidate c;
         c.guid = bot->GetGUID();
@@ -350,8 +401,14 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
             continue;
         }
 
+        if (!master->IsGameMaster() && !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP)
+            && sCharacterCache->GetCharacterTeamByGuid(guid) != master->GetTeamId()) continue;
+
         Player* online = ObjectAccessor::FindConnectedPlayer(guid);
+        if (online && (online->InBattleground() || online->InBattlegroundQueue() || online->IsSpectator())) continue;
         if (online && online->GetGroup() && online->GetGroup() != masterGroup) continue;
+        bool alreadyGrouped = online && masterGroup && online->GetGroup() == masterGroup;
+        if (online && !alreadyGrouped && (online->GetGroupInvite() || online->IsBeingTeleported() || online->GetInstanceId() != 0)) continue;
         if (!online && config.minimumItemLevel) continue; // unknown gear may not satisfy an explicit floor
 
         Candidate c;
@@ -362,7 +419,7 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         c.guild = guildId && sCharacterCache->GetCharacterGuildIdByGuid(guid) == guildId;
         c.online = online != nullptr;
         c.managed = true;
-        c.alreadyGrouped = online && masterGroup && online->GetGroup() == masterGroup;
+        c.alreadyGrouped = alreadyGrouped;
         if (online)
         {
             c.name = online->GetName();
