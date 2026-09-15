@@ -1,40 +1,36 @@
 #include "GroupComposerCommand.h"
 
-#include "RaidRosterComp.h"
-#include "RaidRosterConfig.h"
+#include "GroupComposerPlanner.h"
+#include "GroupComposerTypes.h"
 #include "RaidRosterEra.h"
 #include "RaidRosterGear.h"
-#include "RaidRosterStore.h"
 
-#include "AiFactory.h"
+#include "Ai/Base/Actions/InviteToGroupAction.h"
 #include "CharacterCache.h"
-#include "Containers.h"
-#include "DatabaseEnv.h"
+#include "DBCStores.h"
 #include "EraTalentBots.h"
 #include "Group.h"
-#include "Ai/Base/Actions/InviteToGroupAction.h"
+#include "LFG.h"
+#include "LFGMgr.h"
 #include "ObjectAccessor.h"
+#include "Opcodes.h"
 #include "Player.h"
 #include "PlayerbotAI.h"
-#include "PlayerbotAIConfig.h"
 #include "PlayerbotFactory.h"
 #include "PlayerbotMgr.h"
 #include "Playerbots.h"
-#include "QueryResult.h"
 #include "RandomPlayerbotMgr.h"
+#include "RBAC.h"
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
+#include "WorldPacket.h"
 #include "WorldSession.h"
 
 #include <algorithm>
 #include <array>
 #include <cctype>
 #include <cstdint>
-#include <limits>
-#include <map>
-#include <set>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -42,92 +38,32 @@
 #include <vector>
 
 using namespace Acore::ChatCommands;
+using namespace GroupComposer;
 
 namespace
 {
-constexpr uint8 ROLE_TANK = 0;
-constexpr uint8 ROLE_HEALER = 1;
-constexpr uint8 ROLE_DPS = 2;
-constexpr uint8 ANY_SPEC = 0xFF;
-
-struct ComposerPreference
-{
-    uint8 role = ROLE_DPS;
-    uint8 cls = 0;
-    uint8 spec = ANY_SPEC;
-    bool required = false;
-};
-
-struct ComposerConfig
-{
-    std::string mode = "dungeon";
-    std::string activity = "random";
-    std::string difficulty = "heroic";
-    uint8 size = 5;
-    uint8 tanks = 1;
-    uint8 healers = 1;
-    uint8 dps = 3;
-    bool preferGuild = true;
-    bool fillWorld = true;
-    bool keepMe = true;
-    bool balanceClasses = true;
-    bool avoidDuplicates = false;
-    uint16 minimumItemLevel = 0;
-    std::vector<ComposerPreference> preferences;
-};
-
-struct ComposerCandidate
-{
-    ObjectGuid guid;
-    std::string name;
-    uint8 cls = 0;
-    uint8 role = ROLE_DPS;
-    uint8 spec = ANY_SPEC;
-    bool guild = false;
-    bool online = false;
-    bool managed = false;
-    bool alreadyGrouped = false;
-    float itemLevel = 0.0f;
-};
-
-struct ComposerMember
-{
-    ObjectGuid guid;
-    std::string name;
-    uint8 cls = 0;
-    uint8 role = ROLE_DPS;
-    uint8 spec = ANY_SPEC;
-    uint8 subgroup = 1;
-    bool human = false;
-    bool locked = false;
-    bool guild = false;
-    bool managed = false;
-};
-
-struct ComposerPlan
-{
-    ComposerConfig config;
-    std::vector<ComposerMember> members;
-    std::vector<std::string> warnings;
-    bool valid = false;
-    bool assembling = false;
-    uint32 assembleElapsed = 0;
-};
-
 struct PendingSync
 {
     uint32 ownerGuid = 0;
     uint8 spec = ANY_SPEC;
+    uint32 elapsed = 0;
 };
 
-std::unordered_map<uint32, ComposerConfig> s_drafts;
-std::unordered_map<uint32, ComposerPlan> s_plans;
-std::unordered_map<uint32, PendingSync> s_pendingSync;
-uint32 s_worldTick = 0;
+std::unordered_map<uint32, Config> s_drafts;
+std::unordered_map<uint32, Plan> s_plans;
+std::unordered_map<uint32, PendingSync> s_pendingSync; // bot low guid -> sync request
 
 std::string Lower(std::string value)
 {
     std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return value;
+}
+
+std::string CanonicalName(std::string value)
+{
+    if (value.empty()) return value;
+    value = Lower(value);
+    value[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(value[0])));
     return value;
 }
 
@@ -218,38 +154,23 @@ char const* SpecName(uint8 cls, uint8 spec)
     return "Any";
 }
 
-uint8 InferRole(Player* player)
+bool SpecCanFillRole(uint8 cls, uint8 spec, uint8 role)
 {
-    if (PlayerbotAI::IsTank(player, true)) return ROLE_TANK;
-    if (PlayerbotAI::IsHeal(player, true)) return ROLE_HEALER;
-    return ROLE_DPS;
-}
-
-bool IsBotCharacter(ObjectGuid guid)
-{
-    if (Player* player = ObjectAccessor::FindConnectedPlayer(guid))
-        return GET_PLAYERBOT_AI(player) != nullptr;
-
-    uint32 account = sCharacterCache->GetCharacterAccountIdByGuid(guid);
-    return (account && sPlayerbotAIConfig.IsInRandomAccountList(account)) || sRandomPlayerbotMgr.IsAddclassBot(guid.GetCounter());
-}
-
-bool PreferenceMatches(uint8 role, uint8 cls, uint8 spec, ComposerPreference const& pref)
-{
-    if (role != pref.role) return false;
-    if (pref.cls && cls != pref.cls) return false;
-    if (pref.spec != ANY_SPEC && spec != pref.spec) return false;
-    return true;
-}
-
-bool MemberMatches(ComposerMember const& member, ComposerPreference const& pref)
-{
-    return PreferenceMatches(member.role, member.cls, member.spec, pref);
-}
-
-bool CandidateMatches(ComposerCandidate const& candidate, ComposerPreference const& pref)
-{
-    return PreferenceMatches(candidate.role, candidate.cls, candidate.spec, pref);
+    if (spec == ANY_SPEC) return Planner::CanClassFillRole(cls, role);
+    switch (cls)
+    {
+        case CLASS_WARRIOR:      return (spec == 2 && role == ROLE_TANK) || (spec <= 1 && role == ROLE_DPS);
+        case CLASS_PALADIN:      return (spec == 0 && role == ROLE_HEALER) || (spec == 1 && role == ROLE_TANK) || (spec == 2 && role == ROLE_DPS);
+        case CLASS_HUNTER:       return role == ROLE_DPS;
+        case CLASS_ROGUE:        return role == ROLE_DPS;
+        case CLASS_PRIEST:       return ((spec == 0 || spec == 1) && role == ROLE_HEALER) || (spec == 2 && role == ROLE_DPS);
+        case CLASS_DEATH_KNIGHT: return (spec == 0 && role == ROLE_TANK) || ((spec == 1 || spec == 2) && role == ROLE_DPS);
+        case CLASS_SHAMAN:       return (spec == 2 && role == ROLE_HEALER) || ((spec == 0 || spec == 1) && role == ROLE_DPS);
+        case CLASS_MAGE:         return role == ROLE_DPS;
+        case CLASS_WARLOCK:      return role == ROLE_DPS;
+        case CLASS_DRUID:        return (spec == 2 && role == ROLE_HEALER) || (spec == 1 && (role == ROLE_TANK || role == ROLE_DPS)) || (spec == 0 && role == ROLE_DPS);
+        default:                 return false;
+    }
 }
 
 Player* CommandPlayer(ChatHandler* handler)
@@ -259,438 +180,111 @@ Player* CommandPlayer(ChatHandler* handler)
 
 void SendError(ChatHandler* handler, std::string const& text)
 {
-    handler->PSendSysMessage("[GC]|ERROR|{}", Sanitize(text));
+    if (handler) handler->PSendSysMessage("[GC]|ERROR|{}", Sanitize(text));
 }
 
-void AddHumanMembers(Player* master, ComposerPlan& plan, std::array<uint8, 3>& roleCounts, std::array<uint8, 12>& classCounts)
+void SendProtocol(Player* player, char const* kind, std::string const& text)
 {
-    std::unordered_set<uint32> added;
-    Group* group = master->GetGroup();
-
-    auto addLiveHuman = [&](Player* player)
-    {
-        if (!player || GET_PLAYERBOT_AI(player)) return;
-        uint32 low = player->GetGUID().GetCounter();
-        if (!added.insert(low).second) return;
-
-        ComposerMember member;
-        member.guid = player->GetGUID();
-        member.name = player->GetName();
-        member.cls = player->getClass();
-        member.role = InferRole(player);
-        member.spec = AiFactory::GetPlayerSpecTab(player);
-        member.human = true;
-        member.locked = true;
-        member.guild = master->GetGuildId() && player->GetGuildId() == master->GetGuildId();
-        plan.members.push_back(member);
-        ++roleCounts[member.role];
-        if (member.cls < classCounts.size()) ++classCounts[member.cls];
-    };
-
-    if (!group)
-    {
-        addLiveHuman(master);
-        return;
-    }
-
-    for (Group::MemberSlot const& slot : group->GetMemberSlots())
-    {
-        Player* player = ObjectAccessor::FindConnectedPlayer(slot.guid);
-        if (player)
-        {
-            addLiveHuman(player);
-            continue;
-        }
-
-        if (!IsBotCharacter(slot.guid))
-        {
-            std::string name = "offline human";
-            sCharacterCache->GetCharacterNameByGuid(slot.guid, name);
-            plan.warnings.push_back("Offline human group member '" + name + "' has an unknown role. Have them reconnect or leave before composing.");
-        }
-    }
-
-    addLiveHuman(master);
+    if (!player || !player->GetSession()) return;
+    ChatHandler handler(player->GetSession());
+    handler.PSendSysMessage("[GC]|{}|{}", kind, Sanitize(text));
 }
 
-void AddCandidate(std::vector<ComposerCandidate>& out, std::unordered_set<uint32>& seen, ComposerCandidate candidate)
+char const* SourceToken(Member const& member)
 {
-    if (candidate.guid.IsEmpty()) return;
-    if (!seen.insert(candidate.guid.GetCounter()).second) return;
-    out.push_back(std::move(candidate));
+    if (member.human) return "HUMAN";
+    if (member.guild) return "GUILD";
+    if (member.managed) return "ROSTER";
+    return "WORLD";
 }
 
-std::vector<ComposerCandidate> BuildCandidates(Player* master, ComposerConfig const& config)
+void SendPlan(ChatHandler* handler, Plan const& plan)
 {
-    std::vector<ComposerCandidate> out;
-    std::unordered_set<uint32> seen;
-    Group* masterGroup = master->GetGroup();
-    uint32 guildId = master->GetGuildId();
-
-    auto makeOnline = [&](Player* bot, bool alreadyGrouped)
-    {
-        if (!bot || !GET_PLAYERBOT_AI(bot) || bot == master) return;
-        if (bot->InBattleground() || bot->InBattlegroundQueue()) return;
-        if (bot->GetGroup() && bot->GetGroup() != masterGroup) return;
-        if (!alreadyGrouped && bot->GetInstanceId() != 0) return;
-        if (bot->GetLevel() + 3 < master->GetLevel()) return;
-
-        ComposerCandidate c;
-        c.guid = bot->GetGUID();
-        c.name = bot->GetName();
-        c.cls = bot->getClass();
-        c.role = InferRole(bot);
-        c.spec = AiFactory::GetPlayerSpecTab(bot);
-        c.guild = guildId && bot->GetGuildId() == guildId;
-        c.online = true;
-        c.managed = false;
-        c.alreadyGrouped = alreadyGrouped;
-        c.itemLevel = bot->GetAverageItemLevel();
-        if (config.minimumItemLevel && c.itemLevel + 0.001f < config.minimumItemLevel) return;
-        if (!c.guild && !config.fillWorld && !alreadyGrouped) return;
-        AddCandidate(out, seen, std::move(c));
-    };
-
-    if (masterGroup)
-    {
-        for (Group::MemberSlot const& slot : masterGroup->GetMemberSlots())
-            makeOnline(ObjectAccessor::FindConnectedPlayer(slot.guid), true);
-    }
-
-    if (guildId)
-    {
-        if (QueryResult result = CharacterDatabase.Query("SELECT guid FROM guild_member WHERE guildid = {}", guildId))
-        {
-            do
-            {
-                ObjectGuid guid = ObjectGuid::Create<HighGuid::Player>(result->Fetch()[0].Get<uint32>());
-                if (sRandomPlayerbotMgr.IsAddclassBot(guid.GetCounter())) continue;
-                Player* bot = ObjectAccessor::FindConnectedPlayer(guid);
-                if (bot) makeOnline(bot, masterGroup && bot->GetGroup() == masterGroup);
-            } while (result->NextRow());
-        }
-    }
-
-    if (config.fillWorld)
-    {
-        for (Player* bot : sRandomPlayerbotMgr.GetPlayers())
-        {
-            if (!bot || sRandomPlayerbotMgr.IsAddclassBot(bot)) continue;
-            makeOnline(bot, masterGroup && bot->GetGroup() == masterGroup);
-        }
-    }
-
-    uint8 masterLevel = master->GetLevel();
-    for (RaidRosterRow const& row : RaidRosterStore::Load(master->GetGUID().GetCounter()))
-    {
-        if (!RaidCompEligible(row.band, masterLevel)) continue;
-        ObjectGuid guid = ObjectGuid::Create<HighGuid::Player>(row.botGuid);
-        if (seen.count(row.botGuid))
-        {
-            for (ComposerCandidate& existing : out)
-                if (existing.guid == guid) { existing.managed = true; break; }
-            continue;
-        }
-
-        Player* online = ObjectAccessor::FindConnectedPlayer(guid);
-        if (online && online->GetGroup() && online->GetGroup() != masterGroup) continue;
-
-        ComposerCandidate c;
-        c.guid = guid;
-        c.cls = row.cls;
-        c.role = row.role;
-        c.spec = row.specTab;
-        c.guild = guildId && sCharacterCache->GetCharacterGuildIdByGuid(guid) == guildId;
-        c.online = online != nullptr;
-        c.managed = true;
-        c.alreadyGrouped = online && masterGroup && online->GetGroup() == masterGroup;
-        if (online)
-        {
-            c.name = online->GetName();
-            if (c.alreadyGrouped)
-            {
-                c.role = InferRole(online);
-                c.spec = AiFactory::GetPlayerSpecTab(online);
-            }
-            c.itemLevel = online->GetAverageItemLevel();
-        }
-        else
-        {
-            sCharacterCache->GetCharacterNameByGuid(guid, c.name);
-        }
-        if (c.name.empty()) c.name = "Bot" + std::to_string(row.botGuid);
-        if (!c.guild && !config.fillWorld) continue;
-        AddCandidate(out, seen, std::move(c));
-    }
-
-    return out;
-}
-
-int CandidateScore(ComposerCandidate const& candidate, ComposerConfig const& config,
-    std::array<uint8, 12> const& classCounts, std::vector<ComposerPreference> const& preferences)
-{
-    int score = 0;
-    if (candidate.alreadyGrouped) score += 2000;
-    if (config.preferGuild && candidate.guild) score += 1000;
-    if (candidate.online) score += 25;
-    if (config.balanceClasses && candidate.cls < classCounts.size() && classCounts[candidate.cls] == 0) score += 140;
-    if (config.avoidDuplicates && candidate.cls < classCounts.size() && classCounts[candidate.cls] > 0) score -= 300;
-
-    for (ComposerPreference const& pref : preferences)
-    {
-        if (pref.required || !CandidateMatches(candidate, pref)) continue;
-        score += 180;
-        if (pref.cls) score += 40;
-        if (pref.spec != ANY_SPEC) score += 25;
-    }
-    return score;
-}
-
-int FindCandidate(std::vector<ComposerCandidate> const& candidates, std::vector<bool> const& used,
-    uint8 role, ComposerConfig const& config, std::array<uint8, 12> const& classCounts,
-    ComposerPreference const* required = nullptr)
-{
-    int best = -1;
-    int bestScore = std::numeric_limits<int>::min();
-    for (size_t i = 0; i < candidates.size(); ++i)
-    {
-        if (used[i]) continue;
-        ComposerCandidate const& candidate = candidates[i];
-        if (candidate.role != role) continue;
-        if (required && !CandidateMatches(candidate, *required)) continue;
-        int score = CandidateScore(candidate, config, classCounts, config.preferences);
-        if (required) score += 5000;
-        if (score > bestScore || (score == bestScore && (best < 0 || candidate.name < candidates[best].name)))
-        {
-            best = static_cast<int>(i);
-            bestScore = score;
-        }
-    }
-    return best;
-}
-
-void SelectCandidate(ComposerPlan& plan, ComposerCandidate const& candidate,
-    std::array<uint8, 3>& roleCounts, std::array<uint8, 12>& classCounts)
-{
-    ComposerMember member;
-    member.guid = candidate.guid;
-    member.name = candidate.name;
-    member.cls = candidate.cls;
-    member.role = candidate.role;
-    member.spec = candidate.spec;
-    member.guild = candidate.guild;
-    member.managed = candidate.managed;
-    plan.members.push_back(std::move(member));
-    ++roleCounts[candidate.role];
-    if (candidate.cls < classCounts.size()) ++classCounts[candidate.cls];
-}
-
-void ArrangePlan(ComposerPlan& plan)
-{
-    if (plan.members.empty()) return;
-    uint8 groupCount = plan.config.size <= 5 ? 1 : static_cast<uint8>((plan.config.size + 4) / 5);
-    groupCount = std::min<uint8>(8, std::max<uint8>(1, groupCount));
-
-    std::array<uint8, 8> total{};
-    std::array<uint8, 8> healers{};
-
-    auto assignTo = [&](ComposerMember& member, uint8 group)
-    {
-        group = std::min<uint8>(group, groupCount - 1);
-        member.subgroup = group + 1;
-        ++total[group];
-        if (member.role == ROLE_HEALER) ++healers[group];
-    };
-
-    uint8 tankIndex = 0;
-    for (ComposerMember& member : plan.members)
-        if (member.role == ROLE_TANK)
-        {
-            uint8 target = tankIndex % groupCount;
-            while (target < groupCount && total[target] >= 5) target = (target + 1) % groupCount;
-            assignTo(member, target);
-            ++tankIndex;
-        }
-
-    for (ComposerMember& member : plan.members)
-        if (member.role == ROLE_HEALER)
-        {
-            uint8 best = 0;
-            for (uint8 g = 1; g < groupCount; ++g)
-                if (total[g] < 5 && (total[best] >= 5 || healers[g] < healers[best] ||
-                    (healers[g] == healers[best] && total[g] < total[best]))) best = g;
-            assignTo(member, best);
-        }
-
-    for (ComposerMember& member : plan.members)
-        if (member.role == ROLE_DPS)
-        {
-            uint8 best = 0;
-            for (uint8 g = 1; g < groupCount; ++g)
-                if (total[g] < 5 && (total[best] >= 5 || total[g] < total[best])) best = g;
-            assignTo(member, best);
-        }
-}
-
-void SendPlan(ChatHandler* handler, ComposerPlan const& plan)
-{
+    if (!handler) return;
     handler->SendSysMessage("[GC]|RESET");
     handler->PSendSysMessage("[GC]|META|{}|{}|{}|{}|{}|{}|{}",
         plan.config.mode, plan.config.activity, plan.config.difficulty,
         uint32(plan.config.size), uint32(plan.config.tanks), uint32(plan.config.healers), uint32(plan.config.dps));
 
-    uint32 humans = 0, guild = 0, world = 0;
-    for (ComposerMember const& member : plan.members)
+    uint32 guild = 0, world = 0, humans = 0;
+    for (Member const& member : plan.members)
     {
-        char const* source = member.human ? "HUMAN" : (member.guild ? "GUILD" : "WORLD");
-        if (member.human) ++humans; else if (member.guild) ++guild; else ++world;
-        handler->PSendSysMessage("[GC]|MEMBER|{}|{}|{}|{}|{}|{}|{}|{}",
+        if (member.human) ++humans;
+        else if (member.guild) ++guild;
+        else ++world;
+        handler->PSendSysMessage("[GC]|MEMBER|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             uint32(member.subgroup), Sanitize(member.name), RoleToken(member.role), ClassToken(member.cls),
-            SpecName(member.cls, member.spec), source, member.human ? 1 : 0, member.locked ? 1 : 0);
+            SpecName(member.cls, member.spec), SourceToken(member), member.human ? 1 : 0,
+            member.locked ? 1 : 0, member.pinned ? 1 : 0);
     }
+
+    handler->PSendSysMessage("[GC]|COVERAGE|{}|{}|{}", uint32(plan.coverage.rangedDps),
+        uint32(plan.coverage.meleeDps), Sanitize(Planner::CoverageSummary(plan)));
     for (std::string const& warning : plan.warnings)
         handler->PSendSysMessage("[GC]|WARN|{}", Sanitize(warning));
     handler->PSendSysMessage("[GC]|READY|{}|{}|{}|{}|{}", plan.valid ? 1 : 0, guild, world, humans, uint32(plan.members.size()));
 }
 
-bool BuildPlan(Player* master, ComposerConfig const& config, ComposerPlan& plan)
+bool RaidSupports(std::string const& activity, uint8 size, bool heroic)
 {
-    plan = ComposerPlan{};
-    plan.config = config;
-
-    if (config.size < 1 || config.size > 40 || uint32(config.tanks) + config.healers + config.dps != config.size)
-    {
-        plan.warnings.push_back("Invalid role totals for the requested group size.");
-        return false;
-    }
-
-    if (config.mode == "dungeon" && config.size != 5)
-    {
-        plan.warnings.push_back("Dungeon mode currently expects a 5-player party.");
-        return false;
-    }
-
-    Group* existingGroup = master->GetGroup();
-    if (existingGroup && existingGroup->GetMembersCount() > 1 && !existingGroup->IsLeader(master->GetGUID()))
-    {
-        plan.warnings.push_back("You must be the current group/raid leader to assemble or rearrange this roster.");
-        return false;
-    }
-
-    if (!config.keepMe)
-        plan.warnings.push_back("The local player must remain in an assembled WoW group, so Keep Me In Roster is enforced for assembly.");
-
-    std::array<uint8, 3> roleCounts{};
-    std::array<uint8, 12> classCounts{};
-    AddHumanMembers(master, plan, roleCounts, classCounts);
-
-    if (plan.members.size() > config.size)
-    {
-        plan.warnings.push_back("There are more locked human players than the requested group size.");
-        return false;
-    }
-    if (roleCounts[ROLE_TANK] > config.tanks || roleCounts[ROLE_HEALER] > config.healers || roleCounts[ROLE_DPS] > config.dps)
-    {
-        plan.warnings.push_back("Locked human roles exceed one of the requested raid-wide role totals. Adjust the role targets or a human role assignment.");
-        return false;
-    }
-
-    std::array<uint8, 3> requiredCounts{};
-    for (ComposerPreference const& pref : config.preferences)
-        if (pref.required) ++requiredCounts[pref.role];
-    if (requiredCounts[ROLE_TANK] > config.tanks || requiredCounts[ROLE_HEALER] > config.healers || requiredCounts[ROLE_DPS] > config.dps)
-    {
-        plan.warnings.push_back("Required class/spec preferences exceed the available slots for their role.");
-        return false;
-    }
-
-    std::vector<ComposerCandidate> candidates = BuildCandidates(master, config);
-    std::vector<bool> used(candidates.size(), false);
-    std::vector<bool> requirementMemberUsed(plan.members.size(), false);
-
-    for (ComposerPreference const& pref : config.preferences)
-    {
-        if (!pref.required) continue;
-        bool satisfied = false;
-        for (size_t i = 0; i < plan.members.size() && i < requirementMemberUsed.size(); ++i)
-        {
-            if (!requirementMemberUsed[i] && MemberMatches(plan.members[i], pref))
-            {
-                requirementMemberUsed[i] = true;
-                satisfied = true;
-                break;
-            }
-        }
-        if (satisfied) continue;
-
-        uint8 target = pref.role == ROLE_TANK ? config.tanks : (pref.role == ROLE_HEALER ? config.healers : config.dps);
-        if (roleCounts[pref.role] >= target)
-        {
-            plan.warnings.push_back(std::string("Required ") + RoleToken(pref.role) + " preference cannot fit inside the configured role total.");
-            return false;
-        }
-
-        int index = FindCandidate(candidates, used, pref.role, config, classCounts, &pref);
-        if (index < 0)
-        {
-            std::ostringstream out;
-            out << "Required " << RoleToken(pref.role) << " preference is unavailable";
-            if (pref.cls) out << " (" << ClassToken(pref.cls) << (pref.spec != ANY_SPEC ? std::string(" / ") + SpecName(pref.cls, pref.spec) : "") << ")";
-            out << ".";
-            plan.warnings.push_back(out.str());
-            return false;
-        }
-        used[index] = true;
-        SelectCandidate(plan, candidates[index], roleCounts, classCounts);
-        requirementMemberUsed.push_back(true);
-    }
-
-    auto fillRole = [&](uint8 role, uint8 target)
-    {
-        while (roleCounts[role] < target)
-        {
-            int index = FindCandidate(candidates, used, role, config, classCounts);
-            if (index < 0) return false;
-            used[index] = true;
-            SelectCandidate(plan, candidates[index], roleCounts, classCounts);
-        }
-        return true;
-    };
-
-    bool complete = fillRole(ROLE_TANK, config.tanks) && fillRole(ROLE_HEALER, config.healers) && fillRole(ROLE_DPS, config.dps);
-    if (!complete || plan.members.size() != config.size)
-    {
-        std::ostringstream out;
-        out << "Could not find enough suitable candidates. Built " << plan.members.size() << "/" << uint32(config.size)
-            << " players (T " << uint32(roleCounts[ROLE_TANK]) << "/" << uint32(config.tanks)
-            << ", H " << uint32(roleCounts[ROLE_HEALER]) << "/" << uint32(config.healers)
-            << ", DPS " << uint32(roleCounts[ROLE_DPS]) << "/" << uint32(config.dps) << ").";
-        plan.warnings.push_back(out.str());
-        ArrangePlan(plan);
-        return false;
-    }
-
-    uint32 worldCount = 0, guildCount = 0;
-    for (ComposerMember const& member : plan.members)
-        if (!member.human) { if (member.guild) ++guildCount; else ++worldCount; }
-    if (config.preferGuild && worldCount)
-        plan.warnings.push_back("Guild candidates filled " + std::to_string(guildCount) + " bot slot(s); " + std::to_string(worldCount) + " remaining slot(s) use safe world-bot fallback.");
-
-    ArrangePlan(plan);
-    plan.valid = true;
-    return true;
+    struct RaidRule { char const* id; uint8 a; uint8 b; bool heroic; };
+    static std::array<RaidRule, 21> const rules = {{
+        { "naxxramas", 10, 25, false }, { "obsidian_sanctum", 10, 25, false },
+        { "eye_of_eternity", 10, 25, false }, { "ulduar", 10, 25, false },
+        { "trial_crusader", 10, 25, true }, { "onyxia", 10, 25, false },
+        { "vault_archavon", 10, 25, false }, { "icecrown", 10, 25, true },
+        { "ruby_sanctum", 10, 25, true }, { "karazhan", 10, 0, false },
+        { "zulaman", 10, 0, false }, { "gruul", 25, 0, false },
+        { "magtheridon", 25, 0, false }, { "serpentshrine", 25, 0, false },
+        { "tempest_keep", 25, 0, false }, { "hyjal", 25, 0, false },
+        { "black_temple", 25, 0, false }, { "sunwell", 25, 0, false },
+        { "zul_gurub", 20, 0, false }, { "aq20", 20, 0, false },
+        { "molten_core", 40, 0, false },
+    }};
+    for (RaidRule const& rule : rules)
+        if (activity == rule.id)
+            return (size == rule.a || (rule.b && size == rule.b)) && (!heroic || rule.heroic);
+    if (activity == "blackwing_lair" || activity == "aq40") return size == 40 && !heroic;
+    return false;
 }
 
-void SyncManagedBot(Player* master, Player* bot, uint8 specTab)
+uint32 DungeonMapId(std::string const& activity)
 {
-    if (!master || !bot || specTab == ANY_SPEC) return;
+    static std::unordered_map<std::string, uint32> const maps = {
+        { "utgarde_keep", 574 }, { "nexus", 576 }, { "azjol_nerub", 601 }, { "ahnkahet", 619 },
+        { "drak_tharon", 600 }, { "violet_hold", 608 }, { "gundrak", 604 }, { "halls_of_stone", 599 },
+        { "halls_of_lightning", 602 }, { "oculus", 578 }, { "culling", 595 }, { "utgarde_pinnacle", 575 },
+        { "trial_champion", 650 }, { "forge_souls", 632 }, { "pit_saron", 658 }, { "halls_reflection", 668 },
+    };
+    auto itr = maps.find(activity);
+    return itr == maps.end() ? 0 : itr->second;
+}
+
+bool IsBotGuid(ObjectGuid guid)
+{
+    if (Player* player = ObjectAccessor::FindConnectedPlayer(guid)) return GET_PLAYERBOT_AI(player) != nullptr;
+    uint32 account = sCharacterCache->GetCharacterAccountIdByGuid(guid);
+    return (account && sPlayerbotAIConfig.IsInRandomAccountList(account)) || sRandomPlayerbotMgr.IsAddclassBot(guid.GetCounter());
+}
+
+bool Selected(Plan const& plan, ObjectGuid guid)
+{
+    for (Member const& member : plan.members) if (member.guid == guid) return true;
+    return false;
+}
+
+void SyncManagedBot(Player* master, Player* bot, uint8 spec)
+{
+    if (!master || !bot) return;
+    if (spec > 2) spec = Planner::InferSpec(bot);
+    if (spec > 2) return;
 
     PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_LEGENDARY, 0);
     factory.Randomize(false);
-    if (!EraTalentBots::FactoryReconcile(bot, specTab))
-        PlayerbotFactory::InitTalentsBySpecNo(bot, specTab, true);
+    if (!EraTalentBots::FactoryReconcile(bot, spec))
+        PlayerbotFactory::InitTalentsBySpecNo(bot, spec, true);
     if (PlayerbotAI* ai = GET_PLAYERBOT_AI(bot)) ai->ResetStrategies(false);
-    RaidRosterGear::EquipForSpec(bot, master, specTab);
+    RaidRosterGear::EquipForSpec(bot, master, spec);
     factory.ApplyEnchantAndGemsNew();
     factory.InitAmmo();
 
@@ -702,85 +296,191 @@ void SyncManagedBot(Player* master, Player* bot, uint8 specTab)
     RaidRosterEra::SyncBotToMaster(master, bot);
 }
 
-void ApplyRaidDifficulty(Group* group, ComposerConfig const& config)
-{
-    if (!group || config.mode != "raid") return;
-    if (config.size != 10 && config.size != 25) return;
-    bool heroic = config.difficulty == "heroic";
-    if (config.size == 10)
-        group->SetRaidDifficulty(heroic ? RAID_DIFFICULTY_10MAN_HEROIC : RAID_DIFFICULTY_10MAN_NORMAL);
-    else
-        group->SetRaidDifficulty(heroic ? RAID_DIFFICULTY_25MAN_HEROIC : RAID_DIFFICULTY_25MAN_NORMAL);
-}
-
-uint32 ApplyArrangement(Player* master, ComposerPlan const& plan)
+void ApplyGroupSettings(Player* master, Plan const& plan)
 {
     Group* group = master ? master->GetGroup() : nullptr;
-    if (!group) return 0;
-    if (plan.config.size > 5 && !group->isRaidGroup() && group->IsLeader(master->GetGUID()))
-        group->ConvertToRaid();
-    ApplyRaidDifficulty(group, plan.config);
-    if (!group->isRaidGroup()) return group->GetMembersCount();
+    if (!group) return;
 
-    uint32 present = 0;
-    for (ComposerMember const& member : plan.members)
+    if (plan.config.size > 5 && !group->isRaidGroup()) group->ConvertToRaid();
+    if (plan.config.mode == "raid")
     {
-        if (!group->IsMember(member.guid)) continue;
-        ++present;
-        uint8 subgroup = member.subgroup > 0 ? member.subgroup - 1 : 0;
-        if (subgroup < 8 && group->GetMemberGroup(member.guid) != subgroup)
-            group->ChangeMembersGroup(member.guid, subgroup);
+        if (plan.config.size == 10)
+            group->SetRaidDifficulty(plan.config.difficulty == "heroic" ? RAID_DIFFICULTY_10MAN_HEROIC : RAID_DIFFICULTY_10MAN_NORMAL);
+        else if (plan.config.size == 25)
+            group->SetRaidDifficulty(plan.config.difficulty == "heroic" ? RAID_DIFFICULTY_25MAN_HEROIC : RAID_DIFFICULTY_25MAN_NORMAL);
     }
-    return present;
+    else
+    {
+        bool heroicBase = plan.config.difficulty != "normal";
+        group->SetDungeonDifficulty(heroicBase ? DUNGEON_DIFFICULTY_HEROIC : DUNGEON_DIFFICULTY_NORMAL);
+    }
 }
 
-class GroupComposerWorldScript : public WorldScript
+void ApplyArrangement(Player* master, Plan const& plan)
+{
+    Group* group = master ? master->GetGroup() : nullptr;
+    if (!group) return;
+    ApplyGroupSettings(master, plan);
+    if (!group->isRaidGroup()) return;
+
+    for (Member const& member : plan.members)
+    {
+        if (member.subgroup < 1 || member.subgroup > 8 || !group->IsMember(member.guid)) continue;
+        uint8 target = member.subgroup - 1;
+        if (group->GetMemberGroup(member.guid) != target && group->HasFreeSlotSubGroup(target))
+            group->ChangeMembersGroup(member.guid, target);
+    }
+    group->SendUpdate();
+}
+
+void PruneUnselectedBots(Player* master, Plan const& plan)
+{
+    Group* group = master ? master->GetGroup() : nullptr;
+    if (!group) return;
+    std::vector<ObjectGuid> remove;
+    for (Group::MemberSlot const& slot : group->GetMemberSlots())
+        if (!Selected(plan, slot.guid) && IsBotGuid(slot.guid)) remove.push_back(slot.guid);
+    for (ObjectGuid guid : remove) group->RemoveMember(guid);
+}
+
+void InviteHuman(Player* master, Player* target)
+{
+    if (!master || !target || !master->GetSession()) return;
+    WorldPacket packet(CMSG_GROUP_INVITE, target->GetName().size() + 8);
+    packet << target->GetName();
+    packet << uint32(0);
+    master->GetSession()->HandleGroupInviteOpcode(packet);
+}
+
+bool InviteBot(Player* master, Player* bot)
+{
+    if (!master || !bot) return false;
+    PlayerbotAI* ai = GET_PLAYERBOT_AI(bot);
+    if (!ai) return false;
+    InviteToGroupAction action(ai);
+    return action.Invite(master, bot);
+}
+
+bool PlanMembershipComplete(Player* master, Plan const& plan)
+{
+    Group* group = master ? master->GetGroup() : nullptr;
+    if (!group) return plan.members.size() == 1 && plan.members[0].guid == master->GetGUID();
+    for (Member const& member : plan.members)
+        if (!group->IsMember(member.guid)) return false;
+    return group->GetMembersCount() >= plan.members.size();
+}
+
+bool OwnerHasPendingSync(uint32 ownerLow)
+{
+    for (auto const& entry : s_pendingSync) if (entry.second.ownerGuid == ownerLow) return true;
+    return false;
+}
+
+void TryInviteMissing(Player* master, Plan& plan)
+{
+    if (!master) return;
+    Group* group = master->GetGroup();
+    if (group) ApplyGroupSettings(master, plan);
+
+    auto canInvite = [&]() -> bool
+    {
+        Group* current = master->GetGroup();
+        return !current || !current->IsFull();
+    };
+
+    // Prefer an available bot to bootstrap a solo composer's group because Playerbots accept their
+    // invitations automatically. Once a group exists, a >5 target is converted before more invites.
+    for (Member const& member : plan.members)
+    {
+        if (member.human || member.guid == master->GetGUID()) continue;
+        Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid);
+        if (!bot || !GET_PLAYERBOT_AI(bot)) continue;
+        Group* current = master->GetGroup();
+        if (current && current->IsMember(member.guid)) continue;
+        if (bot->GetGroup() && bot->GetGroup() != current) continue;
+        if (bot->GetGroupInvite()) continue;
+        if (!canInvite()) break;
+        bool hadGroup = current != nullptr;
+        InviteBot(master, bot);
+        if (!hadGroup) return;
+    }
+
+    group = master->GetGroup();
+    if (group) ApplyGroupSettings(master, plan);
+
+    for (Member const& member : plan.members)
+    {
+        if (!member.human || member.guid == master->GetGUID()) continue;
+        Player* player = ObjectAccessor::FindConnectedPlayer(member.guid);
+        if (!player) continue;
+        Group* current = master->GetGroup();
+        if (current && current->IsMember(member.guid)) continue;
+        if (player->GetGroup() && player->GetGroup() != current) continue;
+        if (player->GetGroupInvite()) continue;
+        if (!canInvite()) break;
+        bool hadGroup = current != nullptr;
+        InviteHuman(master, player);
+        if (!hadGroup) return;
+    }
+}
+
+uint8 LfgRole(uint8 role, bool leader)
+{
+    uint8 value = role == ROLE_TANK ? lfg::PLAYER_ROLE_TANK : role == ROLE_HEALER ? lfg::PLAYER_ROLE_HEALER : lfg::PLAYER_ROLE_DAMAGE;
+    if (leader) value |= lfg::PLAYER_ROLE_LEADER;
+    return value;
+}
+
+class GroupComposerWorld : public WorldScript
 {
 public:
-    GroupComposerWorldScript() : WorldScript("GroupComposerWorldScript", { WORLDHOOK_ON_UPDATE }) { }
+    GroupComposerWorld() : WorldScript("GroupComposerWorld") { }
 
     void OnUpdate(uint32 diff) override
     {
-        s_worldTick += diff;
-        if (s_worldTick < 750) return;
-        uint32 elapsed = s_worldTick;
-        s_worldTick = 0;
-
-        for (auto it = s_pendingSync.begin(); it != s_pendingSync.end(); )
+        for (auto itr = s_pendingSync.begin(); itr != s_pendingSync.end(); )
         {
-            ObjectGuid botGuid = ObjectGuid::Create<HighGuid::Player>(it->first);
-            ObjectGuid ownerGuid = ObjectGuid::Create<HighGuid::Player>(it->second.ownerGuid);
+            itr->second.elapsed += diff;
+            ObjectGuid botGuid = ObjectGuid::Create<HighGuid::Player>(itr->first);
+            ObjectGuid ownerGuid = ObjectGuid::Create<HighGuid::Player>(itr->second.ownerGuid);
             Player* bot = ObjectAccessor::FindConnectedPlayer(botGuid);
-            Player* owner = ObjectAccessor::FindConnectedPlayer(ownerGuid);
-            if (bot && owner && GET_PLAYERBOT_AI(bot))
+            Player* master = ObjectAccessor::FindConnectedPlayer(ownerGuid);
+            if (bot && master)
             {
-                SyncManagedBot(owner, bot, it->second.spec);
-                it = s_pendingSync.erase(it);
+                SyncManagedBot(master, bot, itr->second.spec);
+                itr = s_pendingSync.erase(itr);
             }
+            else if (itr->second.elapsed > 30000)
+                itr = s_pendingSync.erase(itr);
             else
-                ++it;
+                ++itr;
         }
 
-        for (auto& [ownerLow, plan] : s_plans)
+        for (auto& entry : s_plans)
         {
+            uint32 ownerLow = entry.first;
+            Plan& plan = entry.second;
             if (!plan.assembling) continue;
-            plan.assembleElapsed += elapsed;
-            Player* owner = ObjectAccessor::FindConnectedPlayer(ObjectGuid::Create<HighGuid::Player>(ownerLow));
-            if (!owner) continue;
-            uint32 present = ApplyArrangement(owner, plan);
-            Group* group = owner->GetGroup();
-            if (group && present >= plan.members.size())
+            plan.assembleElapsed += diff;
+
+            Player* master = ObjectAccessor::FindConnectedPlayer(ObjectGuid::Create<HighGuid::Player>(ownerLow));
+            if (!master)
             {
-                plan.assembling = false;
-                ChatHandler ch(owner->GetSession());
-                ch.PSendSysMessage("[GC]|DONE|Roster assembled: {}/{} players present and arranged.", present, uint32(plan.members.size()));
+                if (plan.assembleElapsed > 30000) plan.assembling = false;
+                continue;
             }
-            else if (plan.assembleElapsed >= 30000)
+
+            TryInviteMissing(master, plan);
+            if (PlanMembershipComplete(master, plan) && !OwnerHasPendingSync(ownerLow))
+            {
+                ApplyArrangement(master, plan);
+                plan.assembling = false;
+                SendProtocol(master, "DONE", "Roster assembled and subgroup layout applied.");
+            }
+            else if (plan.assembleElapsed > 30000)
             {
                 plan.assembling = false;
-                ChatHandler ch(owner->GetSession());
-                uint32 current = group ? group->GetMembersCount() : 1;
-                ch.PSendSysMessage("[GC]|DONE|Assembly is still incomplete after 30 seconds ({}/{} present). Re-open the preview to see which bots did not join.", current, uint32(plan.members.size()));
+                SendProtocol(master, "ERROR", "Assembly timed out. Any accepted humans/bots were kept; review availability and retry.");
             }
         }
     }
@@ -791,13 +491,20 @@ ChatCommandTable GroupComposerCommand::GetCommands() const
 {
     static ChatCommandTable sub =
     {
-        { "begin",    HandleBegin,      SEC_PLAYER, Console::No },
-        { "pref",     HandlePreference, SEC_PLAYER, Console::No },
-        { "find",     HandleFind,       SEC_PLAYER, Console::No },
-        { "arrange",  HandleArrange,    SEC_PLAYER, Console::No },
-        { "assemble", HandleAssemble,   SEC_PLAYER, Console::No },
-        { "clear",    HandleClear,      SEC_PLAYER, Console::No },
-        { "status",   HandleStatus,     SEC_PLAYER, Console::No },
+        { "begin",       HandleBegin,             SEC_PLAYER, Console::No },
+        { "pref",        HandlePreference,        SEC_PLAYER, Console::No },
+        { "humanrole",   HandleHumanRole,         SEC_PLAYER, Console::No },
+        { "human",       HandleHuman,             SEC_PLAYER, Console::No },
+        { "pin",         HandlePin,               SEC_PLAYER, Console::No },
+        { "arrangepref", HandleArrangePreference, SEC_PLAYER, Console::No },
+        { "find",        HandleFind,              SEC_PLAYER, Console::No },
+        { "arrange",     HandleArrange,           SEC_PLAYER, Console::No },
+        { "move",        HandleMove,              SEC_PLAYER, Console::No },
+        { "assemble",    HandleAssemble,          SEC_PLAYER, Console::No },
+        { "queue",       HandleQueue,             SEC_PLAYER, Console::No },
+        { "diagnostics", HandleDiagnostics,       SEC_PLAYER, Console::No },
+        { "clear",       HandleClear,             SEC_PLAYER, Console::No },
+        { "status",      HandleStatus,            SEC_PLAYER, Console::No },
     };
     static ChatCommandTable root = { { "groupcomposer", sub } };
     return root;
@@ -805,22 +512,32 @@ ChatCommandTable GroupComposerCommand::GetCommands() const
 
 bool GroupComposerCommand::HandleBegin(ChatHandler* handler, std::string mode, std::string activity, std::string difficulty,
     uint32 size, uint32 tanks, uint32 healers, uint32 dps, uint32 preferGuild, uint32 fillWorld,
-    uint32 keepMe, uint32 balanceClasses, uint32 avoidDuplicates, uint32 minimumItemLevel)
+    uint32 keepMe, uint32 balanceClasses, uint32 balanceUtility, uint32 balanceRange,
+    uint32 avoidDuplicates, uint32 minimumItemLevel)
 {
-    if (!g_RaidRosterEnable) { SendError(handler, "RaidRoster backend is disabled."); return true; }
     Player* master = CommandPlayer(handler);
-    if (!master) return true;
+    if (!master) { SendError(handler, "Run Group Composer in-world as a player."); return true; }
 
-    mode = Lower(mode);
-    difficulty = Lower(difficulty);
+    mode = Lower(mode); activity = Lower(activity); difficulty = Lower(difficulty);
     if (mode != "dungeon" && mode != "raid") { SendError(handler, "Mode must be dungeon or raid."); return true; }
     if (size < 1 || size > 40 || tanks > 40 || healers > 40 || dps > 40 || tanks + healers + dps != size)
+    { SendError(handler, "Role totals must exactly equal the requested group size."); return true; }
+    if (mode == "dungeon" && size != 5) { SendError(handler, "Dungeon mode requires size 5."); return true; }
+
+    if (mode == "raid")
     {
-        SendError(handler, "Invalid group size or role totals.");
-        return true;
+        bool heroic = difficulty == "heroic";
+        if (difficulty != "normal" && !heroic) { SendError(handler, "Raid difficulty must be normal or heroic."); return true; }
+        if (!RaidSupports(activity, static_cast<uint8>(size), heroic)) { SendError(handler, "That raid/size/difficulty combination is not supported."); return true; }
+    }
+    else
+    {
+        if (activity != "random" && !DungeonMapId(activity)) { SendError(handler, "Unknown dungeon selection."); return true; }
+        if (difficulty != "normal" && difficulty != "heroic" && difficulty != "alpha" && difficulty != "beta" && difficulty != "gamma")
+        { SendError(handler, "Unknown dungeon difficulty."); return true; }
     }
 
-    ComposerConfig config;
+    Config config;
     config.mode = mode;
     config.activity = activity;
     config.difficulty = difficulty;
@@ -832,12 +549,15 @@ bool GroupComposerCommand::HandleBegin(ChatHandler* handler, std::string mode, s
     config.fillWorld = fillWorld != 0;
     config.keepMe = keepMe != 0;
     config.balanceClasses = balanceClasses != 0;
+    config.balanceUtility = balanceUtility != 0;
+    config.balanceRange = balanceRange != 0;
     config.avoidDuplicates = avoidDuplicates != 0;
-    config.minimumItemLevel = static_cast<uint16>(std::min<uint32>(minimumItemLevel, 1000));
+    config.minimumItemLevel = static_cast<uint16>(std::min<uint32>(1000, minimumItemLevel));
 
     uint32 owner = master->GetGUID().GetCounter();
     s_drafts[owner] = std::move(config);
     s_plans.erase(owner);
+    handler->SendSysMessage("[GC]|STATUS|Composer request accepted. Applying preferences...");
     return true;
 }
 
@@ -846,29 +566,91 @@ bool GroupComposerCommand::HandlePreference(ChatHandler* handler, std::string ro
 {
     Player* master = CommandPlayer(handler);
     if (!master) return true;
-    uint32 owner = master->GetGUID().GetCounter();
-    auto draft = s_drafts.find(owner);
-    if (draft == s_drafts.end()) { SendError(handler, "Start a composition draft before adding preferences."); return true; }
+    auto draft = s_drafts.find(master->GetGUID().GetCounter());
+    if (draft == s_drafts.end()) { SendError(handler, "Start a composer request before adding preferences."); return true; }
+    if (draft->second.preferences.size() >= 36) { SendError(handler, "Too many class/spec preferences (maximum 36)."); return true; }
 
-    ComposerPreference pref;
-    if (!ParseRole(roleText, pref.role)) { SendError(handler, "Unknown preference role."); return true; }
-    pref.cls = ClassFromToken(classText);
-    if (pref.cls == 0xFF) { SendError(handler, "Unknown preference class."); return true; }
+    uint8 role;
+    if (!ParseRole(roleText, role)) { SendError(handler, "Unknown preference role."); return true; }
+    uint8 cls = ClassFromToken(classText);
+    if (cls == 0xFF) { SendError(handler, "Unknown preference class."); return true; }
 
-    if (Lower(specText) == "any") pref.spec = ANY_SPEC;
-    else
+    uint8 spec = ANY_SPEC;
+    if (Lower(specText) != "any")
     {
-        try
-        {
-            unsigned long parsed = std::stoul(specText);
-            if (parsed > 2) throw std::out_of_range("spec");
-            pref.spec = static_cast<uint8>(parsed);
-        }
-        catch (...) { SendError(handler, "Spec must be ANY, 0, 1, or 2."); return true; }
+        if (specText.size() != 1 || specText[0] < '0' || specText[0] > '2') { SendError(handler, "Spec must be ANY or talent tab 0-2."); return true; }
+        spec = static_cast<uint8>(specText[0] - '0');
+        if (!cls) { SendError(handler, "A specific spec requires a specific class."); return true; }
     }
-    pref.required = Lower(strength) == "r" || Lower(strength) == "required";
-    if (draft->second.preferences.size() >= 24) { SendError(handler, "Too many class/spec preferences (max 24)."); return true; }
-    draft->second.preferences.push_back(pref);
+    if (cls && !SpecCanFillRole(cls, spec, role)) { SendError(handler, "That class/spec cannot fill the selected role."); return true; }
+
+    strength = Lower(strength);
+    if (strength != "r" && strength != "p") { SendError(handler, "Preference strength must be R (required) or P (preferred)."); return true; }
+    draft->second.preferences.push_back({ role, cls, spec, strength == "r" });
+    return true;
+}
+
+bool GroupComposerCommand::HandleHumanRole(ChatHandler* handler, std::string name, std::string roleText)
+{
+    Player* master = CommandPlayer(handler);
+    if (!master) return true;
+    auto draft = s_drafts.find(master->GetGUID().GetCounter());
+    if (draft == s_drafts.end()) { SendError(handler, "Start a composer request first."); return true; }
+    uint8 role;
+    if (!ParseRole(roleText, role)) { SendError(handler, "Human role must be tank, healer or dps."); return true; }
+    name = CanonicalName(name);
+    if (name.empty()) { SendError(handler, "Human name cannot be empty."); return true; }
+    draft->second.humanRoles[Lower(name)] = role;
+    return true;
+}
+
+bool GroupComposerCommand::HandleHuman(ChatHandler* handler, std::string name, std::string roleText)
+{
+    Player* master = CommandPlayer(handler);
+    if (!master) return true;
+    auto draft = s_drafts.find(master->GetGUID().GetCounter());
+    if (draft == s_drafts.end()) { SendError(handler, "Start a composer request first."); return true; }
+    uint8 role;
+    if (!ParseRole(roleText, role)) { SendError(handler, "Human role must be tank, healer or dps."); return true; }
+    name = CanonicalName(name);
+    if (name.empty()) { SendError(handler, "Human name cannot be empty."); return true; }
+
+    for (AddedHuman& entry : draft->second.extraHumans)
+        if (Lower(entry.name) == Lower(name)) { entry.role = role; return true; }
+    if (draft->second.extraHumans.size() >= 39) { SendError(handler, "Too many manually added humans."); return true; }
+    draft->second.extraHumans.push_back({ name, role });
+    return true;
+}
+
+bool GroupComposerCommand::HandlePin(ChatHandler* handler, std::string name, std::string roleText, std::string strength)
+{
+    Player* master = CommandPlayer(handler);
+    if (!master) return true;
+    auto draft = s_drafts.find(master->GetGUID().GetCounter());
+    if (draft == s_drafts.end()) { SendError(handler, "Start a composer request first."); return true; }
+    uint8 role;
+    if (!ParseRole(roleText, role)) { SendError(handler, "Pinned role must be tank, healer or dps."); return true; }
+    strength = Lower(strength);
+    if (strength != "r" && strength != "p") { SendError(handler, "Pin strength must be R or P."); return true; }
+    name = CanonicalName(name);
+    if (name.empty()) { SendError(handler, "Pinned name cannot be empty."); return true; }
+
+    for (Pin& pin : draft->second.pins)
+        if (Lower(pin.name) == Lower(name)) { pin.role = role; pin.required = strength == "r"; return true; }
+    if (draft->second.pins.size() >= 40) { SendError(handler, "Too many pinned members."); return true; }
+    draft->second.pins.push_back({ name, role, strength == "r" });
+    return true;
+}
+
+bool GroupComposerCommand::HandleArrangePreference(ChatHandler* handler, std::string name, uint32 subgroup)
+{
+    Player* master = CommandPlayer(handler);
+    if (!master) return true;
+    auto draft = s_drafts.find(master->GetGUID().GetCounter());
+    if (draft == s_drafts.end()) { SendError(handler, "Start a composer request first."); return true; }
+    if (subgroup < 1 || subgroup > 8) { SendError(handler, "Subgroup must be 1-8."); return true; }
+    name = CanonicalName(name);
+    if (!name.empty()) draft->second.arrangement[Lower(name)] = static_cast<uint8>(subgroup);
     return true;
 }
 
@@ -878,11 +660,19 @@ bool GroupComposerCommand::HandleFind(ChatHandler* handler)
     if (!master) return true;
     uint32 owner = master->GetGUID().GetCounter();
     auto draft = s_drafts.find(owner);
-    if (draft == s_drafts.end()) { SendError(handler, "No draft. Re-open Group Composer and try again."); return true; }
+    if (draft == s_drafts.end()) { SendError(handler, "No composer request. Configure the addon and press Find Roster again."); return true; }
 
-    ComposerPlan plan;
-    BuildPlan(master, draft->second, plan);
-    s_plans[owner] = plan;
+    Plan plan;
+    std::string error;
+    if (!Planner::Build(master, draft->second, plan, error))
+    {
+        handler->SendSysMessage("[GC]|RESET");
+        SendError(handler, error);
+        s_plans.erase(owner);
+        return true;
+    }
+
+    s_plans[owner] = std::move(plan);
     SendPlan(handler, s_plans[owner]);
     return true;
 }
@@ -891,12 +681,27 @@ bool GroupComposerCommand::HandleArrange(ChatHandler* handler)
 {
     Player* master = CommandPlayer(handler);
     if (!master) return true;
-    uint32 owner = master->GetGUID().GetCounter();
-    auto it = s_plans.find(owner);
-    if (it == s_plans.end()) { SendError(handler, "Find a roster first."); return true; }
-    ArrangePlan(it->second);
-    ApplyArrangement(master, it->second);
-    SendPlan(handler, it->second);
+    auto itr = s_plans.find(master->GetGUID().GetCounter());
+    if (itr == s_plans.end() || !itr->second.valid) { SendError(handler, "Find a valid roster before arranging it."); return true; }
+    Planner::Arrange(itr->second);
+    ApplyArrangement(master, itr->second);
+    SendPlan(handler, itr->second);
+    handler->SendSysMessage("[GC]|DONE|Subgroups auto-arranged without changing roster membership.");
+    return true;
+}
+
+bool GroupComposerCommand::HandleMove(ChatHandler* handler, std::string name, uint32 subgroup)
+{
+    Player* master = CommandPlayer(handler);
+    if (!master) return true;
+    auto itr = s_plans.find(master->GetGUID().GetCounter());
+    if (itr == s_plans.end() || !itr->second.valid) { SendError(handler, "Find a valid roster before moving members."); return true; }
+    std::string detail;
+    if (!Planner::Move(itr->second, CanonicalName(name), static_cast<uint8>(subgroup), detail))
+    { SendError(handler, detail); return true; }
+    ApplyArrangement(master, itr->second);
+    SendPlan(handler, itr->second);
+    handler->PSendSysMessage("[GC]|DONE|{}", Sanitize(detail));
     return true;
 }
 
@@ -905,66 +710,97 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
     Player* master = CommandPlayer(handler);
     if (!master) return true;
     uint32 owner = master->GetGUID().GetCounter();
-    auto it = s_plans.find(owner);
-    if (it == s_plans.end() || !it->second.valid) { SendError(handler, "Find a valid roster before assembling."); return true; }
-    ComposerPlan& plan = it->second;
+    auto itr = s_plans.find(owner);
+    if (itr == s_plans.end() || !itr->second.valid) { SendError(handler, "Find a valid roster before assembling it."); return true; }
+    Plan& plan = itr->second;
+    if (plan.assembling) { handler->SendSysMessage("[GC]|STATUS|Assembly is already in progress."); return true; }
 
-    Group* group = master->GetGroup();
-    if (group && group->GetMembersCount() > 1 && !group->IsLeader(master->GetGUID()))
-    {
-        SendError(handler, "You must be group/raid leader to assemble this roster.");
-        return true;
-    }
-
-    std::unordered_set<uint32> selected;
-    for (ComposerMember const& member : plan.members) selected.insert(member.guid.GetCounter());
-
-    if (group)
-    {
-        std::vector<ObjectGuid> remove;
-        for (Group::MemberSlot const& slot : group->GetMemberSlots())
-            if (slot.guid != master->GetGUID() && !selected.count(slot.guid.GetCounter()) && IsBotCharacter(slot.guid))
-                remove.push_back(slot.guid);
-        for (ObjectGuid guid : remove)
-            if (master->GetGroup()) master->GetGroup()->RemoveMember(guid, GROUP_REMOVEMETHOD_KICK, master->GetGUID());
-    }
-
+    PruneUnselectedBots(master, plan);
     PlayerbotMgr* mgr = GET_PLAYERBOT_MGR(master);
     if (!mgr) { SendError(handler, "Playerbot manager is unavailable."); return true; }
-    uint32 masterAccount = master->GetSession()->GetAccountId();
-    uint32 loginRequests = 0, inviteRequests = 0, alreadyPresent = 0;
 
-    for (ComposerMember const& member : plan.members)
+    uint32 account = master->GetSession()->GetAccountId();
+    for (Member const& member : plan.members)
     {
-        if (member.human) continue;
+        if (member.human || !member.managed) continue;
         Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid);
-        if (bot && master->GetGroup() && master->GetGroup()->IsMember(member.guid))
+        if (bot)
         {
-            ++alreadyPresent;
-            if (member.managed) SyncManagedBot(master, bot, member.spec);
+            SyncManagedBot(master, bot, member.spec);
             continue;
         }
-
-        if (member.managed)
-            s_pendingSync[member.guid.GetCounter()] = PendingSync{ owner, member.spec };
-
-        if (!bot)
-        {
-            mgr->AddPlayerBot(member.guid, masterAccount);
-            ++loginRequests;
-        }
-        else if (!bot->GetGroup())
-        {
-            InviteToGroupAction invite(GET_PLAYERBOT_AI(bot));
-            if (invite.Invite(master, bot)) ++inviteRequests;
-        }
+        mgr->AddPlayerBot(member.guid, account);
+        s_pendingSync[member.guid.GetCounter()] = { owner, member.spec, 0 };
     }
 
     plan.assembling = true;
     plan.assembleElapsed = 0;
-    ApplyArrangement(master, plan);
-    handler->PSendSysMessage("[GC]|DONE|Assembly started: {} already present, {} bot login(s), {} guild/world invite(s). Groups will auto-arrange as members join.",
-        alreadyPresent, loginRequests, inviteRequests);
+    TryInviteMissing(master, plan);
+    handler->SendSysMessage("[GC]|STATUS|Assembly started. Bots will auto-join; invited real players must accept normally.");
+    return true;
+}
+
+bool GroupComposerCommand::HandleQueue(ChatHandler* handler)
+{
+    Player* master = CommandPlayer(handler);
+    if (!master) return true;
+    auto itr = s_plans.find(master->GetGUID().GetCounter());
+    if (itr == s_plans.end() || !itr->second.valid) { SendError(handler, "Find a valid dungeon roster first."); return true; }
+    Plan& plan = itr->second;
+    if (plan.config.mode != "dungeon") { SendError(handler, "Dungeon Finder handoff is only available in Dungeon mode."); return true; }
+    if (plan.assembling || !PlanMembershipComplete(master, plan)) { SendError(handler, "Assemble the complete 5-player party before queueing it."); return true; }
+
+    Group* group = master->GetGroup();
+    if (!group || group->GetMembersCount() != 5) { SendError(handler, "Dungeon Finder handoff requires exactly five assembled group members."); return true; }
+    if (group->isRaidGroup()) { SendError(handler, "Stock Dungeon Finder cannot queue a raid-format group. Reform the party as a normal 5-player group first."); return true; }
+    if (!group->IsLeader(master->GetGUID())) { SendError(handler, "Only the party leader can queue the assembled party."); return true; }
+    if (plan.config.difficulty == "alpha" || plan.config.difficulty == "beta" || plan.config.difficulty == "gamma")
+    { SendError(handler, "Titan Rune queue handoff is not represented by stock 3.3.5a RDF difficulty IDs; use the realm's Titan Rune entry flow after assembly."); return true; }
+
+    for (Member const& member : plan.members)
+        if (!ObjectAccessor::FindConnectedPlayer(member.guid)) { SendError(handler, "Every party member must be online before entering Dungeon Finder."); return true; }
+
+    lfg::LfgDungeonSet dungeons;
+    bool heroic = plan.config.difficulty == "heroic";
+    if (plan.config.activity == "random")
+    {
+        bool wotlk = master->GetLevel() >= 71;
+        dungeons.insert(wotlk ? (heroic ? lfg::RANDOM_DUNGEON_HEROIC_WOTLK : lfg::RANDOM_DUNGEON_NORMAL_WOTLK)
+                              : (heroic ? lfg::RANDOM_DUNGEON_HEROIC_TBC : lfg::RANDOM_DUNGEON_NORMAL_TBC));
+    }
+    else
+    {
+        uint32 mapId = DungeonMapId(plan.config.activity);
+        Difficulty difficulty = heroic ? DUNGEON_DIFFICULTY_HEROIC : DUNGEON_DIFFICULTY_NORMAL;
+        LFGDungeonEntry const* entry = GetLFGDungeon(mapId, difficulty);
+        if (!entry) { SendError(handler, "The selected dungeon/difficulty has no stock RDF entry on this client/server build."); return true; }
+        dungeons.insert(entry->ID);
+    }
+
+    ApplyGroupSettings(master, plan);
+    uint8 leaderRole = lfg::PLAYER_ROLE_DAMAGE | lfg::PLAYER_ROLE_LEADER;
+    for (Member const& member : plan.members)
+        if (member.guid == master->GetGUID()) { leaderRole = LfgRole(member.role, true); break; }
+
+    sLFGMgr->JoinLfg(master, leaderRole, dungeons, "Group Composer");
+    for (Member const& member : plan.members)
+        sLFGMgr->UpdateRoleCheck(group->GetGUID(), member.guid, LfgRole(member.role, member.guid == master->GetGUID()));
+    master->UpdateLFGChannel();
+    handler->SendSysMessage("[GC]|DONE|Party handed to Dungeon Finder with the composed roles.");
+    return true;
+}
+
+bool GroupComposerCommand::HandleDiagnostics(ChatHandler* handler)
+{
+    Player* master = CommandPlayer(handler);
+    if (!master) return true;
+    auto itr = s_plans.find(master->GetGUID().GetCounter());
+    if (itr == s_plans.end())
+    {
+        handler->SendSysMessage("[GC]|DIAG|No preview exists yet. Press Find Roster to collect candidate diagnostics.");
+        return true;
+    }
+    handler->PSendSysMessage("[GC]|DIAG|{}", Sanitize(Planner::Diagnostics(itr->second)));
     return true;
 }
 
@@ -975,10 +811,10 @@ bool GroupComposerCommand::HandleClear(ChatHandler* handler)
     uint32 owner = master->GetGUID().GetCounter();
     s_drafts.erase(owner);
     s_plans.erase(owner);
-    for (auto it = s_pendingSync.begin(); it != s_pendingSync.end(); )
-        if (it->second.ownerGuid == owner) it = s_pendingSync.erase(it); else ++it;
+    for (auto itr = s_pendingSync.begin(); itr != s_pendingSync.end(); )
+        if (itr->second.ownerGuid == owner) itr = s_pendingSync.erase(itr); else ++itr;
     handler->SendSysMessage("[GC]|RESET");
-    handler->SendSysMessage("[GC]|DONE|Composer draft cleared. No players or bots were removed.");
+    handler->SendSysMessage("[GC]|DONE|Composer preview cleared. No group members were removed.");
     return true;
 }
 
@@ -987,17 +823,22 @@ bool GroupComposerCommand::HandleStatus(ChatHandler* handler)
     Player* master = CommandPlayer(handler);
     if (!master) return true;
     uint32 owner = master->GetGUID().GetCounter();
-    auto it = s_plans.find(owner);
-    if (it == s_plans.end())
+    auto plan = s_plans.find(owner);
+    if (plan != s_plans.end())
     {
-        handler->SendSysMessage("[GC]|STATUS|Backend ready. No roster preview is currently stored.");
+        SendPlan(handler, plan->second);
+        handler->PSendSysMessage("[GC]|STATUS|{}", plan->second.assembling ? "Assembly in progress." : "Preview synchronized from server.");
         return true;
     }
-    SendPlan(handler, it->second);
+    if (s_drafts.count(owner))
+        handler->SendSysMessage("[GC]|STATUS|Configuration draft exists; press Find Roster to build a preview.");
+    else
+        handler->SendSysMessage("[GC]|STATUS|Group Composer backend ready.");
     return true;
 }
 
 void AddGroupComposerScripts()
 {
-    new GroupComposerWorldScript();
+    new GroupComposerCommand();
+    new GroupComposerWorld();
 }
