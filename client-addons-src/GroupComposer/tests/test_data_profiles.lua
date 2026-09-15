@@ -8,22 +8,18 @@ local D = GroupComposerData
 local P = GroupComposerProfiles
 
 local function eq(actual, expected, label)
-    if actual ~= expected then
-        error((label or "value") .. ": expected " .. tostring(expected) .. ", got " .. tostring(actual), 2)
-    end
+    if actual ~= expected then error((label or "value") .. ": expected " .. tostring(expected) .. ", got " .. tostring(actual), 2) end
 end
 
 local function truth(value, label)
     if not value then error(label or "expected truthy value", 2) end
 end
 
--- Only classes that exist in a 3.3.5a WotLK client belong in the composer.
 eq(#D.CLASS_ORDER, 10, "WotLK class count")
 truth(not D.CLASS_ID.MONK, "Monk must not exist")
 truth(not D.CLASS_ID.DEMONHUNTER, "Demon Hunter must not exist")
 truth(not D.CLASS_ID.EVOKER, "Evoker must not exist")
 
--- Generic role defaults are whole-roster totals and must always add up.
 for _, size in ipairs({ 5, 10, 20, 25, 40 }) do
     local tanks, healers, dps = D.DefaultRolesForSize(size)
     eq(tanks + healers + dps, size, "role total for size " .. size)
@@ -33,14 +29,12 @@ eq(t25, 2, "25-player tanks")
 eq(h25, 6, "25-player healers")
 eq(d25, 17, "25-player dps")
 
--- Raid metadata must not invent Heroic modes for instances that did not expose one as a raid difficulty.
 truth(D.GetRaidById("icecrown").heroic, "ICC heroic")
 truth(D.GetRaidById("trial_crusader").heroic, "ToC heroic")
 truth(D.GetRaidById("ruby_sanctum").heroic, "RS heroic")
 truth(not D.GetRaidById("ulduar").heroic, "Ulduar separate heroic must remain false")
 truth(not D.GetRaidById("naxxramas").heroic, "Naxx separate heroic must remain false")
 
--- Every built-in profile is internally coherent and references a real activity.
 local names = {}
 for _, profile in ipairs(D.BUILTIN_PROFILES) do
     truth(profile.name and profile.name ~= "", "built-in profile name")
@@ -60,36 +54,45 @@ for _, profile in ipairs(D.BUILTIN_PROFILES) do
     end
 end
 
--- Schema v2 migration/defaulting keeps older profiles usable and adds new collections/options.
 local migrated = P.Normalize({
-    mode = "RAID",
-    activity = "icecrown",
-    difficulty = "normal",
-    size = 25,
-    tanks = 2,
-    healers = 6,
-    dps = 17,
-    options = { preferGuild = false },
+    mode = "RAID", activity = "icecrown", difficulty = "normal", size = 25,
+    tanks = 2, healers = 6, dps = 17,
+    options = { preferGuild = false, keepMe = false },
     preferences = { TANK = {}, HEALER = {}, DPS = {} },
 })
 eq(migrated.options.preferGuild, false, "explicit option preserved")
 eq(migrated.options.balanceUtility, true, "new utility option default")
 eq(migrated.options.balanceRange, true, "new range option default")
+eq(migrated.options.keepMe, true, "local player is immutable")
 truth(type(migrated.humanRoles) == "table", "humanRoles default")
 truth(type(migrated.extraHumans) == "table", "extraHumans default")
 truth(type(migrated.pinned) == "table", "pinned default")
+truth(type(migrated.stableHumans) == "table", "stableHumans default")
 truth(type(migrated.arrangement) == "table", "arrangement default")
 
--- Arrangement persistence is deliberately limited to stable identities.
 local normalized = P.Normalize({
     mode = "RAID", activity = "icecrown", difficulty = "normal", size = 10,
     tanks = 2, healers = 2, dps = 6,
     humanRoles = { Stoffe = "TANK" },
+    stableHumans = { "FriendWithoutOverride" },
     pinned = { { name = "Stonewall", role = "TANK", required = true } },
-    arrangement = { Stoffe = 1, Stonewall = 2, Disposablebot = 2 },
+    arrangement = { Stoffe = 1, FriendWithoutOverride = 1, Stonewall = 2, Disposablebot = 2 },
 })
-eq(normalized.arrangement.Stoffe, 1, "human arrangement")
+eq(normalized.arrangement.Stoffe, 1, "human override arrangement")
+eq(normalized.arrangement.FriendWithoutOverride, 1, "auto human arrangement")
 eq(normalized.arrangement.Stonewall, 2, "pin arrangement")
 truth(normalized.arrangement.Disposablebot == nil, "transient bot arrangement must be discarded")
+eq(#normalized.stableHumans, 1, "stable human count")
+eq(normalized.stableHumans[1], "FriendWithoutOverride", "stable human name")
+
+local deduped = P.Normalize({
+    mode = "DUNGEON", activity = "random", difficulty = "heroic", size = 5,
+    tanks = 1, healers = 1, dps = 3,
+    stableHumans = { "Alice", "alice", "Bob" },
+    arrangement = { Alice = 1, Bob = 9 },
+})
+eq(#deduped.stableHumans, 2, "stable human dedupe")
+eq(deduped.arrangement.Alice, 1, "valid subgroup retained")
+truth(deduped.arrangement.Bob == nil, "invalid subgroup discarded")
 
 print("Group Composer data/profile tests passed")
