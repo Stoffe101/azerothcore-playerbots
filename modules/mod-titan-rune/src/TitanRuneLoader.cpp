@@ -7,6 +7,7 @@ void AddTitanRuneFamilyScripts();
 void AddTitanRuneGammaScripts();
 void AddTitanRuneRewardScripts();
 void AddTitanRuneLootScripts();
+void AddTitanRuneDeviceScripts();
 
 void Addmod_titan_runeScripts()
 {
@@ -18,4 +19,5 @@ void Addmod_titan_runeScripts()
     AddTitanRuneGammaScripts();
     AddTitanRuneRewardScripts();
     AddTitanRuneLootScripts();
+    AddTitanRuneDeviceScripts();
 }
