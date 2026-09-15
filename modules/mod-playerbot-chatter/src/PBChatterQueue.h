@@ -22,11 +22,12 @@ struct PBChatJob
     // so a raid call can never degrade into an unrelated "yeah lol" style response.
     std::string  fallbackReply;
 
-    // When true, generated text is accepted only when it remains lexically grounded in
-    // fallbackReply and still preserves most of that fallback's content words. If the model adds
-    // a new mechanic/assignment term or drops too much of the validated plan, the deterministic
-    // fallback wins instead. Ordinary conversational jobs leave this disabled.
+    // Safety-critical wording preserves ordered text; only case and whitespace may differ.
     bool         groundedAgainstFallback = false;
+    uint64_t     briefGroupGuid = 0;
+    uint32_t     briefMapId = 0;
+    uint32_t     briefInstanceId = 0;
+    uint32_t     briefCreatedMs = 0;
 
     // Some generated system lines are not conversations and must not pollute the bot<->player
     // chat-memory window. Ordinary reactive jobs keep the historical default.
@@ -51,6 +52,10 @@ struct PBChatResult
     std::string  playerName;
     PBChatChannel channel;
     std::string  reply;
+    uint64_t     briefGroupGuid = 0;
+    uint32_t     briefMapId = 0;
+    uint32_t     briefInstanceId = 0;
+    uint32_t     briefCreatedMs = 0;
 
     bool         ambient = false;
     uint8_t      ambientKind = 0;

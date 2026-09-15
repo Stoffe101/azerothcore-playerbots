@@ -1,4 +1,5 @@
 #include "RaidLeaderAuto.h"
+#include "Timer.h"
 
 #include "RaidLeaderKnowledge.h"
 #include "PBChatterConfig.h"
@@ -185,6 +186,10 @@ void DeliverBrief(Creature* boss, RaidLeaderKnowledge::Encounter const& encounte
     job.storeMemory = false;
     job.fallbackReply = fallback;
     job.groundedAgainstFallback = true;
+    job.briefGroupGuid = group->GetGUID().GetRawValue();
+    job.briefMapId = boss->GetMapId();
+    job.briefInstanceId = boss->GetInstanceId();
+    job.briefCreatedMs = getMSTime();
     job.systemPrompt =
         "You are a local World of Warcraft raid-leader voice layer. The supplied encounter record is the only source of truth. "
         "Return exactly one concise raid-chat callout. Never add mechanics, timers, assignments, phase names, spell effects, or bot abilities not present in the record. "
