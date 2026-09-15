@@ -3,7 +3,10 @@
 
 void AddTitanRuneAffixScripts();
 void AddTitanRuneShadowScripts();
-void AddTitanRuneFamilyScripts();
+void AddTitanRuneFrostArcaneScripts();
+void AddTitanRunePlagueGladiatorScripts();
+void AddTitanRuneAlphaTitanScripts();
+void AddTitanRunePurifiedEnergyScripts();
 void AddTitanRuneGammaScripts();
 void AddTitanRuneRewardScripts();
 void AddTitanRuneLootScripts();
@@ -18,7 +21,10 @@ void Addmod_titan_runeScripts()
     AddTitanRuneScripts();
     AddTitanRuneAffixScripts();
     AddTitanRuneShadowScripts();
-    AddTitanRuneFamilyScripts();
+    AddTitanRuneFrostArcaneScripts();
+    AddTitanRunePlagueGladiatorScripts();
+    AddTitanRuneAlphaTitanScripts();
+    AddTitanRunePurifiedEnergyScripts();
     AddTitanRuneGammaScripts();
     AddTitanRuneRewardScripts();
     AddTitanRuneLootScripts();
