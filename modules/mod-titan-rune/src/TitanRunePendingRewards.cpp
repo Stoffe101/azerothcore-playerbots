@@ -44,21 +44,6 @@ uint32 FinalBossEntry(uint32 mapId)
     }
 }
 
-bool SourceRewardAlreadyGranted(uint32 instanceId, uint32 bossEntry, TitanRuneMode mode)
-{
-    QueryResult result = CharacterDatabase.Query(
-        "SELECT 1 FROM mod_titan_rune_boss_rewards WHERE instance_id={} AND boss_entry={} AND mode={} LIMIT 1",
-        instanceId, bossEntry, uint8(mode));
-    return bool(result);
-}
-
-void MarkSourceRewardGranted(uint32 instanceId, uint32 bossEntry, TitanRuneMode mode)
-{
-    CharacterDatabase.DirectExecute(
-        "INSERT IGNORE INTO mod_titan_rune_boss_rewards (instance_id,boss_entry,mode) VALUES ({},{},{})",
-        instanceId, bossEntry, uint8(mode));
-}
-
 bool DeliverReward(Player* player, uint64 rewardId, uint32 itemEntry, uint32 count, std::string const& reason,
     bool notifyIfBlocked)
 {
@@ -139,25 +124,17 @@ public:
 
         uint32 const instanceId = map->GetInstanceId();
         uint32 const bossEntry = boss->GetEntry();
-        if (SourceRewardAlreadyGranted(instanceId, bossEntry, mode))
-            return;
-
-        // This UnitScript is registered before TitanRuneDamageScript. ScriptRegistry assigns
-        // monotonically increasing IDs and dispatches its ordered map, so these durable rows and
-        // the source marker are created before the legacy handler observes the same death. The old
-        // handler then sees the marker and exits, preventing a second direct AddItem grant.
         Map::PlayerList const& players = map->GetPlayers();
         for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
         {
             Player* player = itr->GetSource();
             if (!player || !player->GetSession() || player->GetSession()->IsBot())
                 continue;
+
+            // The ledger's UNIQUE key is the idempotency boundary. Delivered rows are retained,
+            // so even an accidental repeated death callback can never mint a second currency item.
             TitanRune::QueuePlayerReward(player, instanceId, bossEntry, mode, itemEntry, 1, reason);
         }
-
-        // Mark only after every currently present human has a durable per-player ledger row. A
-        // full bag merely leaves delivered=0 and no longer destroys the reward entitlement.
-        MarkSourceRewardGranted(instanceId, bossEntry, mode);
     }
 };
 }
@@ -173,8 +150,8 @@ void QueuePlayerReward(Player* player, uint32 instanceId, uint32 bossEntry, Tita
     std::string escapedReason = reason ? reason : "Titan Rune reward";
     CharacterDatabase.EscapeString(escapedReason);
 
-    // The UNIQUE key makes boss reward delivery idempotent even if multiple death hooks observe the
-    // same boss. Keep the row after delivery so a recycled callback cannot award the same reward twice.
+    // Keep the row after delivery. The UNIQUE key therefore makes reward creation idempotent across
+    // repeated hooks, reconnects and retries while still allowing a blocked reward to stay pending.
     CharacterDatabase.DirectExecute(
         "INSERT IGNORE INTO mod_titan_rune_player_rewards "
         "(guid, instance_id, boss_entry, mode, item_entry, item_count, reason, delivered) "
