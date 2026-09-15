@@ -52,6 +52,12 @@ std::unordered_map<uint32, Config> s_drafts;
 std::unordered_map<uint32, Plan> s_plans;
 std::unordered_map<uint32, PendingSync> s_pendingSync;
 
+void ClearPendingForOwner(uint32 owner)
+{
+    for (auto itr = s_pendingSync.begin(); itr != s_pendingSync.end(); )
+        if (itr->second.ownerGuid == owner) itr = s_pendingSync.erase(itr); else ++itr;
+}
+
 std::string Lower(std::string value)
 {
     std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -546,6 +552,16 @@ bool GroupComposerCommand::HandleBegin(ChatHandler* handler, std::string mode, s
 {
     Player* master = CommandPlayer(handler);
     if (!master) { SendError(handler, "Run Group Composer in-world as a player."); return true; }
+    uint32 owner = master->GetGUID().GetCounter();
+    auto currentPlan = s_plans.find(owner);
+    if (currentPlan != s_plans.end() && currentPlan->second.assembling)
+    {
+        // Find Roster is a multi-message protocol. Remove the old draft so the pref/find messages
+        // that follow this rejected begin cannot mutate/rebuild underneath an active assembly.
+        s_drafts.erase(owner);
+        SendError(handler, "Wait for the current assembly to finish before starting a new search.");
+        return true;
+    }
 
     mode = Lower(mode); activity = Lower(activity); difficulty = Lower(difficulty);
     if (mode != "dungeon" && mode != "raid") { SendError(handler, "Mode must be dungeon or raid."); return true; }
@@ -575,7 +591,7 @@ bool GroupComposerCommand::HandleBegin(ChatHandler* handler, std::string mode, s
     config.avoidDuplicates = avoidDuplicates != 0;
     config.minimumItemLevel = static_cast<uint16>(std::min<uint32>(1000, minimumItemLevel));
 
-    uint32 owner = master->GetGUID().GetCounter();
+    ClearPendingForOwner(owner);
     s_drafts[owner] = std::move(config);
     s_plans.erase(owner);
     handler->SendSysMessage("[GC]|STATUS|Composer request accepted. Applying preferences...");
@@ -705,9 +721,8 @@ bool GroupComposerCommand::HandleArrange(ChatHandler* handler)
     auto itr = s_plans.find(master->GetGUID().GetCounter());
     if (itr == s_plans.end() || !itr->second.valid) { SendError(handler, "Find a valid roster before arranging it."); return true; }
     Planner::Arrange(itr->second);
-    ApplyArrangement(master, itr->second);
     SendPlan(handler, itr->second);
-    handler->SendSysMessage("[GC]|DONE|Subgroups auto-arranged without changing roster membership.");
+    handler->SendSysMessage("[GC]|DONE|Preview auto-arranged. Assemble applies the subgroup layout to the live raid.");
     return true;
 }
 
@@ -719,9 +734,8 @@ bool GroupComposerCommand::HandleMove(ChatHandler* handler, std::string name, ui
     if (itr == s_plans.end() || !itr->second.valid) { SendError(handler, "Find a valid roster before moving members."); return true; }
     std::string detail;
     if (!Planner::Move(itr->second, CanonicalName(name), static_cast<uint8>(subgroup), detail)) { SendError(handler, detail); return true; }
-    ApplyArrangement(master, itr->second);
     SendPlan(handler, itr->second);
-    handler->PSendSysMessage("[GC]|DONE|{}", Sanitize(detail));
+    handler->PSendSysMessage("[GC]|DONE|{} Preview only; Assemble applies it to the live raid.", Sanitize(detail));
     return true;
 }
 
@@ -735,9 +749,16 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
     Plan& plan = itr->second;
     if (plan.assembling) { handler->SendSysMessage("[GC]|STATUS|Assembly is already in progress."); return true; }
 
+    bool needsManagedLogin = false;
+    for (Member const& member : plan.members)
+        if (!member.human && member.managed && !ObjectAccessor::FindConnectedPlayer(member.guid)) { needsManagedLogin = true; break; }
+
+    PlayerbotMgr* mgr = needsManagedLogin ? GET_PLAYERBOT_MGR(master) : nullptr;
+    if (needsManagedLogin && !mgr) { SendError(handler, "Playerbot manager is unavailable for the offline managed bot(s) in this roster."); return true; }
+
+    // Destructive membership changes begin only after every required backend dependency is known to
+    // be available. Find/Arrange/Move remain pure preview operations.
     PruneUnselectedBots(master, plan);
-    PlayerbotMgr* mgr = GET_PLAYERBOT_MGR(master);
-    if (!mgr) { SendError(handler, "Playerbot manager is unavailable."); return true; }
 
     uint32 account = master->GetSession()->GetAccountId();
     for (Member const& member : plan.members)
@@ -848,8 +869,7 @@ bool GroupComposerCommand::HandleClear(ChatHandler* handler)
     uint32 owner = master->GetGUID().GetCounter();
     s_drafts.erase(owner);
     s_plans.erase(owner);
-    for (auto itr = s_pendingSync.begin(); itr != s_pendingSync.end(); )
-        if (itr->second.ownerGuid == owner) itr = s_pendingSync.erase(itr); else ++itr;
+    ClearPendingForOwner(owner);
     handler->SendSysMessage("[GC]|RESET");
     handler->SendSysMessage("[GC]|DONE|Composer preview cleared. No group members were removed.");
     return true;
