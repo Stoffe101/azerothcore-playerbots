@@ -189,7 +189,7 @@ diff --git a/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp b/modules/mod-player
      botOutgoingPacketHandlers.AddHandler(SMSG_LFG_ROLE_CHECK_UPDATE, "lfg role check");
      botOutgoingPacketHandlers.AddHandler(SMSG_LFG_PROPOSAL_UPDATE, "lfg proposal");
      botOutgoingPacketHandlers.AddHandler(SMSG_TEXT_EMOTE, "receive text emote");
-@@ -4614,6 +4618,17 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
+@@ -4614,6 +4618,16 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
      if (bot->InBattlegroundQueue())
          return true;
  
