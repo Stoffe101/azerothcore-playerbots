@@ -580,6 +580,7 @@ void TryInviteMissing(Player* master, Plan& plan)
     for (Member const& member : plan.members)
     {
         if (!member.human || member.guid == master->GetGUID()) continue;
+        if (plan.humanInvitesSent.count(member.guid.GetCounter())) continue;
         Player* player = ObjectAccessor::FindConnectedPlayer(member.guid);
         if (!player) continue;
         Group* current = master->GetGroup();
@@ -589,6 +590,7 @@ void TryInviteMissing(Player* master, Plan& plan)
         if (!canInvite()) break;
         bool hadGroup = current != nullptr;
         InviteHuman(master, player);
+        plan.humanInvitesSent.insert(member.guid.GetCounter());
         if (!hadGroup) return;
     }
 }
@@ -935,6 +937,11 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
 
     PlayerbotMgr* mgr = needsManagedLogin ? GET_PLAYERBOT_MGR(master) : nullptr;
     if (needsManagedLogin && !mgr) { SendError(handler, "Playerbot manager is unavailable for the offline managed bot(s) in this roster."); return true; }
+
+    // A fresh explicit Assemble is also the explicit retry boundary for human invitations. During
+    // this attempt each real player receives at most one invite, so a decline is never turned into
+    // an invite storm by the world-update retry loop.
+    plan.humanInvitesSent.clear();
 
     // This is the first destructive step. Everything above it only revalidates the reviewed snapshot.
     PruneUnselectedBots(master, plan);
