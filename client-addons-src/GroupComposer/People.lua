@@ -200,6 +200,27 @@ local function EnsureHumanRow(index)
     local classText = Text(row, "", "GameFontHighlightSmall", C.muted)
     classText:SetPoint("LEFT", 235, 0); classText:SetWidth(180); classText:SetJustifyH("LEFT")
     row.nameText, row.classText = name, classText
+
+    -- WoW frames cannot be destroyed. Recreating a dropdown on every roster/config refresh leaks
+    -- hidden frames over a long session, especially with 25/40 human anchors. Each pooled row owns
+    -- exactly one dropdown whose callbacks read the row's current human instead.
+    local roleDD
+    roleDD = Dropdown(row, 130, function() return RoleItems(true) end,
+        function()
+            local human = row.currentHuman
+            if not human then return "AUTO" end
+            local config = GC:GetConfig()
+            return config.humanRoles[human.name] or human.role or "AUTO"
+        end,
+        function(value)
+            local human = row.currentHuman
+            if not human then return end
+            GC:SetHumanRole(human.name, value)
+            roleDD:Refresh()
+        end)
+    roleDD:SetPoint("RIGHT", -10, -2); roleDD:Hide()
+    row.roleDD = roleDD
+
     humanRows[index] = row
     return row
 end
@@ -240,23 +261,18 @@ function A:RefreshPeople()
     local humanHeight = 58 + humanCount * 36 + 8
     humanSection:ClearAllPoints(); humanSection:SetPoint("TOPLEFT", 10, -top); humanSection:SetWidth(975); humanSection:SetHeight(humanHeight)
     if #humans == 0 then
-        local row = EnsureHumanRow(1); row:Show(); row:ClearAllPoints(); row:SetPoint("TOPLEFT", 10, -48); row:SetPoint("RIGHT", -10, 0)
+        local row = EnsureHumanRow(1); row.currentHuman = nil; row:Show(); row:ClearAllPoints(); row:SetPoint("TOPLEFT", 10, -48); row:SetPoint("RIGHT", -10, 0)
         row.nameText:SetText("No real players detected."); row.nameText:SetTextColor(C.dim[1], C.dim[2], C.dim[3]); row.classText:SetText("")
-        if row.roleDD then row.roleDD:Hide() end
+        row.roleDD:Hide()
     else
         for index, human in ipairs(humans) do
             local humanValue = human
-            local row = EnsureHumanRow(index); row:Show(); row:ClearAllPoints(); row:SetPoint("TOPLEFT", 10, -48 - (index - 1) * 36); row:SetPoint("RIGHT", -10, 0)
+            local row = EnsureHumanRow(index); row.currentHuman = humanValue; row:Show(); row:ClearAllPoints(); row:SetPoint("TOPLEFT", 10, -48 - (index - 1) * 36); row:SetPoint("RIGHT", -10, 0)
             row.nameText:SetText(humanValue.name or "?")
             local nameColor = humanValue.isPlayer and C.gold or C.text
             row.nameText:SetTextColor(nameColor[1], nameColor[2], nameColor[3])
             row.classText:SetText(D.CLASS_LABEL[humanValue.class] or humanValue.class or "Unknown")
-            if row.roleDD then row.roleDD:Hide(); row.roleDD:SetParent(nil); row.roleDD = nil end
-            local roleDD
-            roleDD = Dropdown(row, 130, function() return RoleItems(true) end,
-                function() return config.humanRoles[humanValue.name] or humanValue.role or "AUTO" end,
-                function(value) GC:SetHumanRole(humanValue.name, value); roleDD:Refresh() end)
-            roleDD:SetPoint("RIGHT", -10, -2); row.roleDD = roleDD
+            row.roleDD:Show(); row.roleDD:Refresh()
         end
     end
 
