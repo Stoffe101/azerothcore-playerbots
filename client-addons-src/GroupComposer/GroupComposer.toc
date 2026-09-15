@@ -9,4 +9,5 @@ Profiles.lua
 Core.lua
 UI.lua
 Advanced.lua
+People.lua
 Polish.lua
