@@ -1,0 +1,64 @@
+name: Group Composer checks
+
+on:
+  push:
+    branches:
+      - feature/group-composer
+  pull_request:
+    paths:
+      - 'client-addons-src/GroupComposer/**'
+      - 'modules/mod-raid-roster/src/GroupComposer*'
+      - 'modules/mod-raid-roster/src/RaidRosterLoader.cpp'
+      - '.github/workflows/group-composer.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  lua-335:
+    name: Lua 5.1 addon checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1
+
+      - name: Parse every Group Composer Lua file
+        run: |
+          set -euo pipefail
+          find client-addons-src/GroupComposer -type f -name '*.lua' -print0 \
+            | xargs -0 -n1 luac5.1 -p
+
+      - name: Run data and profile tests
+        run: lua5.1 client-addons-src/GroupComposer/tests/test_data_profiles.lua
+
+  source-sanity:
+    name: Source contract checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check addon manifest and protocol contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '^## Interface: 30300$' client-addons-src/GroupComposer/GroupComposer.toc
+          grep -q '^Advanced.lua$' client-addons-src/GroupComposer/GroupComposer.toc
+          grep -q 'AddGroupComposerScripts();' modules/mod-raid-roster/src/RaidRosterLoader.cpp
+          grep -q 'HandleAssemble' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'HandleQueue' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'Planner::Build' modules/mod-raid-roster/src/GroupComposerPlanner.cpp
+
+      - name: Reject accidental modern classes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RniE '\b(MONK|DEMONHUNTER|DEMON_HUNTER|EVOKER)\b' client-addons-src/GroupComposer modules/mod-raid-roster/src/GroupComposer*; then
+            echo 'Modern post-WotLK class token found in Group Composer source.' >&2
+            exit 1
+          fi
