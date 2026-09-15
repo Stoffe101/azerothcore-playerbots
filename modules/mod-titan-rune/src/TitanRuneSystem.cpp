@@ -1,4 +1,6 @@
 #include "TitanRuneSystem.h"
+#include "InstanceSaveMgr.h"
+#include "InstanceScript.h"
 
 #include "Chat.h"
 #include "CommandScript.h"
@@ -348,6 +350,23 @@ public:
         LoadVendorItems();
         EnsureDalaranNpcs();
         LOG_INFO("server.loading", "[TitanRune] Defense Protocol Alpha/Beta/Gamma ready.");
+    }
+};
+
+class TitanRuneInstanceLifecycleScript final : public GlobalScript
+{
+public:
+    TitanRuneInstanceLifecycleScript() : GlobalScript("TitanRuneInstanceLifecycleScript") { }
+
+    void OnInstanceIdRemoved(uint32 instanceId) override
+    {
+        CharacterDatabase.DirectExecute("DELETE FROM mod_titan_rune_instances WHERE instance_id={}", instanceId);
+        std::lock_guard<std::mutex> lock(g_stateMutex);
+        for (auto it = g_instanceModes.begin(); it != g_instanceModes.end(); )
+            if (uint32(it->first) == instanceId)
+                it = g_instanceModes.erase(it);
+            else
+                ++it;
     }
 };
 
@@ -726,6 +745,15 @@ void ActivateForPlayer(Player* player)
             return;
     }
 
+    QueryResult stored = CharacterDatabase.Query(
+        "SELECT mode FROM mod_titan_rune_instances WHERE instance_id={} AND map_id={} AND reset_time={}",
+        map->GetInstanceId(), map->GetId(), RunResetTime(map));
+    if (stored)
+    {
+        ActivateModeForPlayer(player, static_cast<TitanRuneMode>(stored->Fetch()[0].Get<uint8>()), true);
+        return;
+    }
+
     // Frozen Halls shipped in the Gamma phase with Scourgestone rewards active by default while
     // preserving ordinary Heroic health, damage and mechanics. Treat that as an instance property,
     // not as a mutation of anyone's persisted next-dungeon selection.
@@ -736,7 +764,10 @@ void ActivateForPlayer(Player* player)
     {
         if (Group* group = player->GetGroup())
         {
-            if (Player* leader = ObjectAccessor::FindPlayer(group->GetLeaderGUID()))
+            Player* leader = ObjectAccessor::FindPlayer(group->GetLeaderGUID());
+            if (!leader)
+                return;
+            if (leader)
             {
                 if (leader->GetSession() && !leader->GetSession()->IsBot())
                 {
@@ -752,32 +783,56 @@ void ActivateForPlayer(Player* player)
             selected = LoadSelectedMode(player);
     }
 
-    if (selected == TitanRuneMode::Off)
-        return;
-    if (!IsSupportedDungeon(map->GetId(), selected))
-    {
-        Notify(player, std::string("Defense Protocol ") + ModeName(selected) + " is not available in this dungeon.");
-        return;
-    }
+    ActivateModeForPlayer(player, selected);
+}
 
+bool ActivateModeForPlayer(Player* player, TitanRuneMode selected, bool restoring)
+{
+    if (!player || !player->IsInWorld() || selected == TitanRuneMode::Off || selected > TitanRuneMode::Gamma)
+        return false;
+    Map* map = player->GetMap();
+    if (!IsEligibleHeroicMap(map) || !IsSupportedDungeon(map->GetId(), selected))
+        return false;
+    if (!restoring)
+    {
+        if (InstanceScript* instance = player->GetInstanceScript())
+            if (instance->GetCompletedEncounterMask() || instance->IsEncounterInProgress())
+                return false;
+        for (auto const& ref : map->GetPlayers())
+            if (Player* member = ref.GetSource())
+                if (member->IsInCombat())
+                    return false;
+    }
+    uint64 const key = InstanceKey(map);
     bool activated = false;
     {
         std::lock_guard<std::mutex> lock(g_stateMutex);
         activated = g_instanceModes.emplace(key, selected).second;
     }
     if (!activated)
-        return;
+        return false;
+
+    CharacterDatabase.DirectExecute(
+        "REPLACE INTO mod_titan_rune_instances (instance_id,map_id,reset_time,mode) VALUES ({},{},{},{})",
+        map->GetInstanceId(), map->GetId(), RunResetTime(map), uint8(selected));
 
     BroadcastMode(map, selected);
     LOG_INFO("server.loading", "[TitanRune] Activated {} on map={} instance={} by {}{}",
         ModeName(selected), map->GetId(), map->GetInstanceId(), player->GetName(),
         selected == TitanRuneMode::Gamma && IsFrozenHalls(map->GetId()) ? " (reward-only Frozen Halls)" : "");
+    return true;
+}
+
+uint64 RunResetTime(Map const* map)
+{
+    return map ? uint64(sInstanceSaveMgr->GetResetTimeFor(map->GetId(), map->GetDifficulty())) : 0;
 }
 }
 
 void AddTitanRuneScripts()
 {
     new TitanRuneWorldScript();
+    new TitanRuneInstanceLifecycleScript();
     new TitanRunePlayerScript();
     new TitanRuneMapScript();
     new TitanRuneCreatureScript();

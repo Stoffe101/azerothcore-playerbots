@@ -370,7 +370,7 @@ INSERT INTO `tmp_titan_rune_loot_names` VALUES
 INSERT IGNORE INTO `mod_titan_rune_boss_loot` (`source_name`,`pool`,`item_entry`)
 SELECT n.`source_name`, n.`pool`, i.`entry`
 FROM `tmp_titan_rune_loot_names` n
-JOIN `item_template` i ON i.`name` = n.`item_name`;
+JOIN `item_template` i ON i.`name` COLLATE utf8mb4_unicode_ci = n.`item_name` COLLATE utf8mb4_unicode_ci;
 
 -- Faction commander in Nexus uses the same loot pool under either NPC name.
 INSERT IGNORE INTO `mod_titan_rune_boss_loot`

@@ -228,10 +228,14 @@ class TitanRuneLootMiscScript final : public MiscScript
 public:
     TitanRuneLootMiscScript() : MiscScript("TitanRuneLootMiscScript") { }
 
-    void OnAfterLootTemplateProcess(Loot* loot, LootTemplate const* /*tab*/, LootStore const& /*store*/,
+    void OnAfterLootTemplateProcess(Loot* loot, LootTemplate const* /*tab*/, LootStore const& store,
         Player* lootOwner, bool /*personal*/, bool /*noEmptyError*/, uint16 lootMode) override
     {
         if (!loot || !lootOwner || !lootOwner->IsInWorld())
+            return;
+        // The same source GUID is reused for skinning/pickpocketing. Those personal loot
+        // passes must never generate another copy of the encounter's protocol equipment.
+        if (&store != &LootTemplates_Creature && &store != &LootTemplates_Gameobject)
             return;
 
         Map* map = lootOwner->GetMap();

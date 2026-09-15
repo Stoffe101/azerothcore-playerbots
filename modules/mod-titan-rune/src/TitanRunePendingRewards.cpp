@@ -23,27 +23,6 @@ void Notify(Player* player, std::string const& message)
     ChatHandler(player->GetSession()).PSendSysMessage("[Titan Rune] {}", message);
 }
 
-uint32 FinalBossEntry(uint32 mapId)
-{
-    switch (mapId)
-    {
-        case 574: return 23954; // Ingvar the Plunderer
-        case 575: return 26861; // King Ymiron
-        case 576: return 26723; // Keristrasza
-        case 578: return 27656; // Ley-Guardian Eregos
-        case 595: return 26533; // Mal'Ganis
-        case 599: return 27978; // Sjonnir the Ironshaper
-        case 600: return 26632; // The Prophet Tharon'ja
-        case 601: return 29120; // Anub'arak
-        case 602: return 28923; // Loken
-        case 604: return 29306; // Gal'darah
-        case 608: return 31134; // Cyanigosa
-        case 619: return 29311; // Herald Volazj
-        case 650: return 35451; // The Black Knight
-        default: return 0;
-    }
-}
-
 bool DeliverReward(Player* player, uint64 rewardId, uint32 itemEntry, uint32 count, std::string const& reason,
     bool notifyIfBlocked)
 {
@@ -65,13 +44,15 @@ bool DeliverReward(Player* player, uint64 rewardId, uint32 itemEntry, uint32 cou
         return false;
     }
 
-    // Persist the inventory before closing the durable ledger row. This intentionally favours a
-    // vanishingly rare duplicate after a process crash over permanently losing an earned currency.
-    player->SaveToDB(false, false);
-    CharacterDatabase.DirectExecute(
+    // Inventory and delivery status must commit together. A separate asynchronous player save
+    // can complete after the ledger update and permanently lose the reward on a crash.
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+    player->SaveInventoryAndGoldToDB(trans);
+    trans->Append(
         "UPDATE mod_titan_rune_player_rewards SET delivered=1, delivered_at=CURRENT_TIMESTAMP "
         "WHERE id={} AND guid={} AND delivered=0",
         rewardId, player->GetGUID().GetCounter());
+    CharacterDatabase.DirectCommitTransaction(trans);
 
     Notify(player, reason + ": +" + std::to_string(count) + " " + item->Name1);
     return true;
@@ -93,50 +74,6 @@ public:
     }
 };
 
-class TitanRuneDurableCurrencyUnitScript final : public UnitScript
-{
-public:
-    TitanRuneDurableCurrencyUnitScript() : UnitScript("TitanRuneDurableCurrencyUnitScript") { }
-
-    void OnUnitDeath(Unit* unit, Unit* /*killer*/) override
-    {
-        Creature* boss = unit ? unit->ToCreature() : nullptr;
-        if (!boss || !boss->IsDungeonBoss() || !boss->GetMap())
-            return;
-
-        Map* map = boss->GetMap();
-        TitanRuneMode const mode = TitanRune::GetActiveMode(map);
-        uint32 itemEntry = 0;
-        char const* reason = nullptr;
-
-        if (mode == TitanRuneMode::Gamma)
-        {
-            itemEntry = TitanRune::SCOURGESTONE_ITEM;
-            reason = "Gamma boss defeated";
-        }
-        else if (mode == TitanRuneMode::Beta && boss->GetEntry() == FinalBossEntry(map->GetId()))
-        {
-            itemEntry = TitanRune::SIDEREAL_ESSENCE_ITEM;
-            reason = "Beta dungeon completed";
-        }
-        else
-            return;
-
-        uint32 const instanceId = map->GetInstanceId();
-        uint32 const bossEntry = boss->GetEntry();
-        Map::PlayerList const& players = map->GetPlayers();
-        for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
-        {
-            Player* player = itr->GetSource();
-            if (!player || !player->GetSession() || player->GetSession()->IsBot())
-                continue;
-
-            // The ledger's UNIQUE key is the idempotency boundary. Delivered rows are retained,
-            // so even an accidental repeated death callback can never mint a second currency item.
-            TitanRune::QueuePlayerReward(player, instanceId, bossEntry, mode, itemEntry, 1, reason);
-        }
-    }
-};
 }
 
 namespace TitanRune
@@ -154,9 +91,10 @@ void QueuePlayerReward(Player* player, uint32 instanceId, uint32 bossEntry, Tita
     // repeated hooks, reconnects and retries while still allowing a blocked reward to stay pending.
     CharacterDatabase.DirectExecute(
         "INSERT IGNORE INTO mod_titan_rune_player_rewards "
-        "(guid, instance_id, boss_entry, mode, item_entry, item_count, reason, delivered) "
-        "VALUES ({}, {}, {}, {}, {}, {}, '{}', 0)",
-        player->GetGUID().GetCounter(), instanceId, bossEntry, uint8(mode), itemEntry, count, escapedReason);
+        "(guid, instance_id, boss_entry, mode, item_entry, item_count, reason, delivered, reset_time) "
+        "VALUES ({}, {}, {}, {}, {}, {}, '{}', 0, {})",
+        player->GetGUID().GetCounter(), instanceId, bossEntry, uint8(mode), itemEntry, count, escapedReason,
+        RunResetTime(player->GetMap()));
 
     RetryPendingRewards(player, true);
 }
@@ -192,5 +130,4 @@ uint32 RetryPendingRewards(Player* player, bool notifyIfBlocked)
 void AddTitanRunePendingRewardScripts()
 {
     new TitanRunePendingRewardPlayerScript();
-    new TitanRuneDurableCurrencyUnitScript();
 }

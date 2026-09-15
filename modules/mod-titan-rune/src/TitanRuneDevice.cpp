@@ -32,6 +32,8 @@ constexpr float CHANNEL_MOVE_TOLERANCE = 1.5f;
 struct PendingActivation
 {
     TitanRuneMode mode = TitanRuneMode::Off;
+    uint64 groupGuid = 0;
+    uint64 leaderGuid = 0;
 };
 
 struct ChannelState
@@ -101,8 +103,10 @@ Player* CurrentHumanLeader(Player* player)
         return player;
 
     Player* leader = ObjectAccessor::FindPlayer(group->GetLeaderGUID());
-    if (IsHuman(leader) && leader->GetMap() == player->GetMap())
-        return leader;
+    if (!leader)
+        return nullptr;
+    if (IsHuman(leader))
+        return leader->GetMap() == player->GetMap() ? leader : nullptr;
 
     // A playerbot-led group cannot operate gossip. Let the human party member operate the device;
     // playerbots still count as automatic protocol-channel participants.
@@ -119,7 +123,9 @@ bool CanChooseProtocol(Player* player)
         return true;
 
     Player* leader = ObjectAccessor::FindPlayer(group->GetLeaderGUID());
-    if (!IsHuman(leader) || leader->GetMap() != player->GetMap())
+    if (!leader)
+        return false;
+    if (!IsHuman(leader))
         return true;
     return leader == player;
 }
@@ -264,15 +270,23 @@ void ActivatePending(Player* finisher, TitanRuneMode mode, uint64 key)
         return;
     }
 
-    Player* activator = CurrentHumanLeader(finisher);
-    if (!activator)
-        activator = finisher;
+    {
+        Group* group = finisher->GetGroup();
+        uint64 const groupGuid = group ? group->GetGUID().GetRawValue() : 0;
+        uint64 const leaderGuid = group ? group->GetLeaderGUID().GetRawValue() : finisher->GetGUID().GetRawValue();
+        std::lock_guard<std::mutex> lock(g_deviceMutex);
+        auto pending = g_pending.find(key);
+        if (pending == g_pending.end() || pending->second.groupGuid != groupGuid ||
+            pending->second.leaderGuid != leaderGuid)
+        {
+            g_activatingInstances.erase(key);
+            return;
+        }
+    }
 
-    // Reuse the existing instance-activation path without changing the persistent Dalaran setting.
-    TitanRuneMode const saved = TitanRune::LoadSelectedMode(activator);
-    TitanRune::SaveSelectedMode(activator, mode);
-    TitanRune::ActivateForPlayer(activator);
-    TitanRune::SaveSelectedMode(activator, saved);
+    Player* activator = CurrentHumanLeader(finisher);
+    // Device confirmation must never temporarily overwrite a durable next-run preference.
+    TitanRune::ActivateModeForPlayer(activator, mode);
 
     if (TitanRune::GetActiveMode(finisher->GetMap()) == mode)
     {
@@ -549,6 +563,9 @@ public:
         {
             std::lock_guard<std::mutex> lock(g_deviceMutex);
             g_pending[key].mode = mode;
+            Group* group = player->GetGroup();
+            g_pending[key].groupGuid = group ? group->GetGUID().GetRawValue() : 0;
+            g_pending[key].leaderGuid = group ? group->GetLeaderGUID().GetRawValue() : player->GetGUID().GetRawValue();
             g_completedHumans[key].clear();
             g_activatingInstances.erase(key);
             for (auto itr = g_channels.begin(); itr != g_channels.end(); )
