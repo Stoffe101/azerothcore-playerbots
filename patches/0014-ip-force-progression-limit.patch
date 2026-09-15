@@ -2,7 +2,7 @@ diff --git a/modules/mod-individual-progression/src/IndividualProgression.cpp b/
 index 8a2d5f0..3f9de21 100644
 --- a/modules/mod-individual-progression/src/IndividualProgression.cpp
 +++ b/modules/mod-individual-progression/src/IndividualProgression.cpp
-@@ -55,6 +55,10 @@ void IndividualProgression::ForceUpdateProgressionState(Player* player, Progress
+@@ -55,7 +55,11 @@ void IndividualProgression::ForceUpdateProgressionState(Player* player, Progress
      if (!newState)
          return;
  
