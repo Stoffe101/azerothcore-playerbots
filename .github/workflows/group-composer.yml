@@ -48,11 +48,13 @@ jobs:
           set -euo pipefail
           grep -q '^## Interface: 30300$' client-addons-src/GroupComposer/GroupComposer.toc
           grep -q '^Advanced.lua$' client-addons-src/GroupComposer/GroupComposer.toc
+          grep -q '^Polish.lua$' client-addons-src/GroupComposer/GroupComposer.toc
           grep -q 'AddGroupComposerScripts();' modules/mod-raid-roster/src/RaidRosterLoader.cpp
           grep -q 'HandleAssemble' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'HandleQueue' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'HandleAnchors' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'Planner::Build' modules/mod-raid-roster/src/GroupComposerPlanner.cpp
+          grep -q 'SwapMembersGroup' patches/0015-core-atomic-raid-subgroup-swap.patch
 
       - name: Check addon/backend activity contract
         run: python3 client-addons-src/GroupComposer/tests/test_server_contract.py
@@ -67,6 +69,7 @@ jobs:
             client-addons-src/GroupComposer/Core.lua
             client-addons-src/GroupComposer/UI.lua
             client-addons-src/GroupComposer/Advanced.lua
+            client-addons-src/GroupComposer/Polish.lua
             modules/mod-raid-roster/src/GroupComposerCommand.cpp
             modules/mod-raid-roster/src/GroupComposerPlanner.cpp
             modules/mod-raid-roster/src/GroupComposerTypes.h
@@ -89,7 +92,7 @@ jobs:
       - name: Checkout project branch
         uses: actions/checkout@v4
 
-      - name: Materialize pinned AzerothCore and module dependencies
+      - name: Materialize pinned realm source
         shell: bash
         run: |
           set -euo pipefail
@@ -108,16 +111,28 @@ jobs:
           clone_pin https://github.com/lathcf/azerothcore-mod-era-talents.git ac/modules/mod-era-talents "$ERA_SHA"
           cp -a modules/mod-raid-roster ac/modules/mod-raid-roster
 
-          # Era Talents owns compatibility patches for the exact pinned core/IP/playerbots trio.
-          # Apply those before configuring so this job compiles the same API surface used by the realm.
+          # Mirror setup.sh so CI compiles the same tracked core/playerbots patch stack as the realm.
+          for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
+            [[ -e "$patch" ]] || continue
+            name="$(basename "$patch")"
+            if git -C ac apply --reverse --check "$patch" >/dev/null 2>&1; then
+              echo "Patch already applied: $name"
+            elif git -C ac apply --check "$patch" >/dev/null 2>&1; then
+              git -C ac apply "$patch"
+              echo "Applied patch: $name"
+            else
+              echo "ERROR: tracked realm patch no longer applies: $name" >&2
+              exit 1
+            fi
+          done
+
+          # setup.sh applies the Era Talents compatibility layer after our tracked patch stack.
           if [[ -x ac/modules/mod-era-talents/apply-patches.sh ]]; then
             ac/modules/mod-era-talents/apply-patches.sh "$GITHUB_WORKSPACE/ac"
           fi
 
-          # The pinned core's Field.h relies on a transitive/PCH <string> include. This CI job
-          # intentionally disables PCH so module files cannot hide missing direct includes. Add the
-          # unrelated core include only to this ephemeral clone so the build can reach module code;
-          # this is not shipped as a realm/core patch.
+          # This old core header relies on a PCH/transitive <string> include. CI disables PCH to
+          # expose module include mistakes, so add the unrelated include only to the ephemeral clone.
           if ! grep -q '^#include <string>$' ac/src/server/database/Database/Field.h; then
             sed -i '/#include <string_view>/i #include <string>' ac/src/server/database/Database/Field.h
           fi
