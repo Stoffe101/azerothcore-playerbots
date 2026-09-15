@@ -253,7 +253,7 @@ namespace AdventureStartKit
 {
 bool GrantInitial(Player* player, AdventureStartProfile profile)
 {
-    if (!player)
+    if (!player || !player->IsInWorld() || player->IsBeingTeleportedFar())
         return false;
 
     uint32 const guid = player->GetGUID().GetCounter();
@@ -263,7 +263,7 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
 
     if (!g_AdventureStartStarterKit)
     {
-        AdventureProgressionStore::MarkStarterInitialized(guid, static_cast<uint8>(profile));
+        AdventureProgressionStore::MarkStarterInitialized(player, static_cast<uint8>(profile));
         return true;
     }
 
@@ -349,8 +349,7 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
     if (currentCopper < targetCopper)
         player->ModifyMoney(static_cast<int32>(targetCopper - currentCopper));
 
-    AdventureProgressionStore::MarkStarterInitialized(guid, static_cast<uint8>(profile));
-    player->SaveToDB(false, false);
+    AdventureProgressionStore::MarkStarterInitialized(player, static_cast<uint8>(profile));
 
     LOG_INFO(
         "server.loading",
@@ -367,6 +366,8 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
 
 bool TryGiveSpecStarterGear(Player* player)
 {
+    if (player && (!player->IsInWorld() || player->IsBeingTeleportedFar()))
+        return false;
     if (!player || !g_AdventureStartStarterKit || !g_AdventureStartAutoGear)
         return true;
 
@@ -397,8 +398,7 @@ bool TryGiveSpecStarterGear(Player* player)
         IsRaidReady(profile),
         IsRaidReady(profile));
 
-    AdventureProgressionStore::MarkStarterGearGranted(guid, specTab);
-    player->SaveToDB(false, false);
+    AdventureProgressionStore::MarkStarterGearGranted(player, specTab);
 
     LOG_INFO(
         "server.loading",

@@ -2,6 +2,7 @@
 #include "DatabaseEnv.h"
 #include "Field.h"
 #include "QueryResult.h"
+#include "Player.h"
 
 #include <mutex>
 
@@ -43,22 +44,30 @@ State LoadOrCreate(uint32 playerGuid)
     return state;
 }
 
-void MarkStarterInitialized(uint32 playerGuid, uint8 profile)
+void MarkStarterInitialized(Player* player, uint8 profile)
 {
+    uint32 const playerGuid = player->GetGUID().GetCounter();
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+    player->SaveToDB(trans, false, false);
     std::lock_guard<std::mutex> lock(g_progressionMutex);
     EnsureRowUnlocked(playerGuid);
-    CharacterDatabase.DirectExecute(
+    trans->Append(
         "UPDATE mod_adventure_progression SET starter_initialized = 1, starter_profile = {} WHERE player_guid = {}",
         profile, playerGuid);
+    CharacterDatabase.DirectCommitTransaction(trans);
 }
 
-void MarkStarterGearGranted(uint32 playerGuid, uint8 specTab)
+void MarkStarterGearGranted(Player* player, uint8 specTab)
 {
+    uint32 const playerGuid = player->GetGUID().GetCounter();
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+    player->SaveToDB(trans, false, false);
     std::lock_guard<std::mutex> lock(g_progressionMutex);
     EnsureRowUnlocked(playerGuid);
-    CharacterDatabase.DirectExecute(
+    trans->Append(
         "UPDATE mod_adventure_progression SET starter_gear_granted = 1, starter_spec_tab = {} WHERE player_guid = {}",
         specTab, playerGuid);
+    CharacterDatabase.DirectCommitTransaction(trans);
 }
 
 void PrepareStarterProfile(uint32 playerGuid, uint8 profile)

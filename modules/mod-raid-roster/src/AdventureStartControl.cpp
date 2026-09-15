@@ -112,18 +112,19 @@ bool MatchesProfile(Player* player, AdventureStartProfile profile)
 
 bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStarterReset)
 {
-    if (!player)
+    if (!player || !player->IsInWorld())
         return false;
 
     ProfileData const data = DataFor(profile);
     uint32 const guid = player->GetGUID().GetCounter();
 
-    bool levelChanged = false;
-    if (data.level > player->GetLevel())
+    // Reject unavailable profiles before level, inventory, talents or starter state can change.
+    if (data.progression > 0 && (!sIndividualProgression->enabled ||
+        (sIndividualProgression->progressionLimit && data.progression > sIndividualProgression->progressionLimit)))
     {
-        player->GiveLevel(static_cast<uint8>(data.level));
-        player->SetUInt32Value(PLAYER_XP, 0);
-        levelChanged = true;
+        LOG_WARN("server.loading", "[AdventureStart] Profile {} is outside the enabled progression ceiling for {}.",
+            ProfileName(profile), player->GetName());
+        return false;
     }
 
     // Starter profiles are normal forward progression, not a back-door around Individual
@@ -159,6 +160,14 @@ bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStart
             "[AdventureStart] Refusing profile={} progression={} for {} because Individual Progression is disabled.",
             ProfileName(profile), data.progression, player->GetName());
         return false;
+    }
+
+    bool levelChanged = false;
+    if (data.level > player->GetLevel())
+    {
+        player->GiveLevel(static_cast<uint8>(data.level));
+        player->SetUInt32Value(PLAYER_XP, 0);
+        levelChanged = true;
     }
 
     if (levelChanged)
