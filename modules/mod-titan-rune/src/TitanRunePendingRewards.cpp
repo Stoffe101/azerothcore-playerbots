@@ -6,6 +6,7 @@
 #include "ItemTemplate.h"
 #include "ObjectMgr.h"
 #include "Player.h"
+#include "ScriptMgr.h"
 #include "WorldSession.h"
 
 #include <cstdint>
@@ -37,19 +38,37 @@ bool DeliverReward(Player* player, uint64 rewardId, uint32 itemEntry, uint32 cou
     {
         if (notifyIfBlocked)
             Notify(player, std::string("Pending reward blocked by bag/unique-item restrictions: ") + reason +
-                ". Make room and use .titan claim, or it will retry automatically next login/map change.");
+                ". Make room and it will retry automatically next login, map change, or Titan Rune reward.");
         return false;
     }
 
+    // Persist the inventory before closing the durable ledger row. This intentionally favours a
+    // vanishingly rare duplicate after a process crash over permanently losing an earned currency.
+    player->SaveToDB(false, false);
     CharacterDatabase.DirectExecute(
         "UPDATE mod_titan_rune_player_rewards SET delivered=1, delivered_at=CURRENT_TIMESTAMP "
         "WHERE id={} AND guid={} AND delivered=0",
         rewardId, player->GetGUID().GetCounter());
 
     Notify(player, reason + ": +" + std::to_string(count) + " " + item->Name1);
-    player->SaveToDB(false, false);
     return true;
 }
+
+class TitanRunePendingRewardPlayerScript final : public PlayerScript
+{
+public:
+    TitanRunePendingRewardPlayerScript() : PlayerScript("TitanRunePendingRewardPlayerScript") { }
+
+    void OnPlayerLogin(Player* player) override
+    {
+        TitanRune::RetryPendingRewards(player, true);
+    }
+
+    void OnPlayerMapChanged(Player* player) override
+    {
+        TitanRune::RetryPendingRewards(player, true);
+    }
+};
 }
 
 namespace TitanRune
@@ -100,4 +119,9 @@ uint32 RetryPendingRewards(Player* player, bool notifyIfBlocked)
 
     return delivered;
 }
+}
+
+void AddTitanRunePendingRewardScripts()
+{
+    new TitanRunePendingRewardPlayerScript();
 }
