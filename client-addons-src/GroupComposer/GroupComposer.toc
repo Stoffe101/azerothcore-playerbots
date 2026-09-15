@@ -1,0 +1,10 @@
+## Interface: 30300
+## Title: Group Composer
+## Notes: Build, save, preview and assemble dungeon and raid groups for AzerothCore Playerbots.
+## Author: Stoffe101
+## Version: 0.1.0
+## SavedVariables: GroupComposerDB
+Data.lua
+Profiles.lua
+Core.lua
+UI.lua
