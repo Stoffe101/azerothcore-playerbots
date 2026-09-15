@@ -63,11 +63,11 @@ apply_patches () {
     name="$(basename "$patch")"
     apply_args=()
 
-    # The Sunwell feature patch was authored immediately before upstream added the independent
-    # tbc-mgt strategy to the same PlayerbotAI vector. Keep its large SWP implementation intact,
-    # but let the tiny 0014a compatibility patch own the two PlayerbotAI edits against our exact
-    # pinned module revision. This avoids carrying a second giant generated patch for one stale hunk.
-    if [[ "$name" == "0014-playerbot-sunwell.patch" ]]; then
+    # Sunwell and AQ40 were authored around nearby upstream PlayerbotAI strategy-list changes.
+    # Keep their large feature patches intact, but let the tiny 0014a/0016a compatibility patches
+    # own PlayerbotAI.cpp against the exact pinned mod-playerbots revision. This keeps setup,
+    # update and CI deterministic without regenerating two large patches for a pair of stale hunks.
+    if [[ "$name" == "0014-playerbot-sunwell.patch" || "$name" == "0016-playerbot-aq40-twins.patch" ]]; then
       apply_args+=(--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp)
     fi
 
