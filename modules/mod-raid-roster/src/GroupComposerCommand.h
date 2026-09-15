@@ -26,6 +26,7 @@ public:
     static bool HandleMove(ChatHandler* handler, std::string name, uint32 subgroup);
     static bool HandleAssemble(ChatHandler* handler);
     static bool HandleQueue(ChatHandler* handler);
+    static bool HandleAnchors(ChatHandler* handler);
     static bool HandleDiagnostics(ChatHandler* handler);
     static bool HandleClear(ChatHandler* handler);
     static bool HandleStatus(ChatHandler* handler);
