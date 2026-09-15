@@ -32,6 +32,7 @@ jobs:
             git apply --numstat "$patch" >/dev/null
           done
           test -f patches/0014a-playerbot-sunwell-playerbotai-compat.patch
+          test -f patches/0016a-playerbot-aq40-playerbotai-compat.patch
           test -f modules/mod-titan-rune/src/TitanRuneLoader.cpp
           test -f modules/mod-titan-rune/src/TitanRuneDevice.cpp
           test -f modules/mod-titan-rune/src/TitanRuneFrostArcane.cpp
@@ -84,7 +85,7 @@ jobs:
             [[ -e "$patch" ]] || continue
             name="$(basename "$patch")"
             apply_args=()
-            if [[ "$name" == "0014-playerbot-sunwell.patch" ]]; then
+            if [[ "$name" == "0014-playerbot-sunwell.patch" || "$name" == "0016-playerbot-aq40-twins.patch" ]]; then
               apply_args+=(--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp)
             fi
             if git -C "$CORE" apply "${apply_args[@]}" --reverse --check "$patch" >/dev/null 2>&1; then
