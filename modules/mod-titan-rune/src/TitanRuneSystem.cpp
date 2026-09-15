@@ -825,7 +825,12 @@ bool ActivateModeForPlayer(Player* player, TitanRuneMode selected, bool restorin
 
 uint64 RunResetTime(Map const* map)
 {
-    return map ? uint64(sInstanceSaveMgr->GetResetTimeFor(map->GetId(), map->GetDifficulty())) : 0;
+    if (!map)
+        return 0;
+    if (InstanceSave* save = sInstanceSaveMgr->GetInstanceSave(map->GetInstanceId()))
+        if (save->GetResetTime())
+            return uint64(save->GetResetTime());
+    return uint64(sInstanceSaveMgr->GetResetTimeFor(map->GetId(), map->GetDifficulty()));
 }
 }
 
