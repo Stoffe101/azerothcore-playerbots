@@ -78,4 +78,34 @@ for _, name in ipairs({
     GuardAction(name)
 end
 
+-- Assemble is the commit boundary. Finding and rearranging a roster are preview-only, while this
+-- action can remove unselected bots, log in managed bots and issue invites. Require an explicit
+-- confirmation after the user has reviewed the preview instead of making one accidental click live.
+local confirmedAssemble = GC.Assemble
+StaticPopupDialogs["GROUPCOMPOSER_CONFIRM_ASSEMBLY"] = {
+    text = "Assemble this %d-player roster?\n\nThis applies the reviewed composition to your live group. Unselected bots may be removed and selected players/bots invited. Real players are never silently removed.",
+    button1 = "Assemble Roster",
+    button2 = CANCEL,
+    OnAccept = function()
+        confirmedAssemble(GC)
+    end,
+    timeout = 0,
+    whileDead = 1,
+    hideOnEscape = 1,
+    preferredIndex = 3,
+}
+
+function GC:Assemble()
+    if GC.pendingCommand then
+        GC:Fire("STATUS", "Group Composer is still processing " .. tostring(GC.pendingCommand) .. ".")
+        return false
+    end
+    if not GC.plan or not GC.plan.ready or not GC.plan.valid then
+        GC:Fire("STATUS", "Find and validate a roster before assembling it.")
+        return false
+    end
+    StaticPopup_Show("GROUPCOMPOSER_CONFIRM_ASSEMBLY", tonumber(GC:GetConfig().size) or #(GC.plan.members or {}))
+    return true
+end
+
 ForcePlayerAnchor()
