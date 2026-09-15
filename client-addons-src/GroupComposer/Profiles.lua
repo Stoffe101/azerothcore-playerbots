@@ -43,18 +43,11 @@ local function DefaultsFor(mode, size)
             minimumItemLevel = 0,
             queueAfterAssemble = false,
         },
-        preferences = {
-            TANK = {},
-            HEALER = {},
-            DPS = {},
-        },
-        -- Human role overrides are keyed by character name. Values are TANK / HEALER / DPS.
+        preferences = { TANK = {}, HEALER = {}, DPS = {} },
         humanRoles = {},
-        -- Optional online real players to invite as part of assembly.
         extraHumans = {},
-        -- Persistent named Playerbots. A pin may be preferred or required.
         pinned = {},
-        -- Stable subgroup placement is intentionally name-based only for humans/pinned members.
+        stableHumans = {},
         arrangement = {},
     }
 end
@@ -83,9 +76,7 @@ local function NormalizeHumanRoles(p)
     if type(p.humanRoles) == "table" then
         for name, role in pairs(p.humanRoles) do
             local clean = CleanName(name)
-            if clean and (role == "TANK" or role == "HEALER" or role == "DPS") then
-                out[clean] = role
-            end
+            if clean and (role == "TANK" or role == "HEALER" or role == "DPS") then out[clean] = role end
         end
     end
     p.humanRoles = out
@@ -119,11 +110,7 @@ local function NormalizePins(p)
                 local key = name and string.lower(name) or nil
                 if name and key and not seen[key] and (role == "TANK" or role == "HEALER" or role == "DPS") then
                     seen[key] = true
-                    out[#out + 1] = {
-                        name = name,
-                        role = role,
-                        required = entry.required and true or false,
-                    }
+                    out[#out + 1] = { name = name, role = role, required = entry.required and true or false }
                 end
             end
         end
@@ -131,9 +118,25 @@ local function NormalizePins(p)
     p.pinned = out
 end
 
+local function NormalizeStableHumans(p)
+    local out, seen = {}, {}
+    if type(p.stableHumans) == "table" then
+        for _, value in ipairs(p.stableHumans) do
+            local name = type(value) == "table" and CleanName(value.name) or CleanName(value)
+            local key = name and string.lower(name) or nil
+            if name and key and not seen[key] and #out < 40 then
+                seen[key] = true
+                out[#out + 1] = name
+            end
+        end
+    end
+    p.stableHumans = out
+end
+
 local function StableNameSet(p)
     local stable = {}
     for name in pairs(p.humanRoles or {}) do stable[string.lower(name)] = true end
+    for _, name in ipairs(p.stableHumans or {}) do stable[string.lower(name)] = true end
     for _, entry in ipairs(p.extraHumans or {}) do stable[string.lower(entry.name)] = true end
     for _, entry in ipairs(p.pinned or {}) do stable[string.lower(entry.name)] = true end
     return stable
@@ -160,13 +163,9 @@ function P.Normalize(profile)
     local size = tonumber(p.size) or (mode == "RAID" and 25 or 5)
     local base = DefaultsFor(mode, size)
 
-    for k, v in pairs(base) do
-        if p[k] == nil then p[k] = DeepCopy(v) end
-    end
+    for k, v in pairs(base) do if p[k] == nil then p[k] = DeepCopy(v) end end
     p.options = type(p.options) == "table" and p.options or {}
-    for k, v in pairs(base.options) do
-        if p.options[k] == nil then p.options[k] = v end
-    end
+    for k, v in pairs(base.options) do if p.options[k] == nil then p.options[k] = v end end
 
     p.mode = mode
     p.size = math.max(1, math.min(40, math.floor(tonumber(p.size) or size)))
@@ -174,11 +173,13 @@ function P.Normalize(profile)
     p.healers = math.max(0, math.floor(tonumber(p.healers) or 0))
     p.dps = math.max(0, math.floor(tonumber(p.dps) or 0))
     p.options.minimumItemLevel = math.max(0, math.min(1000, math.floor(tonumber(p.options.minimumItemLevel) or 0)))
+    p.options.keepMe = true
 
     NormalizePreferences(p)
     NormalizeHumanRoles(p)
     NormalizeExtraHumans(p)
     NormalizePins(p)
+    NormalizeStableHumans(p)
     NormalizeArrangement(p)
     return p
 end
@@ -187,7 +188,7 @@ function P.InitializeDB()
     GroupComposerDB = GroupComposerDB or {}
     local db = GroupComposerDB
     local oldVersion = tonumber(db.version) or 0
-    db.version = 2
+    db.version = 3
     db.profiles = type(db.profiles) == "table" and db.profiles or {}
     db.window = type(db.window) == "table" and db.window or {}
     db.window.point = db.window.point or { "CENTER", "UIParent", "CENTER", 0, 0 }
@@ -198,11 +199,8 @@ function P.InitializeDB()
     db.lastProfile = db.lastProfile or nil
     db.lastMode = db.lastMode == "RAID" and "RAID" or "DUNGEON"
 
-    -- Normalize stored custom profiles whenever the schema changes. This keeps old v1 profiles usable.
-    if oldVersion < 2 then
-        for name, profile in pairs(db.profiles) do
-            db.profiles[name] = P.Normalize(profile)
-        end
+    if oldVersion < 3 then
+        for name, profile in pairs(db.profiles) do db.profiles[name] = P.Normalize(profile) end
     end
     return db
 end
