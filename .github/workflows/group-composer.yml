@@ -48,6 +48,7 @@ jobs:
           set -euo pipefail
           grep -q '^## Interface: 30300$' client-addons-src/GroupComposer/GroupComposer.toc
           grep -q '^Advanced.lua$' client-addons-src/GroupComposer/GroupComposer.toc
+          grep -q '^People.lua$' client-addons-src/GroupComposer/GroupComposer.toc
           grep -q '^Polish.lua$' client-addons-src/GroupComposer/GroupComposer.toc
           grep -q 'AddGroupComposerScripts();' modules/mod-raid-roster/src/RaidRosterLoader.cpp
           grep -q 'HandleAssemble' modules/mod-raid-roster/src/GroupComposerCommand.cpp
@@ -69,6 +70,7 @@ jobs:
             client-addons-src/GroupComposer/Core.lua
             client-addons-src/GroupComposer/UI.lua
             client-addons-src/GroupComposer/Advanced.lua
+            client-addons-src/GroupComposer/People.lua
             client-addons-src/GroupComposer/Polish.lua
             modules/mod-raid-roster/src/GroupComposerCommand.cpp
             modules/mod-raid-roster/src/GroupComposerPlanner.cpp
