@@ -54,7 +54,7 @@ void MarkStarterInitialized(Player* player, uint8 profile)
     trans->Append(
         "UPDATE mod_adventure_progression SET starter_initialized = 1, starter_profile = {} WHERE player_guid = {}",
         profile, playerGuid);
-    CharacterDatabase.DirectCommitTransaction(trans);
+    CharacterDatabase.CommitTransaction(trans);
 }
 
 void MarkStarterGearGranted(Player* player, uint8 specTab)
@@ -67,7 +67,7 @@ void MarkStarterGearGranted(Player* player, uint8 specTab)
     trans->Append(
         "UPDATE mod_adventure_progression SET starter_gear_granted = 1, starter_spec_tab = {} WHERE player_guid = {}",
         specTab, playerGuid);
-    CharacterDatabase.DirectCommitTransaction(trans);
+    CharacterDatabase.CommitTransaction(trans);
 }
 
 void PrepareStarterProfile(uint32 playerGuid, uint8 profile)
