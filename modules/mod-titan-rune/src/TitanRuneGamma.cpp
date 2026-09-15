@@ -3,6 +3,7 @@
 #include "Chat.h"
 #include "Creature.h"
 #include "Group.h"
+#include "Item.h"
 #include "Map.h"
 #include "Player.h"
 #include "Random.h"
@@ -25,12 +26,17 @@ namespace
 using Clock = std::chrono::steady_clock;
 using TimePoint = Clock::time_point;
 
-constexpr uint32 GAMMA_WARDEN_ENTRY = 900121;
+constexpr uint32 GAMMA_WARDEN_ALLIANCE_ENTRY = 900120;
+constexpr uint32 GAMMA_WARDEN_HORDE_ENTRY = 900121;
+constexpr uint32 GAMMA_SIGNET_ALLIANCE_ITEM = 900104;
+constexpr uint32 GAMMA_SIGNET_HORDE_ITEM = 900105;
 constexpr float SHATTER_PROC_CHANCE = 20.0f;
 constexpr float RALLY_PROC_CHANCE = 15.0f;
 constexpr float RALLY_HASTE_PERCENT = 20.0f;
-constexpr uint32 THORNS_MIN_DAMAGE = 2000;
-constexpr uint32 THORNS_MAX_DAMAGE = 2800;
+constexpr uint32 THORNS_MIN_DAMAGE = 1000;
+constexpr uint32 THORNS_MAX_DAMAGE = 1400;
+constexpr uint32 SIGNET_COOLDOWN_SECONDS = 120;
+constexpr uint32 SIGNET_RETRY_SECONDS = 10;
 
 enum class GammaBuff : uint8
 {
@@ -60,6 +66,8 @@ std::unordered_map<uint64, TimePoint> g_shatteredTargets;
 std::unordered_map<uint32, RallyState> g_rallyStates;
 std::unordered_map<uint32, TimePoint> g_rallyProcCooldowns;
 std::unordered_map<uint32, ConfessorState> g_confessorStates;
+std::unordered_map<uint32, TimePoint> g_signetCooldowns;
+std::unordered_map<uint32, TimePoint> g_signetRetryAt;
 std::unordered_set<uint64> g_wardenInstances;
 
 uint32 PlayerKey(Player const* player)
@@ -89,6 +97,22 @@ bool IsFrozenHalls(uint32 mapId)
 bool IsHuman(Player const* player)
 {
     return player && player->GetSession() && !player->GetSession()->IsBot();
+}
+
+bool IsGammaGameplayMap(Player const* player)
+{
+    return player && player->GetMap() && TitanRune::GetActiveMode(player->GetMap()) == TitanRuneMode::Gamma &&
+        !IsFrozenHalls(player->GetMapId());
+}
+
+uint32 WardenEntryFor(Player const* player)
+{
+    return player && player->GetTeamId() == TEAM_ALLIANCE ? GAMMA_WARDEN_ALLIANCE_ENTRY : GAMMA_WARDEN_HORDE_ENTRY;
+}
+
+uint32 SignetEntryFor(Player const* player)
+{
+    return player && player->GetTeamId() == TEAM_ALLIANCE ? GAMMA_SIGNET_ALLIANCE_ITEM : GAMMA_SIGNET_HORDE_ITEM;
 }
 
 void Notify(Player* player, char const* text)
@@ -122,35 +146,73 @@ void ClearPlayerState(Player* player)
     g_rallyStates.erase(key);
     g_rallyProcCooldowns.erase(key);
     g_confessorStates.erase(key);
+    g_signetCooldowns.erase(key);
+    g_signetRetryAt.erase(key);
 }
 
-void SpawnWarden(Player* player)
+bool SummonWarden(Player* player, bool portable)
 {
-    if (!IsHuman(player) || !player->IsInWorld())
-        return;
+    if (!IsHuman(player) || !player->IsInWorld() || !IsGammaGameplayMap(player))
+        return false;
 
-    Map* map = player->GetMap();
-    if (!map || TitanRune::GetActiveMode(map) != TitanRuneMode::Gamma || IsFrozenHalls(map->GetId()))
-        return;
-
-    uint64 const key = InstanceKey(map);
+    uint32 const entry = WardenEntryFor(player);
+    if (portable)
     {
+        if (player->FindNearestCreature(entry, 40.0f, true))
+        {
+            Notify(player, "Your faction Warden is already nearby.");
+            return false;
+        }
+    }
+    else
+    {
+        uint64 const key = InstanceKey(player->GetMap());
         std::lock_guard<std::mutex> lock(g_gammaMutex);
         if (!g_wardenInstances.insert(key).second)
-            return;
+            return false;
     }
 
-    TempSummon* warden = player->SummonCreature(GAMMA_WARDEN_ENTRY,
+    TempSummon* warden = player->SummonCreature(entry,
         player->GetPositionX() + 2.0f, player->GetPositionY(), player->GetPositionZ(), player->GetOrientation(),
-        TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 6 * HOUR * IN_MILLISECONDS);
+        TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, (portable ? 2 * MINUTE : 6 * HOUR) * IN_MILLISECONDS);
     if (!warden)
     {
-        std::lock_guard<std::mutex> lock(g_gammaMutex);
-        g_wardenInstances.erase(key);
-        return;
+        if (!portable)
+        {
+            std::lock_guard<std::mutex> lock(g_gammaMutex);
+            g_wardenInstances.erase(InstanceKey(player->GetMap()));
+        }
+        return false;
     }
 
-    Notify(player, "A Titan Rune Warden is available at the entrance with the four Defense Protocol Gamma helper buffs.");
+    if (portable)
+        Notify(player, "Your Gamma signet summons the faction Warden. You may change your helper buff while the Warden is here.");
+    else
+        Notify(player, "A faction Titan Rune Warden is available at the entrance with the four Defense Protocol Gamma helper buffs.");
+    return true;
+}
+
+void EnsureGammaSignet(Player* player)
+{
+    if (!IsHuman(player) || !IsGammaGameplayMap(player))
+        return;
+
+    uint32 const itemEntry = SignetEntryFor(player);
+    if (player->GetItemCount(itemEntry, false) > 0)
+        return;
+
+    uint32 const key = PlayerKey(player);
+    TimePoint const now = Clock::now();
+    {
+        std::lock_guard<std::mutex> lock(g_gammaMutex);
+        TimePoint& retry = g_signetRetryAt[key];
+        if (now < retry)
+            return;
+        retry = now + std::chrono::seconds(SIGNET_RETRY_SECONDS);
+    }
+
+    if (player->AddItem(itemEntry, 1))
+        Notify(player, "You receive your faction Gamma signet. Use it inside this Gamma dungeon to summon the Warden; the signet has a 2-minute summon cooldown.");
 }
 
 void GrantRally(Player* source, TimePoint now)
@@ -189,7 +251,8 @@ public:
 
     void OnPlayerLogin(Player* player) override
     {
-        SpawnWarden(player);
+        SummonWarden(player, false);
+        EnsureGammaSignet(player);
     }
 
     void OnPlayerMapChanged(Player* player) override
@@ -198,7 +261,8 @@ public:
             std::lock_guard<std::mutex> lock(g_gammaMutex);
             ClearPlayerState(player);
         }
-        SpawnWarden(player);
+        SummonWarden(player, false);
+        EnsureGammaSignet(player);
     }
 
     void OnPlayerLogout(Player* player) override
@@ -212,7 +276,8 @@ public:
         if (!player)
             return;
 
-        SpawnWarden(player);
+        SummonWarden(player, false);
+        EnsureGammaSignet(player);
         uint32 const key = PlayerKey(player);
         TimePoint const now = Clock::now();
         std::lock_guard<std::mutex> lock(g_gammaMutex);
@@ -252,8 +317,6 @@ public:
         if (now < state.lockedUntil)
             return;
         state.stacks = std::min<uint8>(5, uint8(state.stacks + 1));
-        // Confessor's Wrath charges persist until the next harmful cast. That cast opens the
-        // five-second damage window below, matching the live Gamma helper-buff behavior.
         state.expires = TimePoint::max();
     }
 
@@ -320,6 +383,9 @@ public:
             auto role = g_playerBuffs.find(PlayerKey(tank));
             if (role != g_playerBuffs.end() && role->second == GammaBuff::Thorns)
             {
+                // The pinned core does not expose a post-dodge/parry/block UnitScript callback.
+                // Approximate the live proc using the player's actual combined avoidance chance,
+                // while keeping the documented live 1000-1400 damage range exact.
                 float const avoidance = std::min<float>(75.0f,
                     tank->GetFloatValue(PLAYER_DODGE_PERCENTAGE) + tank->GetFloatValue(PLAYER_PARRY_PERCENTAGE) +
                     tank->GetFloatValue(PLAYER_BLOCK_PERCENTAGE));
@@ -365,8 +431,8 @@ public:
         ClearGossipMenuFor(player);
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Shatter Defenses - melee attacks can expose a target for +20% damage", GOSSIP_SENDER_MAIN, 1);
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Rallying Cry - ranged attacks can grant the party +20% haste", GOSSIP_SENDER_MAIN, 2);
-        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Confessor's Wrath - healing builds up to +100% damage for your next attack", GOSSIP_SENDER_MAIN, 3);
-        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Shield of Thorns - avoidance can retaliate for 2000-2800 Nature damage", GOSSIP_SENDER_MAIN, 4);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Confessor's Wrath - healing builds up to +100% damage for your next harmful cast", GOSSIP_SENDER_MAIN, 3);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Shield of Thorns - avoidance can retaliate for 1000-1400 Nature damage", GOSSIP_SENDER_MAIN, 4);
         SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
         return true;
     }
@@ -385,6 +451,40 @@ public:
         return OnGossipHello(player, creature);
     }
 };
+
+class item_titan_gamma_signet final : public ItemScript
+{
+public:
+    item_titan_gamma_signet() : ItemScript("item_titan_gamma_signet") { }
+
+    bool OnUse(Player* player, Item* item, SpellCastTargets const& /*targets*/) override
+    {
+        if (!player || !item || item->GetEntry() != SignetEntryFor(player) || !IsGammaGameplayMap(player))
+        {
+            Notify(player, "The Gamma signet only answers inside an active Defense Protocol Gamma dungeon for your faction.");
+            return true;
+        }
+
+        uint32 const key = PlayerKey(player);
+        TimePoint const now = Clock::now();
+        {
+            std::lock_guard<std::mutex> lock(g_gammaMutex);
+            TimePoint& cooldown = g_signetCooldowns[key];
+            if (now < cooldown)
+            {
+                Notify(player, "Your Gamma signet is still recharging.");
+                return true;
+            }
+        }
+
+        if (SummonWarden(player, true))
+        {
+            std::lock_guard<std::mutex> lock(g_gammaMutex);
+            g_signetCooldowns[key] = now + std::chrono::seconds(SIGNET_COOLDOWN_SECONDS);
+        }
+        return true; // Suppress the cloned stock item's original use spell.
+    }
+};
 }
 
 void AddTitanRuneGammaScripts()
@@ -393,4 +493,5 @@ void AddTitanRuneGammaScripts()
     new TitanRuneGammaUnitScript();
     new TitanRuneGammaMapScript();
     new npc_titan_gamma_warden();
+    new item_titan_gamma_signet();
 }
