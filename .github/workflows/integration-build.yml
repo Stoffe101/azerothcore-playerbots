@@ -72,6 +72,7 @@ jobs:
               echo "Applied wrapper patch: $(basename "$patch")"
             else
               echo "ERROR: patch no longer applies cleanly: $(basename "$patch")" >&2
+              git -C "$CORE" apply --check --verbose "$patch" || true
               exit 1
             fi
           done
