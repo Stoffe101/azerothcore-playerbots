@@ -11,6 +11,7 @@
 #include "ScriptMgr.h"
 #include "Bot/Engine/WorldPacket/Event.h"
 #include "Ai/Dungeon/DungeonClear/Util/DcLeaderSignal.h"
+#include "Ai/Dungeon/DungeonClear/Util/DcRun.h"
 
 #include <mutex>
 #include <string>
@@ -22,19 +23,19 @@ namespace
 constexpr uint32 ENTRY_DELAY_MS = 2000;
 constexpr uint32 WIPE_RETRY_DELAY_MS = 7500;
 constexpr uint32 RETRY_STEP_MS = 2000;
-constexpr uint32 MAX_WAIT_MS = 30000;
+constexpr uint32 MAX_WAIT_MS = 300000;
 
 struct PendingAutoDrive
 {
     uint32 humanGuid = 0;
     uint32 mapId = 0;
+    uint32 instanceId = 0;
     uint32 elapsedMs = 0;
     uint32 readyAfterMs = ENTRY_DELAY_MS;
 };
 
 std::mutex g_autoDriveMutex;
 std::unordered_map<uint32, PendingAutoDrive> g_autoDrive;
-uint32 g_autoDriveTick = 0;
 
 bool IsSupportedInstance(Player* player)
 {
@@ -53,7 +54,7 @@ bool SameInstanceGroup(Player* anchor, uint32 mapId)
     bool anyBotHere = false;
     anchor->GetGroup()->DoForAllMembers([&](Player* member)
     {
-        if (!member || member->GetMapId() != mapId || IsRealPlayer(member))
+        if (!member || member->GetMap() != anchor->GetMap() || IsRealPlayer(member))
             return;
         if (GET_PLAYERBOT_AI(member))
             anyBotHere = true;
@@ -69,10 +70,9 @@ bool GroupFullyDead(Player* participant)
 
     bool sawMember = false;
     bool alive = false;
-    uint32 mapId = participant->GetMapId();
     group->DoForAllMembers([&](Player* member)
     {
-        if (!member || member->GetMapId() != mapId)
+        if (!member || member->GetMap() != participant->GetMap())
             return;
         sawMember = true;
         if (member->IsAlive())
@@ -89,6 +89,7 @@ void Queue(Player* human, uint32 readyAfterMs)
     PendingAutoDrive pending;
     pending.humanGuid = human->GetGUID().GetCounter();
     pending.mapId = human->GetMapId();
+    pending.instanceId = human->GetInstanceId();
     pending.readyAfterMs = readyAfterMs;
 
     std::lock_guard<std::mutex> lock(g_autoDriveMutex);
@@ -101,8 +102,13 @@ bool TryStart(Player* anchor)
         anchor->IsInCombat() || !IsSupportedInstance(anchor))
         return false;
 
-    // Delegate leadership to mod-dungeon-clear itself. Parties choose their sole bot tank; raids
-    // use the module's Main Tank / best-geared election. This is intentionally not reimplemented
+    for (GroupReference* ref = anchor->GetGroup()->GetFirstMember(); ref; ref = ref->next())
+        if (Player* member = ref->GetSource())
+            if (member->GetMap() == anchor->GetMap() && member->IsInCombat())
+                return false;
+
+    // Delegate leadership to mod-dungeon-clear itself, including its human-tank route guide.
+    // Raids use the module's Main Tank / best-geared election. This is not reimplemented
     // here because duplicate leader rules are exactly how two bots end up fighting over a route.
     Player* leader = DcLeaderSignal::FindLeaderTank(anchor);
     if (!leader || !leader->IsAlive() || leader->IsInCombat())
@@ -111,6 +117,8 @@ bool TryStart(Player* anchor)
     PlayerbotAI* leaderAI = GET_PLAYERBOT_AI(leader);
     if (!leaderAI)
         return false;
+    if (DcRun::Of(leaderAI).enabled)
+        return true;
 
     // Use the real player as Event owner so dungeon-clear's normal authorization path is obeyed.
     // The action is idempotent enough for our short retry window, and its own map/boss validation
@@ -125,8 +133,16 @@ public:
     AutoDungeonClearPlayerScript()
         : PlayerScript("AutoDungeonClearPlayerScript", {
             PLAYERHOOK_ON_MAP_CHANGED,
+            PLAYERHOOK_ON_LOGIN,
+            PLAYERHOOK_ON_UPDATE,
+            PLAYERHOOK_ON_LOGOUT,
             PLAYERHOOK_ON_PLAYER_JUST_DIED,
         }) { }
+
+    void OnPlayerLogin(Player* player) override
+    {
+        Queue(player, ENTRY_DELAY_MS);
+    }
 
     void OnPlayerMapChanged(Player* player) override
     {
@@ -135,62 +151,54 @@ public:
 
     void OnPlayerJustDied(Player* player) override
     {
-        if (player && IsRealPlayer(player) && IsSupportedInstance(player) && GroupFullyDead(player))
-            Queue(player, WIPE_RETRY_DELAY_MS);
-    }
-};
-
-class AutoDungeonClearWorldScript : public WorldScript
-{
-public:
-    AutoDungeonClearWorldScript() : WorldScript("AutoDungeonClearWorldScript") { }
-
-    void OnUpdate(uint32 diff) override
-    {
-        if (!g_AutoDungeonClearEnable)
-            return;
-
-        g_autoDriveTick += diff;
-        if (g_autoDriveTick < 500)
-            return;
-        uint32 step = g_autoDriveTick;
-        g_autoDriveTick = 0;
-
-        std::vector<PendingAutoDrive> work;
-        {
-            std::lock_guard<std::mutex> lock(g_autoDriveMutex);
-            for (auto& pair : g_autoDrive)
+        if (player && IsSupportedInstance(player) && GroupFullyDead(player))
+            player->GetGroup()->DoForAllMembers([](Player* member)
             {
-                pair.second.elapsedMs += step;
-                work.push_back(pair.second);
-            }
-        }
+                Queue(member, WIPE_RETRY_DELAY_MS);
+            });
+    }
 
-        for (PendingAutoDrive const& pending : work)
+    void OnPlayerLogout(Player* player) override
+    {
+        std::lock_guard<std::mutex> lock(g_autoDriveMutex);
+        g_autoDrive.erase(player->GetGUID().GetCounter());
+    }
+
+    void OnPlayerUpdate(Player* anchor, uint32 diff) override
+    {
+        if (!g_AutoDungeonClearEnable || !anchor || !IsRealPlayer(anchor))
+            return;
+
+        uint32 const guid = anchor->GetGUID().GetCounter();
+        PendingAutoDrive pending;
         {
-            if (pending.elapsedMs < pending.readyAfterMs)
-                continue;
-
-            Player* anchor = ObjectAccessor::FindConnectedPlayer(
-                ObjectGuid::Create<HighGuid::Player>(static_cast<ObjectGuid::LowType>(pending.humanGuid)));
-
-            bool done = false;
-            if (!anchor || !SameInstanceGroup(anchor, pending.mapId))
-                done = true;
-            else if (TryStart(anchor))
-                done = true;
-            else if (pending.elapsedMs >= MAX_WAIT_MS)
-                done = true;
-
             std::lock_guard<std::mutex> lock(g_autoDriveMutex);
-            auto it = g_autoDrive.find(pending.humanGuid);
+            auto it = g_autoDrive.find(guid);
             if (it == g_autoDrive.end())
-                continue;
-            if (done)
-                g_autoDrive.erase(it);
-            else
-                it->second.readyAfterMs = it->second.elapsedMs + RETRY_STEP_MS;
+                return;
+            // Wipe recovery can take longer than the entry retry window.
+            if (!anchor->IsAlive())
+                return;
+            it->second.elapsedMs += diff;
+            if (it->second.elapsedMs < it->second.readyAfterMs)
+                return;
+            pending = it->second;
         }
+
+        // Run on the player's map update, alongside its group and bot AI.
+        bool const done = anchor->GetMapId() != pending.mapId ||
+            anchor->GetInstanceId() != pending.instanceId || !anchor->GetGroup() ||
+            (SameInstanceGroup(anchor, pending.mapId) && TryStart(anchor)) ||
+            pending.elapsedMs >= MAX_WAIT_MS;
+        std::lock_guard<std::mutex> lock(g_autoDriveMutex);
+        auto it = g_autoDrive.find(guid);
+        if (it == g_autoDrive.end() || it->second.mapId != pending.mapId ||
+            it->second.instanceId != pending.instanceId || it->second.elapsedMs != pending.elapsedMs)
+            return;
+        if (done)
+            g_autoDrive.erase(it);
+        else
+            it->second.readyAfterMs = it->second.elapsedMs + RETRY_STEP_MS;
     }
 };
 }
@@ -198,5 +206,4 @@ public:
 void AddAutoDungeonClearScripts()
 {
     new AutoDungeonClearPlayerScript();
-    new AutoDungeonClearWorldScript();
 }
