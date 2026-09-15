@@ -1,6 +1,5 @@
 #include "TitanRuneSystem.h"
 
-#include "Chat.h"
 #include "Creature.h"
 #include "Map.h"
 #include "Player.h"
@@ -48,8 +47,8 @@ public:
             return;
 
         // Wrath Classic Defense Protocol Alpha awards one Emblem of Conquest for the final boss.
-        // The 3.3.5 item exists natively, so unlike Sidereal/Scourgestone no custom currency shim is
-        // necessary. Standard heroic/phase loot remains owned by the core/progression stack.
+        // Route it through the same durable per-player ledger as Beta/Gamma currency so a full bag
+        // cannot permanently eat the completion reward.
         Map::PlayerList const& players = map->GetPlayers();
         for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
         {
@@ -57,12 +56,8 @@ public:
             if (!rewardPlayer || !rewardPlayer->GetSession() || rewardPlayer->GetSession()->IsBot())
                 continue;
 
-            if (rewardPlayer->AddItem(EMBLEM_OF_CONQUEST, 1))
-                ChatHandler(rewardPlayer->GetSession()).SendSysMessage(
-                    "[Titan Rune] Defense Protocol Alpha completed: +1 Emblem of Conquest.");
-            else
-                ChatHandler(rewardPlayer->GetSession()).SendSysMessage(
-                    "[Titan Rune] Alpha completion reward could not fit in your bags. Make room before the next run.");
+            TitanRune::QueuePlayerReward(rewardPlayer, map->GetInstanceId(), boss->GetEntry(),
+                TitanRuneMode::Alpha, EMBLEM_OF_CONQUEST, 1, "Defense Protocol Alpha completed");
         }
     }
 };
