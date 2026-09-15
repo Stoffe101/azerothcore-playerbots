@@ -28,8 +28,6 @@ jobs:
           set -euo pipefail
           bash -n setup.sh update.sh configure-living-world-bots.sh
 
-          # Parse every unified diff before touching an AzerothCore checkout. This catches broken
-          # hunk counts immediately instead of discovering them halfway through ./update.sh.
           for patch in patches/*.patch; do
             [[ -e "$patch" ]] || continue
             git apply --numstat "$patch" >/dev/null
@@ -60,7 +58,7 @@ jobs:
           test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_15_01_titan_rune_titan_support.sql
           test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_15_03_titan_rune_gamma_signets.sql
 
-      - name: Assemble pinned tree and verify wrapper patches
+      - name: Assemble pinned source tree
         shell: bash
         run: |
           set -euo pipefail
@@ -89,6 +87,11 @@ jobs:
             cp -a "$GITHUB_WORKSPACE/modules/$lm" "$CORE/modules/$lm"
           done
 
+      - name: Verify wrapper patches against pinned tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          CORE="$GITHUB_WORKSPACE/azerothcore-wotlk"
           for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
             [[ -e "$patch" ]] || continue
             name="$(basename "$patch")"
@@ -104,17 +107,17 @@ jobs:
               echo "Applied wrapper patch: $name"
             else
               echo "ERROR: patch no longer applies cleanly: $name" >&2
-              echo "### Wrapper patch failed: \`$name\`" >> "$GITHUB_STEP_SUMMARY"
               git -C "$CORE" apply "${apply_args[@]}" --check --verbose "$patch" || true
               exit 1
             fi
           done
 
+      - name: Verify Era Talents patch stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          CORE="$GITHUB_WORKSPACE/azerothcore-wotlk"
           if [[ -x "$CORE/modules/mod-era-talents/apply-patches.sh" ]]; then
-            if ! "$CORE/modules/mod-era-talents/apply-patches.sh" "$CORE"; then
-              echo "### Era Talents patch stack failed" >> "$GITHUB_STEP_SUMMARY"
-              exit 1
-            fi
+            "$CORE/modules/mod-era-talents/apply-patches.sh" "$CORE"
           fi
-
           echo "Pinned tree and all wrapper patches are ready for the local ./update.sh build."
