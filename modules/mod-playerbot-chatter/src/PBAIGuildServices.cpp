@@ -522,9 +522,16 @@ bool IsTradablePhysicalItem(Item* item)
     return true;
 }
 
+bool IsConservableStockItem(Item* item)
+{
+    // Stock stores entry/count only. It cannot preserve bindings, random properties or wrapping.
+    return IsTradablePhysicalItem(item) && IsEconomySurplus(item->GetTemplate()) &&
+        !item->IsSoulBound() && !item->IsWrapped() && !item->GetItemRandomPropertyId();
+}
+
 bool MoveWholeStackToStock(Player* bot, Item* item)
 {
-    if (!bot || !item || !bot->GetGuildId() || !IsTradablePhysicalItem(item))
+    if (!bot || !item || !bot->GetGuildId() || !IsConservableStockItem(item))
         return false;
 
     uint32 const guildId = bot->GetGuildId();
@@ -590,7 +597,7 @@ AuctionHouseEntry const* AuctionEntryForBot(Player* bot, AuctionHouseId& houseId
         return AuctionHouseMgr::GetAuctionHouseEntryFromHouse(houseId);
     }
 
-    AuctionHouseEntry const* entry = AuctionHouseMgr::GetAuctionHouseEntryFromFactionTemplate(bot->getFaction());
+    AuctionHouseEntry const* entry = AuctionHouseMgr::GetAuctionHouseEntryFromFactionTemplate(bot->GetFaction());
     if (!entry)
         return nullptr;
     houseId = static_cast<AuctionHouseId>(entry->houseId);
@@ -934,13 +941,25 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
             Reply(player, "[AI Guild] The guild stock refuses BoP, conjured, quest/key or above-epic items.");
             return true;
         }
-        if (player->GetItemCount(itemId, false) < count)
+        std::vector<Item*> const inventory = BagItems(player);
+        uint32 available = 0;
+        for (Item* item : inventory)
+            if (item->GetEntry() == itemId && IsConservableStockItem(item))
+                available += item->GetCount();
+        if (available < count)
         {
-            Reply(player, "[AI Guild] You do not have enough of that item.");
+            Reply(player, "[AI Guild] Stock accepts only unbound, plain materials, consumables, gems and recipes from your bags.");
             return true;
         }
 
-        player->DestroyItemCount(itemId, count, true, false);
+        uint32 remaining = count;
+        for (Item* item : inventory)
+        {
+            if (!remaining)
+                break;
+            if (item->GetEntry() == itemId && IsConservableStockItem(item))
+                player->DestroyItemCount(item, remaining, true);
+        }
         CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
         player->SaveInventoryAndGoldToDB(trans);
         AppendStockCredit(trans, guildId, itemId, count);

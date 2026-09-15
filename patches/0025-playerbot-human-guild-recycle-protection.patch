@@ -1,0 +1,135 @@
+diff --git a/src/server/game/Guilds/Guild.h b/src/server/game/Guilds/Guild.h
+--- a/src/server/game/Guilds/Guild.h
++++ b/src/server/game/Guilds/Guild.h
+@@ -781,6 +781,14 @@
+     // pussywizard
+     uint64 GetTotalBankMoney() const { return m_bankMoney; }
+     uint32 GetMemberCount() const { return m_members.size(); }
++    template<class Predicate>
++    bool HasMemberMatching(Predicate const& predicate) const
++    {
++        for (auto const& member : m_members)
++            if (predicate(member.second))
++                return true;
++        return false;
++    }
+     time_t GetCreatedDate() const { return m_createdDate; }
+ 
+     // Bank tabs
+diff --git a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
+--- a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
++++ b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
+@@ -5,6 +5,7 @@
+  */
+ 
+ #include "RandomPlayerbotMgr.h"
++#include "PlayerbotGuildMgr.h"
+ #include "AiFactory.h"
+ #include "Battlefield.h"
+ #include "BattlefieldMgr.h"
+@@ -1989,6 +1990,8 @@
+ 
+ void RandomPlayerbotMgr::Randomize(Player* bot)
+ {
++    if (!bot || PlayerbotGuildMgr::instance().IsRealGuild(bot))
++        return;
+     if (bot->InBattleground())
+         return;
+ 
+@@ -2011,6 +2014,8 @@
+ 
+ void RandomPlayerbotMgr::IncreaseLevel(Player* bot)
+ {
++    if (!bot || PlayerbotGuildMgr::instance().IsRealGuild(bot))
++        return;
+     uint32 maxLevel = sPlayerbotAIConfig.randomBotMaxLevel;
+     if (maxLevel > sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+         maxLevel = sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL);
+@@ -2034,6 +2039,8 @@
+ 
+ void RandomPlayerbotMgr::RandomizeFirst(Player* bot)
+ {
++    if (!bot || PlayerbotGuildMgr::instance().IsRealGuild(bot))
++        return;
+     PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
+     if (!botAI)
+         return;
+@@ -2129,6 +2136,8 @@
+ 
+ void RandomPlayerbotMgr::RandomizeMin(Player* bot)
+ {
++    if (!bot || PlayerbotGuildMgr::instance().IsRealGuild(bot))
++        return;
+     PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
+     if (!botAI)
+         return;
+diff --git a/modules/mod-playerbots/src/Mgr/Guild/PlayerbotGuildMgr.cpp b/modules/mod-playerbots/src/Mgr/Guild/PlayerbotGuildMgr.cpp
+--- a/modules/mod-playerbots/src/Mgr/Guild/PlayerbotGuildMgr.cpp
++++ b/modules/mod-playerbots/src/Mgr/Guild/PlayerbotGuildMgr.cpp
+@@ -99,7 +99,7 @@
+     for (auto& keyValue : _guildCache)
+     {
+         GuildCache& cached = keyValue.second;
+-        if (!cached.hasRealPlayer && cached.status == 1 && cached.faction == playerFaction)
++        if (!IsRealGuild(keyValue.first) && cached.status == 1 && cached.faction == playerFaction)
+             partiallyfilledguilds.push_back(&cached);
+     }
+ 
+@@ -224,8 +224,9 @@
+         cache.memberCount = guild->GetMemberCount();
+         ObjectGuid leaderGuid = guild->GetLeaderGUID();
+         CharacterCacheEntry const* leaderEntry = sCharacterCache->GetCharacterCacheByGuid(leaderGuid);
+-        uint32 leaderAccount = leaderEntry->AccountId;
+-        cache.hasRealPlayer = !(sPlayerbotAIConfig.IsInRandomAccountList(leaderAccount));
++        if (!leaderEntry)
++            continue;
++        cache.hasRealPlayer = IsRealGuild(guildId);
+         cache.faction = Player::TeamIdForRace(leaderEntry->Race);
+         if (cache.memberCount == 0)
+             cache.status = 0; // empty
+@@ -261,7 +262,7 @@
+ 
+             // The leader's account is checked instead of the 'add' event or anything else that depends on the
+             // bot being online.
+-            if (sPlayerbotAIConfig.IsInRandomAccountList(sCharacterCache->GetCharacterAccountIdByGuid(leader)))
++            if (!IsRealGuild(guildId) && sPlayerbotAIConfig.IsInRandomAccountList(sCharacterCache->GetCharacterAccountIdByGuid(leader)))
+                 guildsToDisband.push_back(guildId);
+         } while (result->NextRow());
+     }
+@@ -290,27 +291,17 @@
+     if (!guildId)
+         return false;
+ 
+-    auto it = _guildCache.find(guildId);
+-    if (it != _guildCache.end())
+-        return it->second.hasRealPlayer;
+-
+-    // The cache is refreshed only once per hour. A human-created guild can therefore exist in
+-    // GuildMgr long before it appears here. Returning false for every cache miss makes callers
+-    // treat that brand-new human guild as a synthetic bot guild, which is unsafe for roster
+-    // selection/migration. Fall back to the live Guild + CharacterCache state instead.
++    // Membership, including offline humans, is authoritative. The hourly population
++    // cache must not permit recycling immediately after a human joins a bot-led guild.
+     Guild* guild = sGuildMgr->GetGuildById(guildId);
+     if (!guild)
+-        return false;
+-
+-    CharacterCacheEntry const* leaderEntry = sCharacterCache->GetCharacterCacheByGuid(guild->GetLeaderGUID());
+-    if (!leaderEntry)
+-    {
+-        // Unknown should be conservative for callers asking whether it is safe to take a member.
+-        LOG_WARN("playerbots", "Guild {} is missing its leader from CharacterCache; treating it as real", guildId);
+-        return true;
+-    }
+-
+-    return !sPlayerbotAIConfig.IsInRandomAccountList(leaderEntry->AccountId);
++        return true; // unresolved guild ownership is never safe to recycle
++
++    return guild->HasMemberMatching([](Guild::Member const& member)
++    {
++        return !member.GetAccountId() ||
++            !sPlayerbotAIConfig.IsInRandomAccountList(member.GetAccountId());
++    });
+ }
+ 
+ class BotGuildCacheWorldScript : public WorldScript
