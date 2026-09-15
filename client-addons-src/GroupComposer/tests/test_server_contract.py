@@ -12,6 +12,8 @@ import re
 ROOT = Path(__file__).resolve().parents[3]
 DATA = (ROOT / "client-addons-src/GroupComposer/Data.lua").read_text(encoding="utf-8")
 SERVER = (ROOT / "modules/mod-raid-roster/src/GroupComposerCommand.cpp").read_text(encoding="utf-8")
+PLANNER = (ROOT / "modules/mod-raid-roster/src/GroupComposerPlanner.cpp").read_text(encoding="utf-8")
+TYPES = (ROOT / "modules/mod-raid-roster/src/GroupComposerTypes.h").read_text(encoding="utf-8")
 
 
 def section(text: str, start: str, end: str) -> str:
@@ -83,5 +85,32 @@ assert "group->SwapMembersGroup(member.guid, swap->guid)" in SERVER, "Full raid 
 assert "group->GetMembersCount() == plan.members.size()" in SERVER, "Assembly must require exact reviewed membership"
 assert "(void)keepMe; config.keepMe = true" in SERVER, "Local player anchor must remain mandatory server-side"
 assert "The group gained a real player after the preview" in SERVER, "Late human joins must force a fresh preview"
+
+# A real player's invite is user-facing state, not a retryable bot operation. One explicit Assemble
+# may send a human invite once; a later explicit Assemble is the retry boundary.
+assert "std::unordered_set<uint32> humanInvitesSent;" in TYPES, "Plan lost one-shot human invite tracking"
+assert "plan.humanInvitesSent.clear();" in SERVER, "Fresh Assemble must reset its human invite attempt set"
+assert "plan.humanInvitesSent.count(member.guid.GetCounter())" in SERVER, "Assembly can re-invite a human repeatedly"
+assert "plan.humanInvitesSent.insert(member.guid.GetCounter())" in SERVER, "Sent human invites are not remembered"
+
+# Instance conflicts mirror the stock invite rule: different instance IDs are incompatible only
+# when both players are in different copies of the same map. Merely being in different instances on
+# different maps must not make an otherwise eligible friend/bot disappear from the candidate pool.
+planner_instances = section(PLANNER, "bool ConflictingInstances(", "void AddCoverage(")
+assert "master->GetMapId() == other->GetMapId()" in planner_instances, (
+    "Planner instance-conflict filtering drifted from the stock group-invite rule"
+)
+
+# Selection priority is part of correctness. Required pins and Required class/spec rows are hard
+# constraints. Preferred pins may be chosen before ordinary score-based filling, but never before a
+# hard class/spec requirement that could need the same final role slot.
+build = section(PLANNER, "bool Planner::Build(", "void Planner::Arrange(")
+required_pin_pos = build.index("if (!pin.required) continue;")
+required_pref_pos = build.index("std::unordered_set<uint32> requiredMemberUsed;")
+preferred_pin_pos = build.index("if (pin.required) continue;")
+assert required_pin_pos < required_pref_pos < preferred_pin_pos, (
+    "Preferred pins must not consume slots before all hard requirements are secured"
+)
+assert "member.pinned = true;" in build, "A hard-selected familiar pin must retain stable/pinned identity"
 
 print("Group Composer client/server contract tests passed")
