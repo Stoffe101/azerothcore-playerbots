@@ -111,7 +111,7 @@ bool EncounterHasReset(Player* anchor)
     // Do not infer a boss reset from elapsed time. AzerothCore itself uses this instance signal
     // to decide whether players may enter during an active encounter, so it is the authoritative
     // safety gate for automatic post-wipe resurrection.
-    InstanceScript* instance = anchor->GetMap()->GetInstanceScript();
+    InstanceScript* instance = anchor->GetInstanceScript();
     return instance && !instance->IsEncounterInProgress();
 }
 

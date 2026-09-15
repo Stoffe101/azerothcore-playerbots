@@ -1,3 +1,4 @@
+#include "PlayerbotFactory.h"
 #include "RaidRosterGear.h"
 #include "DBCStores.h"
 #include "ItemTemplate.h"
@@ -578,3 +579,8 @@ bool EquipForSpec(Player* bot, Player* master, int specTab)
 }
 
 } // namespace RaidRosterGear
+
+void RaidRosterGear::EquipCatchup(Player* player, uint32 quality, uint32 itemLevel)
+{
+    PlayerbotFactory::AutoGear(player, quality, itemLevel, true, false, false);
+}

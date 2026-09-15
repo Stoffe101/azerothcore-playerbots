@@ -41,7 +41,8 @@ update_repo () {
 }
 
 ensure_git_module () {
-  local name="$1" url="$2" dir="$AC_DIR/modules/$name"
+  local name="$1" url="$2"
+  local dir="$AC_DIR/modules/$name"
   if [[ -d "$dir/.git" ]]; then
     return
   fi

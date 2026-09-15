@@ -5,7 +5,7 @@
 #include "Field.h"
 #include "IndividualProgression.h"
 #include "Player.h"
-#include "PlayerbotFactory.h"
+#include "RaidRosterGear.h"
 #include "QueryResult.h"
 #include "RBAC.h"
 #include "SharedDefines.h"
@@ -223,13 +223,7 @@ bool ApplyProfile(ChatHandler* handler, Player* player, CatchupProfile const& pr
         return true;
     }
 
-    PlayerbotFactory::AutoGear(
-        player,
-        profile.quality,
-        profile.itemLevel,
-        true,
-        false,
-        false);
+    RaidRosterGear::EquipCatchup(player, profile.quality, profile.itemLevel);
 
     player->SaveToDB(false, false);
 

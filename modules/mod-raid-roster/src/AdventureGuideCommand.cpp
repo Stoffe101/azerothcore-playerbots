@@ -6,7 +6,6 @@
 #include "Item.h"
 #include "ItemTemplate.h"
 #include "Player.h"
-#include "PlayerbotAI.h"
 #include "RaidRosterCommand.h"
 #include "RaidRosterStore.h"
 #include "RBAC.h"

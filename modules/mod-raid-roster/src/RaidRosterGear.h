@@ -1,10 +1,13 @@
 #ifndef MOD_RAID_ROSTER_GEAR_H
 #define MOD_RAID_ROSTER_GEAR_H
 
+#include "Define.h"
+
 class Player;
 
 namespace RaidRosterGear
 {
+void EquipCatchup(Player* player, uint32 quality, uint32 itemLevel);
 // Deterministic strip-and-rebuild gear pass for one roster bot, under its CURRENT
 // (already-pinned) talent spec — the caller MUST force talents first, because all
 // scoring reads the active talent tab. At bot level >= 50 it targets the master's

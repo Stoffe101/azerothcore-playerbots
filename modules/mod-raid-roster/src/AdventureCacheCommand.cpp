@@ -25,7 +25,7 @@ constexpr uint32 ITEM_SUPER_HEALING_POTION = 22829;
 constexpr uint32 ITEM_SUPER_MANA_POTION = 22832;
 constexpr uint32 COPPER_PER_GOLD = 10000;
 
-bool IsRealPlayer(Player* player)
+bool IsCachePlayer(Player* player)
 {
     return player && player->GetSession() && !player->GetSession()->IsBot() && GET_PLAYERBOT_AI(player) == nullptr;
 }
@@ -149,7 +149,7 @@ ChatCommandTable AdventureCacheCommand::GetCommands() const
 bool AdventureCacheCommand::HandleStatus(ChatHandler* handler)
 {
     Player* player = handler && handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
-    if (!IsRealPlayer(player))
+    if (!IsCachePlayer(player))
         return true;
 
     AdventureProgressionStore::State state = AdventureProgressionStore::LoadOrCreate(player->GetGUID().GetCounter());
@@ -162,7 +162,7 @@ bool AdventureCacheCommand::HandleStatus(ChatHandler* handler)
 bool AdventureCacheCommand::HandleOpen(ChatHandler* handler)
 {
     Player* player = handler && handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
-    if (!IsRealPlayer(player))
+    if (!IsCachePlayer(player))
         return true;
 
     if (!g_AdventureProgressionCachesEnable)
