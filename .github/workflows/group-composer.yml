@@ -54,6 +54,9 @@ jobs:
           grep -q 'HandleAnchors' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'Planner::Build' modules/mod-raid-roster/src/GroupComposerPlanner.cpp
 
+      - name: Check addon/backend activity contract
+        run: python3 client-addons-src/GroupComposer/tests/test_server_contract.py
+
       - name: Reject accidental modern classes in runtime source
         shell: bash
         run: |
