@@ -10,13 +10,25 @@ local function DeepCopy(value)
 end
 P.DeepCopy = DeepCopy
 
+local function CleanName(value)
+    if type(value) ~= "string" then return nil end
+    value = string.gsub(value, "^%s+", "")
+    value = string.gsub(value, "%s+$", "")
+    value = string.gsub(value, "[|\r\n]", "")
+    if value == "" then return nil end
+    return value
+end
+P.CleanName = CleanName
+
 local function DefaultsFor(mode, size)
-    local tanks, healers, dps = D.DefaultRolesForSize(size or (mode == "DUNGEON" and 5 or 25))
+    mode = mode == "RAID" and "RAID" or "DUNGEON"
+    size = tonumber(size) or (mode == "DUNGEON" and 5 or 25)
+    local tanks, healers, dps = D.DefaultRolesForSize(size)
     return {
-        mode = mode or "DUNGEON",
+        mode = mode,
         activity = mode == "RAID" and "icecrown" or "random",
         difficulty = mode == "RAID" and "normal" or "heroic",
-        size = size or (mode == "DUNGEON" and 5 or 25),
+        size = size,
         tanks = tanks,
         healers = healers,
         dps = dps,
@@ -25,19 +37,122 @@ local function DefaultsFor(mode, size)
             fillWorld = true,
             keepMe = true,
             balanceClasses = true,
+            balanceUtility = true,
+            balanceRange = true,
             avoidDuplicateClasses = false,
             minimumItemLevel = 0,
+            queueAfterAssemble = false,
         },
         preferences = {
             TANK = {},
             HEALER = {},
             DPS = {},
         },
+        -- Human role overrides are keyed by character name. Values are TANK / HEALER / DPS.
+        humanRoles = {},
+        -- Optional online real players to invite as part of assembly.
+        extraHumans = {},
+        -- Persistent named Playerbots. A pin may be preferred or required.
         pinned = {},
+        -- Stable subgroup placement is intentionally name-based only for humans/pinned members.
         arrangement = {},
     }
 end
 P.DefaultsFor = DefaultsFor
+
+local function NormalizePreferences(p)
+    p.preferences = type(p.preferences) == "table" and p.preferences or {}
+    for _, role in ipairs({ "TANK", "HEALER", "DPS" }) do
+        local src = type(p.preferences[role]) == "table" and p.preferences[role] or {}
+        local out = {}
+        for _, pref in ipairs(src) do
+            if type(pref) == "table" and #out < 12 then
+                out[#out + 1] = {
+                    class = pref.class or "ANY",
+                    spec = pref.spec == nil and "ANY" or pref.spec,
+                    required = pref.required and true or false,
+                }
+            end
+        end
+        p.preferences[role] = out
+    end
+end
+
+local function NormalizeHumanRoles(p)
+    local out = {}
+    if type(p.humanRoles) == "table" then
+        for name, role in pairs(p.humanRoles) do
+            local clean = CleanName(name)
+            if clean and (role == "TANK" or role == "HEALER" or role == "DPS") then
+                out[clean] = role
+            end
+        end
+    end
+    p.humanRoles = out
+end
+
+local function NormalizeExtraHumans(p)
+    local out, seen = {}, {}
+    if type(p.extraHumans) == "table" then
+        for _, entry in ipairs(p.extraHumans) do
+            if type(entry) == "table" then
+                local name = CleanName(entry.name)
+                local role = entry.role
+                local key = name and string.lower(name) or nil
+                if name and key and not seen[key] and (role == "TANK" or role == "HEALER" or role == "DPS") then
+                    seen[key] = true
+                    out[#out + 1] = { name = name, role = role }
+                end
+            end
+        end
+    end
+    p.extraHumans = out
+end
+
+local function NormalizePins(p)
+    local out, seen = {}, {}
+    if type(p.pinned) == "table" then
+        for _, entry in ipairs(p.pinned) do
+            if type(entry) == "table" then
+                local name = CleanName(entry.name)
+                local role = entry.role
+                local key = name and string.lower(name) or nil
+                if name and key and not seen[key] and (role == "TANK" or role == "HEALER" or role == "DPS") then
+                    seen[key] = true
+                    out[#out + 1] = {
+                        name = name,
+                        role = role,
+                        required = entry.required and true or false,
+                    }
+                end
+            end
+        end
+    end
+    p.pinned = out
+end
+
+local function StableNameSet(p)
+    local stable = {}
+    for name in pairs(p.humanRoles or {}) do stable[string.lower(name)] = true end
+    for _, entry in ipairs(p.extraHumans or {}) do stable[string.lower(entry.name)] = true end
+    for _, entry in ipairs(p.pinned or {}) do stable[string.lower(entry.name)] = true end
+    return stable
+end
+
+local function NormalizeArrangement(p)
+    local out = {}
+    local stable = StableNameSet(p)
+    if type(p.arrangement) == "table" then
+        for name, subgroup in pairs(p.arrangement) do
+            local clean = CleanName(name)
+            local group = tonumber(subgroup)
+            if clean and group and group >= 1 and group <= 8 and stable[string.lower(clean)] then
+                out[clean] = math.floor(group)
+            end
+        end
+    end
+    p.arrangement = out
+end
 
 function P.Normalize(profile)
     local p = DeepCopy(profile or {})
@@ -48,40 +163,53 @@ function P.Normalize(profile)
     for k, v in pairs(base) do
         if p[k] == nil then p[k] = DeepCopy(v) end
     end
+    p.options = type(p.options) == "table" and p.options or {}
     for k, v in pairs(base.options) do
         if p.options[k] == nil then p.options[k] = v end
     end
-    for _, role in ipairs({ "TANK", "HEALER", "DPS" }) do
-        if type(p.preferences[role]) ~= "table" then p.preferences[role] = {} end
-    end
 
-    p.size = math.max(1, math.min(40, tonumber(p.size) or size))
-    p.tanks = math.max(0, tonumber(p.tanks) or 0)
-    p.healers = math.max(0, tonumber(p.healers) or 0)
-    p.dps = math.max(0, tonumber(p.dps) or 0)
-    p.options.minimumItemLevel = math.max(0, tonumber(p.options.minimumItemLevel) or 0)
+    p.mode = mode
+    p.size = math.max(1, math.min(40, math.floor(tonumber(p.size) or size)))
+    p.tanks = math.max(0, math.floor(tonumber(p.tanks) or 0))
+    p.healers = math.max(0, math.floor(tonumber(p.healers) or 0))
+    p.dps = math.max(0, math.floor(tonumber(p.dps) or 0))
+    p.options.minimumItemLevel = math.max(0, math.min(1000, math.floor(tonumber(p.options.minimumItemLevel) or 0)))
+
+    NormalizePreferences(p)
+    NormalizeHumanRoles(p)
+    NormalizeExtraHumans(p)
+    NormalizePins(p)
+    NormalizeArrangement(p)
     return p
 end
 
 function P.InitializeDB()
     GroupComposerDB = GroupComposerDB or {}
     local db = GroupComposerDB
-    db.version = db.version or 1
-    db.profiles = db.profiles or {}
-    db.window = db.window or {}
+    local oldVersion = tonumber(db.version) or 0
+    db.version = 2
+    db.profiles = type(db.profiles) == "table" and db.profiles or {}
+    db.window = type(db.window) == "table" and db.window or {}
     db.window.point = db.window.point or { "CENTER", "UIParent", "CENTER", 0, 0 }
     db.window.userScale = tonumber(db.window.userScale) or 1.0
     db.window.autoScale = db.window.autoScale ~= false
+    db.window.advancedPoint = db.window.advancedPoint or { "CENTER", "UIParent", "CENTER", 0, 0 }
+    db.window.advancedTab = db.window.advancedTab or "PEOPLE"
     db.lastProfile = db.lastProfile or nil
     db.lastMode = db.lastMode == "RAID" and "RAID" or "DUNGEON"
+
+    -- Normalize stored custom profiles whenever the schema changes. This keeps old v1 profiles usable.
+    if oldVersion < 2 then
+        for name, profile in pairs(db.profiles) do
+            db.profiles[name] = P.Normalize(profile)
+        end
+    end
     return db
 end
 
 function P.ListBuiltins()
     local out = {}
-    for _, profile in ipairs(D.BUILTIN_PROFILES) do
-        out[#out + 1] = profile.name
-    end
+    for _, profile in ipairs(D.BUILTIN_PROFILES) do out[#out + 1] = profile.name end
     table.sort(out)
     return out
 end
@@ -118,7 +246,9 @@ function P.Get(name)
 end
 
 function P.Save(name, profile)
-    if not name or name == "" then return false, "Profile name cannot be empty." end
+    name = CleanName(name)
+    if not name then return false, "Profile name cannot be empty." end
+    if string.len(name) > 40 then return false, "Profile names are limited to 40 characters." end
     if P.GetBuiltin(name) then return false, "Built-in profiles cannot be overwritten. Use a different name." end
     local db = P.InitializeDB()
     local p = P.Normalize(profile)
@@ -138,5 +268,6 @@ function P.Delete(name)
 end
 
 function P.New(mode)
-    return P.Normalize(DefaultsFor(mode or "DUNGEON", mode == "RAID" and 25 or 5))
+    mode = mode == "RAID" and "RAID" or "DUNGEON"
+    return P.Normalize(DefaultsFor(mode, mode == "RAID" and 25 or 5))
 end
