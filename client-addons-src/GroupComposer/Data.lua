@@ -1,13 +1,15 @@
 GroupComposerData = GroupComposerData or {}
 local D = GroupComposerData
 
-D.VERSION = "0.1.0"
+D.VERSION = "0.2.0"
 
 D.ROLE = {
     TANK = "TANK",
     HEALER = "HEALER",
     DPS = "DPS",
 }
+
+D.ROLE_ORDER = { "TANK", "HEALER", "DPS" }
 
 D.ROLE_LABEL = {
     TANK = "Tank",
@@ -63,83 +65,97 @@ D.CLASS_ROLE = {
 
 D.SPECS = {
     WARRIOR = {
-        { id = 0, label = "Arms", role = "DPS" },
-        { id = 1, label = "Fury", role = "DPS" },
-        { id = 2, label = "Protection", role = "TANK" },
+        { id = 0, label = "Arms", role = "DPS", range = "MELEE" },
+        { id = 1, label = "Fury", role = "DPS", range = "MELEE" },
+        { id = 2, label = "Protection", role = "TANK", range = "MELEE" },
     },
     PALADIN = {
-        { id = 0, label = "Holy", role = "HEALER" },
-        { id = 1, label = "Protection", role = "TANK" },
-        { id = 2, label = "Retribution", role = "DPS" },
+        { id = 0, label = "Holy", role = "HEALER", range = "RANGED" },
+        { id = 1, label = "Protection", role = "TANK", range = "MELEE" },
+        { id = 2, label = "Retribution", role = "DPS", range = "MELEE" },
     },
     HUNTER = {
-        { id = 0, label = "Beast Mastery", role = "DPS" },
-        { id = 1, label = "Marksmanship", role = "DPS" },
-        { id = 2, label = "Survival", role = "DPS" },
+        { id = 0, label = "Beast Mastery", role = "DPS", range = "RANGED" },
+        { id = 1, label = "Marksmanship", role = "DPS", range = "RANGED" },
+        { id = 2, label = "Survival", role = "DPS", range = "RANGED" },
     },
     ROGUE = {
-        { id = 0, label = "Assassination", role = "DPS" },
-        { id = 1, label = "Combat", role = "DPS" },
-        { id = 2, label = "Subtlety", role = "DPS" },
+        { id = 0, label = "Assassination", role = "DPS", range = "MELEE" },
+        { id = 1, label = "Combat", role = "DPS", range = "MELEE" },
+        { id = 2, label = "Subtlety", role = "DPS", range = "MELEE" },
     },
     PRIEST = {
-        { id = 0, label = "Discipline", role = "HEALER" },
-        { id = 1, label = "Holy", role = "HEALER" },
-        { id = 2, label = "Shadow", role = "DPS" },
+        { id = 0, label = "Discipline", role = "HEALER", range = "RANGED" },
+        { id = 1, label = "Holy", role = "HEALER", range = "RANGED" },
+        { id = 2, label = "Shadow", role = "DPS", range = "RANGED" },
     },
     DEATHKNIGHT = {
-        { id = 0, label = "Blood", role = "TANK" },
-        { id = 1, label = "Frost", role = "DPS" },
-        { id = 2, label = "Unholy", role = "DPS" },
+        { id = 0, label = "Blood", role = "TANK", range = "MELEE" },
+        { id = 1, label = "Frost", role = "DPS", range = "MELEE" },
+        { id = 2, label = "Unholy", role = "DPS", range = "MELEE" },
     },
     SHAMAN = {
-        { id = 0, label = "Elemental", role = "DPS" },
-        { id = 1, label = "Enhancement", role = "DPS" },
-        { id = 2, label = "Restoration", role = "HEALER" },
+        { id = 0, label = "Elemental", role = "DPS", range = "RANGED" },
+        { id = 1, label = "Enhancement", role = "DPS", range = "MELEE" },
+        { id = 2, label = "Restoration", role = "HEALER", range = "RANGED" },
     },
     MAGE = {
-        { id = 0, label = "Arcane", role = "DPS" },
-        { id = 1, label = "Fire", role = "DPS" },
-        { id = 2, label = "Frost", role = "DPS" },
+        { id = 0, label = "Arcane", role = "DPS", range = "RANGED" },
+        { id = 1, label = "Fire", role = "DPS", range = "RANGED" },
+        { id = 2, label = "Frost", role = "DPS", range = "RANGED" },
     },
     WARLOCK = {
-        { id = 0, label = "Affliction", role = "DPS" },
-        { id = 1, label = "Demonology", role = "DPS" },
-        { id = 2, label = "Destruction", role = "DPS" },
+        { id = 0, label = "Affliction", role = "DPS", range = "RANGED" },
+        { id = 1, label = "Demonology", role = "DPS", range = "RANGED" },
+        { id = 2, label = "Destruction", role = "DPS", range = "RANGED" },
     },
     DRUID = {
-        { id = 0, label = "Balance", role = "DPS" },
-        { id = 1, label = "Feral", role = "DPS", canTank = true },
-        { id = 2, label = "Restoration", role = "HEALER" },
+        { id = 0, label = "Balance", role = "DPS", range = "RANGED" },
+        { id = 1, label = "Feral", role = "DPS", canTank = true, range = "MELEE" },
+        { id = 2, label = "Restoration", role = "HEALER", range = "RANGED" },
     },
+}
+
+D.UTILITY_LABELS = {
+    "Interrupts",
+    "Magic / curse / poison / disease removal",
+    "Raid buffs",
+    "Bloodlust / Heroism",
+    "Battle resurrection",
+    "Crowd control",
+    "Threat support",
+    "Ranged damage",
+    "Melee damage",
 }
 
 D.DUNGEONS = {
-    { id = "random", label = "Random Dungeon" },
-    { id = "utgarde_keep", label = "Utgarde Keep" },
-    { id = "nexus", label = "The Nexus" },
-    { id = "azjol_nerub", label = "Azjol-Nerub" },
-    { id = "ahnkahet", label = "Ahn'kahet: The Old Kingdom" },
-    { id = "drak_tharon", label = "Drak'Tharon Keep" },
-    { id = "violet_hold", label = "The Violet Hold" },
-    { id = "gundrak", label = "Gundrak" },
-    { id = "halls_of_stone", label = "Halls of Stone" },
-    { id = "halls_of_lightning", label = "Halls of Lightning" },
-    { id = "oculus", label = "The Oculus" },
-    { id = "culling", label = "The Culling of Stratholme" },
-    { id = "utgarde_pinnacle", label = "Utgarde Pinnacle" },
-    { id = "trial_champion", label = "Trial of the Champion" },
-    { id = "forge_souls", label = "The Forge of Souls" },
-    { id = "pit_saron", label = "Pit of Saron" },
-    { id = "halls_reflection", label = "Halls of Reflection" },
+    { id = "random", label = "Random Dungeon", rdf = true },
+    { id = "utgarde_keep", label = "Utgarde Keep", map = 574, rdf = true },
+    { id = "nexus", label = "The Nexus", map = 576, rdf = true },
+    { id = "azjol_nerub", label = "Azjol-Nerub", map = 601, rdf = true },
+    { id = "ahnkahet", label = "Ahn'kahet: The Old Kingdom", map = 619, rdf = true },
+    { id = "drak_tharon", label = "Drak'Tharon Keep", map = 600, rdf = true },
+    { id = "violet_hold", label = "The Violet Hold", map = 608, rdf = true },
+    { id = "gundrak", label = "Gundrak", map = 604, rdf = true },
+    { id = "halls_of_stone", label = "Halls of Stone", map = 599, rdf = true },
+    { id = "halls_of_lightning", label = "Halls of Lightning", map = 602, rdf = true },
+    { id = "oculus", label = "The Oculus", map = 578, rdf = true },
+    { id = "culling", label = "The Culling of Stratholme", map = 595, rdf = true },
+    { id = "utgarde_pinnacle", label = "Utgarde Pinnacle", map = 575, rdf = true },
+    { id = "trial_champion", label = "Trial of the Champion", map = 650, rdf = true },
+    { id = "forge_souls", label = "The Forge of Souls", map = 632, rdf = true },
+    { id = "pit_saron", label = "Pit of Saron", map = 658, rdf = true },
+    { id = "halls_reflection", label = "Halls of Reflection", map = 668, rdf = true },
 }
 
 D.DUNGEON_DIFFICULTIES = {
-    { id = "normal", label = "Normal" },
-    { id = "heroic", label = "Heroic" },
-    { id = "alpha", label = "Titan Rune Alpha" },
-    { id = "beta", label = "Titan Rune Beta" },
-    { id = "gamma", label = "Titan Rune Gamma" },
+    { id = "normal", label = "Normal", stockRDF = true },
+    { id = "heroic", label = "Heroic", stockRDF = true },
+    -- The Titan Rune modes are part of this custom realm, not stock 3.3.5a RDF difficulty IDs.
+    -- Composer preserves them in profiles and hands them to the server-side Titan Rune integration.
+    { id = "alpha", label = "Titan Rune Alpha", stockRDF = false },
+    { id = "beta", label = "Titan Rune Beta", stockRDF = false },
+    { id = "gamma", label = "Titan Rune Gamma", stockRDF = false },
 }
 
 D.RAIDS = {
@@ -190,7 +206,14 @@ function D.GetDungeonById(id)
     end
 end
 
+function D.GetSpec(classToken, specId)
+    for _, spec in ipairs(D.SPECS[classToken] or {}) do
+        if spec.id == tonumber(specId) then return spec end
+    end
+end
+
 function D.DefaultRolesForSize(size)
+    size = tonumber(size) or 5
     if size == 5 then return 1, 1, 3 end
     if size == 10 then return 2, 2, 6 end
     if size == 20 then return 3, 5, 12 end
@@ -199,85 +222,57 @@ function D.DefaultRolesForSize(size)
     return 1, 1, math.max(0, size - 2)
 end
 
+function D.DefaultRolesForActivity(mode, activity, size)
+    -- These are conservative roster defaults, not boss-mechanic claims. Verified encounter-specific
+    -- overrides can be added later without changing the profile format.
+    return D.DefaultRolesForSize(size)
+end
+
+local function Profile(name, mode, activity, difficulty, size, tanks, healers, dps)
+    return {
+        name = name,
+        mode = mode,
+        activity = activity,
+        difficulty = difficulty,
+        size = size,
+        tanks = tanks,
+        healers = healers,
+        dps = dps,
+    }
+end
+
 D.BUILTIN_PROFILES = {
-    {
-        name = "Dungeon - Standard 5",
-        mode = "DUNGEON",
-        activity = "random",
-        difficulty = "heroic",
-        size = 5,
-        tanks = 1,
-        healers = 1,
-        dps = 3,
-    },
-    {
-        name = "ICC 10 - Standard",
-        mode = "RAID",
-        activity = "icecrown",
-        difficulty = "normal",
-        size = 10,
-        tanks = 2,
-        healers = 2,
-        dps = 6,
-    },
-    {
-        name = "ICC 25 - Standard",
-        mode = "RAID",
-        activity = "icecrown",
-        difficulty = "normal",
-        size = 25,
-        tanks = 2,
-        healers = 6,
-        dps = 17,
-    },
-    {
-        name = "ICC 25 Heroic - Standard",
-        mode = "RAID",
-        activity = "icecrown",
-        difficulty = "heroic",
-        size = 25,
-        tanks = 2,
-        healers = 6,
-        dps = 17,
-    },
-    {
-        name = "Naxxramas 25 - Standard",
-        mode = "RAID",
-        activity = "naxxramas",
-        difficulty = "normal",
-        size = 25,
-        tanks = 2,
-        healers = 6,
-        dps = 17,
-    },
-    {
-        name = "Ulduar 25 - Standard",
-        mode = "RAID",
-        activity = "ulduar",
-        difficulty = "normal",
-        size = 25,
-        tanks = 2,
-        healers = 6,
-        dps = 17,
-    },
-    {
-        name = "Trial of the Crusader 25 Heroic - Standard",
-        mode = "RAID",
-        activity = "trial_crusader",
-        difficulty = "heroic",
-        size = 25,
-        tanks = 2,
-        healers = 6,
-        dps = 17,
-    },
-    {
-        name = "Molten Core 40 - Standard",
-        mode = "RAID",
-        activity = "molten_core",
-        difficulty = "normal",
-        size = 40,
-        tanks = 5,
-        healers = 10,
-        dps = 25,
-    },
+    Profile("Dungeon - Standard 5", "DUNGEON", "random", "heroic", 5, 1, 1, 3),
+    Profile("Dungeon - Normal 5", "DUNGEON", "random", "normal", 5, 1, 1, 3),
+    Profile("Dungeon - Titan Rune Alpha", "DUNGEON", "random", "alpha", 5, 1, 1, 3),
+    Profile("Dungeon - Titan Rune Beta", "DUNGEON", "random", "beta", 5, 1, 1, 3),
+    Profile("Dungeon - Titan Rune Gamma", "DUNGEON", "random", "gamma", 5, 1, 1, 3),
+
+    Profile("Naxxramas 10 - Standard", "RAID", "naxxramas", "normal", 10, 2, 2, 6),
+    Profile("Naxxramas 25 - Standard", "RAID", "naxxramas", "normal", 25, 2, 6, 17),
+    Profile("Ulduar 10 - Standard", "RAID", "ulduar", "normal", 10, 2, 2, 6),
+    Profile("Ulduar 25 - Standard", "RAID", "ulduar", "normal", 25, 2, 6, 17),
+    Profile("Trial of the Crusader 10 - Standard", "RAID", "trial_crusader", "normal", 10, 2, 2, 6),
+    Profile("Trial of the Crusader 10 Heroic", "RAID", "trial_crusader", "heroic", 10, 2, 2, 6),
+    Profile("Trial of the Crusader 25 - Standard", "RAID", "trial_crusader", "normal", 25, 2, 6, 17),
+    Profile("Trial of the Crusader 25 Heroic", "RAID", "trial_crusader", "heroic", 25, 2, 6, 17),
+    Profile("ICC 10 - Standard", "RAID", "icecrown", "normal", 10, 2, 2, 6),
+    Profile("ICC 10 Heroic - Standard", "RAID", "icecrown", "heroic", 10, 2, 2, 6),
+    Profile("ICC 25 - Standard", "RAID", "icecrown", "normal", 25, 2, 6, 17),
+    Profile("ICC 25 - Extra Heals", "RAID", "icecrown", "normal", 25, 2, 7, 16),
+    Profile("ICC 25 Heroic - Standard", "RAID", "icecrown", "heroic", 25, 2, 6, 17),
+    Profile("Ruby Sanctum 10 Heroic", "RAID", "ruby_sanctum", "heroic", 10, 2, 2, 6),
+    Profile("Ruby Sanctum 25 Heroic", "RAID", "ruby_sanctum", "heroic", 25, 2, 6, 17),
+
+    Profile("Karazhan 10 - Standard", "RAID", "karazhan", "normal", 10, 2, 2, 6),
+    Profile("Zul'Aman 10 - Standard", "RAID", "zulaman", "normal", 10, 2, 2, 6),
+    Profile("Serpentshrine 25 - Standard", "RAID", "serpentshrine", "normal", 25, 2, 6, 17),
+    Profile("Black Temple 25 - Standard", "RAID", "black_temple", "normal", 25, 2, 6, 17),
+    Profile("Sunwell 25 - Standard", "RAID", "sunwell", "normal", 25, 2, 6, 17),
+
+    Profile("Zul'Gurub 20 - Standard", "RAID", "zul_gurub", "normal", 20, 3, 5, 12),
+    Profile("Ruins of Ahn'Qiraj 20 - Standard", "RAID", "aq20", "normal", 20, 3, 5, 12),
+    Profile("Molten Core 40 - Standard", "RAID", "molten_core", "normal", 40, 5, 10, 25),
+    Profile("Blackwing Lair 40 - Standard", "RAID", "blackwing_lair", "normal", 40, 5, 10, 25),
+    Profile("Temple of Ahn'Qiraj 40 - Standard", "RAID", "aq40", "normal", 40, 5, 10, 25),
 }
