@@ -43,18 +43,25 @@ import sys
 path = Path(sys.argv[1])
 text = path.read_text(encoding="utf-8")
 
+# Add the autonomous dungeon-driving extension as a normal upstream git module. It remains pinned
+# in repo-pins.txt so setup/update stay reproducible, while still letting us consume upstream fixes
+# deliberately rather than vendoring a private copy.
+old_external_tail = '  "mod-era-talents|https://github.com/lathcf/azerothcore-mod-era-talents.git"\n)'
+new_external_tail = '  "mod-era-talents|https://github.com/lathcf/azerothcore-mod-era-talents.git"\n  "mod-dungeon-clear|https://github.com/jrad7/mod-dungeon-clear.git"\n)'
+if old_external_tail not in text:
+    raise SystemExit("ERROR: pinned setup body no longer matches expected external module tail")
+text = text.replace(old_external_tail, new_external_tail, 1)
+
 old_modules = 'LOCAL_MODULES=( "mod-playerbot-chatter" "mod-raid-roster" "mod-ahbot-price" "mod-wintergrasp-bots" "mod-arena-roster" )'
 new_modules = 'LOCAL_MODULES=( "mod-playerbot-chatter" "mod-raid-roster" "mod-admin-panel" "mod-ahbot-price" "mod-wintergrasp-bots" "mod-arena-roster" "mod-titan-rune" )'
 if old_modules not in text:
     raise SystemExit("ERROR: pinned setup body no longer matches expected LOCAL_MODULES line")
 text = text.replace(old_modules, new_modules, 1)
 
-# Every patch in this overlay is rooted at the AzerothCore checkout. Some patches edit files under
-# modules/mod-individual-progression or modules/mod-playerbots, but their diff paths deliberately
-# include that modules/... prefix. Applying those patches with `git -C` inside the nested module
-# repository breaks fresh installs because the prefixed path no longer exists relative to that
-# repository. Keep the historical, proven root-relative apply loop and merely verify it is still
-# present in the pinned bootstrap body.
+# Every patch in this overlay is rooted at the AzerothCore checkout. Sunwell and AQ40 were cut
+# around nearby upstream PlayerbotAI strategy-list changes, so their large historical patches now
+# deliberately exclude that one file and the following 0014a/0016a compatibility patches own the
+# tiny strategy-list edits. Keep fresh installs identical to update.sh and CI.
 old_apply = r'''apply_patches () {
   local pdir="$ROOT/patches"
   [[ -d "$pdir" && -d "$AC_DIR/.git" ]] || return 0
@@ -81,9 +88,41 @@ old_apply = r'''apply_patches () {
   fi
 }
 '''
-
+new_apply = r'''apply_patches () {
+  local pdir="$ROOT/patches"
+  [[ -d "$pdir" && -d "$AC_DIR/.git" ]] || return 0
+  local patch name
+  local -a apply_args
+  for patch in "$pdir"/*.patch; do
+    [[ -e "$patch" ]] || continue
+    name="$(basename "$patch")"
+    apply_args=()
+    if [[ "$name" == "0014-playerbot-sunwell.patch" || "$name" == "0016-playerbot-aq40-twins.patch" ]]; then
+      apply_args+=(--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp)
+    fi
+    if git -C "$AC_DIR" apply "${apply_args[@]}" --reverse --check "$patch" >/dev/null 2>&1; then
+      echo "    Patch already applied: $name"
+    elif git -C "$AC_DIR" apply "${apply_args[@]}" --check "$patch" >/dev/null 2>&1; then
+      git -C "$AC_DIR" apply "${apply_args[@]}" "$patch"
+      echo "    Applied patch: $name"
+    else
+      echo "    ERROR: $name no longer applies (upstream moved?). Regenerate it against the" >&2
+      echo "           current fork or remove it from patches/. Refusing to build without it." >&2
+      git -C "$AC_DIR" apply "${apply_args[@]}" --check --verbose "$patch" || true
+      exit 1
+    fi
+  done
+  # mod-era-talents ships its own patch tree (core + IP always; playerbots/bridge when present).
+  # Runs AFTER ours so 0012's Unit.cpp hunk lands before its Shatter/Wand/Molten Fury hunks —
+  # the order every one of its Unit.cpp patches was cut against.
+  if [[ -x "$AC_DIR/modules/mod-era-talents/apply-patches.sh" ]]; then
+    "$AC_DIR/modules/mod-era-talents/apply-patches.sh" "$AC_DIR"
+  fi
+}
+'''
 if old_apply not in text:
     raise SystemExit("ERROR: pinned setup body no longer matches expected apply_patches block")
+text = text.replace(old_apply, new_apply, 1)
 
 # This integration branch treats the persistent roster/director as core gameplay. Older templates
 # still carry RAIDROSTER_ENABLE=0, so deliberately promote the generated runtime config to enabled.
@@ -157,9 +196,12 @@ if [[ "${SETUP_PREFLIGHT_ONLY:-0}" == "1" ]]; then
   bash -n "$RUNTIME"
   grep -Fq 'mod-admin-panel' "$RUNTIME"
   grep -Fq 'mod-titan-rune' "$RUNTIME"
+  grep -Fq 'mod-dungeon-clear|https://github.com/jrad7/mod-dungeon-clear.git' "$RUNTIME"
   grep -Fq 'RaidRoster.Enable" "1"' "$RUNTIME"
   grep -Fq 'host.docker.internal' "$RUNTIME"
-  grep -Fq 'git -C "$AC_DIR" apply --check "$patch"' "$RUNTIME"
+  grep -Fq '0014-playerbot-sunwell.patch' "$RUNTIME"
+  grep -Fq '0016-playerbot-aq40-twins.patch' "$RUNTIME"
+  grep -Fq -- '--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp' "$RUNTIME"
   grep -Fq 'WEBREG_ADDONS_ZIP_PATH: "/data/dist/client-addons.zip"' "$RUNTIME"
   grep -Fq '$ROOT/client-dist:/data/dist:ro' "$RUNTIME"
   echo "Setup bootstrap preflight passed."
@@ -171,4 +213,17 @@ set +e
 bash "$RUNTIME" "$@"
 rc=$?
 set -e
+
+if [[ "$rc" -eq 0 ]]; then
+  # Fresh installs have now generated their persistent playerbots.conf. Apply the same one-time
+  # living-world defaults used by update.sh, then recreate worldserver so the first playable boot
+  # sees the newest individually bind-mounted DBC files as well as the generated configuration.
+  # A plain restart can retain a stale mount inode when extraction replaced a host-side DBC file.
+  chmod +x "$ROOT/configure-living-world-bots.sh"
+  "$ROOT/configure-living-world-bots.sh"
+  if [[ -d "$ROOT/azerothcore-wotlk" ]]; then
+    (cd "$ROOT/azerothcore-wotlk" && docker compose up -d --no-deps --force-recreate ac-worldserver)
+  fi
+fi
+
 exit "$rc"

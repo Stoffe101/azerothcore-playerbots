@@ -28,6 +28,12 @@ void SaveSelectedMode(Player* player, TitanRuneMode mode);
 TitanRuneMode GetActiveMode(Map const* map);
 bool IsSupportedDungeon(uint32 mapId, TitanRuneMode mode);
 void ActivateForPlayer(Player* player);
+
+// Titan Rune currencies/emblems are scripted rewards rather than ordinary creature loot. Queue them
+// durably before attempting inventory delivery so a full bag cannot permanently eat a boss reward.
+void QueuePlayerReward(Player* player, uint32 instanceId, uint32 bossEntry, TitanRuneMode mode,
+    uint32 itemEntry, uint32 count, char const* reason);
+uint32 RetryPendingRewards(Player* player, bool notifyIfBlocked = false);
 }
 
 void AddTitanRuneScripts();

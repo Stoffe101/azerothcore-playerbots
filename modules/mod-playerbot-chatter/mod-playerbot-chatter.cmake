@@ -21,6 +21,22 @@ if(TARGET modules)
   # cpp-httplib is header-only and vendored in src/.
   target_include_directories(modules PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
 
+  # Chatter/guild autonomy deliberately calls public Playerbots APIs. Do not rely on incidental
+  # include-directory leakage from module load order: expose the exact pinned header families we use.
+  set(_PB_SRC "${CMAKE_CURRENT_LIST_DIR}/../mod-playerbots/src")
+  if(EXISTS "${_PB_SRC}/Bot/PlayerbotAI.h")
+    target_include_directories(modules PRIVATE
+      ${_PB_SRC}
+      ${_PB_SRC}/Bot
+      ${_PB_SRC}/Bot/Engine/WorldPacket
+      ${_PB_SRC}/Script
+      ${_PB_SRC}/Mgr/Guild
+      ${_PB_SRC}/Ai/Base)
+    message(STATUS "[mod-playerbot-chatter] mod-playerbots headers on include path")
+  else()
+    message(FATAL_ERROR "[mod-playerbot-chatter] mod-playerbots headers are required but were not found")
+  endif()
+
   find_package(Threads REQUIRED)
   target_link_libraries(modules PRIVATE Threads::Threads)
 endif()

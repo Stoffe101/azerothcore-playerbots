@@ -36,6 +36,8 @@ constexpr float VENDOR_Z = 660.94f;
 constexpr uint8 VENDOR_SIDEREAL = 1;
 constexpr uint8 VENDOR_SCOURGESTONE = 2;
 constexpr uint32 PAGE_SIZE = 10;
+constexpr std::size_t EXPECTED_SIDEREAL_CATALOG = 62;
+constexpr std::size_t EXPECTED_SCOURGESTONE_CATALOG = 138;
 
 struct VendorItem
 {
@@ -129,27 +131,6 @@ float DamageMultiplier(uint32 mapId, TitanRuneMode mode)
     }
 }
 
-uint32 FinalBossEntry(uint32 mapId)
-{
-    switch (mapId)
-    {
-        case 574: return 23954; // Ingvar the Plunderer
-        case 575: return 26861; // King Ymiron
-        case 576: return 26723; // Keristrasza
-        case 578: return 27656; // Ley-Guardian Eregos
-        case 595: return 26533; // Mal'Ganis
-        case 599: return 27978; // Sjonnir the Ironshaper
-        case 600: return 26632; // The Prophet Tharon'ja
-        case 601: return 29120; // Anub'arak
-        case 602: return 28923; // Loken
-        case 604: return 29306; // Gal'darah
-        case 608: return 31134; // Cyanigosa
-        case 619: return 29311; // Herald Volazj
-        case 650: return 35451; // The Black Knight
-        default: return 0;
-    }
-}
-
 bool IsEligibleHeroicMap(Map const* map)
 {
     return map && map->IsDungeon() && map->GetDifficulty() == DUNGEON_DIFFICULTY_HEROIC;
@@ -206,12 +187,26 @@ void LoadVendorItems()
             continue;
         uint32 entry = fields[1].Get<uint32>();
         if (!sObjectMgr->GetItemTemplate(entry))
+        {
+            LOG_WARN("server.loading", "[TitanRune] Vendor catalog references missing item template {} (vendor={}).", entry, vendor);
             continue;
+        }
         g_vendorItems[vendor].push_back({entry, fields[2].Get<uint32>()});
     } while (result->NextRow());
 
+    std::size_t const siderealCount = g_vendorItems[VENDOR_SIDEREAL].size();
+    std::size_t const scourgestoneCount = g_vendorItems[VENDOR_SCOURGESTONE].size();
     LOG_INFO("server.loading", "[TitanRune] Loaded {} Sidereal and {} Scourgestone vendor rewards.",
-        g_vendorItems[VENDOR_SIDEREAL].size(), g_vendorItems[VENDOR_SCOURGESTONE].size());
+        siderealCount, scourgestoneCount);
+
+    // The SQL catalog intentionally resolves stock 3.3.5 items by exact name. A DB revision with a
+    // renamed/missing item would otherwise silently shrink the shops, so make that visible at boot.
+    if (siderealCount != EXPECTED_SIDEREAL_CATALOG || scourgestoneCount != EXPECTED_SCOURGESTONE_CATALOG)
+    {
+        LOG_WARN("server.loading",
+            "[TitanRune] Vendor catalog count mismatch: Sidereal {}/{}; Scourgestone {}/{}. Check exact item_template names before opening the realm.",
+            siderealCount, EXPECTED_SIDEREAL_CATALOG, scourgestoneCount, EXPECTED_SCOURGESTONE_CATALOG);
+    }
 }
 
 bool SpawnPersistentNpc(uint32 entry, float x, float y, float z, float o)
@@ -341,43 +336,6 @@ bool BuyVendorItem(Player* player, uint8 vendor, uint32 index)
     Notify(player, std::string("Purchased ") + (proto ? proto->Name1 : "item") + ".");
     player->SaveToDB(false, false);
     return true;
-}
-
-bool RewardAlreadyGranted(uint32 instanceId, uint32 bossEntry, TitanRuneMode mode)
-{
-    QueryResult result = CharacterDatabase.Query(
-        "SELECT 1 FROM mod_titan_rune_boss_rewards WHERE instance_id={} AND boss_entry={} AND mode={} LIMIT 1",
-        instanceId, bossEntry, uint8(mode));
-    return bool(result);
-}
-
-void MarkRewardGranted(uint32 instanceId, uint32 bossEntry, TitanRuneMode mode)
-{
-    CharacterDatabase.DirectExecute(
-        "INSERT IGNORE INTO mod_titan_rune_boss_rewards (instance_id, boss_entry, mode) VALUES ({}, {}, {})",
-        instanceId, bossEntry, uint8(mode));
-}
-
-void GrantCurrencyToHumans(Map* map, uint32 itemEntry, uint32 count, char const* reason)
-{
-    if (!map || !count)
-        return;
-
-    Map::PlayerList const& players = map->GetPlayers();
-    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
-    {
-        Player* player = itr->GetSource();
-        if (!player || !player->GetSession() || player->GetSession()->IsBot())
-            continue;
-        if (player->AddItem(itemEntry, count))
-        {
-            ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemEntry);
-            Notify(player, std::string(reason) + ": +" + std::to_string(count) + " " +
-                (proto ? proto->Name1 : "Titan Rune currency"));
-        }
-        else
-            Notify(player, "Titan Rune reward could not fit in your bags. Clear space before the next boss.");
-    }
 }
 
 class TitanRuneWorldScript final : public WorldScript
@@ -536,30 +494,6 @@ public:
         TitanRuneMode const mode = AttackerMode(attacker);
         if (mode != TitanRuneMode::Off)
             damage = uint32(std::min<double>(double(damage) * AttackerDamageMultiplier(attacker, mode), double(0xFFFFFFFFu)));
-    }
-
-    void OnUnitDeath(Unit* unit, Unit* /*killer*/) override
-    {
-        Creature* boss = unit ? unit->ToCreature() : nullptr;
-        if (!boss || !boss->IsDungeonBoss())
-            return;
-
-        Map* map = boss->GetMap();
-        TitanRuneMode const mode = TitanRune::GetActiveMode(map);
-        if (mode == TitanRuneMode::Off || !map)
-            return;
-
-        uint32 const instanceId = map->GetInstanceId();
-        uint32 const bossEntry = boss->GetEntry();
-        if (RewardAlreadyGranted(instanceId, bossEntry, mode))
-            return;
-        MarkRewardGranted(instanceId, bossEntry, mode);
-
-        if (mode == TitanRuneMode::Gamma)
-            GrantCurrencyToHumans(map, TitanRune::SCOURGESTONE_ITEM, 1, "Gamma boss defeated");
-
-        if (mode == TitanRuneMode::Beta && bossEntry == FinalBossEntry(map->GetId()))
-            GrantCurrencyToHumans(map, TitanRune::SIDEREAL_ESSENCE_ITEM, 1, "Beta dungeon completed");
     }
 };
 
@@ -792,17 +726,31 @@ void ActivateForPlayer(Player* player)
             return;
     }
 
-    TitanRuneMode selected = TitanRuneMode::Off;
-    if (Group* group = player->GetGroup())
+    // Frozen Halls shipped in the Gamma phase with Scourgestone rewards active by default while
+    // preserving ordinary Heroic health, damage and mechanics. Treat that as an instance property,
+    // not as a mutation of anyone's persisted next-dungeon selection.
+    TitanRuneMode selected = IsFrozenHalls(map->GetId()) ? TitanRuneMode::Gamma : TitanRuneMode::Off;
+    bool hasRealLeader = false;
+
+    if (!IsFrozenHalls(map->GetId()))
     {
-        if (Player* leader = ObjectAccessor::FindPlayer(group->GetLeaderGUID()))
+        if (Group* group = player->GetGroup())
         {
-            if (leader->GetSession() && !leader->GetSession()->IsBot())
-                selected = LoadSelectedMode(leader);
+            if (Player* leader = ObjectAccessor::FindPlayer(group->GetLeaderGUID()))
+            {
+                if (leader->GetSession() && !leader->GetSession()->IsBot())
+                {
+                    hasRealLeader = true;
+                    selected = LoadSelectedMode(leader);
+                }
+            }
         }
+
+        // A real group leader is authoritative even when their explicit selection is Off. Only
+        // groups without a real online leader fall back to the entering human's personal setting.
+        if (!hasRealLeader)
+            selected = LoadSelectedMode(player);
     }
-    if (selected == TitanRuneMode::Off)
-        selected = LoadSelectedMode(player);
 
     if (selected == TitanRuneMode::Off)
         return;

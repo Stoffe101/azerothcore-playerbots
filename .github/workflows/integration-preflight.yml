@@ -1,0 +1,144 @@
+name: Integration preflight
+
+on:
+  push:
+    branches:
+      - integration/bot-ai-refresh-2026-09-14
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout server overlay
+        uses: actions/checkout@v4
+
+      - name: Fast syntax and structure checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n setup.sh update.sh configure-living-world-bots.sh
+          for patch in patches/*.patch; do
+            [[ -e "$patch" ]] || continue
+            git apply --numstat "$patch" >/dev/null
+          done
+          test -f patches/0014a-playerbot-sunwell-playerbotai-compat.patch
+          test -f patches/0016a-playerbot-aq40-playerbotai-compat.patch
+          test -f modules/mod-titan-rune/src/TitanRuneLoader.cpp
+          test -f modules/mod-titan-rune/src/TitanRuneDevice.cpp
+          test -f modules/mod-titan-rune/src/TitanRuneFrostArcane.cpp
+          test -f modules/mod-titan-rune/src/TitanRunePlagueGladiator.cpp
+          test -f modules/mod-titan-rune/src/TitanRuneAlphaTitan.cpp
+          test -f modules/mod-titan-rune/src/TitanRunePurifiedEnergy.cpp
+          test -f modules/mod-titan-rune/src/TitanRuneTitan.cpp
+          test -f modules/mod-titan-rune/src/TitanRunePendingRewards.cpp
+          test ! -e modules/mod-titan-rune/src/TitanRuneFamilies.cpp
+          grep -q 'AddTitanRuneFrostArcaneScripts' modules/mod-titan-rune/src/TitanRuneLoader.cpp
+          grep -q 'AddTitanRunePlagueGladiatorScripts' modules/mod-titan-rune/src/TitanRuneLoader.cpp
+          grep -q 'AddTitanRuneAlphaTitanScripts' modules/mod-titan-rune/src/TitanRuneLoader.cpp
+          grep -q 'AddTitanRunePurifiedEnergyScripts' modules/mod-titan-rune/src/TitanRuneLoader.cpp
+          grep -q 'AddTitanRunePendingRewardScripts' modules/mod-titan-rune/src/TitanRuneLoader.cpp
+          ! grep -q 'AddTitanRuneFamilyScripts' modules/mod-titan-rune/src/TitanRuneLoader.cpp
+          test -f modules/mod-titan-rune/data/sql/db-characters/base/2026_09_15_00_titan_rune_pending_rewards.sql
+          test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_14_03_titan_rune_full_vendor_catalog.sql
+          test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_15_00_titan_rune_device.sql
+          test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_15_01_titan_rune_titan_support.sql
+          test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_15_03_titan_rune_gamma_signets.sql
+
+      - name: Assemble pinned source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          CORE="$GITHUB_WORKSPACE/azerothcore-wotlk"
+          git clone --filter=blob:none https://github.com/mod-playerbots/azerothcore-wotlk.git "$CORE"
+          git -C "$CORE" checkout 06234df3d5ab26c93f4f1f06f3edb828b73ecd3c
+          clone_module() {
+            local name="$1" url="$2" pin="${3:-}"
+            git clone --filter=blob:none "$url" "$CORE/modules/$name"
+            if [[ -n "$pin" ]]; then git -C "$CORE/modules/$name" checkout "$pin"; fi
+          }
+          clone_module mod-playerbots https://github.com/mod-playerbots/mod-playerbots.git b6696bdbd3740e575598d167d69f39f68cc0b907
+          clone_module mod-junk-to-gold https://github.com/noisiver/mod-junk-to-gold.git
+          clone_module mod-multibot-bridge https://github.com/Wishmaster117/mod-multibot-bridge.git 759c100d5e508b9af28531a2642ded70619828ba
+          clone_module mod-ah-bot-plus https://github.com/NathanHandley/mod-ah-bot-plus.git
+          clone_module mod-individual-progression https://github.com/ZhengPeiRu21/mod-individual-progression.git 977e2005bacf97f35e506eb27b8af6b2ea1136af
+          clone_module mod-era-talents https://github.com/lathcf/azerothcore-mod-era-talents.git 3a0d9776c6837d8a5e5038c23c01c4fc388d90f8
+          clone_module mod-dungeon-clear https://github.com/jrad7/mod-dungeon-clear.git 29c53fd10f99c1f978fba6cecd326bde8ce170d9
+          for lm in mod-playerbot-chatter mod-raid-roster mod-admin-panel mod-ahbot-price mod-wintergrasp-bots mod-arena-roster mod-titan-rune; do
+            rm -rf "$CORE/modules/$lm"
+            cp -a "$GITHUB_WORKSPACE/modules/$lm" "$CORE/modules/$lm"
+          done
+          cat > "$RUNNER_TEMP/apply-wrapper-patches.sh" <<'PATCHER'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          CORE="$GITHUB_WORKSPACE/azerothcore-wotlk"
+          for patch in "$@"; do
+            [[ -e "$patch" ]] || continue
+            name="$(basename "$patch")"
+            apply_args=()
+            if [[ "$name" == "0014-playerbot-sunwell.patch" || "$name" == "0016-playerbot-aq40-twins.patch" ]]; then
+              apply_args+=(--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp)
+            fi
+            if git -C "$CORE" apply "${apply_args[@]}" --reverse --check "$patch" >/dev/null 2>&1; then
+              echo "Patch already present upstream: $name"
+            elif git -C "$CORE" apply "${apply_args[@]}" --check "$patch" >/dev/null 2>&1; then
+              git -C "$CORE" apply "${apply_args[@]}" "$patch"
+              echo "Applied wrapper patch: $name"
+            else
+              echo "ERROR: patch no longer applies cleanly: $name" >&2
+              git -C "$CORE" apply "${apply_args[@]}" --check --verbose "$patch" || true
+              exit 1
+            fi
+          done
+          PATCHER
+          chmod +x "$RUNNER_TEMP/apply-wrapper-patches.sh"
+
+      - name: Verify wrapper patches 0001 through 0013
+        shell: bash
+        run: |
+          "$RUNNER_TEMP/apply-wrapper-patches.sh" \
+            "$GITHUB_WORKSPACE"/patches/0001*.patch "$GITHUB_WORKSPACE"/patches/0003*.patch \
+            "$GITHUB_WORKSPACE"/patches/0004*.patch "$GITHUB_WORKSPACE"/patches/0005*.patch \
+            "$GITHUB_WORKSPACE"/patches/0006*.patch "$GITHUB_WORKSPACE"/patches/0007*.patch \
+            "$GITHUB_WORKSPACE"/patches/0008*.patch "$GITHUB_WORKSPACE"/patches/0010*.patch \
+            "$GITHUB_WORKSPACE"/patches/0011*.patch "$GITHUB_WORKSPACE"/patches/0012*.patch \
+            "$GITHUB_WORKSPACE"/patches/0013*.patch
+
+      - name: Verify progression and Sunwell patches
+        shell: bash
+        run: "$RUNNER_TEMP/apply-wrapper-patches.sh $GITHUB_WORKSPACE/patches/0014*.patch"
+
+      - name: Verify AQ40 twins patch
+        shell: bash
+        run: "$RUNNER_TEMP/apply-wrapper-patches.sh $GITHUB_WORKSPACE/patches/0016*.patch"
+
+      - name: Verify owner trade bypass patch
+        shell: bash
+        run: "$RUNNER_TEMP/apply-wrapper-patches.sh $GITHUB_WORKSPACE/patches/0017*.patch"
+
+      - name: Verify aura-state iterator safety patch
+        shell: bash
+        run: "$RUNNER_TEMP/apply-wrapper-patches.sh $GITHUB_WORKSPACE/patches/0018*.patch"
+
+      - name: Verify smart-loot recovery and guild patches
+        shell: bash
+        run: "$RUNNER_TEMP/apply-wrapper-patches.sh $GITHUB_WORKSPACE/patches/0020*.patch $GITHUB_WORKSPACE/patches/0021*.patch $GITHUB_WORKSPACE/patches/0022*.patch $GITHUB_WORKSPACE/patches/0023*.patch"
+
+      - name: Verify Era Talents patch stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          CORE="$GITHUB_WORKSPACE/azerothcore-wotlk"
+          if [[ -x "$CORE/modules/mod-era-talents/apply-patches.sh" ]]; then
+            "$CORE/modules/mod-era-talents/apply-patches.sh" "$CORE"
+          fi
+          echo "Pinned tree and all wrapper patches are ready for the local ./update.sh build."

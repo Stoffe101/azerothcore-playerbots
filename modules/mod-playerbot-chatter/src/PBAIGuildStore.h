@@ -35,6 +35,25 @@ struct Relationship
     int16 affinity = 0;
     uint16 trust = 0;
     uint32 sharedRuns = 0;
+    uint32 sharedMinutes = 0;
+    uint32 bossKills = 0;
+    uint32 sharedDeaths = 0;
+    uint32 wipes = 0;
+    uint32 lootMoments = 0;
+    uint32 duels = 0;
+    uint16 guildLoyalty = 0;
+    uint16 rivalry = 0;
+};
+
+enum class RelationshipSignal : uint8
+{
+    SharedMinute,
+    BossKill,
+    SharedDeath,
+    Wipe,
+    LootMoment,
+    Duel,
+    GuildHelp,
 };
 
 Profile GetOrCreateProfile(uint32 botGuid);
@@ -48,6 +67,8 @@ void AddMemory(uint32 botGuid, uint64 eventId, std::string memoryType, uint8 imp
 void TouchRelationship(uint32 botGuid, uint8 targetType, uint32 targetGuid,
                        uint16 familiarityGain, int16 affinityDelta, uint16 trustGain,
                        bool sharedRun);
+void NoteRelationshipSignal(uint32 botGuid, uint8 targetType, uint32 targetGuid,
+                            RelationshipSignal signal, uint32 amount = 1);
 }
 
 #endif

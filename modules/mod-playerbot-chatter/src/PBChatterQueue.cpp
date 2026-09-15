@@ -10,6 +10,7 @@
 #include <mutex>
 #include <queue>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 namespace
@@ -36,9 +37,90 @@ namespace
         return lines[urand(0, static_cast<uint32>(lines.size() - 1))];
     }
 
+    std::unordered_set<std::string> TokenSet(std::string const& value)
+    {
+        // Function/chat glue is ignored, but encounter vocabulary is intentionally NOT. Three-letter
+        // mechanic words such as aoe, orb, ice, los and dps therefore participate in the gate. A
+        // small set of two-character phase/mechanic shorthands is kept as well so an LLM cannot add
+        // an unsupported phase or mind-control instruction by hiding it in a short token.
+        static std::unordered_set<std::string> const ignored = {
+            "the", "and", "for", "you", "your", "our", "ours", "their", "they", "them", "this",
+            "that", "with", "from", "into", "onto", "than", "then", "when", "while", "have", "has",
+            "will", "would", "should", "could", "must", "need", "just", "keep", "make", "before",
+            "after", "during", "through", "over", "under", "around", "there", "here", "where", "what",
+            "which", "were", "been", "being", "only", "also", "more", "most", "very", "some", "each",
+            "everyone", "anyone", "raid", "pull", "retry", "plan", "boss", "team", "guys", "okay",
+            "alright", "please", "lets", "dont", "doesnt", "again", "now", "get", "got", "use"
+        };
+        static std::unordered_set<std::string> const sensitiveShort = {
+            "mc", "p1", "p2", "p3", "p4", "p5"
+        };
+
+        std::unordered_set<std::string> tokens;
+        std::string word;
+        auto flush = [&]()
+        {
+            if (word.empty())
+                return;
+
+            bool const hasDigit = std::any_of(word.begin(), word.end(), [](unsigned char c)
+            {
+                return std::isdigit(c) != 0;
+            });
+
+            bool const meaningful =
+                (word.size() >= 3 || (hasDigit && word.size() >= 2) || sensitiveShort.find(word) != sensitiveShort.end()) &&
+                ignored.find(word) == ignored.end();
+            if (meaningful)
+                tokens.insert(word);
+            word.clear();
+        };
+
+        for (unsigned char c : value)
+        {
+            if (std::isalnum(c))
+                word.push_back(static_cast<char>(std::tolower(c)));
+            else
+                flush();
+        }
+        flush();
+        return tokens;
+    }
+
+    // Safety gate for grounded system speech. Ollama is allowed to smooth phrasing, but it cannot
+    // introduce a new content word that does not occur in the validated fallback, and it must retain
+    // most of the fallback's meaningful vocabulary. A rejected rewrite silently becomes the exact
+    // deterministic fallback. This gives the raid leader local-model personality without allowing
+    // the model to manufacture mechanics, assignments, phase numbers or spell names.
+    bool GroundedReplyAllowed(std::string const& reply, std::string const& fallback)
+    {
+        if (reply.empty() || fallback.empty())
+            return false;
+
+        std::unordered_set<std::string> const allowed = TokenSet(fallback);
+        std::unordered_set<std::string> const proposed = TokenSet(reply);
+        if (allowed.empty())
+            return reply.size() <= fallback.size() + 24;
+
+        for (std::string const& token : proposed)
+            if (allowed.find(token) == allowed.end())
+                return false;
+
+        uint32 kept = 0;
+        for (std::string const& token : allowed)
+            if (proposed.find(token) != proposed.end())
+                ++kept;
+
+        // Require 60% content-word coverage. For very short plans require at least one grounded
+        // content word so an empty/generic acknowledgement can never replace the actual brief.
+        uint32 const required = std::max<uint32>(1, (uint32(allowed.size()) * 3u + 4u) / 5u);
+        return kept >= required;
+    }
+
     // Never leave a real player talking into a void merely because Ollama is restarting/offline.
-    // This is intentionally tiny and only used for REACTIVE jobs after the LLM path failed;
-    // ambient chatter still requires the model so fallback lines cannot become background spam.
+    // This is intentionally tiny and only used for ordinary REACTIVE jobs after any caller-owned
+    // deterministic fallback has had first refusal. Ambient chatter still requires the model so
+    // fallback lines cannot become background spam.
     std::string FallbackReply(PBChatJob const& job)
     {
         std::string const m = Lower(job.playerMessage);
@@ -80,12 +162,26 @@ namespace
             reply = PBChatterLore::Ask(job.lorePayload);   // sidecar first
         if (reply.empty())                                  // disabled/miss/timeout -> reactive LLM fallback
             reply = PBChatterOllama::Ask(job.systemPrompt, job.prompt);
+
+        if (job.groundedAgainstFallback && !job.fallbackReply.empty() &&
+            !GroundedReplyAllowed(reply, job.fallbackReply))
+        {
+            if (g_PBChatDebug && !reply.empty())
+                LOG_INFO("server.loading", "[PlayerbotChatter] Rejected ungrounded system rewrite for bot {}; using deterministic fallback.", job.botGuid);
+            reply = job.fallbackReply;
+        }
+
+        // Safety-critical producers may provide their own grounded text. This must win over the
+        // generic conversational fallback, which is intentionally casual and therefore unsuitable
+        // for mechanics/assignment announcements.
+        if (reply.empty() && !job.fallbackReply.empty())
+            reply = job.fallbackReply;
         if (reply.empty() && !job.ambient)
             reply = FallbackReply(job);                     // model unavailable -> tiny local safety net
 
         if (!reply.empty())
         {
-            if (!job.ambient)
+            if (!job.ambient && job.storeMemory)
                 PBChatterMemory::Append(job.botGuid, job.playerGuid, job.playerMessage, reply);
             std::lock_guard<std::mutex> lock(g_resultMutex);
             PBChatResult r;

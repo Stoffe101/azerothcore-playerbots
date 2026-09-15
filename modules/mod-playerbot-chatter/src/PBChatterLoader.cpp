@@ -7,6 +7,7 @@
 #include "PBChatterEvents.h"
 #include "PBChatterCommand.h"
 #include "PBAIGuildLife.h"
+#include "PBAIGuildAutonomy.h"
 
 void Addmod_playerbot_chatterScripts()
 {
@@ -16,4 +17,5 @@ void Addmod_playerbot_chatterScripts()
     new PBChatterCommand();
     PBChatterMakeEventScript();
     AddPBAIGuildLifeScripts();
+    AddPBAIGuildAutonomyScripts();
 }

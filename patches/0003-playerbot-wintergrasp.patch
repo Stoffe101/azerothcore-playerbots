@@ -1,6 +1,5 @@
 diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/AcceptWintergraspInvitationAction.cpp b/modules/mod-playerbots/src/Ai/Base/Actions/AcceptWintergraspInvitationAction.cpp
 new file mode 100644
-index 0000000..cff4a7f
 --- /dev/null
 +++ b/modules/mod-playerbots/src/Ai/Base/Actions/AcceptWintergraspInvitationAction.cpp
 @@ -0,0 +1,33 @@
@@ -39,7 +38,6 @@ index 0000000..cff4a7f
 +}
 diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/AcceptWintergraspInvitationAction.h b/modules/mod-playerbots/src/Ai/Base/Actions/AcceptWintergraspInvitationAction.h
 new file mode 100644
-index 0000000..32456d9
 --- /dev/null
 +++ b/modules/mod-playerbots/src/Ai/Base/Actions/AcceptWintergraspInvitationAction.h
 @@ -0,0 +1,29 @@
@@ -73,7 +71,6 @@ index 0000000..32456d9
 +
 +#endif
 diff --git a/modules/mod-playerbots/src/Ai/Base/Strategy/WorldPacketHandlerStrategy.cpp b/modules/mod-playerbots/src/Ai/Base/Strategy/WorldPacketHandlerStrategy.cpp
-index f5b6083..5a0a4d3 100644
 --- a/modules/mod-playerbots/src/Ai/Base/Strategy/WorldPacketHandlerStrategy.cpp
 +++ b/modules/mod-playerbots/src/Ai/Base/Strategy/WorldPacketHandlerStrategy.cpp
 @@ -53,6 +53,8 @@ void WorldPacketHandlerStrategy::InitTriggers(std::vector<TriggerNode*>& trigger
@@ -86,7 +83,6 @@ index f5b6083..5a0a4d3 100644
      triggers.push_back(
          new TriggerNode("levelup", { NextAction("auto maintenance on levelup", relevance + 3) }));
 diff --git a/modules/mod-playerbots/src/Ai/Base/WorldPacketActionContext.h b/modules/mod-playerbots/src/Ai/Base/WorldPacketActionContext.h
-index 3707d52..dc9a5e7 100644
 --- a/modules/mod-playerbots/src/Ai/Base/WorldPacketActionContext.h
 +++ b/modules/mod-playerbots/src/Ai/Base/WorldPacketActionContext.h
 @@ -12,6 +12,7 @@
@@ -116,7 +112,6 @@ index 3707d52..dc9a5e7 100644
  
  #endif
 diff --git a/modules/mod-playerbots/src/Ai/Base/WorldPacketTriggerContext.h b/modules/mod-playerbots/src/Ai/Base/WorldPacketTriggerContext.h
-index f840695..339af69 100644
 --- a/modules/mod-playerbots/src/Ai/Base/WorldPacketTriggerContext.h
 +++ b/modules/mod-playerbots/src/Ai/Base/WorldPacketTriggerContext.h
 @@ -66,6 +66,8 @@ public:
@@ -138,7 +133,6 @@ index f840695..339af69 100644
      static Trigger* xpgain(PlayerbotAI* botAI) { return new WorldPacketTrigger(botAI, "xpgain"); }
      static Trigger* petition_offer(PlayerbotAI* botAI) { return new WorldPacketTrigger(botAI, "petition offer"); }
 diff --git a/modules/mod-playerbots/src/Bot/Factory/AiFactory.cpp b/modules/mod-playerbots/src/Bot/Factory/AiFactory.cpp
-index 63e834f..34c8d73 100644
 --- a/modules/mod-playerbots/src/Bot/Factory/AiFactory.cpp
 +++ b/modules/mod-playerbots/src/Bot/Factory/AiFactory.cpp
 @@ -5,6 +5,9 @@
@@ -175,7 +169,6 @@ index 63e834f..34c8d73 100644
  
  Engine* AiFactory::createNonCombatEngine(Player* player, PlayerbotAI* const facade, AiObjectContext* aiObjectContext)
 diff --git a/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp b/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp
-index 55f7732..4edc33c 100644
 --- a/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp
 +++ b/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp
 @@ -6,6 +6,8 @@
@@ -196,14 +189,13 @@ index 55f7732..4edc33c 100644
      botOutgoingPacketHandlers.AddHandler(SMSG_LFG_ROLE_CHECK_UPDATE, "lfg role check");
      botOutgoingPacketHandlers.AddHandler(SMSG_LFG_PROPOSAL_UPDATE, "lfg proposal");
      botOutgoingPacketHandlers.AddHandler(SMSG_TEXT_EMOTE, "receive text emote");
-@@ -4614,6 +4618,17 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
+@@ -4614,6 +4618,16 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
      if (bot->InBattlegroundQueue())
          return true;
  
 +    // bot is a Wintergrasp combatant — stay fully active for the whole battle. WG is on the
-+    // overworld (so isOverworld() above doesn't catch it) and is not a Battleground, so without
-+    // this a WG bot goes inactive when no real player is near -> gets flagged AFK -> the WG
-+    // battlefield kicks it (KickAfkPlayers) -> the director re-teleports it (the churn).
++    // overworld and is not a Battleground, so without this a WG bot can go inactive when no real
++    // player is nearby, get flagged AFK, and be kicked/re-added by the director.
 +    if (bot->GetZoneId() == 4197 /*Wintergrasp*/)
 +    {
 +        Battlefield* bf = sBattlefieldMgr->GetBattlefieldToZoneId(4197);
@@ -215,7 +207,6 @@ index 55f7732..4edc33c 100644
      if (sPlayerbotAIConfig.BotActiveAloneForceWhenInGuild)
      {
 diff --git a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
-index c438eb7..65b9d78 100644
 --- a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
 +++ b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
 @@ -6,6 +6,8 @@
@@ -227,15 +218,16 @@ index c438eb7..65b9d78 100644
  #include "Battleground.h"
  #include "BattlegroundMgr.h"
  #include "Cell.h"
-@@ -47,6 +49,20 @@
- #include <iomanip>
+@@ -46,6 +48,20 @@
  #include <random>
- 
+ #include <set>
+ #include <utility>
++
 +namespace
 +{
 +    // True while the bot is a Wintergrasp combatant. WG is a Battlefield, not a Battleground,
 +    // so InBattleground() is false there and the random-bot manager would otherwise relocate
-+    // WG bots out of the fight (the "churn"). Used to exempt them, exactly like InBattleground().
++    // WG bots out of the fight.
 +    bool IsInWintergraspWar(Player* bot)
 +    {
 +        if (!bot || bot->GetZoneId() != 4197 /*Wintergrasp*/)
@@ -244,10 +236,9 @@ index c438eb7..65b9d78 100644
 +        return bf && bf->IsWarTime();
 +    }
 +}
-+
+ 
  struct GuidClassRaceInfo
  {
-     ObjectGuid::LowType guid;
 @@ -1453,6 +1469,9 @@ bool RandomPlayerbotMgr::ProcessBot(Player* bot)
      if (bot->InBattlegroundQueue())
          return false;
@@ -262,7 +253,7 @@ index c438eb7..65b9d78 100644
      if (bot->InBattleground() || bot->InArena())
          return;
  
-+    // ignore Wintergrasp combatants (Battlefield, not a Battleground — see above).
++    // Ignore Wintergrasp combatants. Wintergrasp is a Battlefield, not a Battleground.
 +    if (IsInWintergraspWar(bot))
 +        return;
 +

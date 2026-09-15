@@ -17,6 +17,21 @@ struct PBChatJob
     std::string  prompt;        // snapshot + history + message
     std::string  playerMessage; // for memory append (reactive only)
 
+    // Optional deterministic fallback for safety-critical jobs such as automatic raid leading.
+    // When Ollama/lore returns no text this is used before the generic conversational fallback,
+    // so a raid call can never degrade into an unrelated "yeah lol" style response.
+    std::string  fallbackReply;
+
+    // When true, generated text is accepted only when it remains lexically grounded in
+    // fallbackReply and still preserves most of that fallback's content words. If the model adds
+    // a new mechanic/assignment term or drops too much of the validated plan, the deterministic
+    // fallback wins instead. Ordinary conversational jobs leave this disabled.
+    bool         groundedAgainstFallback = false;
+
+    // Some generated system lines are not conversations and must not pollute the bot<->player
+    // chat-memory window. Ordinary reactive jobs keep the historical default.
+    bool         storeMemory = true;
+
     // Lore (Tier-2 factual Q&A). When lore=true RunJob tries the sidecar first and
     // falls back to the reactive prompt below on any miss.
     bool         lore = false;

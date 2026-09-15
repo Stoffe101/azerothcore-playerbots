@@ -1,0 +1,9 @@
+ALTER TABLE `mod_ai_guild_relationship`
+  ADD COLUMN `shared_minutes` INT UNSIGNED NOT NULL DEFAULT 0 AFTER `shared_runs`,
+  ADD COLUMN `boss_kills` INT UNSIGNED NOT NULL DEFAULT 0 AFTER `shared_minutes`,
+  ADD COLUMN `shared_deaths` INT UNSIGNED NOT NULL DEFAULT 0 AFTER `boss_kills`,
+  ADD COLUMN `wipes` INT UNSIGNED NOT NULL DEFAULT 0 AFTER `shared_deaths`,
+  ADD COLUMN `loot_moments` INT UNSIGNED NOT NULL DEFAULT 0 AFTER `wipes`,
+  ADD COLUMN `duels` INT UNSIGNED NOT NULL DEFAULT 0 AFTER `loot_moments`,
+  ADD COLUMN `guild_loyalty` SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER `duels`,
+  ADD COLUMN `rivalry` SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER `guild_loyalty`;

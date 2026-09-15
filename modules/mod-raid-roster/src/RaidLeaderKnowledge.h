@@ -28,8 +28,15 @@ struct Encounter
     std::string caveat;
 };
 
+// Original curated encounter set plus a separately maintained supplemental set for raid strategy
+// families that landed upstream later (Ulduar / Ruby Sanctum / Vault of Archavon). Keeping the
+// latter in its own translation unit makes upstream refreshes reviewable instead of burying them
+// inside the large historical table.
 std::vector<Encounter> const& Encounters();
+std::vector<Encounter> const& SupplementalEncounters();
 Encounter const* Find(std::string const& text);
+Encounter const* FindSupplemental(std::string const& text);
+Encounter const* FindAny(std::string const& text);
 char const* ReadinessName(Readiness readiness);
 }
 

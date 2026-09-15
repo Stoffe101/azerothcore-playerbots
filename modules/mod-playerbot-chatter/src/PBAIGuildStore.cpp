@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <limits>
 
 namespace PBAIGuildStore
 {
@@ -57,6 +58,12 @@ Memory ReadMemory(Field* fields)
     memory.relatedGuid = fields[4].Get<uint32>();
     memory.summary = fields[5].Get<std::string>();
     return memory;
+}
+
+uint32 SaturatingTimes(uint32 amount, uint32 multiplier, uint32 cap = 65535)
+{
+    uint64 value = uint64(amount) * uint64(multiplier);
+    return static_cast<uint32>(std::min<uint64>(value, cap));
 }
 }
 
@@ -158,7 +165,8 @@ Relationship GetRelationship(uint32 botGuid, uint8 targetType, uint32 targetGuid
 {
     Relationship relationship;
     QueryResult result = CharacterDatabase.Query(
-        "SELECT familiarity, affinity, trust, shared_runs FROM mod_ai_guild_relationship "
+        "SELECT familiarity, affinity, trust, shared_runs, shared_minutes, boss_kills, shared_deaths, wipes, "
+        "loot_moments, duels, guild_loyalty, rivalry FROM mod_ai_guild_relationship "
         "WHERE bot_guid = {} AND target_type = {} AND target_guid = {} LIMIT 1",
         botGuid, targetType, targetGuid);
 
@@ -171,6 +179,14 @@ Relationship GetRelationship(uint32 botGuid, uint8 targetType, uint32 targetGuid
     relationship.affinity = fields[1].Get<int16>();
     relationship.trust = fields[2].Get<uint16>();
     relationship.sharedRuns = fields[3].Get<uint32>();
+    relationship.sharedMinutes = fields[4].Get<uint32>();
+    relationship.bossKills = fields[5].Get<uint32>();
+    relationship.sharedDeaths = fields[6].Get<uint32>();
+    relationship.wipes = fields[7].Get<uint32>();
+    relationship.lootMoments = fields[8].Get<uint32>();
+    relationship.duels = fields[9].Get<uint32>();
+    relationship.guildLoyalty = fields[10].Get<uint16>();
+    relationship.rivalry = fields[11].Get<uint16>();
     return relationship;
 }
 
@@ -247,5 +263,86 @@ void TouchRelationship(uint32 botGuid, uint8 targetType, uint32 targetGuid,
         affinityDelta,
         trustGain,
         sharedRun ? 1 : 0);
+}
+
+void NoteRelationshipSignal(uint32 botGuid, uint8 targetType, uint32 targetGuid,
+                            RelationshipSignal signal, uint32 amount)
+{
+    if (!botGuid || !targetGuid || !amount)
+        return;
+
+    uint32 const loyalty = SaturatingTimes(amount, 1);
+    uint32 const strongLoyalty = SaturatingTimes(amount, 2);
+    uint32 const helpLoyalty = SaturatingTimes(amount, 3);
+    uint32 const rivalry = SaturatingTimes(amount, 2);
+
+    switch (signal)
+    {
+        case RelationshipSignal::SharedMinute:
+            CharacterDatabase.DirectExecute(
+                "INSERT INTO mod_ai_guild_relationship "
+                "(bot_guid,target_type,target_guid,familiarity,shared_minutes,guild_loyalty,last_interaction) "
+                "VALUES ({},{},{},{},{},{},CURRENT_TIMESTAMP) "
+                "ON DUPLICATE KEY UPDATE familiarity=LEAST(65535,familiarity+VALUES(familiarity)), "
+                "shared_minutes=shared_minutes+VALUES(shared_minutes), "
+                "guild_loyalty=LEAST(65535,guild_loyalty+VALUES(guild_loyalty)), last_interaction=CURRENT_TIMESTAMP",
+                botGuid, targetType, targetGuid, std::min<uint32>(amount, 65535), amount, loyalty);
+            break;
+        case RelationshipSignal::BossKill:
+            CharacterDatabase.DirectExecute(
+                "INSERT INTO mod_ai_guild_relationship "
+                "(bot_guid,target_type,target_guid,boss_kills,guild_loyalty,last_interaction) "
+                "VALUES ({},{},{},{},{},CURRENT_TIMESTAMP) "
+                "ON DUPLICATE KEY UPDATE boss_kills=boss_kills+VALUES(boss_kills), "
+                "guild_loyalty=LEAST(65535,guild_loyalty+VALUES(guild_loyalty)), last_interaction=CURRENT_TIMESTAMP",
+                botGuid, targetType, targetGuid, amount, strongLoyalty);
+            break;
+        case RelationshipSignal::SharedDeath:
+            CharacterDatabase.DirectExecute(
+                "INSERT INTO mod_ai_guild_relationship "
+                "(bot_guid,target_type,target_guid,shared_deaths,guild_loyalty,last_interaction) "
+                "VALUES ({},{},{},{},{},CURRENT_TIMESTAMP) "
+                "ON DUPLICATE KEY UPDATE shared_deaths=shared_deaths+VALUES(shared_deaths), "
+                "guild_loyalty=LEAST(65535,guild_loyalty+VALUES(guild_loyalty)), last_interaction=CURRENT_TIMESTAMP",
+                botGuid, targetType, targetGuid, amount, loyalty);
+            break;
+        case RelationshipSignal::Wipe:
+            CharacterDatabase.DirectExecute(
+                "INSERT INTO mod_ai_guild_relationship "
+                "(bot_guid,target_type,target_guid,wipes,guild_loyalty,last_interaction) "
+                "VALUES ({},{},{},{},{},CURRENT_TIMESTAMP) "
+                "ON DUPLICATE KEY UPDATE wipes=wipes+VALUES(wipes), "
+                "guild_loyalty=LEAST(65535,guild_loyalty+VALUES(guild_loyalty)), last_interaction=CURRENT_TIMESTAMP",
+                botGuid, targetType, targetGuid, amount, loyalty);
+            break;
+        case RelationshipSignal::LootMoment:
+            CharacterDatabase.DirectExecute(
+                "INSERT INTO mod_ai_guild_relationship "
+                "(bot_guid,target_type,target_guid,loot_moments,affinity,guild_loyalty,last_interaction) "
+                "VALUES ({},{},{},{},{},{},CURRENT_TIMESTAMP) "
+                "ON DUPLICATE KEY UPDATE loot_moments=loot_moments+VALUES(loot_moments), "
+                "affinity=GREATEST(-1000,LEAST(1000,affinity+VALUES(affinity))), "
+                "guild_loyalty=LEAST(65535,guild_loyalty+VALUES(guild_loyalty)), last_interaction=CURRENT_TIMESTAMP",
+                botGuid, targetType, targetGuid, amount, std::min<uint32>(amount, 1000), loyalty);
+            break;
+        case RelationshipSignal::Duel:
+            CharacterDatabase.DirectExecute(
+                "INSERT INTO mod_ai_guild_relationship "
+                "(bot_guid,target_type,target_guid,duels,rivalry,last_interaction) "
+                "VALUES ({},{},{},{},{},CURRENT_TIMESTAMP) "
+                "ON DUPLICATE KEY UPDATE duels=duels+VALUES(duels), rivalry=LEAST(65535,rivalry+VALUES(rivalry)), "
+                "last_interaction=CURRENT_TIMESTAMP",
+                botGuid, targetType, targetGuid, amount, rivalry);
+            break;
+        case RelationshipSignal::GuildHelp:
+            CharacterDatabase.DirectExecute(
+                "INSERT INTO mod_ai_guild_relationship "
+                "(bot_guid,target_type,target_guid,trust,guild_loyalty,last_interaction) "
+                "VALUES ({},{},{},{},{},CURRENT_TIMESTAMP) "
+                "ON DUPLICATE KEY UPDATE trust=LEAST(65535,trust+VALUES(trust)), "
+                "guild_loyalty=LEAST(65535,guild_loyalty+VALUES(guild_loyalty)), last_interaction=CURRENT_TIMESTAMP",
+                botGuid, targetType, targetGuid, std::min<uint32>(amount, 65535), helpLoyalty);
+            break;
+    }
 }
 }

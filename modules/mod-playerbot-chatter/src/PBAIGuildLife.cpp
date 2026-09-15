@@ -12,7 +12,6 @@
 #include "WorldSession.h"
 #include "WorldSessionMgr.h"
 
-#include <algorithm>
 #include <ctime>
 #include <string>
 #include <unordered_map>
@@ -21,8 +20,6 @@
 namespace
 {
 constexpr uint32 TICK_MS = 60000;
-constexpr uint64 COPPER_PER_GOLD = 10000;
-constexpr uint64 MAX_DAILY_PROFESSION_COPPER = 50 * COPPER_PER_GOLD;
 uint32 g_tick = 0;
 
 struct DailyFocus
@@ -36,7 +33,6 @@ struct ProfessionDay
 {
     uint32 bots = 0;
     uint32 kinds = 0;
-    uint64 copper = 0;
 };
 
 DailyFocus MakeFocus(uint32 guildId)
@@ -52,7 +48,7 @@ DailyFocus MakeFocus(uint32 guildId)
                 "Review grounded encounter briefs, repair and restock, then practice the next unlocked raid without skipping progression." };
         case 2:
             return { "profession", "Profession drive",
-                "Crafters and gatherers are the focus today. Use the guild vault and work-order services to keep useful supplies moving." };
+                "Crafters and gatherers are the focus today. Use real crafting, gathering, mail, trade and guild-bank actions to keep supplies moving." };
         case 3:
             return { "pvp", "Battleground patrol",
                 "Queue some PvP with guildmates, keep groups social, and treat wins and losses as part of the guild history." };
@@ -94,14 +90,13 @@ ProfessionDay ReadProfessionDay(uint32 guildId)
 {
     ProfessionDay day;
     if (QueryResult result = CharacterDatabase.Query(
-        "SELECT contributing_bots, profession_kinds, contribution_copper FROM mod_ai_guild_profession_day "
+        "SELECT contributing_bots, profession_kinds FROM mod_ai_guild_profession_day "
         "WHERE guild_id = {} AND activity_date = CURDATE() LIMIT 1",
         guildId))
     {
         Field* f = result->Fetch();
         day.bots = f[0].Get<uint32>();
         day.kinds = f[1].Get<uint32>();
-        day.copper = f[2].Get<uint64>();
     }
     return day;
 }
@@ -109,24 +104,12 @@ ProfessionDay ReadProfessionDay(uint32 guildId)
 ProfessionDay EnsureProfessionDay(uint32 guildId)
 {
     if (QueryResult existing = CharacterDatabase.Query(
-        "SELECT contributing_bots, profession_kinds, contribution_copper, credited "
-        "FROM mod_ai_guild_profession_day WHERE guild_id = {} AND activity_date = CURDATE() LIMIT 1",
+        "SELECT contributing_bots, profession_kinds FROM mod_ai_guild_profession_day "
+        "WHERE guild_id = {} AND activity_date = CURDATE() LIMIT 1",
         guildId))
     {
         Field* f = existing->Fetch();
-        ProfessionDay day{ f[0].Get<uint32>(), f[1].Get<uint32>(), f[2].Get<uint64>() };
-        if (f[3].Get<uint8>() != 0 || !day.copper)
-            return day;
-
-        CharacterDatabase.DirectExecute("INSERT IGNORE INTO mod_ai_guild_economy (guild_id) VALUES ({})", guildId);
-        CharacterDatabase.DirectExecute(
-            "UPDATE mod_ai_guild_economy SET money_copper = money_copper + {}, earned_copper = earned_copper + {}, "
-            "updated_at = CURRENT_TIMESTAMP WHERE guild_id = {}",
-            day.copper, day.copper, guildId);
-        CharacterDatabase.DirectExecute(
-            "UPDATE mod_ai_guild_profession_day SET credited = 1 WHERE guild_id = {} AND activity_date = CURDATE()",
-            guildId);
-        return day;
+        return { f[0].Get<uint32>(), f[1].Get<uint32>() };
     }
 
     uint32 skilledBots = 0;
@@ -144,37 +127,17 @@ ProfessionDay EnsureProfessionDay(uint32 guildId)
         professionKinds = f[1].Get<uint32>();
     }
 
-    uint64 contribution = std::min<uint64>(
-        MAX_DAILY_PROFESSION_COPPER,
-        uint64(skilledBots) * 2500u + uint64(professionKinds) * COPPER_PER_GOLD);
-
+    // This table used to mint virtual treasury gold based only on profession counts. That made the
+    // economy look alive without bots actually doing anything. Keep the daily roster snapshot, but
+    // never create money here. The autonomy director now drives real Playerbot crafting, gathering,
+    // mail, trade, vendor and guild-bank actions; the virtual service treasury is funded explicitly.
     CharacterDatabase.DirectExecute(
         "INSERT IGNORE INTO mod_ai_guild_profession_day "
         "(guild_id, activity_date, contributing_bots, profession_kinds, contribution_copper, credited) "
-        "VALUES ({}, CURDATE(), {}, {}, {}, 0)",
-        guildId, skilledBots, professionKinds, contribution);
+        "VALUES ({}, CURDATE(), {}, {}, 0, 1)",
+        guildId, skilledBots, professionKinds);
 
-    ProfessionDay day = ReadProfessionDay(guildId);
-    if (day.copper)
-    {
-        CharacterDatabase.DirectExecute("INSERT IGNORE INTO mod_ai_guild_economy (guild_id) VALUES ({})", guildId);
-        CharacterDatabase.DirectExecute(
-            "UPDATE mod_ai_guild_economy SET money_copper = money_copper + {}, earned_copper = earned_copper + {}, "
-            "updated_at = CURRENT_TIMESTAMP WHERE guild_id = {}",
-            day.copper, day.copper, guildId);
-        CharacterDatabase.DirectExecute(
-            "UPDATE mod_ai_guild_profession_day SET credited = 1 WHERE guild_id = {} AND activity_date = CURDATE()",
-            guildId);
-    }
-    return day;
-}
-
-std::string MoneyText(uint64 copper)
-{
-    uint64 gold = copper / COPPER_PER_GOLD;
-    copper %= COPPER_PER_GOLD;
-    uint64 silver = copper / 100;
-    return std::to_string(gold) + "g " + std::to_string(silver) + "s";
+    return ReadProfessionDay(guildId);
 }
 
 void UpdateAttendance(Player* player, DailyFocus const& focus, ProfessionDay const& professionDay)
@@ -207,10 +170,10 @@ void UpdateAttendance(Player* player, DailyFocus const& focus, ProfessionDay con
     {
         ChatHandler handler(player->GetSession());
         handler.PSendSysMessage("[Guild Life] {}: {}", focus.title, focus.summary);
-        if (professionDay.copper)
+        if (professionDay.bots)
             handler.PSendSysMessage(
-                "[Guild Economy] {} persistent roster crafter(s), covering {} profession type(s), contributed {} to the treasury today.",
-                professionDay.bots, professionDay.kinds, MoneyText(professionDay.copper));
+                "[Guild Professions] {} persistent roster crafter/gatherer(s) cover {} profession type(s). Their contribution comes from real bot actions, not passive gold generation.",
+                professionDay.bots, professionDay.kinds);
         CharacterDatabase.DirectExecute(
             "UPDATE mod_ai_guild_life_member SET noticed = 1 WHERE guild_id = {} AND player_guid = {} AND activity_date = CURDATE()",
             guildId, guid);
@@ -270,6 +233,6 @@ public:
 
 void AddPBAIGuildLifeScripts()
 {
-    LOG_INFO("server.loading", "[GuildLife] Registering persistent guild-life and profession economy director.");
+    LOG_INFO("server.loading", "[GuildLife] Registering persistent guild-life director without synthetic profession income.");
     new PBAIGuildLifeWorldScript();
 }

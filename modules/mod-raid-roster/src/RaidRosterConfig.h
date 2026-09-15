@@ -51,6 +51,9 @@ extern float g_AdventureStartWotlkRaidReadyTeleportY;
 extern float g_AdventureStartWotlkRaidReadyTeleportZ;
 extern float g_AdventureStartWotlkRaidReadyTeleportO;
 
+// Persistent milestone caches for naturally-levelled adventure characters.
+extern bool g_AdventureProgressionCachesEnable;
+
 // Player-facing activity assembly and recovery systems.
 extern bool g_GuildDirectorEnable;
 extern bool g_GuildDirectorAutoTravel;
@@ -64,6 +67,12 @@ extern bool g_AutoPrepEnable;
 extern bool g_AutoPrepRefillConsumables;
 extern bool g_AutoPrepWarlockSupport;
 extern bool g_AutoPrepSmartPets;
+
+// Hands-off instance navigation. When enabled, a real-player group entering an instance with an
+// eligible bot tank automatically starts mod-dungeon-clear; supported raid maps may use the same
+// route driver while the module stands down for boss combat and lets Playerbots raid strategies own it.
+extern bool g_AutoDungeonClearEnable;
+extern bool g_AutoDungeonClearRaids;
 
 extern bool g_SmartLootEnable;
 extern bool g_SmartLootBotNeedUpgrades;

@@ -40,25 +40,49 @@ update_repo () {
   git -C "$dir" clean -fd -- src/ 2>/dev/null || true
 }
 
+ensure_git_module () {
+  local name="$1" url="$2" dir="$AC_DIR/modules/$name"
+  if [[ -d "$dir/.git" ]]; then
+    return
+  fi
+  if [[ -e "$dir" ]]; then
+    echo "==> Replacing stale non-git module copy: $name"
+    rm -rf "$dir"
+  fi
+  echo "==> Installing module: $name"
+  git clone "$url" "$dir"
+}
+
 apply_patches () {
   local pdir="$ROOT/patches"
   [[ -d "$pdir" && -d "$AC_DIR/.git" ]] || return 0
   local patch name
+  local -a apply_args
   for patch in "$pdir"/*.patch; do
     [[ -e "$patch" ]] || continue
     name="$(basename "$patch")"
+    apply_args=()
+
+    # Sunwell and AQ40 were authored around nearby upstream PlayerbotAI strategy-list changes.
+    # Keep their large feature patches intact, but let the tiny 0014a/0016a compatibility patches
+    # own PlayerbotAI.cpp against the exact pinned mod-playerbots revision. This keeps setup,
+    # update and CI deterministic without regenerating two large patches for a pair of stale hunks.
+    if [[ "$name" == "0014-playerbot-sunwell.patch" || "$name" == "0016-playerbot-aq40-twins.patch" ]]; then
+      apply_args+=(--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp)
+    fi
 
     # All overlay diffs are rooted at the AzerothCore checkout. This includes patches whose
     # paths begin with modules/mod-playerbots/... or modules/mod-individual-progression/....
     # Applying those from inside the nested module repository makes the prefixed path invalid.
-    if git -C "$AC_DIR" apply --reverse --check "$patch" >/dev/null 2>&1; then
+    if git -C "$AC_DIR" apply "${apply_args[@]}" --reverse --check "$patch" >/dev/null 2>&1; then
       echo "    Patch already applied: $name"
-    elif git -C "$AC_DIR" apply --check "$patch" >/dev/null 2>&1; then
-      git -C "$AC_DIR" apply "$patch"
+    elif git -C "$AC_DIR" apply "${apply_args[@]}" --check "$patch" >/dev/null 2>&1; then
+      git -C "$AC_DIR" apply "${apply_args[@]}" "$patch"
       echo "    Applied patch: $name"
     else
       echo "    ERROR: $name no longer applies to the pinned integration tree (upstream moved?)." >&2
       echo "           Regenerate it against the pinned repos or remove it from patches/." >&2
+      git -C "$AC_DIR" apply "${apply_args[@]}" --check --verbose "$patch" || true
       exit 1
     fi
   done
@@ -131,6 +155,11 @@ migrate_full_adventure_config () {
 }
 
 update_repo "$AC_DIR" "AzerothCore (playerbots fork)"
+
+# New upstream gameplay extensions must also be installed on an already-existing server. setup.sh
+# handles fresh installs through its MODULES list; this is the matching update-path bootstrap.
+ensure_git_module "mod-dungeon-clear" "https://github.com/jrad7/mod-dungeon-clear.git"
+
 for moddir in "$AC_DIR"/modules/*/; do
   [[ -d "$moddir/.git" ]] || continue
   update_repo "$moddir" "$(basename "$moddir")"
@@ -150,6 +179,8 @@ done
 # them compatible with newly added modules/options before restarting containers.
 sync_module_configs
 migrate_full_adventure_config
+chmod +x "$ROOT/configure-living-world-bots.sh"
+"$ROOT/configure-living-world-bots.sh"
 
 cd "$AC_DIR"
 

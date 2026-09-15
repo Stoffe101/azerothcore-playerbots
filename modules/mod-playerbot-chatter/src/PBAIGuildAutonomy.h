@@ -1,0 +1,6 @@
+#ifndef MOD_PLAYERBOT_CHATTER_AI_GUILD_AUTONOMY_H
+#define MOD_PLAYERBOT_CHATTER_AI_GUILD_AUTONOMY_H
+
+void AddPBAIGuildAutonomyScripts();
+
+#endif
