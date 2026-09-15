@@ -11,6 +11,8 @@ GC.callbacks = {}
 GC.backendSeen = false
 GC.pendingCommand = nil
 GC.dragMember = nil
+GC.anchors = {}
+GC.anchorsReady = false
 
 local function Split(text, delim)
     local out = {}
@@ -18,21 +20,23 @@ local function Split(text, delim)
     text = tostring(text)
     delim = delim or "|"
     if delim == "" then return { text } end
-
     local start = 1
     while true do
         local pos = string.find(text, delim, start, true)
-        if not pos then
-            out[#out + 1] = string.sub(text, start)
-            break
-        end
+        if not pos then out[#out + 1] = string.sub(text, start); break end
         out[#out + 1] = string.sub(text, start, pos - 1)
         start = pos + string.len(delim)
     end
     return out
 end
 
-local function Bool01(v) return v and "1" or "0" end
+local function Bool01(value) return value and "1" or "0" end
+local function ParseNumber(value, fallback)
+    local number = tonumber(value)
+    if number == nil then return fallback end
+    return number
+end
+
 local function CleanCharacterName(value)
     if type(value) ~= "string" then return nil end
     value = string.gsub(value, "^%s+", "")
@@ -62,20 +66,14 @@ end
 
 function GC:ResetPlan(reason)
     GC.plan = {
-        members = {},
-        warnings = {},
-        valid = false,
-        ready = false,
-        summary = {},
-        reason = reason,
+        members = {}, warnings = {}, valid = false, ready = false,
+        summary = {}, reason = reason,
     }
     GC:Fire("PLAN_CHANGED", GC.plan)
 end
 
 function GC:GetConfig()
-    if not GC.config then
-        GC.config = P.New((GC.db and GC.db.lastMode) or "DUNGEON")
-    end
+    if not GC.config then GC.config = P.New((GC.db and GC.db.lastMode) or "DUNGEON") end
     return GC.config
 end
 
@@ -96,53 +94,47 @@ end
 
 function GC:SetMode(mode)
     mode = mode == "RAID" and "RAID" or "DUNGEON"
-    local current = GC:GetConfig()
-    if current.mode == mode then return end
+    if GC:GetConfig().mode == mode then return end
     GC:SetConfig(P.New(mode), nil)
 end
 
 function GC:SetRaidSize(size)
-    local c = GC:GetConfig()
+    local config = GC:GetConfig()
     size = tonumber(size) or 25
     if size ~= 10 and size ~= 20 and size ~= 25 and size ~= 40 then size = 25 end
-    c.size = size
-    local t, h, d = D.DefaultRolesForActivity("RAID", c.activity, size)
-    c.tanks, c.healers, c.dps = t, h, d
+    config.size = size
+    config.tanks, config.healers, config.dps = D.DefaultRolesForActivity("RAID", config.activity, size)
     GC:Touch("Raid size changed")
 end
 
 function GC:SetDungeonActivity(id)
-    local c = GC:GetConfig()
-    c.mode = "DUNGEON"
-    c.activity = id or "random"
-    c.size = 5
-    c.tanks, c.healers, c.dps = 1, 1, 3
+    local config = GC:GetConfig()
+    config.mode, config.activity, config.size = "DUNGEON", id or "random", 5
+    config.tanks, config.healers, config.dps = 1, 1, 3
     GC:Touch("Dungeon changed")
 end
 
 function GC:SetRaidActivity(id)
-    local c = GC:GetConfig()
+    local config = GC:GetConfig()
     local raid = D.GetRaidById(id)
     if not raid then return end
-    c.mode = "RAID"
-    c.activity = raid.id
+    config.mode, config.activity = "RAID", raid.id
     local supported = false
-    for _, n in ipairs(raid.sizes) do if n == c.size then supported = true end end
-    if not supported then c.size = raid.sizes[1] end
-    if not raid.heroic and c.difficulty == "heroic" then c.difficulty = "normal" end
-    local t, h, d = D.DefaultRolesForActivity("RAID", c.activity, c.size)
-    c.tanks, c.healers, c.dps = t, h, d
+    for _, value in ipairs(raid.sizes) do if value == config.size then supported = true end end
+    if not supported then config.size = raid.sizes[1] end
+    if not raid.heroic and config.difficulty == "heroic" then config.difficulty = "normal" end
+    config.tanks, config.healers, config.dps = D.DefaultRolesForActivity("RAID", config.activity, config.size)
     GC:Touch("Raid changed")
 end
 
 function GC:SetHumanRole(name, role)
     name = CleanCharacterName(name)
     if not name then return false end
-    local c = GC:GetConfig()
+    local config = GC:GetConfig()
     if role == nil or role == "AUTO" then
-        c.humanRoles[name] = nil
+        config.humanRoles[name] = nil
     elseif role == "TANK" or role == "HEALER" or role == "DPS" then
-        c.humanRoles[name] = role
+        config.humanRoles[name] = role
     else
         return false
     end
@@ -153,23 +145,23 @@ end
 function GC:AddExtraHuman(name, role)
     name = CleanCharacterName(name)
     if not name or (role ~= "TANK" and role ~= "HEALER" and role ~= "DPS") then return false end
-    local c, key = GC:GetConfig(), string.lower(name)
-    for _, entry in ipairs(c.extraHumans) do
+    local config, key = GC:GetConfig(), string.lower(name)
+    for _, entry in ipairs(config.extraHumans) do
         if string.lower(entry.name) == key then
             entry.role = role
             GC:Touch("Human invite changed")
             return true
         end
     end
-    c.extraHumans[#c.extraHumans + 1] = { name = name, role = role }
+    config.extraHumans[#config.extraHumans + 1] = { name = name, role = role }
     GC:Touch("Human invite added")
     return true
 end
 
 function GC:RemoveExtraHuman(index)
-    local c = GC:GetConfig()
-    if type(index) ~= "number" or not c.extraHumans[index] then return false end
-    table.remove(c.extraHumans, index)
+    local config = GC:GetConfig()
+    if type(index) ~= "number" or not config.extraHumans[index] then return false end
+    table.remove(config.extraHumans, index)
     GC:Touch("Human invite removed")
     return true
 end
@@ -177,23 +169,23 @@ end
 function GC:AddPinnedMember(name, role, required)
     name = CleanCharacterName(name)
     if not name or (role ~= "TANK" and role ~= "HEALER" and role ~= "DPS") then return false end
-    local c, key = GC:GetConfig(), string.lower(name)
-    for _, entry in ipairs(c.pinned) do
+    local config, key = GC:GetConfig(), string.lower(name)
+    for _, entry in ipairs(config.pinned) do
         if string.lower(entry.name) == key then
             entry.role, entry.required = role, required and true or false
             GC:Touch("Pinned member changed")
             return true
         end
     end
-    c.pinned[#c.pinned + 1] = { name = name, role = role, required = required and true or false }
+    config.pinned[#config.pinned + 1] = { name = name, role = role, required = required and true or false }
     GC:Touch("Pinned member added")
     return true
 end
 
 function GC:RemovePinnedMember(index)
-    local c = GC:GetConfig()
-    if type(index) ~= "number" or not c.pinned[index] then return false end
-    table.remove(c.pinned, index)
+    local config = GC:GetConfig()
+    if type(index) ~= "number" or not config.pinned[index] then return false end
+    table.remove(config.pinned, index)
     GC:Touch("Pinned member removed")
     return true
 end
@@ -202,73 +194,47 @@ function GC:SetArrangementPreference(name, subgroup)
     name = CleanCharacterName(name)
     subgroup = tonumber(subgroup)
     if not name then return false end
-    local c = GC:GetConfig()
-    if not subgroup or subgroup < 1 or subgroup > 8 then
-        c.arrangement[name] = nil
-    else
-        c.arrangement[name] = math.floor(subgroup)
-    end
+    local config = GC:GetConfig()
+    if not subgroup or subgroup < 1 or subgroup > 8 then config.arrangement[name] = nil
+    else config.arrangement[name] = math.floor(subgroup) end
     return true
 end
 
 function GC:ValidateConfig()
-    local c = GC:GetConfig()
+    local config = GC:GetConfig()
     local problems = {}
-    local total = (tonumber(c.tanks) or 0) + (tonumber(c.healers) or 0) + (tonumber(c.dps) or 0)
-    if total ~= c.size then
-        problems[#problems + 1] = "Role totals must equal group size (currently " .. total .. "/" .. c.size .. ")."
-    end
-    if c.tanks < 0 or c.healers < 0 or c.dps < 0 then
-        problems[#problems + 1] = "Role counts cannot be negative."
-    end
-    if c.mode == "DUNGEON" and c.size ~= 5 then
-        problems[#problems + 1] = "Dungeon mode requires a 5-player target."
-    end
-    if c.mode == "RAID" then
-        local raid = D.GetRaidById(c.activity)
+    local total = (tonumber(config.tanks) or 0) + (tonumber(config.healers) or 0) + (tonumber(config.dps) or 0)
+    if total ~= config.size then problems[#problems + 1] = "Role totals must equal group size (currently " .. total .. "/" .. config.size .. ")." end
+    if config.tanks < 0 or config.healers < 0 or config.dps < 0 then problems[#problems + 1] = "Role counts cannot be negative." end
+    if config.mode == "DUNGEON" and config.size ~= 5 then problems[#problems + 1] = "Dungeon mode requires a 5-player target." end
+    if config.mode == "RAID" then
+        local raid = D.GetRaidById(config.activity)
         if not raid then
             problems[#problems + 1] = "Select a valid raid."
         else
             local validSize = false
-            for _, n in ipairs(raid.sizes) do if n == c.size then validSize = true end end
-            if not validSize then problems[#problems + 1] = raid.label .. " does not support " .. c.size .. " players." end
-            if c.difficulty == "heroic" and not raid.heroic then
-                problems[#problems + 1] = raid.label .. " does not use a separate Heroic raid difficulty on this server preset."
-            end
+            for _, value in ipairs(raid.sizes) do if value == config.size then validSize = true end end
+            if not validSize then problems[#problems + 1] = raid.label .. " does not support " .. config.size .. " players." end
+            if config.difficulty == "heroic" and not raid.heroic then problems[#problems + 1] = raid.label .. " does not expose a separate Heroic raid difficulty." end
         end
     end
-    if #c.extraHumans + 1 > c.size then
-        problems[#problems + 1] = "Too many manually added humans for this group size."
-    end
-    if #c.pinned > c.size then
-        problems[#problems + 1] = "Too many pinned members for this group size."
-    end
+    if #config.extraHumans + 1 > config.size then problems[#problems + 1] = "Too many manually added humans for this group size." end
+    if #config.pinned > config.size then problems[#problems + 1] = "Too many pinned members for this group size." end
     return #problems == 0, problems
 end
 
 local function SendRawServer(command)
-    if not command or command == "" then return end
-    SendChatMessage(".groupcomposer " .. command, "SAY")
+    if command and command ~= "" then SendChatMessage(".groupcomposer " .. command, "SAY") end
 end
 
 function GC:BeginPayload()
-    local c = GC:GetConfig()
+    local config = GC:GetConfig()
     return table.concat({
-        string.lower(c.mode),
-        tostring(c.activity or "none"),
-        tostring(c.difficulty or "normal"),
-        tostring(c.size or 5),
-        tostring(c.tanks or 0),
-        tostring(c.healers or 0),
-        tostring(c.dps or 0),
-        Bool01(c.options.preferGuild),
-        Bool01(c.options.fillWorld),
-        Bool01(c.options.keepMe),
-        Bool01(c.options.balanceClasses),
-        Bool01(c.options.balanceUtility),
-        Bool01(c.options.balanceRange),
-        Bool01(c.options.avoidDuplicateClasses),
-        tostring(c.options.minimumItemLevel or 0),
+        string.lower(config.mode), tostring(config.activity or "none"), tostring(config.difficulty or "normal"),
+        tostring(config.size or 5), tostring(config.tanks or 0), tostring(config.healers or 0), tostring(config.dps or 0),
+        Bool01(config.options.preferGuild), Bool01(config.options.fillWorld), Bool01(config.options.keepMe),
+        Bool01(config.options.balanceClasses), Bool01(config.options.balanceUtility), Bool01(config.options.balanceRange),
+        Bool01(config.options.avoidDuplicateClasses), tostring(config.options.minimumItemLevel or 0),
     }, " ")
 end
 
@@ -277,6 +243,11 @@ function GC:SendServer(command, status)
     GC.pendingCommand = command
     SendRawServer(command)
     GC:Fire("STATUS", status or "Waiting for server...")
+end
+
+function GC:RequestAnchors()
+    GC.anchorsReady = false
+    SendRawServer("anchors")
 end
 
 function GC:FindRoster()
@@ -291,71 +262,44 @@ function GC:FindRoster()
     GC:ResetPlan("Searching")
     GC.pendingCommand = "find"
     GC:Fire("STATUS", "Building roster preview...")
-
-    -- Keep every command comfortably below the 3.3.5 chat-message limit. The server keeps
-    -- this temporary draft per player until the final `find` validates it.
     SendRawServer("begin " .. GC:BeginPayload())
-    local c = GC:GetConfig()
+    local config = GC:GetConfig()
     for _, role in ipairs(D.ROLE_ORDER) do
-        for _, pref in ipairs(c.preferences[role] or {}) do
-            local classToken = pref.class or "ANY"
-            local spec = pref.spec == nil and "ANY" or tostring(pref.spec)
-            local strength = pref.required and "R" or "P"
-            SendRawServer("pref " .. role .. " " .. classToken .. " " .. spec .. " " .. strength)
+        for _, pref in ipairs(config.preferences[role] or {}) do
+            SendRawServer("pref " .. role .. " " .. (pref.class or "ANY") .. " " .. (pref.spec == nil and "ANY" or tostring(pref.spec)) .. " " .. (pref.required and "R" or "P"))
         end
     end
-    for name, role in pairs(c.humanRoles or {}) do
-        SendRawServer("humanrole " .. name .. " " .. role)
-    end
-    for _, entry in ipairs(c.extraHumans or {}) do
-        SendRawServer("human " .. entry.name .. " " .. entry.role)
-    end
-    for _, entry in ipairs(c.pinned or {}) do
-        SendRawServer("pin " .. entry.name .. " " .. entry.role .. " " .. (entry.required and "R" or "P"))
-    end
-    for name, subgroup in pairs(c.arrangement or {}) do
-        SendRawServer("arrangepref " .. name .. " " .. tostring(subgroup))
-    end
+    for name, role in pairs(config.humanRoles or {}) do SendRawServer("humanrole " .. name .. " " .. role) end
+    for _, entry in ipairs(config.extraHumans or {}) do SendRawServer("human " .. entry.name .. " " .. entry.role) end
+    for _, entry in ipairs(config.pinned or {}) do SendRawServer("pin " .. entry.name .. " " .. entry.role .. " " .. (entry.required and "R" or "P")) end
+    for name, subgroup in pairs(config.arrangement or {}) do SendRawServer("arrangepref " .. name .. " " .. tostring(subgroup)) end
     SendRawServer("find")
     return true
 end
 
 function GC:Assemble()
-    if not GC.plan.ready or not GC.plan.valid then
-        GC:Fire("STATUS", "Find and validate a roster before assembling it.")
-        return false
-    end
+    if not GC.plan.ready or not GC.plan.valid then GC:Fire("STATUS", "Find and validate a roster before assembling it."); return false end
     GC:SendServer("assemble", "Assembling roster...")
     return true
 end
 
 function GC:AutoArrange()
-    if not GC.plan.ready then
-        GC:Fire("STATUS", "Find a roster first.")
-        return false
-    end
+    if not GC.plan.ready then GC:Fire("STATUS", "Find a roster first."); return false end
     GC:SendServer("arrange", "Auto-arranging subgroups...")
     return true
 end
 
 function GC:MoveMember(name, subgroup)
-    name = CleanCharacterName(name)
-    subgroup = tonumber(subgroup)
+    name, subgroup = CleanCharacterName(name), tonumber(subgroup)
     if not GC.plan.ready or not name or not subgroup or subgroup < 1 or subgroup > 8 then return false end
     GC:SendServer("move " .. name .. " " .. tostring(math.floor(subgroup)), "Moving " .. name .. "...")
     return true
 end
 
 function GC:QueueDungeon()
-    local c = GC:GetConfig()
-    if c.mode ~= "DUNGEON" then
-        GC:Fire("STATUS", "Dungeon Finder handoff is only available in Dungeon mode.")
-        return false
-    end
-    if not GC.plan.ready or not GC.plan.valid then
-        GC:Fire("STATUS", "Find and assemble a valid dungeon party first.")
-        return false
-    end
+    local config = GC:GetConfig()
+    if config.mode ~= "DUNGEON" then GC:Fire("STATUS", "Dungeon Finder handoff is only available in Dungeon mode."); return false end
+    if not GC.plan.ready or not GC.plan.valid then GC:Fire("STATUS", "Find and assemble a valid dungeon party first."); return false end
     GC:SendServer("queue", "Handing the party to Dungeon Finder...")
     return true
 end
@@ -364,82 +308,66 @@ function GC:ClearServerPlan()
     GC:SendServer("clear")
     GC:ResetPlan("Cleared")
 end
-
-function GC:RequestStatus()
-    GC:SendServer("status")
-end
-
-function GC:RequestDiagnostics()
-    GC:SendServer("diagnostics", "Refreshing diagnostics...")
-end
-
-local function ParseNumber(text, fallback)
-    local n = tonumber(text)
-    if n == nil then return fallback end
-    return n
-end
+function GC:RequestStatus() GC:SendServer("status") end
+function GC:RequestDiagnostics() GC:SendServer("diagnostics", "Refreshing diagnostics...") end
 
 function GC:HandleProtocolMessage(message)
     if type(message) ~= "string" or string.sub(message, 1, 5) ~= "[GC]|" then return false end
     GC.backendSeen = true
-    local body = string.sub(message, 6)
-    local fields = Split(body, "|")
+    local fields = Split(string.sub(message, 6), "|")
     local kind = fields[1] or ""
 
     if kind == "RESET" then
         GC:ResetPlan("Server reset")
+    elseif kind == "ANCHORRESET" then
+        GC.anchors, GC.anchorsReady = {}, false
+    elseif kind == "ANCHOR" then
+        GC.anchors[#GC.anchors + 1] = {
+            name = fields[2] or "?", class = fields[3] or "UNKNOWN", role = fields[4] or "AUTO",
+            online = fields[5] == "1", subgroup = ParseNumber(fields[6], 1), isPlayer = fields[7] == "1",
+        }
+    elseif kind == "ANCHORDONE" then
+        GC.anchorsReady = true
+        GC:Fire("HUMANS_CHANGED", GC:ScanHumans())
     elseif kind == "STATUS" then
         GC:Fire("STATUS", fields[2] or "Server ready")
     elseif kind == "META" then
-        GC.plan.summary.mode = fields[2]
-        GC.plan.summary.activity = fields[3]
-        GC.plan.summary.difficulty = fields[4]
-        GC.plan.summary.size = ParseNumber(fields[5], 0)
-        GC.plan.summary.tanks = ParseNumber(fields[6], 0)
-        GC.plan.summary.healers = ParseNumber(fields[7], 0)
-        GC.plan.summary.dps = ParseNumber(fields[8], 0)
+        GC.plan.summary.mode = fields[2]; GC.plan.summary.activity = fields[3]; GC.plan.summary.difficulty = fields[4]
+        GC.plan.summary.size = ParseNumber(fields[5], 0); GC.plan.summary.tanks = ParseNumber(fields[6], 0)
+        GC.plan.summary.healers = ParseNumber(fields[7], 0); GC.plan.summary.dps = ParseNumber(fields[8], 0)
     elseif kind == "MEMBER" then
         GC.plan.members[#GC.plan.members + 1] = {
-            subgroup = ParseNumber(fields[2], 0),
-            name = fields[3] or "?",
-            role = fields[4] or "DPS",
-            class = fields[5] or "UNKNOWN",
-            spec = fields[6] or "",
-            source = fields[7] or "WORLD",
-            human = fields[8] == "1",
-            locked = fields[9] == "1",
-            pinned = fields[10] == "1",
+            subgroup = ParseNumber(fields[2], 0), name = fields[3] or "?", role = fields[4] or "DPS",
+            class = fields[5] or "UNKNOWN", spec = fields[6] or "", source = fields[7] or "WORLD",
+            human = fields[8] == "1", locked = fields[9] == "1", pinned = fields[10] == "1",
         }
     elseif kind == "COVERAGE" then
-        GC.plan.summary.ranged = ParseNumber(fields[2], 0)
-        GC.plan.summary.melee = ParseNumber(fields[3], 0)
-        GC.plan.summary.utility = fields[4] or ""
+        GC.plan.summary.ranged = ParseNumber(fields[2], 0); GC.plan.summary.melee = ParseNumber(fields[3], 0); GC.plan.summary.utility = fields[4] or ""
     elseif kind == "DIAG" then
         GC.plan.summary.diagnostics = fields[2] or ""
         GC:Fire("DIAGNOSTICS", GC.plan.summary.diagnostics)
     elseif kind == "WARN" then
         GC.plan.warnings[#GC.plan.warnings + 1] = fields[2] or "Unknown warning"
     elseif kind == "READY" then
-        GC.plan.valid = fields[2] == "1"
-        GC.plan.ready = true
-        GC.plan.summary.guild = ParseNumber(fields[3], 0)
-        GC.plan.summary.world = ParseNumber(fields[4], 0)
-        GC.plan.summary.humans = ParseNumber(fields[5], 0)
-        GC.plan.summary.total = ParseNumber(fields[6], #GC.plan.members)
+        GC.plan.valid = fields[2] == "1"; GC.plan.ready = true
+        GC.plan.summary.guild = ParseNumber(fields[3], 0); GC.plan.summary.world = ParseNumber(fields[4], 0)
+        GC.plan.summary.humans = ParseNumber(fields[5], 0); GC.plan.summary.total = ParseNumber(fields[6], #GC.plan.members)
         GC.pendingCommand = nil
         GC:Fire("STATUS", GC.plan.valid and "Roster ready for review." or "Roster needs attention.")
     elseif kind == "DONE" then
+        local completed = GC.pendingCommand
         GC.pendingCommand = nil
         GC:Fire("STATUS", fields[2] or "Done.")
+        if completed == "assemble" and GC:GetConfig().mode == "DUNGEON" and GC:GetConfig().options.queueAfterAssemble then
+            GC:QueueDungeon()
+        end
     elseif kind == "ERROR" then
-        GC.pendingCommand = nil
-        GC.plan.valid = false
-        GC.plan.ready = true
+        GC.pendingCommand = nil; GC.plan.valid = false; GC.plan.ready = true
         GC.plan.warnings[#GC.plan.warnings + 1] = fields[2] or "Server error"
         GC:Fire("STATUS", fields[2] or "Server error")
     end
 
-    GC:Fire("PLAN_CHANGED", GC.plan)
+    if kind ~= "ANCHOR" and kind ~= "ANCHORRESET" and kind ~= "ANCHORDONE" then GC:Fire("PLAN_CHANGED", GC.plan) end
     return true
 end
 
@@ -449,98 +377,68 @@ local function SystemFilter(_, _, message, ...)
 end
 
 function GC:ScanHumans()
-    local humans = {}
-    local function Add(unit, subgroup)
-        if not UnitExists(unit) then return end
-        local name = UnitName(unit)
-        local _, classToken = UnitClass(unit)
-        if not name then return end
-        humans[#humans + 1] = {
-            name = name,
-            class = classToken or "UNKNOWN",
-            subgroup = subgroup or 1,
-            isPlayer = UnitIsUnit(unit, "player") and true or false,
-            role = GC:GetConfig().humanRoles[name] or "AUTO",
-        }
+    if GC.anchorsReady then
+        local out = {}
+        local config = GC:GetConfig()
+        for _, anchor in ipairs(GC.anchors) do
+            out[#out + 1] = {
+                name = anchor.name, class = anchor.class, subgroup = anchor.subgroup,
+                isPlayer = anchor.isPlayer, online = anchor.online,
+                role = config.humanRoles[anchor.name] or anchor.role or "AUTO",
+            }
+        end
+        return out
     end
 
-    local raidCount = GetNumRaidMembers and GetNumRaidMembers() or 0
-    if raidCount and raidCount > 0 then
-        for i = 1, raidCount do
-            local name, _, subgroup, _, _, classToken, _, online = GetRaidRosterInfo(i)
-            if name and online ~= false then
-                humans[#humans + 1] = {
-                    name = name,
-                    class = classToken or "UNKNOWN",
-                    subgroup = subgroup or 1,
-                    isPlayer = name == UnitName("player"),
-                    role = GC:GetConfig().humanRoles[name] or "AUTO",
-                }
-            end
-        end
-    else
-        Add("player", 1)
-        local partyCount = GetNumPartyMembers and GetNumPartyMembers() or 0
-        for i = 1, partyCount do Add("party" .. i, 1) end
-    end
-    return humans
+    -- Short client-side fallback while the authoritative server query is in flight. The backend
+    -- replaces this immediately and is the only layer that distinguishes real humans from Playerbots.
+    local name = UnitName("player")
+    local _, classToken = UnitClass("player")
+    if not name then return {} end
+    return { {
+        name = name, class = classToken or "UNKNOWN", subgroup = 1, isPlayer = true, online = true,
+        role = GC:GetConfig().humanRoles[name] or "AUTO",
+    } }
 end
 
 local function IsStableProfileMember(config, member)
     if not member or not member.name then return false end
     if member.human then return true end
     local key = string.lower(member.name)
-    for _, pin in ipairs(config.pinned or {}) do
-        if string.lower(pin.name) == key then return true end
-    end
+    for _, pin in ipairs(config.pinned or {}) do if string.lower(pin.name) == key then return true end end
     return false
 end
 
 function GC:CaptureStableArrangement()
-    local c = GC:GetConfig()
-    local arrangement = {}
+    local config, arrangement = GC:GetConfig(), {}
     if GC.plan and GC.plan.ready then
         for _, member in ipairs(GC.plan.members or {}) do
-            if IsStableProfileMember(c, member) and member.subgroup and member.subgroup >= 1 and member.subgroup <= 8 then
+            if IsStableProfileMember(config, member) and member.subgroup and member.subgroup >= 1 and member.subgroup <= 8 then
                 arrangement[member.name] = member.subgroup
             end
         end
     end
-    c.arrangement = arrangement
+    config.arrangement = arrangement
 end
 
 function GC:SaveProfile(name)
     GC:CaptureStableArrangement()
     local ok, err = P.Save(name, GC:GetConfig())
     if ok then
-        GC.db.lastProfile = P.CleanName(name)
-        GC:Fire("PROFILES_CHANGED")
-        GC:Fire("STATUS", "Saved profile: " .. tostring(GC.db.lastProfile))
-    else
-        GC:Fire("STATUS", err)
-    end
+        GC.db.lastProfile = P.CleanName(name); GC:Fire("PROFILES_CHANGED"); GC:Fire("STATUS", "Saved profile: " .. tostring(GC.db.lastProfile))
+    else GC:Fire("STATUS", err) end
     return ok, err
 end
 
 function GC:LoadProfile(name)
-    local p = P.Get(name)
-    if not p then
-        GC:Fire("STATUS", "Profile not found: " .. tostring(name))
-        return false
-    end
-    GC:SetConfig(p, name)
-    GC:Fire("STATUS", "Loaded profile: " .. name)
-    return true
+    local profile = P.Get(name)
+    if not profile then GC:Fire("STATUS", "Profile not found: " .. tostring(name)); return false end
+    GC:SetConfig(profile, name); GC:Fire("STATUS", "Loaded profile: " .. name); return true
 end
 
 function GC:DeleteProfile(name)
     local ok, err = P.Delete(name)
-    if ok then
-        GC:Fire("PROFILES_CHANGED")
-        GC:Fire("STATUS", "Deleted profile: " .. name)
-    else
-        GC:Fire("STATUS", err)
-    end
+    if ok then GC:Fire("PROFILES_CHANGED"); GC:Fire("STATUS", "Deleted profile: " .. name) else GC:Fire("STATUS", err) end
     return ok, err
 end
 
@@ -553,16 +451,14 @@ eventFrame:RegisterEvent("DISPLAY_SIZE_CHANGED")
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == "GroupComposer" then
         GC.db = P.InitializeDB()
-        local start = GC.db.lastProfile and P.Get(GC.db.lastProfile) or nil
-        GC.config = start or P.New(GC.db.lastMode)
-        if ChatFrame_AddMessageEventFilter then
-            ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", SystemFilter)
-        end
+        GC.config = (GC.db.lastProfile and P.Get(GC.db.lastProfile)) or P.New(GC.db.lastMode)
+        if ChatFrame_AddMessageEventFilter then ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", SystemFilter) end
         GC:Fire("CONFIG_CHANGED", GC.config, GC.db.lastProfile)
     elseif event == "PLAYER_LOGIN" then
         GC:Fire("PLAYER_READY")
+        GC:RequestAnchors()
     elseif event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE" then
-        GC:Fire("HUMANS_CHANGED", GC:ScanHumans())
+        GC:RequestAnchors()
     elseif event == "DISPLAY_SIZE_CHANGED" then
         GC:Fire("DISPLAY_CHANGED")
     end
@@ -572,13 +468,9 @@ SLASH_GROUPCOMPOSER1 = "/gc"
 SLASH_GROUPCOMPOSER2 = "/groupcomposer"
 SlashCmdList.GROUPCOMPOSER = function(msg)
     msg = string.lower(msg or "")
-    if msg == "status" then
-        GC:RequestStatus()
-    elseif msg == "diag" or msg == "diagnostics" then
-        GC:RequestDiagnostics()
-    elseif msg == "reset" then
-        GC:SetConfig(P.New(GC:GetConfig().mode), nil)
-    elseif GC.Toggle then
-        GC:Toggle()
-    end
+    if msg == "status" then GC:RequestStatus()
+    elseif msg == "diag" or msg == "diagnostics" then GC:RequestDiagnostics()
+    elseif msg == "anchors" then GC:RequestAnchors()
+    elseif msg == "reset" then GC:SetConfig(P.New(GC:GetConfig().mode), nil)
+    elseif GC.Toggle then GC:Toggle() end
 end
