@@ -3,7 +3,6 @@
 #include "Map.h"
 #include "Player.h"
 #include "ScriptMgr.h"
-#include "WorldSession.h"
 
 #include <algorithm>
 #include <chrono>
@@ -30,11 +29,6 @@ std::unordered_map<uint32, PurifiedEnergyState> g_purifiedEnergy;
 uint32 PlayerKey(Player const* player)
 {
     return player ? player->GetGUID().GetCounter() : 0;
-}
-
-bool IsHuman(Player const* player)
-{
-    return player && player->GetSession() && !player->GetSession()->IsBot();
 }
 
 bool IsTitanMap(uint32 mapId)
@@ -84,7 +78,10 @@ public:
 
     void OnPlayerUpdate(Player* player, uint32 /*diff*/) override
     {
-        if (!IsHuman(player) || !player->IsInWorld())
+        // Playerbots are full party members in this server. They must build the same Purified
+        // Titan Energy stacks as a human player or HoS/HoL becomes artificially undertuned for
+        // bot-heavy groups. Notifications remain human-only in the companion Keeper script.
+        if (!player || !player->IsInWorld())
             return;
 
         uint32 const key = PlayerKey(player);
