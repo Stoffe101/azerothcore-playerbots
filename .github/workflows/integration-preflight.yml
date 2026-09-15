@@ -104,13 +104,17 @@ jobs:
               echo "Applied wrapper patch: $name"
             else
               echo "ERROR: patch no longer applies cleanly: $name" >&2
+              echo "### Wrapper patch failed: \`$name\`" >> "$GITHUB_STEP_SUMMARY"
               git -C "$CORE" apply "${apply_args[@]}" --check --verbose "$patch" || true
               exit 1
             fi
           done
 
           if [[ -x "$CORE/modules/mod-era-talents/apply-patches.sh" ]]; then
-            "$CORE/modules/mod-era-talents/apply-patches.sh" "$CORE"
+            if ! "$CORE/modules/mod-era-talents/apply-patches.sh" "$CORE"; then
+              echo "### Era Talents patch stack failed" >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
           fi
 
           echo "Pinned tree and all wrapper patches are ready for the local ./update.sh build."
