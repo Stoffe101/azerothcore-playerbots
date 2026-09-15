@@ -11,6 +11,7 @@ import re
 
 ROOT = Path(__file__).resolve().parents[3]
 DATA = (ROOT / "client-addons-src/GroupComposer/Data.lua").read_text(encoding="utf-8")
+POLISH = (ROOT / "client-addons-src/GroupComposer/Polish.lua").read_text(encoding="utf-8")
 SERVER = (ROOT / "modules/mod-raid-roster/src/GroupComposerCommand.cpp").read_text(encoding="utf-8")
 PLANNER = (ROOT / "modules/mod-raid-roster/src/GroupComposerPlanner.cpp").read_text(encoding="utf-8")
 TYPES = (ROOT / "modules/mod-raid-roster/src/GroupComposerTypes.h").read_text(encoding="utf-8")
@@ -74,6 +75,18 @@ for command in (
     assert re.search(r'\{\s*"' + re.escape(command) + r'"\s*,', SERVER), (
         f"Missing server command registration: {command}"
     )
+
+# Client safety contracts. A passive status sync must not leave the whole addon action-locked, and
+# Assemble must remain an explicit commit step rather than a one-click destructive operation.
+assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in POLISH, (
+    "Passive status synchronization can leave the composer permanently action-locked"
+)
+assert 'StaticPopupDialogs["GROUPCOMPOSER_CONFIRM_ASSEMBLY"]' in POLISH, (
+    "Live roster assembly lost its explicit confirmation boundary"
+)
+assert 'StaticPopup_Show("GROUPCOMPOSER_CONFIRM_ASSEMBLY"' in POLISH, (
+    "Assemble no longer routes through the confirmation popup"
+)
 
 # Safety invariants. These are intentionally source-level contracts because removing any one of
 # them changes the destructive semantics even if the module still compiles.
