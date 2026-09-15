@@ -4,6 +4,7 @@
 #include "Creature.h"
 #include "Map.h"
 #include "Player.h"
+#include "Random.h"
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
 #include "Spell.h"
@@ -24,12 +25,20 @@ using TimePoint = Clock::time_point;
 
 constexpr uint32 IMMORTAL_CRUSHER_ENTRY = 900124;
 constexpr uint32 INSANE_SPELL = 63120; // Stock 3.3.5 Yogg-Saron mind-control aura.
+constexpr uint32 FLASH_FREEZE_SPELL = 64175; // Hodir's save visual/immunity from the original Ulduar encounter.
+constexpr uint32 FORTITUDE_OF_FROST_SPELL = 62650;
+constexpr uint32 RESILIENCE_OF_NATURE_SPELL = 62670;
+constexpr uint32 SPEED_OF_INVENTION_SPELL = 62671;
+constexpr uint32 FURY_OF_THE_STORM_SPELL = 62702;
+constexpr uint32 DESTABILIZATION_MATRIX_SPELL = 65210;
 constexpr uint32 IMMORTAL_CRUSHER_HEALTH = 1981707; // Wrath Classic heroic value.
 constexpr uint8 MAX_SANITY = 100;
 constexpr uint8 SANITY_DRAIN = 2;
 constexpr uint8 SANITY_RESTORE = 20;
 constexpr uint32 SANITY_DRAIN_SECONDS = 2;
 constexpr uint32 SANITY_RESTORE_SECONDS = 5;
+constexpr uint32 MANA_RESTORE_SECONDS = 5;
+constexpr uint8 MANA_RESTORE_PERCENT = 15;
 constexpr uint8 KEEPER_PULSE_STACKS = 5;
 constexpr uint32 KEEPER_STACK_SECONDS = 12;
 constexpr uint8 CRUSHER_MAX_PER_INSTANCE = 4;
@@ -41,6 +50,7 @@ struct TitanPlayerRuntime
 {
     uint8 stacks = 0;
     bool keepers = false;
+    bool hodirSaveAvailable = false;
     uint8 sanity = MAX_SANITY;
     bool sanityStarted = false;
     bool insane = false;
@@ -48,12 +58,8 @@ struct TitanPlayerRuntime
     TimePoint nextStackPulse{};
     TimePoint nextSanityDrain{};
     TimePoint nextSanityRestore{};
+    TimePoint nextManaRestore{};
     TimePoint lastAbility{};
-    TimePoint stillSince{};
-    float lastX = 0.0f;
-    float lastY = 0.0f;
-    float lastZ = 0.0f;
-    bool havePosition = false;
 };
 
 struct TitanInstanceRuntime
@@ -156,25 +162,28 @@ void ReducePlayerDamage(Map const* map, uint32& damage)
         damage = std::max<uint32>(1, damage / 100); // Wrath Classic Titan Rune: 99% reduced damage dealt.
 }
 
-void ReducePlayerDamage(Map const* map, int32& damage)
-{
-    if (damage > 0 && InstanceHasDiminishPower(map))
-        damage = std::max<int32>(1, damage / 100);
-}
-
-void RefreshMaxHealth(Player* player)
+void RemoveKeeperAuras(Player* player)
 {
     if (!player)
         return;
-    uint32 const oldMax = std::max<uint32>(1, player->GetMaxHealth());
-    uint32 const oldHealth = player->GetHealth();
-    player->UpdateMaxHealth();
-    uint32 const newMax = std::max<uint32>(1, player->GetMaxHealth());
-    if (player->IsAlive())
-    {
-        uint64 const scaledHealth = uint64(oldHealth) * uint64(newMax) / uint64(oldMax);
-        player->SetHealth(uint32(std::min<uint64>(scaledHealth, newMax)));
-    }
+    player->RemoveAurasDueToSpell(FORTITUDE_OF_FROST_SPELL);
+    player->RemoveAurasDueToSpell(RESILIENCE_OF_NATURE_SPELL);
+    player->RemoveAurasDueToSpell(SPEED_OF_INVENTION_SPELL);
+    player->RemoveAurasDueToSpell(FURY_OF_THE_STORM_SPELL);
+}
+
+void ApplyKeeperAuras(Player* player)
+{
+    if (!player)
+        return;
+
+    // These four spells are native 3.3.5 Ulduar Keeper auras. Reusing them gives the backport the
+    // exact original +10% damage from each Keeper, -20% damage taken, +20% healing received,
+    // +20% movement speed and +20% maximum health without inventing client-side DBC records.
+    player->AddAura(FORTITUDE_OF_FROST_SPELL, player);
+    player->AddAura(RESILIENCE_OF_NATURE_SPELL, player);
+    player->AddAura(SPEED_OF_INVENTION_SPELL, player);
+    player->AddAura(FURY_OF_THE_STORM_SPELL, player);
 }
 
 void SetKeeperAid(Player* player, TitanPlayerRuntime& state, bool enabled)
@@ -183,14 +192,23 @@ void SetKeeperAid(Player* player, TitanPlayerRuntime& state, bool enabled)
         return;
 
     state.keepers = enabled;
-    RefreshMaxHealth(player);
     if (enabled)
     {
+        ApplyKeeperAuras(player);
+        state.hodirSaveAvailable = true;
         state.sanity = MAX_SANITY;
         state.sanityStarted = false;
         state.insane = false;
-        state.nextSanityRestore = Clock::now() + std::chrono::seconds(SANITY_RESTORE_SECONDS);
-        Notify(player, "Fury of the Storm also increases your maximum health by 20% and enables Titanic Storm executions on weakened Immortal Crushers.");
+        TimePoint const now = Clock::now();
+        state.nextSanityRestore = now + std::chrono::seconds(SANITY_RESTORE_SECONDS);
+        state.nextManaRestore = now + std::chrono::seconds(MANA_RESTORE_SECONDS);
+        Notify(player,
+            "Purified Titan Energy reaches 100 stacks. The four Keepers answer: +40% damage, 20% less damage taken, +20% healing received, +20% movement speed and +20% maximum health. Resilience restores mana/Sanity, Hodir can save one fatal blow, and Titanic Storm can finish weakened Crushers.");
+    }
+    else
+    {
+        RemoveKeeperAuras(player);
+        state.hodirSaveAvailable = false;
     }
 }
 
@@ -200,9 +218,14 @@ void ClearPlayerState(Player* player)
         return;
     auto itr = g_titanPlayers.find(PlayerKey(player));
     if (itr == g_titanPlayers.end())
+    {
+        RemoveKeeperAuras(player);
         return;
+    }
     if (itr->second.keepers)
         SetKeeperAid(player, itr->second, false);
+    else
+        RemoveKeeperAuras(player);
     g_titanPlayers.erase(itr);
 }
 
@@ -294,34 +317,6 @@ void UpdateCrusherSpawns(Player* player)
     }
 }
 
-void UpdateMovementSilence(Player* player, TitanPlayerRuntime& state, TimePoint now)
-{
-    if (!player)
-        return;
-
-    float const x = player->GetPositionX();
-    float const y = player->GetPositionY();
-    float const z = player->GetPositionZ();
-    if (!state.havePosition)
-    {
-        state.lastX = x;
-        state.lastY = y;
-        state.lastZ = z;
-        state.havePosition = true;
-        state.stillSince = now;
-        return;
-    }
-
-    float const dx = x - state.lastX;
-    float const dy = y - state.lastY;
-    float const dz = z - state.lastZ;
-    if ((dx * dx + dy * dy + dz * dz) > 0.25f)
-        state.stillSince = now;
-    state.lastX = x;
-    state.lastY = y;
-    state.lastZ = z;
-}
-
 class TitanRuneTitanPlayerScript final : public PlayerScript
 {
 public:
@@ -329,14 +324,15 @@ public:
 
     void OnPlayerLogin(Player* player) override
     {
-        if (player)
-            g_titanPlayers.erase(PlayerKey(player));
+        if (!player)
+            return;
+        g_titanPlayers.erase(PlayerKey(player));
+        RemoveKeeperAuras(player); // Clean up a persisted aura after an abnormal previous shutdown.
     }
 
     void OnPlayerLogout(Player* player) override
     {
-        if (player)
-            g_titanPlayers.erase(PlayerKey(player));
+        ClearPlayerState(player);
     }
 
     void OnPlayerMapChanged(Player* player) override
@@ -348,12 +344,6 @@ public:
     {
         if (player && UsesPurifiedTitanRune(player))
             g_titanPlayers[PlayerKey(player)].lastAbility = Clock::now();
-    }
-
-    void OnPlayerAfterUpdateMaxHealth(Player* player, float& value) override
-    {
-        if (player && HasKeeperAid(player))
-            value *= 1.20f;
     }
 
     void OnPlayerUpdate(Player* player, uint32 /*diff*/) override
@@ -369,7 +359,6 @@ public:
         UpdateCrusherSpawns(player);
         TimePoint const now = Clock::now();
         TitanPlayerRuntime& state = g_titanPlayers[PlayerKey(player)];
-        UpdateMovementSilence(player, state, now);
 
         if (player->IsInCombat() && now >= state.nextStackPulse)
         {
@@ -411,13 +400,29 @@ public:
             }
         }
 
-        if (state.keepers && state.sanityStarted && !state.insane && state.sanity < MAX_SANITY && now >= state.nextSanityRestore)
+        if (!state.keepers)
+            return;
+
+        // Defense Protocol Beta/Gamma's Resilience of Nature restores 15% maximum mana every 5 sec.
+        if (now >= state.nextManaRestore)
+        {
+            uint32 const maxMana = player->GetMaxPower(POWER_MANA);
+            if (maxMana)
+            {
+                uint32 const current = player->GetPower(POWER_MANA);
+                uint32 const restored = std::max<uint32>(1, uint32(uint64(maxMana) * MANA_RESTORE_PERCENT / 100));
+                player->SetPower(POWER_MANA, std::min<uint32>(maxMana, current + restored));
+            }
+            state.nextManaRestore = now + std::chrono::seconds(MANA_RESTORE_SECONDS);
+        }
+
+        // The Classic backport tooltip requires five seconds without a spell/ability. Movement does
+        // not cancel this recovery, so do not incorrectly require the player to stand still.
+        if (state.sanityStarted && !state.insane && state.sanity < MAX_SANITY && now >= state.nextSanityRestore)
         {
             bool const noAbility = state.lastAbility.time_since_epoch().count() == 0 ||
                 now - state.lastAbility >= std::chrono::seconds(SANITY_RESTORE_SECONDS);
-            bool const standingStill = state.stillSince.time_since_epoch().count() != 0 &&
-                now - state.stillSince >= std::chrono::seconds(SANITY_RESTORE_SECONDS);
-            if (noAbility && standingStill)
+            if (noAbility)
             {
                 state.sanity = std::min<uint8>(MAX_SANITY, uint8(state.sanity + SANITY_RESTORE));
                 ReportSanity(player, state);
@@ -432,7 +437,7 @@ class TitanRuneTitanUnitScript final : public UnitScript
 public:
     TitanRuneTitanUnitScript() : UnitScript("TitanRuneTitanUnitScript") { }
 
-    void ModifyMeleeDamage(Unit* target, Unit* attacker, uint32& damage) override
+    void ModifyMeleeDamage(Unit* target, Unit* attacker, uint32& /*damage*/) override
     {
         Player* player = ControllingPlayer(attacker);
         if (!player || !UsesPurifiedTitanRune(player))
@@ -449,33 +454,53 @@ public:
                 Notify(player, "Melee contact interrupts Diminish Power. Player damage returns to normal unless another Crusher is still channeling.");
             }
         }
-
-        ReducePlayerDamage(player->GetMap(), damage);
     }
 
-    void ModifySpellDamageTaken(Unit* /*target*/, Unit* attacker, int32& damage, SpellInfo const* /*spellInfo*/) override
+    void OnDamage(Unit* attacker, Unit* victim, uint32& damage) override
     {
-        Player* player = ControllingPlayer(attacker);
-        if (player && UsesPurifiedTitanRune(player))
-            ReducePlayerDamage(player->GetMap(), damage);
-    }
-
-    void ModifyPeriodicDamageAurasTick(Unit* /*target*/, Unit* attacker, uint32& damage, SpellInfo const* /*spellInfo*/) override
-    {
-        Player* player = ControllingPlayer(attacker);
-        if (player && UsesPurifiedTitanRune(player))
-            ReducePlayerDamage(player->GetMap(), damage);
-    }
-
-    void OnDamage(Unit* /*attacker*/, Unit* victim, uint32& damage) override
-    {
-        Creature* crusher = victim ? victim->ToCreature() : nullptr;
-        if (!crusher || crusher->GetEntry() != IMMORTAL_CRUSHER_ENTRY || !damage || !crusher->IsAlive())
+        if (!damage || !victim)
             return;
 
-        // Immortal means exactly that until Titanic Storm executes the weakened tentacle.
-        if (damage >= crusher->GetHealth())
-            damage = crusher->GetHealth() > 1 ? crusher->GetHealth() - 1 : 0;
+        Player* attackingPlayer = ControllingPlayer(attacker);
+        if (attackingPlayer && UsesPurifiedTitanRune(attackingPlayer) && attacker != victim)
+        {
+            // Apply Diminish Power once at the final generic damage hook so melee, direct spells,
+            // periodic effects, pets and unusual class abilities cannot be reduced twice or escape it.
+            ReducePlayerDamage(attackingPlayer->GetMap(), damage);
+
+            Creature* targetCreature = victim->ToCreature();
+            if (targetCreature && targetCreature->GetEntry() == IMMORTAL_CRUSHER_ENTRY &&
+                HasKeeperAid(attackingPlayer) && !targetCreature->HasAura(DESTABILIZATION_MATRIX_SPELL) && urand(1, 100) <= 10)
+            {
+                attackingPlayer->CastSpell(targetCreature, DESTABILIZATION_MATRIX_SPELL, true);
+                Notify(attackingPlayer, "Speed of Invention destabilizes the Immortal Crusher's Saronite structure.");
+            }
+        }
+
+        Creature* crusher = victim->ToCreature();
+        if (crusher && crusher->GetEntry() == IMMORTAL_CRUSHER_ENTRY && crusher->IsAlive())
+        {
+            // Immortal means exactly that until Titanic Storm executes the weakened tentacle.
+            if (damage >= crusher->GetHealth())
+                damage = crusher->GetHealth() > 1 ? crusher->GetHealth() - 1 : 0;
+            return;
+        }
+
+        Player* victimPlayer = victim->ToPlayer();
+        if (!victimPlayer || !UsesPurifiedTitanRune(victimPlayer) || !HasKeeperAid(victimPlayer) ||
+            damage < victimPlayer->GetHealth())
+            return;
+
+        auto itr = g_titanPlayers.find(PlayerKey(victimPlayer));
+        if (itr == g_titanPlayers.end() || !itr->second.hodirSaveAvailable)
+            return;
+
+        // Defense Protocol's Hodir aid is a single safety net for this 100-stack Keeper empowerment.
+        // Clamp the lethal hit at 1 HP and use the native Ulduar Flash Freeze for the 10-sec immunity.
+        itr->second.hodirSaveAvailable = false;
+        damage = victimPlayer->GetHealth() > 1 ? victimPlayer->GetHealth() - 1 : 0;
+        victimPlayer->CastSpell(victimPlayer, FLASH_FREEZE_SPELL, true);
+        Notify(victimPlayer, "Hodir's Protective Gaze prevents a fatal blow. His save is spent until the Keepers answer again.");
     }
 
     void OnUnitUpdate(Unit* unit, uint32 /*diff*/) override
