@@ -23,6 +23,7 @@
 #include "RBAC.h"
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
+#include "World.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
 
@@ -278,6 +279,19 @@ bool Selected(Plan const& plan, ObjectGuid guid)
     return false;
 }
 
+bool CrossFactionBlocked(Player* master, Player* other)
+{
+    if (!master || !other || master->IsGameMaster()) return false;
+    return !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP) && master->GetTeamId() != other->GetTeamId();
+}
+
+bool ConflictingInstances(Player* master, Player* other)
+{
+    if (!master || !other) return false;
+    return master->GetInstanceId() != 0 && other->GetInstanceId() != 0
+        && master->GetInstanceId() != other->GetInstanceId() && master->GetMapId() == other->GetMapId();
+}
+
 void SyncManagedBot(Player* master, Player* bot, uint8 spec)
 {
     if (!master || !bot) return;
@@ -320,20 +334,69 @@ void ApplyGroupSettings(Player* master, Plan const& plan)
     }
 }
 
-void ApplyArrangement(Player* master, Plan const& plan)
+bool ApplyArrangement(Player* master, Plan const& plan, std::string& error)
 {
     Group* group = master ? master->GetGroup() : nullptr;
-    if (!group) return;
+    if (!group) { error = "The assembled roster has no live group."; return false; }
     ApplyGroupSettings(master, plan);
-    if (!group->isRaidGroup()) return;
+    if (!group->isRaidGroup()) return true;
+
+    // Resolve the preview layout as a permutation. Full 25/40-player raids have no spare subgroup
+    // slot, so a normal one-way ChangeMembersGroup cannot realize a swap. The tracked core patch
+    // provides an atomic SwapMembersGroup operation specifically for this case.
+    std::size_t maxPasses = std::max<std::size_t>(1, plan.members.size() * 2);
+    for (std::size_t pass = 0; pass < maxPasses; ++pass)
+    {
+        bool mismatch = false;
+        bool progress = false;
+
+        for (Member const& member : plan.members)
+        {
+            if (member.subgroup < 1 || member.subgroup > 8 || !group->IsMember(member.guid)) continue;
+            uint8 current = group->GetMemberGroup(member.guid);
+            uint8 target = member.subgroup - 1;
+            if (current == target) continue;
+            mismatch = true;
+
+            if (group->HasFreeSlotSubGroup(target))
+            {
+                group->ChangeMembersGroup(member.guid, target);
+                progress = true;
+                continue;
+            }
+
+            Member const* swap = nullptr;
+            for (Member const& candidate : plan.members)
+            {
+                if (candidate.guid == member.guid || candidate.subgroup < 1 || candidate.subgroup > 8 || !group->IsMember(candidate.guid)) continue;
+                if (group->GetMemberGroup(candidate.guid) != target) continue;
+                uint8 candidateTarget = candidate.subgroup - 1;
+                if (candidateTarget == current) { swap = &candidate; break; }
+                if (candidateTarget != target && !swap) swap = &candidate;
+            }
+
+            if (swap)
+            {
+                group->SwapMembersGroup(member.guid, swap->guid);
+                progress = true;
+            }
+        }
+
+        if (!mismatch) { group->SendUpdate(); return true; }
+        if (!progress) break;
+    }
 
     for (Member const& member : plan.members)
     {
         if (member.subgroup < 1 || member.subgroup > 8 || !group->IsMember(member.guid)) continue;
-        uint8 target = member.subgroup - 1;
-        if (group->GetMemberGroup(member.guid) != target && group->HasFreeSlotSubGroup(target)) group->ChangeMembersGroup(member.guid, target);
+        if (group->GetMemberGroup(member.guid) != member.subgroup - 1)
+        {
+            error = "The live raid subgroup layout changed while assembly was finishing. Re-run Find Roster and retry.";
+            return false;
+        }
     }
     group->SendUpdate();
+    return true;
 }
 
 void PruneUnselectedBots(Player* master, Plan const& plan)
@@ -344,6 +407,112 @@ void PruneUnselectedBots(Player* master, Plan const& plan)
     for (Group::MemberSlot const& slot : group->GetMemberSlots())
         if (!Selected(plan, slot.guid) && IsBotGuid(slot.guid)) remove.push_back(slot.guid);
     for (ObjectGuid guid : remove) group->RemoveMember(guid);
+}
+
+bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& error)
+{
+    if (!master || !plan.valid || plan.members.size() != plan.config.size)
+    {
+        error = "The roster preview is no longer structurally valid. Run Find Roster again.";
+        return false;
+    }
+
+    Member const* self = nullptr;
+    for (Member const& member : plan.members) if (member.guid == master->GetGUID()) { self = &member; break; }
+    if (!self || !self->human || !self->locked)
+    {
+        error = "Your character is missing from the reviewed roster. Run Find Roster again.";
+        return false;
+    }
+
+    Group* group = master->GetGroup();
+    if (group)
+    {
+        if (!group->IsLeader(master->GetGUID()) && !group->IsAssistant(master->GetGUID()))
+        {
+            error = "You must still be group leader or assistant to assemble this roster.";
+            return false;
+        }
+        if (group->isBFGroup() || group->isBGGroup())
+        {
+            error = "Battleground/Battlefield groups cannot be modified by Group Composer.";
+            return false;
+        }
+
+        // Humans are never silently pruned. If somebody joined after preview, force a new preview so
+        // the human becomes an explicit locked anchor before any bot is removed.
+        for (Group::MemberSlot const& slot : group->GetMemberSlots())
+        {
+            if (!Selected(plan, slot.guid) && !IsBotGuid(slot.guid))
+            {
+                error = "The group gained a real player after the preview. Run Find Roster again so every human is locked into the composition.";
+                return false;
+            }
+        }
+    }
+
+    for (Member const& member : plan.members)
+    {
+        Player* live = ObjectAccessor::FindConnectedPlayer(member.guid);
+        bool alreadyWithMaster = group && group->IsMember(member.guid);
+
+        if (member.human)
+        {
+            if (member.guid == master->GetGUID() || alreadyWithMaster) continue;
+            if (!live || GET_PLAYERBOT_AI(live))
+            {
+                error = "Human player '" + member.name + "' is no longer online and available.";
+                return false;
+            }
+            if (live->GetGroup() && live->GetGroup() != group)
+            {
+                error = "Human player '" + member.name + "' joined another group after the preview.";
+                return false;
+            }
+            if (live->IsSpectator() || live->IsBeingTeleported() || !live->IsAcceptGroupInvites() || live->GetGroupInvite())
+            {
+                error = "Human player '" + member.name + "' is no longer ready to receive this group invite.";
+                return false;
+            }
+            if (CrossFactionBlocked(master, live))
+            {
+                error = "Human player '" + member.name + "' cannot join while cross-faction groups are disabled.";
+                return false;
+            }
+            if (ConflictingInstances(master, live))
+            {
+                error = "Human player '" + member.name + "' is in a different copy of the same instance.";
+                return false;
+            }
+            continue;
+        }
+
+        if (!live)
+        {
+            if (!member.managed)
+            {
+                error = "Selected bot '" + member.name + "' went offline after the preview. Run Find Roster again.";
+                return false;
+            }
+            continue;
+        }
+        if (!GET_PLAYERBOT_AI(live))
+        {
+            error = "Selected bot identity '" + member.name + "' is no longer controlled by Playerbots.";
+            return false;
+        }
+        if (live->GetGroup() && live->GetGroup() != group)
+        {
+            error = "Selected bot '" + member.name + "' joined another group after the preview.";
+            return false;
+        }
+        if (!alreadyWithMaster && (live->InBattleground() || live->InBattlegroundQueue() || live->IsSpectator() || live->IsBeingTeleported()))
+        {
+            error = "Selected bot '" + member.name + "' is no longer available. Run Find Roster again.";
+            return false;
+        }
+    }
+    return true;
 }
 
 void InviteHuman(Player* master, Player* target)
@@ -369,7 +538,7 @@ bool PlanMembershipComplete(Player* master, Plan const& plan)
     Group* group = master ? master->GetGroup() : nullptr;
     if (!group) return plan.members.size() == 1 && plan.members[0].guid == master->GetGUID();
     for (Member const& member : plan.members) if (!group->IsMember(member.guid)) return false;
-    return group->GetMembersCount() >= plan.members.size();
+    return group->GetMembersCount() == plan.members.size();
 }
 
 bool OwnerHasPendingSync(uint32 ownerLow)
@@ -507,9 +676,12 @@ public:
             TryInviteMissing(master, plan);
             if (PlanMembershipComplete(master, plan) && !OwnerHasPendingSync(ownerLow))
             {
-                ApplyArrangement(master, plan);
+                std::string arrangementError;
                 plan.assembling = false;
-                SendProtocol(master, "DONE", "Roster assembled and subgroup layout applied.");
+                if (ApplyArrangement(master, plan, arrangementError))
+                    SendProtocol(master, "DONE", "Roster assembled and subgroup layout applied.");
+                else
+                    SendProtocol(master, "ERROR", arrangementError);
             }
             else if (plan.assembleElapsed > 30000)
             {
@@ -556,8 +728,6 @@ bool GroupComposerCommand::HandleBegin(ChatHandler* handler, std::string mode, s
     auto currentPlan = s_plans.find(owner);
     if (currentPlan != s_plans.end() && currentPlan->second.assembling)
     {
-        // Find Roster is a multi-message protocol. Remove the old draft so the pref/find messages
-        // that follow this rejected begin cannot mutate/rebuild underneath an active assembly.
         s_drafts.erase(owner);
         SendError(handler, "Wait for the current assembly to finish before starting a new search.");
         return true;
@@ -586,7 +756,8 @@ bool GroupComposerCommand::HandleBegin(ChatHandler* handler, std::string mode, s
     config.mode = mode; config.activity = activity; config.difficulty = difficulty;
     config.size = static_cast<uint8>(size); config.tanks = static_cast<uint8>(tanks);
     config.healers = static_cast<uint8>(healers); config.dps = static_cast<uint8>(dps);
-    config.preferGuild = preferGuild != 0; config.fillWorld = fillWorld != 0; config.keepMe = keepMe != 0;
+    config.preferGuild = preferGuild != 0; config.fillWorld = fillWorld != 0;
+    (void)keepMe; config.keepMe = true;
     config.balanceClasses = balanceClasses != 0; config.balanceUtility = balanceUtility != 0; config.balanceRange = balanceRange != 0;
     config.avoidDuplicates = avoidDuplicates != 0;
     config.minimumItemLevel = static_cast<uint16>(std::min<uint32>(1000, minimumItemLevel));
@@ -720,6 +891,7 @@ bool GroupComposerCommand::HandleArrange(ChatHandler* handler)
     if (!master) return true;
     auto itr = s_plans.find(master->GetGUID().GetCounter());
     if (itr == s_plans.end() || !itr->second.valid) { SendError(handler, "Find a valid roster before arranging it."); return true; }
+    if (itr->second.assembling) { SendError(handler, "Wait for the current assembly to finish before changing the preview."); return true; }
     Planner::Arrange(itr->second);
     SendPlan(handler, itr->second);
     handler->SendSysMessage("[GC]|DONE|Preview auto-arranged. Assemble applies the subgroup layout to the live raid.");
@@ -732,6 +904,7 @@ bool GroupComposerCommand::HandleMove(ChatHandler* handler, std::string name, ui
     if (!master) return true;
     auto itr = s_plans.find(master->GetGUID().GetCounter());
     if (itr == s_plans.end() || !itr->second.valid) { SendError(handler, "Find a valid roster before moving members."); return true; }
+    if (itr->second.assembling) { SendError(handler, "Wait for the current assembly to finish before changing the preview."); return true; }
     std::string detail;
     if (!Planner::Move(itr->second, CanonicalName(name), static_cast<uint8>(subgroup), detail)) { SendError(handler, detail); return true; }
     SendPlan(handler, itr->second);
@@ -749,6 +922,13 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
     Plan& plan = itr->second;
     if (plan.assembling) { handler->SendSysMessage("[GC]|STATUS|Assembly is already in progress."); return true; }
 
+    std::string validationError;
+    if (!ValidateAssemblySnapshot(master, plan, validationError))
+    {
+        SendError(handler, validationError);
+        return true;
+    }
+
     bool needsManagedLogin = false;
     for (Member const& member : plan.members)
         if (!member.human && member.managed && !ObjectAccessor::FindConnectedPlayer(member.guid)) { needsManagedLogin = true; break; }
@@ -756,8 +936,7 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
     PlayerbotMgr* mgr = needsManagedLogin ? GET_PLAYERBOT_MGR(master) : nullptr;
     if (needsManagedLogin && !mgr) { SendError(handler, "Playerbot manager is unavailable for the offline managed bot(s) in this roster."); return true; }
 
-    // Destructive membership changes begin only after every required backend dependency is known to
-    // be available. Find/Arrange/Move remain pure preview operations.
+    // This is the first destructive step. Everything above it only revalidates the reviewed snapshot.
     PruneUnselectedBots(master, plan);
 
     uint32 account = master->GetSession()->GetAccountId();
@@ -867,6 +1046,12 @@ bool GroupComposerCommand::HandleClear(ChatHandler* handler)
     Player* master = CommandPlayer(handler);
     if (!master) return true;
     uint32 owner = master->GetGUID().GetCounter();
+    auto plan = s_plans.find(owner);
+    if (plan != s_plans.end() && plan->second.assembling)
+    {
+        SendError(handler, "Wait for the active assembly to finish before clearing the preview.");
+        return true;
+    }
     s_drafts.erase(owner);
     s_plans.erase(owner);
     ClearPendingForOwner(owner);
