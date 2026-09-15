@@ -1,7 +1,7 @@
 diff --git a/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp b/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp
 --- a/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp
 +++ b/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp
-@@ -1633,8 +1633,8 @@ void PlayerbotAI::ApplyInstanceStrategies(uint32 mapId, bool tellMaster)
+@@ -1633,7 +1633,7 @@ void PlayerbotAI::ApplyInstanceStrategies(uint32 mapId, bool tellMaster)
      static const std::vector<std::string> allInstanceStrategies =
      {
          "aq20", "blacktemple", "bwl", "gruulslair", "hyjal", "icc", "karazhan", "magtheridon",
