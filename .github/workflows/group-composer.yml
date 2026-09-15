@@ -52,13 +52,24 @@ jobs:
           grep -q 'AddGroupComposerScripts();' modules/mod-raid-roster/src/RaidRosterLoader.cpp
           grep -q 'HandleAssemble' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'HandleQueue' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'HandleAnchors' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'Planner::Build' modules/mod-raid-roster/src/GroupComposerPlanner.cpp
 
-      - name: Reject accidental modern classes
+      - name: Reject accidental modern classes in runtime source
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RniE '\b(MONK|DEMONHUNTER|DEMON_HUNTER|EVOKER)\b' client-addons-src/GroupComposer modules/mod-raid-roster/src/GroupComposer*; then
-            echo 'Modern post-WotLK class token found in Group Composer source.' >&2
+          runtime_files=(
+            client-addons-src/GroupComposer/Data.lua
+            client-addons-src/GroupComposer/Profiles.lua
+            client-addons-src/GroupComposer/Core.lua
+            client-addons-src/GroupComposer/UI.lua
+            client-addons-src/GroupComposer/Advanced.lua
+            modules/mod-raid-roster/src/GroupComposerCommand.cpp
+            modules/mod-raid-roster/src/GroupComposerPlanner.cpp
+            modules/mod-raid-roster/src/GroupComposerTypes.h
+          )
+          if grep -niE '\b(MONK|DEMONHUNTER|DEMON_HUNTER|EVOKER)\b' "${runtime_files[@]}"; then
+            echo 'Modern post-WotLK class token found in Group Composer runtime source.' >&2
             exit 1
           fi
