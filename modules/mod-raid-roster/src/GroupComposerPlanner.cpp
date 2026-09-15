@@ -97,7 +97,8 @@ bool ConflictingInstances(Player* master, Player* other)
     if (!master || !other) return false;
     uint32 masterInstance = master->GetInstanceId();
     uint32 otherInstance = other->GetInstanceId();
-    return masterInstance && otherInstance && masterInstance != otherInstance;
+    return masterInstance && otherInstance && masterInstance != otherInstance
+        && master->GetMapId() == other->GetMapId();
 }
 
 void AddCoverage(Coverage& coverage, Member const& member)
@@ -688,29 +689,22 @@ bool Planner::Build(Player* master, Config const& config, Plan& out, std::string
     std::unordered_set<uint32> used;
     for (Member const& member : out.members) used.insert(member.guid.GetCounter());
 
-    // Required persistent pins are hard constraints. Preferred pins are opportunistic and then
-    // gracefully fall through to the ordinary scoring system.
+    // Required pins are hard constraints and are resolved before any soft preferences. Preferred
+    // pins are deliberately deferred until required class/spec rows are satisfied so a familiar
+    // guild member can never consume the last slot needed by an explicit hard requirement.
     for (Pin const& pin : config.pins)
     {
+        if (!pin.required) continue;
         Candidate const* candidate = FindNamedCandidate(candidates, pin.name, pin.role, used);
         if (!candidate)
         {
-            if (pin.required)
-            {
-                error = "Required pinned member '" + pin.name + "' is unavailable in the requested role.";
-                return false;
-            }
-            AddWarningOnce(out, "Preferred pinned member '" + pin.name + "' is unavailable; a fallback may be used.");
-            continue;
+            error = "Required pinned member '" + pin.name + "' is unavailable in the requested role.";
+            return false;
         }
         if (roleCounts[pin.role] >= targets[pin.role])
         {
-            if (pin.required)
-            {
-                error = "Required pinned member '" + pin.name + "' has no remaining slot in the requested role.";
-                return false;
-            }
-            continue;
+            error = "Required pinned member '" + pin.name + "' has no remaining slot in the requested role.";
+            return false;
         }
         AddSelectedMember(out, *candidate, true, roleCounts, classCounts, used);
     }
@@ -748,6 +742,39 @@ bool Planner::Build(Player* master, Config const& config, Plan& out, std::string
         }
         AddSelectedMember(out, *candidate, false, roleCounts, classCounts, used);
         requiredMemberUsed.insert(candidate->guid.GetCounter());
+    }
+
+    // Preferred pins remain stronger than ordinary score-based filling, but only after every hard
+    // constraint is secured. If a hard class/spec requirement already selected the same character,
+    // mark that member pinned so subgroup persistence and the UI still treat them as a familiar pin.
+    for (Pin const& pin : config.pins)
+    {
+        if (pin.required) continue;
+
+        bool alreadySelected = false;
+        for (Member& member : out.members)
+        {
+            if (member.role == pin.role && Lower(member.name) == Lower(pin.name))
+            {
+                member.pinned = true;
+                alreadySelected = true;
+                break;
+            }
+        }
+        if (alreadySelected) continue;
+
+        Candidate const* candidate = FindNamedCandidate(candidates, pin.name, pin.role, used);
+        if (!candidate)
+        {
+            AddWarningOnce(out, "Preferred pinned member '" + pin.name + "' is unavailable; a fallback may be used.");
+            continue;
+        }
+        if (roleCounts[pin.role] >= targets[pin.role])
+        {
+            AddWarningOnce(out, "Preferred pinned member '" + pin.name + "' could not fit because that role is already full.");
+            continue;
+        }
+        AddSelectedMember(out, *candidate, true, roleCounts, classCounts, used);
     }
 
     for (uint8 role = 0; role < 3; ++role)
