@@ -2,6 +2,7 @@
 #include "Log.h"
 #include "RaidRosterCommand.h"
 #include "RaidRosterConfig.h"
+#include "GroupComposerCommand.h"
 
 void AddAdventureStartScripts();
 
@@ -14,8 +15,10 @@ public:
 
 void Addmod_raid_rosterScripts()
 {
-    LOG_INFO("server.loading", "[RaidRoster] Registering scripts.");
+    LOG_INFO("server.loading", "[RaidRoster] Registering scripts and Group Composer backend.");
     new RaidRosterWorld();
     new RaidRosterCommand();
+    new GroupComposerCommand();
+    AddGroupComposerScripts();
     AddAdventureStartScripts();
 }
