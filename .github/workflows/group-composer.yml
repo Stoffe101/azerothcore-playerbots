@@ -4,15 +4,14 @@ on:
   push:
     branches:
       - feature/group-composer
-  pull_request:
-    paths:
-      - 'client-addons-src/GroupComposer/**'
-      - 'modules/mod-raid-roster/**'
-      - 'repo-pins.txt'
-      - '.github/workflows/group-composer.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: group-composer-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lua-335:
