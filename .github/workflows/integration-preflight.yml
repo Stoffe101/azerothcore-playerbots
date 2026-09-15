@@ -67,9 +67,9 @@ jobs:
             if [[ -n "$pin" ]]; then git -C "$CORE/modules/$name" checkout "$pin"; fi
           }
           clone_module mod-playerbots https://github.com/mod-playerbots/mod-playerbots.git b6696bdbd3740e575598d167d69f39f68cc0b907
-          clone_module mod-junk-to-gold https://github.com/noisiver/mod-junk-to-gold.git
+          clone_module mod-junk-to-gold https://github.com/noisiver/mod-junk-to-gold.git 2134690bb03899e5c9e44d0682e8e6abf0bbbaf2
           clone_module mod-multibot-bridge https://github.com/Wishmaster117/mod-multibot-bridge.git 759c100d5e508b9af28531a2642ded70619828ba
-          clone_module mod-ah-bot-plus https://github.com/NathanHandley/mod-ah-bot-plus.git
+          clone_module mod-ah-bot-plus https://github.com/NathanHandley/mod-ah-bot-plus.git f685832994c825f90aa5a3dc0e1620aa568e875b
           clone_module mod-individual-progression https://github.com/ZhengPeiRu21/mod-individual-progression.git 977e2005bacf97f35e506eb27b8af6b2ea1136af
           clone_module mod-era-talents https://github.com/lathcf/azerothcore-mod-era-talents.git 3a0d9776c6837d8a5e5038c23c01c4fc388d90f8
           clone_module mod-dungeon-clear https://github.com/jrad7/mod-dungeon-clear.git 29c53fd10f99c1f978fba6cecd326bde8ce170d9
@@ -131,7 +131,7 @@ jobs:
 
       - name: Verify smart-loot recovery and guild patches
         shell: bash
-        run: "$RUNNER_TEMP/apply-wrapper-patches.sh $GITHUB_WORKSPACE/patches/0020*.patch $GITHUB_WORKSPACE/patches/0021*.patch $GITHUB_WORKSPACE/patches/0022*.patch $GITHUB_WORKSPACE/patches/0023*.patch"
+        run: "$RUNNER_TEMP/apply-wrapper-patches.sh $GITHUB_WORKSPACE/patches/0020*.patch $GITHUB_WORKSPACE/patches/0021*.patch $GITHUB_WORKSPACE/patches/0022*.patch $GITHUB_WORKSPACE/patches/0023*.patch $GITHUB_WORKSPACE/patches/0024*.patch $GITHUB_WORKSPACE/patches/0025*.patch"
 
       - name: Verify Era Talents patch stack
         shell: bash
@@ -142,3 +142,6 @@ jobs:
             "$CORE/modules/mod-era-talents/apply-patches.sh" "$CORE"
           fi
           echo "Pinned tree and all wrapper patches are ready for the local ./update.sh build."
+
+      - name: Test grounding and navigator policy
+        run: bash tools/test-source-completion.sh

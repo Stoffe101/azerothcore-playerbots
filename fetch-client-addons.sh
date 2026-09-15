@@ -24,28 +24,28 @@ command -v zip   >/dev/null || { echo "ERROR: 'zip' is required (e.g. apt instal
 # several addon folders) — there the dir name is just a staging container; copy
 # every inner folder that has a .toc (see the install note printed at the end).
 ADDONS=(
-  "MultiBot|https://github.com/Wishmaster117/MultiBot-Chatless.git"
-  "PlayerBotManager|https://github.com/Lichborne-AC/PlayerbotManager.git"
+  "MultiBot|https://github.com/Wishmaster117/MultiBot-Chatless.git|c54277ddfecb03a9789244e1a23541b3faf11036"
+  "PlayerBotManager|https://github.com/Lichborne-AC/PlayerbotManager.git|0f5e4cb2ff796e73a324956a1b63ca7c5967d53a"
   # Questing: Questie shows quest givers/objectives on the map+minimap
   # (quest data aligned to AzerothCore).
-  "Questie-335|https://github.com/sloan-008/Questie-335.git"
+  "Questie-335|https://github.com/sloan-008/Questie-335.git|2c414763a728db2ed00bbe5dd30f2b616c54856b"
   # Dungeon/raid maps for Vanilla + TBC + WotLK instances, plus boss loot tables.
   # Atlas (the maps addon) has no clean dedicated 3.3.5a git repo, so it comes
   # from a curated 3.3.5a addon pack as a zip; AtlasLoot is its loot companion.
-  "AtlasLoot|https://github.com/Gescht/AtlasLoot3.3.5a.git"
-  "Atlas|https://github.com/NoM0Re/WoW-3.3.5a-Addons/raw/main/src/Addons/Atlas.zip"
+  "AtlasLoot|https://github.com/Gescht/AtlasLoot3.3.5a.git|f437767f282566abd8424cb4119476c586e3b3a3"
+  "Atlas|https://github.com/NoM0Re/WoW-3.3.5a-Addons/raw/4f2e7a9342d60518888a4889c603213747726a09/src/Addons/Atlas.zip"
   # Raid/party unit frames: Grid2 r736 ported for WotLK (the generic Grid/Grid2
   # builds error out because they target retail). Multi-folder.
-  "Grid2|https://github.com/bkader/Grid2-WoTLK.git"
+  "Grid2|https://github.com/bkader/Grid2-WoTLK.git|fc8d5e139b9490236b6676e1d891f98bfe4b2a10"
   # World Dungeon Maps companion addons (dungeon labels + coords that pair with
   # the WDM .MPQ data patch staged further below). Multi-folder: the parts that
   # matter are WDM, !Astrolabe and LibMapData-1.0 (Mapster/GatherMate/QuestHelper
   # are optional extras in the same repo).
-  "WDM-addons|https://github.com/Trimitor/WDM-addons.git"
+  "WDM-addons|https://github.com/Trimitor/WDM-addons.git|621d4de79f9b9a24586a9d7cdce0f57d8c78e395"
 )
 
 for entry in "${ADDONS[@]}"; do
-  name="${entry%%|*}"; url="${entry#*|}"
+  IFS='|' read -r name url pin <<< "$entry"
   dir="$DEST/$name"
   if [[ "$url" == *.zip ]]; then
     echo "==> Downloading $name (zip)"
@@ -54,14 +54,13 @@ for entry in "${ADDONS[@]}"; do
     rm -rf "$dir"; mkdir -p "$dir"
     unzip -q "$tmp/addon.zip" -d "$dir"
     rm -rf "$tmp"
-  elif [[ -d "$dir/.git" ]]; then
-    echo "==> Updating $name"
-    branch="$(git -C "$dir" rev-parse --abbrev-ref HEAD)"
-    git -C "$dir" fetch --depth 1 origin "$branch"
-    git -C "$dir" reset --hard "origin/$branch"
   else
-    echo "==> Cloning $name"
-    git clone --depth 1 "$url" "$dir"
+    [[ "$pin" =~ ^[0-9a-f]{40}$ ]] || { echo "ERROR: missing exact addon pin for $name" >&2; exit 1; }
+    if [[ ! -d "$dir/.git" ]]; then
+      git clone --no-checkout "$url" "$dir"
+    fi
+    git -C "$dir" cat-file -e "${pin}^{commit}" 2>/dev/null || git -C "$dir" fetch --depth 1 origin "$pin"
+    git -C "$dir" reset --hard "$pin"
   fi
 done
 
@@ -96,13 +95,13 @@ fi
 # Its companion addons (WDM/!Astrolabe/LibMapData-1.0) are staged by the list
 # above. Override the client language with WDM_LANG (default enUS); set it empty
 # to skip the patch. Pinned-tip note: known-good release at time of writing was
-# Trimitor/WDM-patch 2.4.5-stable; "latest" is fetched so it stays current.
-WDM_LANG="${WDM_LANG:-enUS}"
+# Trimitor/WDM-patch 2.4.5-stable; keep the release pinned for reproducible packs.
+WDM_LANG="${WDM_LANG-enUS}"
 if [[ -n "$WDM_LANG" ]]; then
   DATADIR="$DEST/_data-patches"
   mkdir -p "$DATADIR"
   echo "==> Downloading WDM dungeon-map data patch (patch-${WDM_LANG}-M.MPQ)"
-  curl -fsSL "https://github.com/Trimitor/WDM-patch/releases/latest/download/patch-${WDM_LANG}-M.MPQ" \
+  curl -fsSL "https://github.com/Trimitor/WDM-patch/releases/download/2.4.5-stable/patch-${WDM_LANG}-M.MPQ" \
     -o "$DATADIR/patch-${WDM_LANG}-M.MPQ"
 fi
 
@@ -177,17 +176,20 @@ for entry in "$DEST"/*/; do
 done
 
 # Place the WDM data patch under Data/<lang>/ (lang parsed from patch-<lang>-M.MPQ).
-if compgen -G "$DEST/_data-patches/patch-*-M.MPQ" >/dev/null 2>&1; then
+find "$BUNDLE/Interface/AddOns" -type d -name .git -prune -exec rm -rf -- {} +
+
+if [[ -n "$WDM_LANG" ]] && compgen -G "$DEST/_data-patches/patch-*-M.MPQ" >/dev/null 2>&1; then
   for mpq in "$DEST"/_data-patches/patch-*-M.MPQ; do
     base="$(basename "$mpq")"          # patch-enUS-M.MPQ
     lang="${base#patch-}"; lang="${lang%-M.MPQ}"
+    [[ "$lang" == "$WDM_LANG" ]] || continue
     mkdir -p "$BUNDLE/Data/$lang"
     cp -a "$mpq" "$BUNDLE/Data/$lang/$base"
   done
 fi
 
 # IP client patch-V goes at Data/patch-V.mpq (base Data dir, not a <lang> subdir).
-if [[ -f "$DEST/_data-patches/patch-V.mpq" ]]; then
+if [[ "${IP_CLIENT_PATCH_V:-1}" == "1" && -f "$DEST/_data-patches/patch-V.mpq" ]]; then
   mkdir -p "$BUNDLE/Data"
   cp -a "$DEST/_data-patches/patch-V.mpq" "$BUNDLE/Data/patch-V.mpq"
 fi

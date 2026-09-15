@@ -47,9 +47,9 @@ jobs:
           }
 
           clone_module mod-playerbots https://github.com/mod-playerbots/mod-playerbots.git b6696bdbd3740e575598d167d69f39f68cc0b907
-          clone_module mod-junk-to-gold https://github.com/noisiver/mod-junk-to-gold.git
+          clone_module mod-junk-to-gold https://github.com/noisiver/mod-junk-to-gold.git 2134690bb03899e5c9e44d0682e8e6abf0bbbaf2
           clone_module mod-multibot-bridge https://github.com/Wishmaster117/mod-multibot-bridge.git 759c100d5e508b9af28531a2642ded70619828ba
-          clone_module mod-ah-bot-plus https://github.com/NathanHandley/mod-ah-bot-plus.git
+          clone_module mod-ah-bot-plus https://github.com/NathanHandley/mod-ah-bot-plus.git f685832994c825f90aa5a3dc0e1620aa568e875b
           clone_module mod-individual-progression https://github.com/ZhengPeiRu21/mod-individual-progression.git 977e2005bacf97f35e506eb27b8af6b2ea1136af
           clone_module mod-era-talents https://github.com/lathcf/azerothcore-mod-era-talents.git 3a0d9776c6837d8a5e5038c23c01c4fc388d90f8
           clone_module mod-dungeon-clear https://github.com/jrad7/mod-dungeon-clear.git 29c53fd10f99c1f978fba6cecd326bde8ce170d9

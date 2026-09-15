@@ -82,7 +82,7 @@ echo "============================================================"
 echo "==> Building complete client pack"
 bash "$ROOT/build-client-pack.sh"
 
-ZIP_WIN="$(wslpath -w "$ROOT/client-addons.zip")"
+ZIP_WIN="$(wslpath -w "$ROOT/client-dist/client-addons.zip")"
 PS_WIN="$(wslpath -w "$ROOT/windows/Install-Client-Pack.ps1")"
 
 echo "==> Installing pack into the selected private 3.3.5a client"

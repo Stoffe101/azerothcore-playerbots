@@ -4,7 +4,7 @@
 # This wrapper stages the pinned UI/combat addons (ElvUI, ThreatPlates, RestedXP,
 # Pawn, MinimapButtonButton, WeakAuras and DBM), then delegates to
 # fetch-client-addons.sh which adds the server-specific addons, maps/data patches
-# and produces client-addons.zip.
+# and produces client-dist/client-addons.zip.
 set -euo pipefail
 shopt -s nullglob
 
@@ -185,7 +185,7 @@ cat <<EOF
  COMPLETE CLIENT PACK READY
 
  File:
-   $ROOT/client-addons.zip
+   $ROOT/client-dist/client-addons.zip
 
  The zip now contains BOTH the server-specific client pieces and the UI stack:
    - ElvUI + ElvUI Options
