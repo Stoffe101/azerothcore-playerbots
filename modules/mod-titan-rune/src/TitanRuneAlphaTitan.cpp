@@ -1,6 +1,7 @@
 #include "TitanRuneSystem.h"
 
 #include "Creature.h"
+#include "Map.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 
@@ -70,7 +71,7 @@ public:
             return;
 
         TimePoint const now = Clock::now();
-        if (Player* player = attacker->ToPlayer())
+        if (attacker->ToPlayer())
         {
             Creature* enemy = victim->ToCreature();
             if (enemy && UsesAlphaTitan(enemy))
@@ -79,7 +80,6 @@ public:
                 if (itr != g_alphaTitanEnemies.end() && itr->second.stacks && now < itr->second.expires)
                     damage = uint32(std::min<double>(double(damage) * (1.0 + 0.02 * itr->second.stacks), double(0xFFFFFFFFu)));
             }
-            (void)player;
         }
 
         Creature* enemy = attacker->ToCreature();
