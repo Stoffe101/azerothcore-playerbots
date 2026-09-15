@@ -152,9 +152,10 @@ public:
     void OnPlayerJustDied(Player* player) override
     {
         if (player && IsSupportedInstance(player) && GroupFullyDead(player))
-            player->GetGroup()->DoForAllMembers([](Player* member)
+            player->GetGroup()->DoForAllMembers([map = player->GetMap()](Player* member)
             {
-                Queue(member, WIPE_RETRY_DELAY_MS);
+                if (member && member->GetMap() == map)
+                    Queue(member, WIPE_RETRY_DELAY_MS);
             });
     }
 
