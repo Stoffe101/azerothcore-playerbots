@@ -92,6 +92,11 @@ PopulationStats GetPopulationStats()
     PopulationStats stats;
     stats.sessions = sWorldSessionMgr->GetActiveSessionCount();
 
+    // Random Playerbots own their bot WorldSessions outside the ordinary real-player
+    // WorldSessionMgr accounting path. Count the manager's actual live bot collection
+    // so AdminPanel/watchdog does not report a healthy population as 0/N.
+    stats.bots = sRandomPlayerbotMgr.GetPlayerbotsCount();
+
     for (auto const& entry : sWorldSessionMgr->GetAllSessions())
     {
         WorldSession* session = entry.second;
@@ -101,9 +106,7 @@ PopulationStats GetPopulationStats()
         if (!player || !player->IsInWorld())
             continue;
 
-        if (session->IsBot())
-            ++stats.bots;
-        else
+        if (!session->IsBot())
             ++stats.realPlayers;
     }
 

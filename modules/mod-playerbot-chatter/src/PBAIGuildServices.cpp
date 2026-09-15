@@ -620,7 +620,8 @@ bool SupplyQueuedFromBot(Player* bot)
 
     std::lock_guard<std::mutex> lock(g_serviceMutex);
     QueryResult requests = CharacterDatabase.Query(
-        "SELECT DISTINCT item_id FROM mod_ai_guild_request WHERE guild_id={} AND status='queued' ORDER BY request_id ASC LIMIT 20",
+        "SELECT item_id FROM mod_ai_guild_request WHERE guild_id={} AND status='queued' "
+        "GROUP BY item_id ORDER BY MIN(request_id) ASC LIMIT 20",
         bot->GetGuildId());
     if (!requests)
         return false;
