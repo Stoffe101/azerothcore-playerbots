@@ -31,12 +31,21 @@ using TimePoint = Clock::time_point;
 constexpr uint32 FAMILY_PROC_CHANCE = 35;
 constexpr uint32 FAMILY_PROC_COOLDOWN_SECONDS = 30;
 constexpr uint32 MIRROR_IMAGE_ENTRY = 31216;
+constexpr uint32 ARCANE_MISSILE_BOLT_SPELL = 42845;
+constexpr uint32 HOLY_NOVA_SPELL = 48078;
 constexpr uint32 PLAGUE_INFECTION_SPELL = 43958;
 constexpr uint32 ZOMBIE_FORM_SPELL = 43869;
 constexpr uint32 ZOMBIE_HORROR_ENTRY = 900122;
 constexpr uint32 HOLY_GRENADE_CACHE_ENTRY = 900123;
 constexpr uint32 BANANA_TRIP_SPELL = 5211;
 constexpr uint32 FROST_TRAP_SPELL = 13810;
+
+enum class MirrorRole : uint8
+{
+    Arcane = 0,
+    Melee = 1,
+    Healer = 2,
+};
 
 struct IcyPatch
 {
@@ -70,6 +79,12 @@ struct TempoState
     float baseRunRate = 1.0f;
     bool movementApplied = false;
     TimePoint expires{};
+};
+
+struct MirrorState
+{
+    MirrorRole role = MirrorRole::Arcane;
+    TimePoint nextAction{};
 };
 
 struct HolyState
@@ -113,6 +128,7 @@ std::vector<IcyPatch> g_icyPatches;
 std::unordered_map<uint32, FrostState> g_frostStates;
 std::unordered_map<uint32, TimedCrit> g_blisteringFury;
 std::unordered_map<uint32, TempoState> g_arcaneTempo;
+std::unordered_map<uint64, MirrorState> g_mirrorStates;
 std::unordered_map<uint32, TimePoint> g_plagueInfections;
 std::unordered_map<uint32, HolyState> g_holyImbuement;
 std::unordered_map<uint32, TitanPlayerState> g_titanPlayers;
@@ -316,6 +332,47 @@ void GrantArcaneTempo(Map* map, TimePoint now)
     }
 }
 
+TempSummon* SpawnArcaneMirror(Creature* source, Player* initialTarget, MirrorRole role, float offset, TimePoint now)
+{
+    if (!source)
+        return nullptr;
+
+    TempSummon* image = source->SummonCreature(MIRROR_IMAGE_ENTRY,
+        source->GetPositionX() + offset, source->GetPositionY(), source->GetPositionZ(), source->GetOrientation(),
+        TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 60 * IN_MILLISECONDS);
+    if (!image)
+        return nullptr;
+
+    image->SetFaction(source->GetFaction());
+    image->SetLevel(source->GetLevel());
+    image->SetMaxHealth(1);
+    image->SetHealth(1);
+    g_mirrorStates[CreatureKey(image)] = {role, now};
+
+    if (initialTarget && image->AI())
+        image->AI()->AttackStart(initialTarget);
+    return image;
+}
+
+void SpawnArcaneMirrors(Creature* source, Player* initialTarget, TitanRuneMode mode, TimePoint now)
+{
+    if (!source)
+        return;
+
+    if (mode == TitanRuneMode::Alpha)
+    {
+        SpawnArcaneMirror(source, initialTarget, MirrorRole::Arcane, 1.5f, now);
+        SpawnArcaneMirror(source, initialTarget, MirrorRole::Arcane, -1.5f, now);
+        return;
+    }
+
+    // Defense Protocol Beta and Gamma use the later three-image version: one Arcane caster,
+    // one melee fixate and one Holy Nova healer. Gamma retains Beta's dungeon-family mechanic.
+    SpawnArcaneMirror(source, initialTarget, MirrorRole::Arcane, 1.5f, now);
+    SpawnArcaneMirror(source, initialTarget, MirrorRole::Melee, -1.5f, now);
+    SpawnArcaneMirror(source, initialTarget, MirrorRole::Healer, 0.0f, now);
+}
+
 void GrantHolyImbuement(Player* source, TimePoint now)
 {
     if (!source || !source->GetMap())
@@ -487,7 +544,8 @@ public:
                     state.fireStacks = 0;
                 else if (now >= state.nextFireTick)
                 {
-                    // July 6 live hotfix: Fire Blast was reduced from 10% to 6% max health per second.
+                    // Blizzard's July 6, 2023 live hotfix reduced Beta Fire Blast from 10% to
+                    // 6% maximum health per second. Gamma inherits the Beta Frost-family mechanic.
                     uint32 const amount = std::max<uint32>(1, uint32((uint64(player->GetMaxHealth()) * 6u * state.fireStacks) / 100u));
                     state.nextFireTick = now + std::chrono::seconds(1);
                     if (amount >= player->GetHealth())
@@ -593,7 +651,41 @@ public:
     void OnUnitUpdate(Unit* unit, uint32 /*diff*/) override
     {
         Creature* creature = unit ? unit->ToCreature() : nullptr;
-        if (!creature || !UsesActiveProtocol(creature) || !IsTitanMap(creature->GetMapId()) ||
+        if (!creature)
+            return;
+
+        if (creature->GetEntry() == MIRROR_IMAGE_ENTRY)
+        {
+            auto mirror = g_mirrorStates.find(CreatureKey(creature));
+            if (mirror == g_mirrorStates.end())
+                return;
+
+            TimePoint const now = Clock::now();
+            if (now < mirror->second.nextAction)
+                return;
+
+            Player* target = RandomHumanPlayer(creature->GetMap(), nullptr);
+            switch (mirror->second.role)
+            {
+                case MirrorRole::Arcane:
+                    if (target)
+                        creature->CastSpell(target, ARCANE_MISSILE_BOLT_SPELL, true);
+                    mirror->second.nextAction = now + std::chrono::seconds(1);
+                    break;
+                case MirrorRole::Melee:
+                    if (target && creature->AI())
+                        creature->AI()->AttackStart(target);
+                    mirror->second.nextAction = now + std::chrono::seconds(3);
+                    break;
+                case MirrorRole::Healer:
+                    creature->CastSpell(creature, HOLY_NOVA_SPELL, true);
+                    mirror->second.nextAction = now + std::chrono::seconds(2);
+                    break;
+            }
+            return;
+        }
+
+        if (!UsesActiveProtocol(creature) || !IsTitanMap(creature->GetMapId()) ||
             TitanRune::GetActiveMode(creature->GetMap()) != TitanRuneMode::Alpha)
             return;
 
@@ -699,27 +791,7 @@ public:
         }
         else if (IsArcaneMap(mapId) && ConsumeFamilyProc(creature))
         {
-            // Classic Alpha creates two images; Beta/Gamma create three. Role-specific caster,
-            // melee-fixate and healer behavior is handled separately from the count itself.
-            uint8 const imageCount = mode == TitanRuneMode::Alpha ? 2 : 3;
-            for (uint8 i = 0; i < imageCount; ++i)
-            {
-                float const angle = (6.2831853f * float(i)) / float(imageCount);
-                TempSummon* image = creature->SummonCreature(MIRROR_IMAGE_ENTRY,
-                    creature->GetPositionX() + std::cos(angle) * 1.5f,
-                    creature->GetPositionY() + std::sin(angle) * 1.5f,
-                    creature->GetPositionZ(), creature->GetOrientation(),
-                    TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 20 * IN_MILLISECONDS);
-                if (image)
-                {
-                    image->SetFaction(creature->GetFaction());
-                    image->SetLevel(creature->GetLevel());
-                    image->SetMaxHealth(1);
-                    image->SetHealth(1);
-                    if (image->AI())
-                        image->AI()->AttackStart(player);
-                }
-            }
+            SpawnArcaneMirrors(creature, player, mode, now);
         }
         else if (IsPlagueMap(mapId) && ConsumeFamilyProc(creature))
         {
@@ -767,14 +839,16 @@ public:
             return;
 
         TimePoint const now = Clock::now();
-        TitanRuneMode const mode = TitanRune::GetActiveMode(creature->GetMap());
-        if (creature->GetEntry() == MIRROR_IMAGE_ENTRY && IsArcaneMap(creature->GetMapId()) &&
-            (mode == TitanRuneMode::Beta || mode == TitanRuneMode::Gamma))
+        if (creature->GetEntry() == MIRROR_IMAGE_ENTRY && IsArcaneMap(creature->GetMapId()))
         {
-            GrantArcaneTempo(creature->GetMap(), now);
+            g_mirrorStates.erase(CreatureKey(creature));
+            TitanRuneMode const mode = TitanRune::GetActiveMode(creature->GetMap());
+            if (mode == TitanRuneMode::Beta || mode == TitanRuneMode::Gamma)
+                GrantArcaneTempo(creature->GetMap(), now);
             return;
         }
 
+        TitanRuneMode const mode = TitanRune::GetActiveMode(creature->GetMap());
         if (IsPlagueMap(creature->GetMapId()) && creature->IsDungeonBoss() &&
             (mode == TitanRuneMode::Beta || mode == TitanRuneMode::Gamma))
         {
@@ -807,6 +881,13 @@ public:
         {
             if (uint32(itr->first >> 32) == instanceId)
                 itr = g_familyCooldowns.erase(itr);
+            else
+                ++itr;
+        }
+        for (auto itr = g_mirrorStates.begin(); itr != g_mirrorStates.end(); )
+        {
+            if (uint32(itr->first >> 32) == instanceId)
+                itr = g_mirrorStates.erase(itr);
             else
                 ++itr;
         }
