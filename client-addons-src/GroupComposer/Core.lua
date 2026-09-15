@@ -345,6 +345,7 @@ function GC:HandleProtocolMessage(message)
         GC.plan.summary.ranged = ParseNumber(fields[2], 0); GC.plan.summary.melee = ParseNumber(fields[3], 0); GC.plan.summary.utility = fields[4] or ""
     elseif kind == "DIAG" then
         GC.plan.summary.diagnostics = fields[2] or ""
+        GC.pendingCommand = nil
         GC:Fire("DIAGNOSTICS", GC.plan.summary.diagnostics)
     elseif kind == "WARN" then
         GC.plan.warnings[#GC.plan.warnings + 1] = fields[2] or "Unknown warning"
@@ -362,8 +363,16 @@ function GC:HandleProtocolMessage(message)
             GC:QueueDungeon()
         end
     elseif kind == "ERROR" then
-        GC.pendingCommand = nil; GC.plan.valid = false; GC.plan.ready = true
+        local failedCommand = GC.pendingCommand
+        local hadValidPlan = GC.plan.ready and GC.plan.valid
+        GC.pendingCommand = nil
         GC.plan.warnings[#GC.plan.warnings + 1] = fields[2] or "Server error"
+        -- An action failure (queue, move, diagnostics, assembly timeout) does not make the
+        -- previously validated composition structurally invalid. Only a failed Find/build does.
+        if failedCommand == "find" or not hadValidPlan then
+            GC.plan.valid = false
+            GC.plan.ready = true
+        end
         GC:Fire("STATUS", fields[2] or "Server error")
     end
 
@@ -410,12 +419,13 @@ local function IsStableProfileMember(config, member)
 end
 
 function GC:CaptureStableArrangement()
+    -- If the user edits/saves a loaded profile before searching, keep its saved layout intact.
+    -- Only replace arrangement data with a fresh snapshot once a real server plan exists.
+    if not GC.plan or not GC.plan.ready then return end
     local config, arrangement = GC:GetConfig(), {}
-    if GC.plan and GC.plan.ready then
-        for _, member in ipairs(GC.plan.members or {}) do
-            if IsStableProfileMember(config, member) and member.subgroup and member.subgroup >= 1 and member.subgroup <= 8 then
-                arrangement[member.name] = member.subgroup
-            end
+    for _, member in ipairs(GC.plan.members or {}) do
+        if IsStableProfileMember(config, member) and member.subgroup and member.subgroup >= 1 and member.subgroup <= 8 then
+            arrangement[member.name] = member.subgroup
         end
     end
     config.arrangement = arrangement
