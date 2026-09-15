@@ -58,10 +58,10 @@ if old_modules not in text:
     raise SystemExit("ERROR: pinned setup body no longer matches expected LOCAL_MODULES line")
 text = text.replace(old_modules, new_modules, 1)
 
-# Every patch in this overlay is rooted at the AzerothCore checkout. The Sunwell patch predates the
-# pinned Playerbots module adding its independent tbc-mgt strategy to PlayerbotAI.cpp, so the large
-# historical patch now deliberately excludes that one file and the following 0014a compatibility
-# patch owns those two tiny edits. Keep fresh installs identical to update.sh and CI.
+# Every patch in this overlay is rooted at the AzerothCore checkout. Sunwell and AQ40 were cut
+# around nearby upstream PlayerbotAI strategy-list changes, so their large historical patches now
+# deliberately exclude that one file and the following 0014a/0016a compatibility patches own the
+# tiny strategy-list edits. Keep fresh installs identical to update.sh and CI.
 old_apply = r'''apply_patches () {
   local pdir="$ROOT/patches"
   [[ -d "$pdir" && -d "$AC_DIR/.git" ]] || return 0
@@ -97,7 +97,7 @@ new_apply = r'''apply_patches () {
     [[ -e "$patch" ]] || continue
     name="$(basename "$patch")"
     apply_args=()
-    if [[ "$name" == "0014-playerbot-sunwell.patch" ]]; then
+    if [[ "$name" == "0014-playerbot-sunwell.patch" || "$name" == "0016-playerbot-aq40-twins.patch" ]]; then
       apply_args+=(--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp)
     fi
     if git -C "$AC_DIR" apply "${apply_args[@]}" --reverse --check "$patch" >/dev/null 2>&1; then
@@ -200,6 +200,7 @@ if [[ "${SETUP_PREFLIGHT_ONLY:-0}" == "1" ]]; then
   grep -Fq 'RaidRoster.Enable" "1"' "$RUNTIME"
   grep -Fq 'host.docker.internal' "$RUNTIME"
   grep -Fq '0014-playerbot-sunwell.patch' "$RUNTIME"
+  grep -Fq '0016-playerbot-aq40-twins.patch' "$RUNTIME"
   grep -Fq -- '--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp' "$RUNTIME"
   grep -Fq 'WEBREG_ADDONS_ZIP_PATH: "/data/dist/client-addons.zip"' "$RUNTIME"
   grep -Fq '$ROOT/client-dist:/data/dist:ro' "$RUNTIME"
@@ -215,12 +216,13 @@ set -e
 
 if [[ "$rc" -eq 0 ]]; then
   # Fresh installs have now generated their persistent playerbots.conf. Apply the same one-time
-  # living-world defaults used by update.sh, then restart worldserver so the first playable boot
-  # already has level-bracket distribution and safe random-bot recycling active.
+  # living-world defaults used by update.sh, then recreate worldserver so the first playable boot
+  # sees the newest individually bind-mounted DBC files as well as the generated configuration.
+  # A plain restart can retain a stale mount inode when extraction replaced a host-side DBC file.
   chmod +x "$ROOT/configure-living-world-bots.sh"
   "$ROOT/configure-living-world-bots.sh"
   if [[ -d "$ROOT/azerothcore-wotlk" ]]; then
-    (cd "$ROOT/azerothcore-wotlk" && docker compose restart ac-worldserver)
+    (cd "$ROOT/azerothcore-wotlk" && docker compose up -d --no-deps --force-recreate ac-worldserver)
   fi
 fi
 
