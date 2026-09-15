@@ -78,6 +78,14 @@ for _, name in ipairs({
     GuardAction(name)
 end
 
+-- Status synchronization is passive. On a fresh login the server can answer only with STATUS
+-- (there is no plan yet, so there is no READY/DONE message to clear pendingCommand). Letting that
+-- passive request own the action lock would make the freshly opened addon report the backend as
+-- ready while every Find/Move/Assemble click remained blocked by "processing status".
+GC:RegisterCallback("STATUS", function()
+    if GC.pendingCommand == "status" then GC.pendingCommand = nil end
+end)
+
 -- Assemble is the commit boundary. Finding and rearranging a roster are preview-only, while this
 -- action can remove unselected bots, log in managed bots and issue invites. Require an explicit
 -- confirmation after the user has reviewed the preview instead of making one accidental click live.
