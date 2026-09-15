@@ -10,7 +10,6 @@
 #include "TemporarySummon.h"
 #include "WorldSession.h"
 
-#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -48,6 +47,7 @@ struct ChannelState
 std::mutex g_deviceMutex;
 std::unordered_set<uint64> g_deviceInstances;
 std::unordered_set<uint64> g_orbInstances;
+std::unordered_set<uint64> g_activatingInstances;
 std::unordered_map<uint64, PendingActivation> g_pending;
 std::unordered_map<uint64, std::unordered_set<uint32>> g_completedHumans;
 std::unordered_map<uint32, ChannelState> g_channels;
@@ -104,8 +104,8 @@ Player* CurrentHumanLeader(Player* player)
     if (IsHuman(leader) && leader->GetMap() == player->GetMap())
         return leader;
 
-    // Playerbot-led groups cannot click gossip objects. In that case the human party member is
-    // permitted to operate the device while bots count as automatic channel participants.
+    // A playerbot-led group cannot operate gossip. Let the human party member operate the device;
+    // playerbots still count as automatic protocol-channel participants.
     return player;
 }
 
@@ -149,6 +149,14 @@ std::vector<Player*> RequiredHumans(Player* reference)
     return required;
 }
 
+std::vector<uint32> RequiredHumanKeys(Player* reference)
+{
+    std::vector<uint32> keys;
+    for (Player* player : RequiredHumans(reference))
+        keys.push_back(PlayerKey(player));
+    return keys;
+}
+
 void SpawnDevice(Player* player)
 {
     if (!IsHuman(player) || !player->IsInWorld() || !IsEligibleInstance(player->GetMap()))
@@ -172,7 +180,7 @@ void SpawnDevice(Player* player)
     }
 
     if (TitanRune::GetActiveMode(player->GetMap()) == TitanRuneMode::Off)
-        Notify(player, "A Mysterious Device is available at the entrance. It can activate Alpha, Beta or Gamma without changing your Dalaran next-dungeon setting.");
+        Notify(player, "A Mysterious Device is available. It can activate Alpha, Beta or Gamma without changing your Dalaran next-dungeon setting.");
 }
 
 void SpawnProtocolOrb(Player* player)
@@ -197,33 +205,44 @@ void SpawnProtocolOrb(Player* player)
     }
 }
 
-bool AllRequiredHumansComplete(Player* reference, uint64 key)
+bool AllRequiredHumansCompleteLocked(uint64 key, std::vector<uint32> const& required)
 {
-    std::vector<Player*> const required = RequiredHumans(reference);
     auto completed = g_completedHumans.find(key);
     if (completed == g_completedHumans.end())
         return false;
 
-    for (Player* player : required)
-        if (!player || completed->second.find(PlayerKey(player)) == completed->second.end())
+    for (uint32 playerKey : required)
+        if (!completed->second.count(playerKey))
             return false;
-    return true;
+    return !required.empty();
+}
+
+bool TryClaimActivation(uint64 key, TitanRuneMode mode, std::vector<uint32> const& required)
+{
+    std::lock_guard<std::mutex> lock(g_deviceMutex);
+    auto pending = g_pending.find(key);
+    if (pending == g_pending.end() || pending->second.mode != mode)
+        return false;
+    if (!AllRequiredHumansCompleteLocked(key, required))
+        return false;
+    return g_activatingInstances.insert(key).second;
 }
 
 void BroadcastProgress(Player* reference, uint64 key)
 {
-    if (!reference || !reference->GetMap())
-        return;
-
     std::vector<Player*> const required = RequiredHumans(reference);
-    std::size_t complete = 0;
-    auto completed = g_completedHumans.find(key);
-    if (completed != g_completedHumans.end())
+    std::unordered_set<uint32> completedSnapshot;
     {
-        for (Player* player : required)
-            if (completed->second.count(PlayerKey(player)))
-                ++complete;
+        std::lock_guard<std::mutex> lock(g_deviceMutex);
+        auto completed = g_completedHumans.find(key);
+        if (completed != g_completedHumans.end())
+            completedSnapshot = completed->second;
     }
+
+    std::size_t complete = 0;
+    for (Player* player : required)
+        if (completedSnapshot.count(PlayerKey(player)))
+            ++complete;
 
     std::string const message = "Defense Protocol channel progress: " + std::to_string(complete) + "/" +
         std::to_string(required.size()) + " human player(s). Playerbots count automatically.";
@@ -231,18 +250,25 @@ void BroadcastProgress(Player* reference, uint64 key)
         Notify(player, message);
 }
 
+void ReleaseActivationClaim(uint64 key)
+{
+    std::lock_guard<std::mutex> lock(g_deviceMutex);
+    g_activatingInstances.erase(key);
+}
+
 void ActivatePending(Player* finisher, TitanRuneMode mode, uint64 key)
 {
     if (!finisher || !finisher->GetMap())
+    {
+        ReleaseActivationClaim(key);
         return;
+    }
 
     Player* activator = CurrentHumanLeader(finisher);
     if (!activator)
         activator = finisher;
 
-    // Reuse the already-audited instance activation path without mutating the player's persistent
-    // preference: temporarily present the selected device mode, activate this instance, then restore
-    // the Dalaran/command next-dungeon selection exactly as it was.
+    // Reuse the existing instance-activation path without changing the persistent Dalaran setting.
     TitanRuneMode const saved = TitanRune::LoadSelectedMode(activator);
     TitanRune::SaveSelectedMode(activator, mode);
     TitanRune::ActivateForPlayer(activator);
@@ -253,6 +279,7 @@ void ActivatePending(Player* finisher, TitanRuneMode mode, uint64 key)
         Notify(finisher, std::string("Defense Protocol ") + TitanRune::ModeName(mode) +
             " activated by the Mysterious Device. Your saved next-dungeon setting is unchanged.");
         std::lock_guard<std::mutex> lock(g_deviceMutex);
+        g_activatingInstances.erase(key);
         g_pending.erase(key);
         g_completedHumans.erase(key);
         for (auto itr = g_channels.begin(); itr != g_channels.end(); )
@@ -264,12 +291,17 @@ void ActivatePending(Player* finisher, TitanRuneMode mode, uint64 key)
         }
     }
     else
-        Notify(finisher, "The protocol channel completed, but the instance activation was rejected. Check group leadership and dungeon support.");
+    {
+        ReleaseActivationClaim(key);
+        Notify(finisher, "The protocol channel completed, but instance activation was rejected. Check group leadership and dungeon support.");
+    }
 }
 
 void BeginChannel(Player* player)
 {
-    if (!IsHuman(player) || !player->GetMap() || player->IsInCombat())
+    if (!IsHuman(player) || !player->GetMap())
+        return;
+    if (player->IsInCombat())
     {
         Notify(player, "You must be out of combat to channel the Defense Protocol Orb.");
         return;
@@ -277,23 +309,47 @@ void BeginChannel(Player* player)
 
     uint64 const key = InstanceKey(player->GetMap());
     TitanRuneMode mode = TitanRuneMode::Off;
+    bool alreadyComplete = false;
     {
         std::lock_guard<std::mutex> lock(g_deviceMutex);
         auto pending = g_pending.find(key);
         if (pending == g_pending.end())
         {
-            Notify(player, "No protocol is awaiting confirmation. Use the Mysterious Device first.");
-            return;
+            mode = TitanRuneMode::Off;
         }
-        mode = pending->second.mode;
-        if (g_completedHumans[key].count(PlayerKey(player)))
+        else
         {
-            Notify(player, "Your protocol channel is already complete. Waiting for the other human party members.");
-            return;
+            mode = pending->second.mode;
+            alreadyComplete = g_completedHumans[key].count(PlayerKey(player)) != 0;
+            if (!alreadyComplete)
+            {
+                ChannelState state;
+                state.instanceKey = key;
+                state.mode = mode;
+                state.x = player->GetPositionX();
+                state.y = player->GetPositionY();
+                state.z = player->GetPositionZ();
+                state.finishes = Clock::now() + std::chrono::seconds(CHANNEL_SECONDS);
+                g_channels[PlayerKey(player)] = state;
+            }
         }
+    }
 
-        g_channels[PlayerKey(player)] = {key, mode, player->GetPositionX(), player->GetPositionY(),
-            player->GetPositionZ(), Clock::now() + std::chrono::seconds(CHANNEL_SECONDS)};
+    if (mode == TitanRuneMode::Off)
+    {
+        Notify(player, "No protocol is awaiting confirmation. Use the Mysterious Device first.");
+        return;
+    }
+
+    if (alreadyComplete)
+    {
+        std::vector<uint32> const required = RequiredHumanKeys(player);
+        BroadcastProgress(player, key);
+        if (TryClaimActivation(key, mode, required))
+            ActivatePending(player, mode, key);
+        else
+            Notify(player, "Your protocol channel is already complete. Waiting for the remaining human party members.");
+        return;
     }
 
     Notify(player, std::string("Channeling Defense Protocol ") + TitanRune::ModeName(mode) +
@@ -331,6 +387,7 @@ public:
             return;
 
         SpawnDevice(player);
+
         uint32 const playerKey = PlayerKey(player);
         ChannelState channel;
         bool hasChannel = false;
@@ -359,8 +416,10 @@ public:
         float const dz = player->GetPositionZ() - channel.z;
         if (player->IsInCombat() || (dx * dx + dy * dy + dz * dz) > CHANNEL_MOVE_TOLERANCE * CHANNEL_MOVE_TOLERANCE)
         {
-            std::lock_guard<std::mutex> lock(g_deviceMutex);
-            g_channels.erase(playerKey);
+            {
+                std::lock_guard<std::mutex> lock(g_deviceMutex);
+                g_channels.erase(playerKey);
+            }
             Notify(player, "Defense Protocol channel interrupted. Return to the orb and try again.");
             return;
         }
@@ -368,24 +427,27 @@ public:
         if (Clock::now() < channel.finishes)
             return;
 
-        bool activate = false;
+        bool accepted = false;
         {
             std::lock_guard<std::mutex> lock(g_deviceMutex);
             auto pending = g_pending.find(channel.instanceKey);
-            if (pending == g_pending.end() || pending->second.mode != channel.mode)
+            if (pending != g_pending.end() && pending->second.mode == channel.mode)
             {
                 g_channels.erase(playerKey);
-                return;
+                g_completedHumans[channel.instanceKey].insert(playerKey);
+                accepted = true;
             }
-
-            g_channels.erase(playerKey);
-            g_completedHumans[channel.instanceKey].insert(playerKey);
-            activate = AllRequiredHumansComplete(player, channel.instanceKey);
+            else
+                g_channels.erase(playerKey);
         }
+        if (!accepted)
+            return;
 
         Notify(player, "Your Defense Protocol channel is complete.");
         BroadcastProgress(player, channel.instanceKey);
-        if (activate)
+
+        std::vector<uint32> const required = RequiredHumanKeys(player);
+        if (TryClaimActivation(channel.instanceKey, channel.mode, required))
             ActivatePending(player, channel.mode, channel.instanceKey);
     }
 };
@@ -399,10 +461,12 @@ public:
     {
         if (!map)
             return;
+
         uint64 const key = InstanceKey(map);
         std::lock_guard<std::mutex> lock(g_deviceMutex);
         g_deviceInstances.erase(key);
         g_orbInstances.erase(key);
+        g_activatingInstances.erase(key);
         g_pending.erase(key);
         g_completedHumans.erase(key);
         for (auto itr = g_channels.begin(); itr != g_channels.end(); )
@@ -484,8 +548,9 @@ public:
         uint64 const key = InstanceKey(player->GetMap());
         {
             std::lock_guard<std::mutex> lock(g_deviceMutex);
-            g_pending[key] = {mode};
+            g_pending[key].mode = mode;
             g_completedHumans[key].clear();
+            g_activatingInstances.erase(key);
             for (auto itr = g_channels.begin(); itr != g_channels.end(); )
             {
                 if (itr->second.instanceKey == key)
