@@ -114,6 +114,14 @@ jobs:
             ac/modules/mod-era-talents/apply-patches.sh "$GITHUB_WORKSPACE/ac"
           fi
 
+          # The pinned core's Field.h relies on a transitive/PCH <string> include. This CI job
+          # intentionally disables PCH so module files cannot hide missing direct includes. Add the
+          # unrelated core include only to this ephemeral clone so the build can reach module code;
+          # this is not shipped as a realm/core patch.
+          if ! grep -q '^#include <string>$' ac/src/server/database/Database/Field.h; then
+            sed -i '/#include <string_view>/i #include <string>' ac/src/server/database/Database/Field.h
+          fi
+
       - name: Install AzerothCore build dependencies
         shell: bash
         working-directory: ac
@@ -129,9 +137,7 @@ jobs:
           set -euo pipefail
           cmake -S ac -B ac/build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DTOOLS=0 \
             -DSCRIPTS=static \
-            -DSERVERS=1 \
             -DUSE_COREPCH=0 \
             -DUSE_SCRIPTPCH=0
 
