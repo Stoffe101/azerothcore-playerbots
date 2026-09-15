@@ -58,14 +58,14 @@ jobs:
             cp -a "$GITHUB_WORKSPACE/modules/$lm" "$CORE/modules/$lm"
           done
 
-          # Match setup.sh/update.sh exactly: upstream Playerbots occasionally absorbs one of our
-          # wrapper patches before we deliberately move the pin. Reverse-check first so an already
-          # integrated patch is accepted, while a genuinely stale/conflicting patch still fails CI.
+          # Match setup.sh/update.sh exactly. The large Sunwell and AQ40 patches were authored
+          # around nearby upstream PlayerbotAI strategy-list changes, so their tiny PlayerbotAI
+          # edits are owned by 0014a/0016a compatibility patches against this exact pinned module.
           for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
             [[ -e "$patch" ]] || continue
             name="$(basename "$patch")"
             apply_args=()
-            if [[ "$name" == "0014-playerbot-sunwell.patch" ]]; then
+            if [[ "$name" == "0014-playerbot-sunwell.patch" || "$name" == "0016-playerbot-aq40-twins.patch" ]]; then
               apply_args+=(--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp)
             fi
 
@@ -116,9 +116,11 @@ jobs:
         run: |
           set -euo pipefail
           bash -n setup.sh update.sh configure-living-world-bots.sh
+          SETUP_PREFLIGHT_ONLY=1 ./setup.sh
           test -x dist/bin/worldserver
           test -x dist/bin/authserver
           test -f patches/0014a-playerbot-sunwell-playerbotai-compat.patch
+          test -f patches/0016a-playerbot-aq40-playerbotai-compat.patch
           test -f modules/mod-titan-rune/src/TitanRuneDevice.cpp
           test -f modules/mod-titan-rune/src/TitanRuneFrostArcane.cpp
           test -f modules/mod-titan-rune/src/TitanRunePlagueGladiator.cpp
