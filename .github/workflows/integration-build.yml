@@ -63,14 +63,20 @@ jobs:
           # integrated patch is accepted, while a genuinely stale/conflicting patch still fails CI.
           for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
             [[ -e "$patch" ]] || continue
-            if git -C "$CORE" apply --reverse --check "$patch" >/dev/null 2>&1; then
-              echo "Patch already present upstream: $(basename "$patch")"
-            elif git -C "$CORE" apply --check "$patch" >/dev/null 2>&1; then
-              git -C "$CORE" apply "$patch"
-              echo "Applied wrapper patch: $(basename "$patch")"
+            name="$(basename "$patch")"
+            apply_args=()
+            if [[ "$name" == "0014-playerbot-sunwell.patch" ]]; then
+              apply_args+=(--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp)
+            fi
+
+            if git -C "$CORE" apply "${apply_args[@]}" --reverse --check "$patch" >/dev/null 2>&1; then
+              echo "Patch already present upstream: $name"
+            elif git -C "$CORE" apply "${apply_args[@]}" --check "$patch" >/dev/null 2>&1; then
+              git -C "$CORE" apply "${apply_args[@]}" "$patch"
+              echo "Applied wrapper patch: $name"
             else
-              echo "ERROR: patch no longer applies cleanly: $(basename "$patch")" >&2
-              git -C "$CORE" apply --check --verbose "$patch" || true
+              echo "ERROR: patch no longer applies cleanly: $name" >&2
+              git -C "$CORE" apply "${apply_args[@]}" --check --verbose "$patch" || true
               exit 1
             fi
           done
@@ -112,6 +118,16 @@ jobs:
           bash -n setup.sh update.sh configure-living-world-bots.sh
           test -x dist/bin/worldserver
           test -x dist/bin/authserver
+          test -f patches/0014a-playerbot-sunwell-playerbotai-compat.patch
+          test -f modules/mod-titan-rune/src/TitanRuneDevice.cpp
+          test -f modules/mod-titan-rune/src/TitanRuneFrostArcane.cpp
+          test -f modules/mod-titan-rune/src/TitanRunePlagueGladiator.cpp
+          test -f modules/mod-titan-rune/src/TitanRuneAlphaTitan.cpp
+          test -f modules/mod-titan-rune/src/TitanRunePurifiedEnergy.cpp
+          test -f modules/mod-titan-rune/src/TitanRunePendingRewards.cpp
+          test ! -e modules/mod-titan-rune/src/TitanRuneFamilies.cpp
+          test -f modules/mod-titan-rune/data/sql/db-characters/base/2026_09_15_00_titan_rune_pending_rewards.sql
           test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_14_03_titan_rune_full_vendor_catalog.sql
           test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_15_00_titan_rune_device.sql
           test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_15_01_titan_rune_titan_support.sql
+          test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_15_03_titan_rune_gamma_signets.sql
