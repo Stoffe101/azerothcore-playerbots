@@ -60,14 +60,16 @@ void QueuePlayerReward(Player* player, uint32 instanceId, uint32 bossEntry, Tita
     if (!player || !player->GetSession() || player->GetSession()->IsBot() || !count)
         return;
 
+    std::string escapedReason = reason ? reason : "Titan Rune reward";
+    CharacterDatabase.EscapeString(escapedReason);
+
     // The UNIQUE key makes boss reward delivery idempotent even if multiple death hooks observe the
     // same boss. Keep the row after delivery so a recycled callback cannot award the same reward twice.
     CharacterDatabase.DirectExecute(
         "INSERT IGNORE INTO mod_titan_rune_player_rewards "
         "(guid, instance_id, boss_entry, mode, item_entry, item_count, reason, delivered) "
         "VALUES ({}, {}, {}, {}, {}, {}, '{}', 0)",
-        player->GetGUID().GetCounter(), instanceId, bossEntry, uint8(mode), itemEntry, count,
-        CharacterDatabase.EscapeString(reason ? reason : "Titan Rune reward"));
+        player->GetGUID().GetCounter(), instanceId, bossEntry, uint8(mode), itemEntry, count, escapedReason);
 
     RetryPendingRewards(player, true);
 }
@@ -91,8 +93,8 @@ uint32 RetryPendingRewards(Player* player, bool notifyIfBlocked)
         uint64 const id = fields[0].Get<uint64>();
         uint32 const itemEntry = fields[1].Get<uint32>();
         uint32 const itemCount = fields[2].Get<uint32>();
-        std::string const reason = fields[3].Get<std::string>();
-        if (DeliverReward(player, id, itemEntry, itemCount, reason, notifyIfBlocked))
+        std::string const rewardReason = fields[3].Get<std::string>();
+        if (DeliverReward(player, id, itemEntry, itemCount, rewardReason, notifyIfBlocked))
             ++delivered;
     } while (result->NextRow());
 
