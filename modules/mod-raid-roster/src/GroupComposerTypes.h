@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace GroupComposer
@@ -129,6 +130,11 @@ struct Plan
     uint32 guildCandidates = 0;
     uint32 worldCandidates = 0;
     uint32 managedCandidates = 0;
+
+    // Human invitations are intentionally one-shot for each explicit Assemble attempt. If a real
+    // player declines, the composer waits and eventually reports a timeout instead of re-inviting
+    // them every world update tick. A fresh Assemble click clears this set and is the explicit retry.
+    std::unordered_set<uint32> humanInvitesSent;
 
     bool valid = false;
     bool assembling = false;
