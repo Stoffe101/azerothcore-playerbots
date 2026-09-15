@@ -27,13 +27,10 @@ jobs:
         run: |
           set -euo pipefail
           bash -n setup.sh update.sh configure-living-world-bots.sh
-
           for patch in patches/*.patch; do
             [[ -e "$patch" ]] || continue
             git apply --numstat "$patch" >/dev/null
-            echo "Patch syntax OK: $(basename "$patch")"
           done
-
           test -f patches/0014a-playerbot-sunwell-playerbotai-compat.patch
           test -f modules/mod-titan-rune/src/TitanRuneLoader.cpp
           test -f modules/mod-titan-rune/src/TitanRuneDevice.cpp
@@ -44,14 +41,12 @@ jobs:
           test -f modules/mod-titan-rune/src/TitanRuneTitan.cpp
           test -f modules/mod-titan-rune/src/TitanRunePendingRewards.cpp
           test ! -e modules/mod-titan-rune/src/TitanRuneFamilies.cpp
-
           grep -q 'AddTitanRuneFrostArcaneScripts' modules/mod-titan-rune/src/TitanRuneLoader.cpp
           grep -q 'AddTitanRunePlagueGladiatorScripts' modules/mod-titan-rune/src/TitanRuneLoader.cpp
           grep -q 'AddTitanRuneAlphaTitanScripts' modules/mod-titan-rune/src/TitanRuneLoader.cpp
           grep -q 'AddTitanRunePurifiedEnergyScripts' modules/mod-titan-rune/src/TitanRuneLoader.cpp
           grep -q 'AddTitanRunePendingRewardScripts' modules/mod-titan-rune/src/TitanRuneLoader.cpp
           ! grep -q 'AddTitanRuneFamilyScripts' modules/mod-titan-rune/src/TitanRuneLoader.cpp
-
           test -f modules/mod-titan-rune/data/sql/db-characters/base/2026_09_15_00_titan_rune_pending_rewards.sql
           test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_14_03_titan_rune_full_vendor_catalog.sql
           test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_15_00_titan_rune_device.sql
@@ -87,19 +82,17 @@ jobs:
             cp -a "$GITHUB_WORKSPACE/modules/$lm" "$CORE/modules/$lm"
           done
 
-      - name: Verify wrapper patches against pinned tree
-        shell: bash
-        run: |
+          cat > "$RUNNER_TEMP/apply-wrapper-patches.sh" <<'PATCHER'
+          #!/usr/bin/env bash
           set -euo pipefail
           CORE="$GITHUB_WORKSPACE/azerothcore-wotlk"
-          for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
+          for patch in "$@"; do
             [[ -e "$patch" ]] || continue
             name="$(basename "$patch")"
             apply_args=()
             if [[ "$name" == "0014-playerbot-sunwell.patch" ]]; then
               apply_args+=(--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp)
             fi
-
             if git -C "$CORE" apply "${apply_args[@]}" --reverse --check "$patch" >/dev/null 2>&1; then
               echo "Patch already present upstream: $name"
             elif git -C "$CORE" apply "${apply_args[@]}" --check "$patch" >/dev/null 2>&1; then
@@ -111,6 +104,36 @@ jobs:
               exit 1
             fi
           done
+          PATCHER
+          chmod +x "$RUNNER_TEMP/apply-wrapper-patches.sh"
+
+      - name: Verify wrapper patches 0001 through 0013
+        shell: bash
+        run: |
+          "$RUNNER_TEMP/apply-wrapper-patches.sh" \
+            "$GITHUB_WORKSPACE"/patches/0001*.patch \
+            "$GITHUB_WORKSPACE"/patches/0003*.patch \
+            "$GITHUB_WORKSPACE"/patches/0004*.patch \
+            "$GITHUB_WORKSPACE"/patches/0005*.patch \
+            "$GITHUB_WORKSPACE"/patches/0006*.patch \
+            "$GITHUB_WORKSPACE"/patches/0007*.patch \
+            "$GITHUB_WORKSPACE"/patches/0008*.patch \
+            "$GITHUB_WORKSPACE"/patches/0010*.patch \
+            "$GITHUB_WORKSPACE"/patches/0011*.patch \
+            "$GITHUB_WORKSPACE"/patches/0012*.patch \
+            "$GITHUB_WORKSPACE"/patches/0013*.patch
+
+      - name: Verify progression and Sunwell patches
+        shell: bash
+        run: "$RUNNER_TEMP/apply-wrapper-patches.sh $GITHUB_WORKSPACE/patches/0014*.patch"
+
+      - name: Verify AQ40 trade and core-safety patches
+        shell: bash
+        run: "$RUNNER_TEMP/apply-wrapper-patches.sh $GITHUB_WORKSPACE/patches/0016*.patch $GITHUB_WORKSPACE/patches/0017*.patch $GITHUB_WORKSPACE/patches/0018*.patch"
+
+      - name: Verify smart-loot recovery and guild patches
+        shell: bash
+        run: "$RUNNER_TEMP/apply-wrapper-patches.sh $GITHUB_WORKSPACE/patches/0020*.patch $GITHUB_WORKSPACE/patches/0021*.patch $GITHUB_WORKSPACE/patches/0022*.patch $GITHUB_WORKSPACE/patches/0023*.patch"
 
       - name: Verify Era Talents patch stack
         shell: bash
