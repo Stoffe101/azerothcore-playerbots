@@ -2,7 +2,6 @@
 
 #include "Chat.h"
 #include "Creature.h"
-#include "CreatureAI.h"
 #include "Map.h"
 #include "Player.h"
 #include "ScriptMgr.h"
@@ -25,14 +24,15 @@ using TimePoint = Clock::time_point;
 
 constexpr uint32 IMMORTAL_CRUSHER_ENTRY = 900124;
 constexpr uint32 INSANE_SPELL = 63120; // Stock 3.3.5 Yogg-Saron mind-control aura.
-constexpr uint32 MAX_SANITY = 100;
-constexpr uint32 SANITY_DRAIN = 2;
+constexpr uint32 IMMORTAL_CRUSHER_HEALTH = 1981707; // Wrath Classic heroic value.
+constexpr uint8 MAX_SANITY = 100;
+constexpr uint8 SANITY_DRAIN = 2;
+constexpr uint8 SANITY_RESTORE = 20;
 constexpr uint32 SANITY_DRAIN_SECONDS = 2;
-constexpr uint32 SANITY_RESTORE = 20;
 constexpr uint32 SANITY_RESTORE_SECONDS = 5;
-constexpr uint32 KEEPER_PULSE_STACKS = 5;
+constexpr uint8 KEEPER_PULSE_STACKS = 5;
 constexpr uint32 KEEPER_STACK_SECONDS = 12;
-constexpr uint32 CRUSHER_MAX_PER_INSTANCE = 4;
+constexpr uint8 CRUSHER_MAX_PER_INSTANCE = 4;
 constexpr float CRUSHER_PROGRESS_DISTANCE = 120.0f;
 constexpr float CRUSHER_SANITY_RANGE = 40.0f;
 constexpr float CRUSHER_SPAWN_DISTANCE = 12.0f;
@@ -69,7 +69,9 @@ struct TitanInstanceRuntime
 
 struct CrusherRuntime
 {
-    bool meleeBroken = false;
+    uint64 instanceKey = 0;
+    bool diminishActive = true;
+    bool fixedHealthApplied = false;
 };
 
 std::unordered_map<uint32, TitanPlayerRuntime> g_titanPlayers;
@@ -113,6 +115,15 @@ bool UsesPurifiedTitanRune(Player const* player)
     return mode == TitanRuneMode::Beta || mode == TitanRuneMode::Gamma;
 }
 
+Player* ControllingPlayer(Unit* unit)
+{
+    if (!unit)
+        return nullptr;
+    if (Player* player = unit->ToPlayer())
+        return player;
+    return unit->GetCharmerOrOwnerPlayerOrPlayerItself();
+}
+
 void Notify(Player* player, std::string const& text)
 {
     if (!IsHuman(player))
@@ -128,6 +139,29 @@ bool HasKeeperAid(Player const* player)
     return itr != g_titanPlayers.end() && itr->second.keepers;
 }
 
+bool InstanceHasDiminishPower(Map const* map)
+{
+    if (!map)
+        return false;
+    uint64 const key = InstanceKey(map);
+    for (auto const& pair : g_crushers)
+        if (pair.second.instanceKey == key && pair.second.diminishActive)
+            return true;
+    return false;
+}
+
+void ReducePlayerDamage(Map const* map, uint32& damage)
+{
+    if (damage && InstanceHasDiminishPower(map))
+        damage = std::max<uint32>(1, damage / 100); // Wrath Classic Titan Rune: 99% reduced damage dealt.
+}
+
+void ReducePlayerDamage(Map const* map, int32& damage)
+{
+    if (damage > 0 && InstanceHasDiminishPower(map))
+        damage = std::max<int32>(1, damage / 100);
+}
+
 void RefreshMaxHealth(Player* player)
 {
     if (!player)
@@ -138,7 +172,7 @@ void RefreshMaxHealth(Player* player)
     uint32 const newMax = std::max<uint32>(1, player->GetMaxHealth());
     if (player->IsAlive())
     {
-        uint64 scaledHealth = uint64(oldHealth) * uint64(newMax) / uint64(oldMax);
+        uint64 const scaledHealth = uint64(oldHealth) * uint64(newMax) / uint64(oldMax);
         player->SetHealth(uint32(std::min<uint64>(scaledHealth, newMax)));
     }
 }
@@ -156,19 +190,26 @@ void SetKeeperAid(Player* player, TitanPlayerRuntime& state, bool enabled)
         state.sanityStarted = false;
         state.insane = false;
         state.nextSanityRestore = Clock::now() + std::chrono::seconds(SANITY_RESTORE_SECONDS);
-        Notify(player,
-            "Purified Titan Energy reached 100 stacks. Hodir, Thorim, Freya and Mimiron are assisting you: "
-            "+40% damage, -20% damage taken, +20% healing received, +20% maximum health, +20% movement speed and Keeper utilities.");
+        Notify(player, "Fury of the Storm also increases your maximum health by 20% and enables Titanic Storm executions on weakened Immortal Crushers.");
     }
-    else
-        Notify(player, "Purified Titan Energy expired. Keeper assistance has faded.");
+}
+
+void ClearPlayerState(Player* player)
+{
+    if (!player)
+        return;
+    auto itr = g_titanPlayers.find(PlayerKey(player));
+    if (itr == g_titanPlayers.end())
+        return;
+    if (itr->second.keepers)
+        SetKeeperAid(player, itr->second, false);
+    g_titanPlayers.erase(itr);
 }
 
 void ReportSanity(Player* player, TitanPlayerRuntime const& state)
 {
-    if (!player || !state.sanityStarted)
-        return;
-    Notify(player, "Sanity: " + std::to_string(uint32(state.sanity)) + "/100");
+    if (player && state.sanityStarted)
+        Notify(player, "Sanity: " + std::to_string(uint32(state.sanity)) + "/100");
 }
 
 Creature* NearestCrusher(Player* player)
@@ -184,17 +225,16 @@ TempSummon* SpawnCrusher(Player* player)
     float const orientation = player->GetOrientation();
     float const x = player->GetPositionX() + std::cos(orientation) * CRUSHER_SPAWN_DISTANCE;
     float const y = player->GetPositionY() + std::sin(orientation) * CRUSHER_SPAWN_DISTANCE;
-    float const z = player->GetPositionZ();
-
-    TempSummon* crusher = player->SummonCreature(IMMORTAL_CRUSHER_ENTRY, x, y, z, orientation,
+    TempSummon* crusher = player->SummonCreature(IMMORTAL_CRUSHER_ENTRY, x, y, player->GetPositionZ(), orientation,
         TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 6 * HOUR * IN_MILLISECONDS);
     if (!crusher)
         return nullptr;
 
-    g_crushers[CreatureKey(crusher)] = {};
+    CrusherRuntime& state = g_crushers[CreatureKey(crusher)];
+    state.instanceKey = InstanceKey(player->GetMap());
+    crusher->SetInCombatWithZone();
     Notify(player,
-        "An Immortal Crusher Tentacle emerges. A melee hit breaks its 99% damage suppression; "
-        "at 100 Purified Titan Energy stacks, Thorim can finish it below 5% health.");
+        "An Immortal Crusher Tentacle emerges. Its Diminish Power reduces all player damage by 99% until a melee attack interrupts the channel.");
     return crusher;
 }
 
@@ -222,24 +262,25 @@ void UpdateCrusherSpawns(Player* player)
         return;
     }
 
+    float const x = player->GetPositionX();
+    float const y = player->GetPositionY();
+    float const z = player->GetPositionZ();
     if (!state.havePosition)
     {
-        state.lastX = player->GetPositionX();
-        state.lastY = player->GetPositionY();
-        state.lastZ = player->GetPositionZ();
+        state.lastX = x;
+        state.lastY = y;
+        state.lastZ = z;
         state.havePosition = true;
         return;
     }
 
-    float const dx = player->GetPositionX() - state.lastX;
-    float const dy = player->GetPositionY() - state.lastY;
-    float const dz = player->GetPositionZ() - state.lastZ;
+    float const dx = x - state.lastX;
+    float const dy = y - state.lastY;
+    float const dz = z - state.lastZ;
     float const step = std::sqrt(dx * dx + dy * dy + dz * dz);
-    state.lastX = player->GetPositionX();
-    state.lastY = player->GetPositionY();
-    state.lastZ = player->GetPositionZ();
-
-    // Ignore teleports/large corrections. We only want ordinary dungeon traversal to seed Crushers.
+    state.lastX = x;
+    state.lastY = y;
+    state.lastZ = z;
     if (step <= 40.0f)
         state.travelSinceSpawn += step;
 
@@ -258,25 +299,27 @@ void UpdateMovementSilence(Player* player, TitanPlayerRuntime& state, TimePoint 
     if (!player)
         return;
 
+    float const x = player->GetPositionX();
+    float const y = player->GetPositionY();
+    float const z = player->GetPositionZ();
     if (!state.havePosition)
     {
-        state.lastX = player->GetPositionX();
-        state.lastY = player->GetPositionY();
-        state.lastZ = player->GetPositionZ();
+        state.lastX = x;
+        state.lastY = y;
+        state.lastZ = z;
         state.havePosition = true;
         state.stillSince = now;
         return;
     }
 
-    float const dx = player->GetPositionX() - state.lastX;
-    float const dy = player->GetPositionY() - state.lastY;
-    float const dz = player->GetPositionZ() - state.lastZ;
+    float const dx = x - state.lastX;
+    float const dy = y - state.lastY;
+    float const dz = z - state.lastZ;
     if ((dx * dx + dy * dy + dz * dz) > 0.25f)
         state.stillSince = now;
-
-    state.lastX = player->GetPositionX();
-    state.lastY = player->GetPositionY();
-    state.lastZ = player->GetPositionZ();
+    state.lastX = x;
+    state.lastY = y;
+    state.lastZ = z;
 }
 
 class TitanRuneTitanPlayerScript final : public PlayerScript
@@ -298,15 +341,13 @@ public:
 
     void OnPlayerMapChanged(Player* player) override
     {
-        if (player)
-            g_titanPlayers.erase(PlayerKey(player));
+        ClearPlayerState(player);
     }
 
     void OnPlayerSpellCast(Player* player, Spell* /*spell*/, bool /*skipCheck*/) override
     {
-        if (!player || !UsesPurifiedTitanRune(player))
-            return;
-        g_titanPlayers[PlayerKey(player)].lastAbility = Clock::now();
+        if (player && UsesPurifiedTitanRune(player))
+            g_titanPlayers[PlayerKey(player)].lastAbility = Clock::now();
     }
 
     void OnPlayerAfterUpdateMaxHealth(Player* player, float& value) override
@@ -319,24 +360,15 @@ public:
     {
         if (!IsHuman(player) || !player->IsInWorld())
             return;
-
         if (!UsesPurifiedTitanRune(player))
         {
-            auto existing = g_titanPlayers.find(PlayerKey(player));
-            if (existing != g_titanPlayers.end())
-            {
-                if (existing->second.keepers)
-                    SetKeeperAid(player, existing->second, false);
-                g_titanPlayers.erase(existing);
-            }
+            ClearPlayerState(player);
             return;
         }
 
         UpdateCrusherSpawns(player);
-
-        uint32 const key = PlayerKey(player);
         TimePoint const now = Clock::now();
-        TitanPlayerRuntime& state = g_titanPlayers[key];
+        TitanPlayerRuntime& state = g_titanPlayers[PlayerKey(player)];
         UpdateMovementSilence(player, state, now);
 
         if (player->IsInCombat() && now >= state.nextStackPulse)
@@ -362,19 +394,17 @@ public:
                 state.sanity = MAX_SANITY;
                 state.nextSanityDrain = now + std::chrono::seconds(SANITY_DRAIN_SECONDS);
                 state.nextSanityRestore = now + std::chrono::seconds(SANITY_RESTORE_SECONDS);
-                Notify(player, "Sanity: 100/100. Immortal Crusher Tentacles will slowly drain it while nearby.");
+                Notify(player, "Sanity: 100/100. Living Immortal Crushers slowly drain it.");
             }
-
             if (!state.insane && now >= state.nextSanityDrain)
             {
-                uint8 const before = state.sanity;
-                state.sanity = uint8(before > SANITY_DRAIN ? before - SANITY_DRAIN : 0);
+                state.sanity = state.sanity > SANITY_DRAIN ? uint8(state.sanity - SANITY_DRAIN) : 0;
                 state.nextSanityDrain = now + std::chrono::seconds(SANITY_DRAIN_SECONDS);
-                if (state.sanity == 0)
+                if (!state.sanity)
                 {
                     state.insane = true;
                     crusher->CastSpell(player, INSANE_SPELL, true);
-                    Notify(player, "Your Sanity reached 0. The Old God's influence takes control of your mind!");
+                    Notify(player, "Sanity reached 0. The Old God's influence takes control of your mind!");
                 }
                 else if (state.sanity == 80 || state.sanity == 60 || state.sanity == 40 || state.sanity == 20 || state.sanity <= 10)
                     ReportSanity(player, state);
@@ -402,34 +432,50 @@ class TitanRuneTitanUnitScript final : public UnitScript
 public:
     TitanRuneTitanUnitScript() : UnitScript("TitanRuneTitanUnitScript") { }
 
-    void ModifyMeleeDamage(Unit* target, Unit* attacker, uint32& /*damage*/) override
+    void ModifyMeleeDamage(Unit* target, Unit* attacker, uint32& damage) override
     {
-        Creature* crusher = target ? target->ToCreature() : nullptr;
-        Player* player = attacker ? attacker->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
-        if (!crusher || crusher->GetEntry() != IMMORTAL_CRUSHER_ENTRY || !player)
+        Player* player = ControllingPlayer(attacker);
+        if (!player || !UsesPurifiedTitanRune(player))
             return;
 
-        CrusherRuntime& state = g_crushers[CreatureKey(crusher)];
-        if (!state.meleeBroken)
+        Creature* crusher = target ? target->ToCreature() : nullptr;
+        if (crusher && crusher->GetEntry() == IMMORTAL_CRUSHER_ENTRY)
         {
-            state.meleeBroken = true;
-            Notify(player, "Diminish Power broken by a melee hit. The Immortal Crusher now takes normal damage.");
+            CrusherRuntime& state = g_crushers[CreatureKey(crusher)];
+            state.instanceKey = InstanceKey(crusher->GetMap());
+            if (state.diminishActive)
+            {
+                state.diminishActive = false;
+                Notify(player, "Melee contact interrupts Diminish Power. Player damage returns to normal unless another Crusher is still channeling.");
+            }
         }
+
+        ReducePlayerDamage(player->GetMap(), damage);
     }
 
-    void OnDamage(Unit* attacker, Unit* victim, uint32& damage) override
+    void ModifySpellDamageTaken(Unit* /*target*/, Unit* attacker, int32& damage, SpellInfo const* /*spellInfo*/) override
     {
-        if (!attacker || !victim || !damage)
+        Player* player = ControllingPlayer(attacker);
+        if (player && UsesPurifiedTitanRune(player))
+            ReducePlayerDamage(player->GetMap(), damage);
+    }
+
+    void ModifyPeriodicDamageAurasTick(Unit* /*target*/, Unit* attacker, uint32& damage, SpellInfo const* /*spellInfo*/) override
+    {
+        Player* player = ControllingPlayer(attacker);
+        if (player && UsesPurifiedTitanRune(player))
+            ReducePlayerDamage(player->GetMap(), damage);
+    }
+
+    void OnDamage(Unit* /*attacker*/, Unit* victim, uint32& damage) override
+    {
+        Creature* crusher = victim ? victim->ToCreature() : nullptr;
+        if (!crusher || crusher->GetEntry() != IMMORTAL_CRUSHER_ENTRY || !damage || !crusher->IsAlive())
             return;
 
-        Creature* crusher = victim->ToCreature();
-        Player* player = attacker->GetCharmerOrOwnerPlayerOrPlayerItself();
-        if (!crusher || crusher->GetEntry() != IMMORTAL_CRUSHER_ENTRY || !player)
-            return;
-
-        CrusherRuntime& state = g_crushers[CreatureKey(crusher)];
-        if (!state.meleeBroken)
-            damage = std::max<uint32>(1, damage / 100); // 99% suppression until a melee hit interrupts it.
+        // Immortal means exactly that until Titanic Storm executes the weakened tentacle.
+        if (damage >= crusher->GetHealth())
+            damage = crusher->GetHealth() > 1 ? crusher->GetHealth() - 1 : 0;
     }
 
     void OnUnitUpdate(Unit* unit, uint32 /*diff*/) override
@@ -438,11 +484,20 @@ public:
         if (!crusher || crusher->GetEntry() != IMMORTAL_CRUSHER_ENTRY || !crusher->IsAlive() || !crusher->GetMap())
             return;
 
-        if (!IsTitanMap(crusher->GetMapId()))
-            return;
-        TitanRuneMode const mode = TitanRune::GetActiveMode(crusher->GetMap());
-        if (mode != TitanRuneMode::Beta && mode != TitanRuneMode::Gamma)
-            return;
+        CrusherRuntime& crusherState = g_crushers[CreatureKey(crusher)];
+        crusherState.instanceKey = InstanceKey(crusher->GetMap());
+
+        // The custom NPC is excluded conceptually from ordinary protocol mob scaling. Force the
+        // known Wrath Classic heroic value once after the core/module scaling pass has seen it.
+        if (!crusherState.fixedHealthApplied)
+        {
+            uint32 const oldMax = std::max<uint32>(1, crusher->GetMaxHealth());
+            uint32 const oldHealth = crusher->GetHealth();
+            crusher->SetMaxHealth(IMMORTAL_CRUSHER_HEALTH);
+            crusher->SetHealth(oldHealth >= oldMax ? IMMORTAL_CRUSHER_HEALTH :
+                std::max<uint32>(1, uint32(uint64(oldHealth) * IMMORTAL_CRUSHER_HEALTH / oldMax)));
+            crusherState.fixedHealthApplied = true;
+        }
 
         if (crusher->GetHealth() > std::max<uint32>(1, crusher->GetMaxHealth() / 20))
             return;
@@ -453,6 +508,7 @@ public:
             Player* player = itr->GetSource();
             if (!IsHuman(player) || !player->IsAlive() || !HasKeeperAid(player))
                 continue;
+            crusherState.diminishActive = false;
             crusher->KillSelf(false);
             Notify(player, "Titanic Storm destroys the weakened Immortal Crusher Tentacle.");
             break;
@@ -476,17 +532,10 @@ public:
     {
         if (!map)
             return;
-
-        uint64 const instanceKey = InstanceKey(map);
-        uint32 const instanceId = map->GetInstanceId();
-        g_titanInstances.erase(instanceKey);
+        uint64 const key = InstanceKey(map);
+        g_titanInstances.erase(key);
         for (auto itr = g_crushers.begin(); itr != g_crushers.end(); )
-        {
-            if (uint32(itr->first >> 32) == instanceId)
-                itr = g_crushers.erase(itr);
-            else
-                ++itr;
-        }
+            itr = itr->second.instanceKey == key ? g_crushers.erase(itr) : ++itr;
     }
 };
 
