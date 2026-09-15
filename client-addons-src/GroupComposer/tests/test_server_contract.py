@@ -2,8 +2,8 @@
 """Static client/server contract tests for Group Composer.
 
 The 3.3.5a addon deliberately owns presentation metadata while the C++ backend owns
-validation and runtime actions. These assertions make duplicated activity identifiers fail
-CI loudly instead of drifting into a UI option the server rejects (or vice versa).
+validation and runtime actions. These assertions make duplicated activity identifiers and
+critical assembly-safety hooks fail CI loudly instead of drifting silently.
 """
 
 from pathlib import Path
@@ -29,7 +29,6 @@ raid_data = section(DATA, "D.RAIDS = {", "D.RAID_DIFFICULTIES = {")
 raid_server = section(SERVER, "bool RaidSupports(", "uint32 DungeonMapId(")
 dungeon_server = section(SERVER, "uint32 DungeonMapId(", "bool IsBotGuid(")
 
-# Every named dungeon exposed by the addon must have the same map id in the backend.
 client_dungeons: dict[str, int] = {}
 for entry in re.finditer(r'\{\s*id\s*=\s*"([^"]+)"([^}]*)\}', dungeon_data):
     dungeon_id, body = entry.group(1), entry.group(2)
@@ -41,26 +40,21 @@ server_dungeons = {
     name: int(map_id)
     for name, map_id in re.findall(r'\{\s*"([^"]+)"\s*,\s*(\d+)\s*\}', dungeon_server)
 }
-
 assert client_dungeons, "No addon dungeon map metadata parsed"
 assert client_dungeons == server_dungeons, (
     "Dungeon activity/map contract drift:\n"
     f"addon={client_dungeons}\nserver={server_dungeons}"
 )
 
-# Random is intentionally not a concrete map and must be handled explicitly by the backend.
 client_dungeon_ids = ids(dungeon_data)
 assert "random" in client_dungeon_ids, "Addon lost Random Dungeon"
 assert 'plan.config.activity == "random"' in SERVER, "Backend lost Random Dungeon handling"
 
-# Every raid exposed by the addon must be accepted by the server-side activity validator.
 client_raids = ids(raid_data)
 assert client_raids, "No addon raid metadata parsed"
 missing_raids = [raid for raid in client_raids if f'"{raid}"' not in raid_server]
 assert not missing_raids, f"Raid activity missing from backend validator: {missing_raids}"
 
-# Keep the custom Titan Rune modes explicit: selectable/profileable, but never masquerading as
-# stock 3.3.5 RDF IDs. Their final activation belongs to the realm's Titan Rune subsystem.
 difficulty_data = section(DATA, "D.DUNGEON_DIFFICULTIES = {", "D.RAIDS = {")
 client_difficulties = ids(difficulty_data)
 assert client_difficulties == ["normal", "heroic", "alpha", "beta", "gamma"], client_difficulties
@@ -71,7 +65,6 @@ for mode in ("alpha", "beta", "gamma"):
 assert "Titan Rune queue handoff is not represented by stock 3.3.5a RDF difficulty IDs" in SERVER
 assert "GetLFGDungeon(mapId, difficulty)" in SERVER
 
-# The protocol surface used by Core.lua should stay registered server-side.
 for command in (
     "begin", "pref", "humanrole", "human", "pin", "arrangepref", "find", "arrange",
     "move", "assemble", "queue", "anchors", "diagnostics", "clear", "status",
@@ -79,5 +72,16 @@ for command in (
     assert re.search(r'\{\s*"' + re.escape(command) + r'"\s*,', SERVER), (
         f"Missing server command registration: {command}"
     )
+
+# Safety invariants. These are intentionally source-level contracts because removing any one of
+# them changes the destructive semantics even if the module still compiles.
+assert "ValidateAssemblySnapshot(master, plan, validationError)" in SERVER, "Assemble lost pre-prune revalidation"
+assert SERVER.index("ValidateAssemblySnapshot(master, plan, validationError)") < SERVER.index("PruneUnselectedBots(master, plan)"), (
+    "Destructive pruning must happen only after snapshot revalidation"
+)
+assert "group->SwapMembersGroup(member.guid, swap->guid)" in SERVER, "Full raid subgroup swaps are no longer applied atomically"
+assert "group->GetMembersCount() == plan.members.size()" in SERVER, "Assembly must require exact reviewed membership"
+assert "(void)keepMe; config.keepMe = true" in SERVER, "Local player anchor must remain mandatory server-side"
+assert "The group gained a real player after the preview" in SERVER, "Late human joins must force a fresh preview"
 
 print("Group Composer client/server contract tests passed")
