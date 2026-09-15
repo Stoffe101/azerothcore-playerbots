@@ -137,10 +137,11 @@ Historical branches were used to compare intent, with no wholesale merges.
 - 88 custom/modified C++ translation units passed compiler syntax checks; a subsequent pass checked
   all 12 final changed translation units, including the two Playerbots persistence files: zero failures.
   Focused checks after final review also passed for the Titan reset identity and Auto Dungeon Clear changes.
-- Native Release/Ninja full build completed successfully: 2,165 initial steps plus a 459-step
-  final incremental rebuild after the last source synchronization. Both `authserver` and
-  `worldserver` linked. Two final four-step rebuilds recompiled and relinked the Titan and
-  Auto Dungeon Clear review fixes. This used Ubuntu GCC 15/Boost 1.90 rather than the deployment Docker image.
+- Native Release/Ninja full build completed successfully. The 2,165-step build graph reached
+  step 1,485 before the final source synchronization, then Ninja completed a 673-step invalidated/remaining
+  graph and linked both `authserver` and `worldserver`. A 459-step rebuild covered the final patch/core
+  synchronization. Two later four-step rebuilds recompiled and relinked the Titan and Auto Dungeon
+  Clear review fixes. This used Ubuntu GCC 15/Boost 1.90 rather than the deployment Docker image.
 - 29 module SQL files executed in filename order against a disposable MySQL 8.4 instance using
   static reference tables copied read-only from the local world DB. Repeat application passed.
 - The world reference has 46,096 item templates. Every protocol loot item name and every pool
