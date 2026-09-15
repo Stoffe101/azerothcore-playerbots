@@ -2,6 +2,7 @@
 #define MOD_RAID_ROSTER_GROUP_COMPOSER_TYPES_H
 
 #include "ObjectGuid.h"
+#include "Optional.h"
 
 #include <cstdint>
 #include <string>
@@ -67,10 +68,10 @@ struct Config
     uint16 minimumItemLevel = 0;
 
     std::vector<Preference> preferences;
-    std::unordered_map<std::string, uint8> humanRoles;  // lower-case character name -> role
+    std::unordered_map<std::string, uint8> humanRoles;
     std::vector<AddedHuman> extraHumans;
     std::vector<Pin> pins;
-    std::unordered_map<std::string, uint8> arrangement; // lower-case stable member name -> subgroup 1..8
+    std::unordered_map<std::string, uint8> arrangement;
 };
 
 struct Candidate
@@ -83,7 +84,7 @@ struct Candidate
 
     bool guild = false;
     bool online = false;
-    bool managed = false;       // persistent RaidRoster/addclass bot with safe login/sync lifecycle
+    bool managed = false;
     bool alreadyGrouped = false;
     float itemLevel = 0.0f;
 
