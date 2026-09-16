@@ -10,3 +10,5 @@ for test in chatter-grounding human-navigator; do
     "$OUT/$test"
     echo "PASS: $test"
 done
+
+python3 "$ROOT/tools/tests/runtime-hardening.py"

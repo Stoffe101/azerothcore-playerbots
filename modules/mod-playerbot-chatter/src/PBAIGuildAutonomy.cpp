@@ -396,6 +396,8 @@ public:
 
     void OnUpdate(uint32 diff) override
     {
+        PBAIGuildServices::UpdateAsyncTransactions();
+
         if (!g_enable)
             return;
 

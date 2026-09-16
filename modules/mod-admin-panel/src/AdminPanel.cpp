@@ -201,11 +201,13 @@ void ApplyPreset(std::string const& preset)
     {
         ApplyXpRate(3.0f);
         ApplyRepRate(2.0f);
-        ApplyGoldRate(2.0f);
+        // Generic money rates also observe transfers such as trade and mail. Keep personal money
+        // at 1x; the fast preset accelerates XP/reputation without duplicating transferred gold.
+        ApplyGoldRate(1.0f);
         AdminPanelGameplay::SetBotActivity(40.0f);
         SaveSetting(XP_KEY, "3");
         SaveSetting(REP_KEY, "2");
-        SaveSetting(GOLD_RATE_KEY, "2");
+        SaveSetting(GOLD_RATE_KEY, "1");
         SaveSetting(BOT_ACTIVITY_KEY, "40");
     }
     else if (preset == "raid")
@@ -232,6 +234,17 @@ void LoadPersistedSettings()
         ApplyRepRate(rate);
     if (LoadSetting(GOLD_RATE_KEY, raw) && ParseRate(raw, rate))
         ApplyGoldRate(rate);
+
+    // Migrate the historical fast preset (3x XP, 2x reputation, 2x generic money) once. Explicit
+    // custom rate combinations remain untouched.
+    if (std::abs(sWorld->getRate(RATE_XP_KILL) - 3.0f) < 0.001f &&
+        std::abs(sWorld->getRate(RATE_REPUTATION_GAIN) - 2.0f) < 0.001f &&
+        std::abs(sWorld->getRate(RATE_DROP_MONEY) - 2.0f) < 0.001f)
+    {
+        ApplyGoldRate(1.0f);
+        SaveSetting(GOLD_RATE_KEY, "1");
+        LOG_INFO("server.loading", "[AdminPanel] Migrated legacy fast-preset gold rate 2.00 -> 1.00");
+    }
 
     // Expansion state must be restored BEFORE the starter profile so a saved WotLK raid-ready
     // starter can only become active on a realm where WotLK has actually been released.
@@ -273,7 +286,7 @@ void LoadPersistedSettings()
     auto const pop = AdminPanelGameplay::GetPopulationStats();
     LOG_INFO(
         "server.loading",
-        "[AdminPanel] Ready: era={} cap={} xp={:.2f} rep={:.2f} gold={:.2f} starter={} bots={}/{} batch={} activity={:.0f}%",
+        "[AdminPanel] Ready: era={} cap={} xp={:.2f} rep={:.2f} gold={:.2f} starter={} bots={}/{} batch={} activity={:.0f}% populationAuthority=AdminPanelPersistedTarget state={} usableCapacity={} pending={}",
         AdminPanelExpansion::CurrentExpansionName(),
         AdminPanelExpansion::CurrentLevelCap(),
         sWorld->getRate(RATE_XP_KILL),
@@ -283,7 +296,10 @@ void LoadPersistedSettings()
         pop.bots,
         pop.botTarget,
         pop.botBatch,
-        pop.botActivity);
+        pop.botActivity,
+        pop.populationState,
+        pop.candidateCapacity,
+        pop.pendingBotLogins);
 }
 
 class AdminPanelWorldScript : public WorldScript
@@ -400,7 +416,7 @@ private:
         double const moneyGold = player ? double(player->GetMoney()) / COPPER_PER_GOLD : 0.0;
 
         handler->PSendSysMessage(
-            "{} STATUS era={} wotlk={} levelcap={} progressionlimit={} stage={} level={} money={:.2f} xp={:.2f} rep={:.2f} goldrate={:.2f} starter={} players={} bots={} bottarget={} botbatch={} botactivity={:.0f}",
+            "{} STATUS era={} wotlk={} levelcap={} progressionlimit={} stage={} level={} money={:.2f} xp={:.2f} rep={:.2f} goldrate={:.2f} starter={} players={} bots={} bottarget={} botbatch={} botactivity={:.0f} botstate={} botcapacity={} botcandidates={} botpending={} botaccounts={} botrequired={} botmanageraccounts={}",
             PREFIX,
             AdminPanelExpansion::CurrentExpansionName(),
             AdminPanelExpansion::IsWotlkReleased() ? 1 : 0,
@@ -417,7 +433,14 @@ private:
             pop.bots,
             pop.botTarget,
             pop.botBatch,
-            pop.botActivity);
+            pop.botActivity,
+            pop.populationState,
+            pop.candidateCapacity,
+            pop.managerCandidates,
+            pop.pendingBotLogins,
+            pop.botAccounts,
+            pop.requiredBotAccounts,
+            pop.managerRandomAccounts);
         return true;
     }
 
@@ -697,14 +720,24 @@ private:
     {
         if (!EnsureEnabled(handler)) return true;
         uint32 target = 0;
-        if (!ParseU32(std::string(rawTarget), target) || target > 1000)
+        if (!ParseU32(std::string(rawTarget), target) || target > 1500)
         {
-            handler->PSendSysMessage("{} bots target must be 0-1000.", PREFIX);
+            handler->PSendSysMessage("{} bots target must be 0-1500.", PREFIX);
             return true;
         }
+        auto const before = AdminPanelGameplay::GetPopulationStats();
         AdminPanelGameplay::SetBotTarget(target, 10);
         SaveSetting(BOT_TARGET_KEY, std::to_string(target));
-        handler->PSendSysMessage("{} Random-bot target set to {} with a safe 10-bot ramp batch.", PREFIX, target);
+        Player* player = CommandPlayer(handler);
+        LOG_INFO(
+            "server.loading",
+            "[AdminPanel] Human population request: player={} account={} previousTarget={} desiredTarget={} online={} usableCapacity={} pending={}",
+            player ? player->GetName() : "unknown",
+            handler->GetSession() ? handler->GetSession()->GetAccountId() : 0,
+            before.botTarget, target, before.bots, before.candidateCapacity, before.pendingBotLogins);
+        handler->PSendSysMessage(
+            "{} Random-bot target {} accepted (previous {}, online {}, usable capacity {}, pending {}). The controller will converge in safe batches.",
+            PREFIX, target, before.botTarget, before.bots, before.candidateCapacity, before.pendingBotLogins);
         return true;
     }
 

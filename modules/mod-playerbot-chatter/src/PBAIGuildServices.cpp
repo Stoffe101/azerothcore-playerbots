@@ -1,6 +1,7 @@
 #include "PBAIGuildServices.h"
 
 #include "AuctionHouseMgr.h"
+#include "AsyncCallbackProcessor.h"
 #include "Bag.h"
 #include "Chat.h"
 #include "DatabaseEnv.h"
@@ -32,6 +33,7 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace PBAIGuildServices
@@ -43,6 +45,8 @@ constexpr uint32 MAX_SERVICE_STACKS = 12;
 constexpr uint32 MAX_DONATION_GOLD = 100000;
 std::mutex g_serviceMutex;
 std::atomic<uint32> g_requestSequence{0};
+AsyncCallbackProcessor<TransactionCallback> g_transactionCallbacks;
+std::unordered_set<uint32> g_pendingGuildTransactions;
 
 struct PendingRequest
 {
@@ -55,6 +59,23 @@ struct PendingRequest
     uint32 itemCount = 0;
     uint64 quotedCopper = 0;
 };
+
+bool HasPendingTransaction(uint32 guildId)
+{
+    return g_pendingGuildTransactions.contains(guildId);
+}
+
+void CommitGuildTransaction(CharacterDatabaseTransaction transaction, uint32 guildId)
+{
+    g_pendingGuildTransactions.insert(guildId);
+    g_transactionCallbacks.AddCallback(CharacterDatabase.AsyncCommitTransaction(transaction)).AfterComplete(
+        [guildId](bool success)
+        {
+            g_pendingGuildTransactions.erase(guildId);
+            if (!success)
+                LOG_ERROR("server.loading", "[AIGuildEconomy] Character DB transaction failed for guild {}.", guildId);
+        });
+}
 
 uint64 NextRequestId()
 {
@@ -296,7 +317,7 @@ bool DeliverStockMail(uint32 guildId, uint32 senderGuid, uint32 targetGuid, Item
         return false;
     if (requestId)
         AppendRequestStatus(trans, requestId, "fulfilled");
-    CharacterDatabase.DirectCommitTransaction(trans);
+    CommitGuildTransaction(trans, guildId);
     return true;
 }
 
@@ -393,7 +414,7 @@ bool BuyRealAuction(PendingRequest const& request)
     sScriptMgr->OnAuctionSuccessful(house, auction);
     auction->DeleteFromDB(trans);
     AppendRequestStatus(trans, request.id, "fulfilled");
-    CharacterDatabase.DirectCommitTransaction(trans);
+    CommitGuildTransaction(trans, request.guildId);
 
     sAuctionMgr->RemoveAItem(auction->item_guid);
     house->RemoveAuction(auction);
@@ -436,6 +457,9 @@ bool FulfillRequest(PendingRequest const& request)
 
 uint32 ProcessQueued(uint32 guildId, uint32 limit = 20)
 {
+    if (HasPendingTransaction(guildId))
+        return 0;
+
     QueryResult result = CharacterDatabase.Query(
         "SELECT request_id, guild_id, requester_guid, target_guid, request_type, item_id, item_count, quoted_copper "
         "FROM mod_ai_guild_request WHERE guild_id = {} AND status = 'queued' ORDER BY request_id ASC LIMIT {}",
@@ -457,7 +481,11 @@ uint32 ProcessQueued(uint32 guildId, uint32 limit = 20)
         request.itemCount = f[6].Get<uint32>();
         request.quotedCopper = f[7].Get<uint64>();
         if (FulfillRequest(request))
+        {
             ++processed;
+            if (HasPendingTransaction(guildId))
+                break;
+        }
     } while (result->NextRow());
     return processed;
 }
@@ -546,7 +574,7 @@ bool MoveWholeStackToStock(Player* bot, Item* item)
     CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
     bot->SaveInventoryAndGoldToDB(trans);
     AppendStockCredit(trans, guildId, entry, count);
-    CharacterDatabase.DirectCommitTransaction(trans);
+    CommitGuildTransaction(trans, guildId);
 
     LOG_INFO("server.loading", "[AIGuildEconomy] {} contributed real item {} x{} to guild {} stock.",
         bot->GetName(), entry, count, guildId);
@@ -605,6 +633,12 @@ AuctionHouseEntry const* AuctionEntryForBot(Player* bot, AuctionHouseId& houseId
 }
 }
 
+void UpdateAsyncTransactions()
+{
+    std::lock_guard<std::mutex> lock(g_serviceMutex);
+    g_transactionCallbacks.ProcessReadyCallbacks();
+}
+
 uint32 ProcessQueuedGuild(uint32 guildId)
 {
     if (!guildId)
@@ -619,6 +653,9 @@ bool SupplyQueuedFromBot(Player* bot)
         return false;
 
     std::lock_guard<std::mutex> lock(g_serviceMutex);
+    if (HasPendingTransaction(bot->GetGuildId()))
+        return false;
+
     QueryResult requests = CharacterDatabase.Query(
         "SELECT item_id FROM mod_ai_guild_request WHERE guild_id={} AND status='queued' "
         "GROUP BY item_id ORDER BY MIN(request_id) ASC LIMIT 20",
@@ -683,6 +720,9 @@ bool ContributeSurplusFromBot(Player* bot)
         return false;
 
     std::lock_guard<std::mutex> lock(g_serviceMutex);
+    if (HasPendingTransaction(bot->GetGuildId()))
+        return false;
+
     for (Item* item : BagItems(bot))
     {
         if (!IsTradablePhysicalItem(item) || !IsEconomySurplus(item->GetTemplate()))
@@ -702,6 +742,9 @@ bool ListSurplusOnAuction(Player* bot)
         return false;
 
     std::lock_guard<std::mutex> lock(g_serviceMutex);
+    if (HasPendingTransaction(bot->GetGuildId()))
+        return false;
+
     Item* candidate = nullptr;
     for (Item* item : BagItems(bot))
     {
@@ -764,7 +807,7 @@ bool ListSurplusOnAuction(Player* bot)
     candidate->SaveToDB(trans);
     auction->SaveToDB(trans);
     bot->SaveInventoryAndGoldToDB(trans);
-    CharacterDatabase.DirectCommitTransaction(trans);
+    CommitGuildTransaction(trans, bot->GetGuildId());
 
     LOG_INFO("server.loading", "[AIGuildEconomy] {} listed real item {} x{} on AH for {} copper buyout.",
         bot->GetName(), auction->item_template, auction->itemCount, auction->buyout);
@@ -788,6 +831,12 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
     std::lock_guard<std::mutex> lock(g_serviceMutex);
     uint32 const guildId = guild->GetId();
     EnsureEconomy(guildId);
+
+    if (command != "!services" && HasPendingTransaction(guildId))
+    {
+        Reply(player, "[AI Guild] The previous guild transaction is still saving. Please try again in a moment.");
+        return true;
+    }
 
     if (command == "!services")
     {
@@ -835,14 +884,14 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
             return true;
         }
 
+        uint64 const projectedBalance = BankBalance(guildId) + copper;
         CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
         player->SaveGoldToDB(trans);
         AppendBankCredit(trans, guildId, copper, true);
-        CharacterDatabase.DirectCommitTransaction(trans);
+        CommitGuildTransaction(trans, guildId);
 
-        uint32 const processed = ProcessQueued(guildId);
         Reply(player, "[AI Guild] Donated " + std::to_string(gold) + "g. Treasury is now " +
-            MoneyText(BankBalance(guildId)) + ". Processed " + std::to_string(processed) + " queued request(s).");
+            MoneyText(projectedBalance) + ". Queued requests will process on the next service pass.");
         return true;
     }
 
@@ -953,6 +1002,7 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
             return true;
         }
 
+        uint32 const projectedStock = StockCount(guildId, itemId) + count;
         uint32 remaining = count;
         for (Item* item : inventory)
         {
@@ -964,12 +1014,11 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
         CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
         player->SaveInventoryAndGoldToDB(trans);
         AppendStockCredit(trans, guildId, itemId, count);
-        CharacterDatabase.DirectCommitTransaction(trans);
+        CommitGuildTransaction(trans, guildId);
 
-        uint32 const processed = ProcessQueued(guildId);
         Reply(player, "[AI Guild] Deposited " + std::to_string(count) + "x " + proto->Name1 +
-            ". Stock now has " + std::to_string(StockCount(guildId, itemId)) + ". Processed " +
-            std::to_string(processed) + " queued request(s).");
+            ". Stock now has " + std::to_string(projectedStock) +
+            ". Queued requests will process on the next service pass.");
         return true;
     }
 

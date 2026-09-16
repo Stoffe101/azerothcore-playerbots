@@ -5,16 +5,19 @@
 #include "Log.h"
 #include "RBAC.h"
 #include "ScriptMgr.h"
+#include "UpdateTime.h"
 
 using namespace Acore::ChatCommands;
 
 namespace
 {
 constexpr uint32 WATCHDOG_TICK_MS = 5000;
-constexpr uint32 FIRST_REPAIR_DELAY_MS = 15000;
-constexpr uint32 RETRY_DELAY_MS = 30000;
 constexpr uint32 SAFE_STARTUP_BATCH = 10;
-constexpr uint8 MAX_AUTOMATIC_REPAIRS = 4;
+constexpr uint32 PROVISION_ACCOUNTS_PER_STEP = 2;
+constexpr uint32 MAX_PENDING_LOGINS = 20;
+constexpr uint32 WORLD_TICK_BACKPRESSURE_MS = 250;
+constexpr uint32 ZERO_POPULATION_REPAIR_MS = 15000;
+constexpr uint32 STALL_DIAGNOSTIC_MS = 60000;
 
 void PrintBotDiagnostics(ChatHandler* handler)
 {
@@ -23,7 +26,8 @@ void PrintBotDiagnostics(ChatHandler* handler)
 
     AdminPanelGameplay::PopulationStats const stats = AdminPanelGameplay::GetPopulationStats();
     handler->PSendSysMessage(
-        "[BotPopulation] online={} target={} batch={} activity={:.0f}% engine={} autologin={} accounts={}/{} assignedDB={} managerAccounts={} candidates={} pendingLogins={}",
+        "[BotPopulation] state={} online={} target={} batch={} activity={:.0f}% engine={} autologin={} accounts={}/{} assignedDB={} managerAccounts={} selectedCandidates={} usableCapacity={} pendingLogins={}",
+        stats.populationState,
         stats.bots,
         stats.botTarget,
         stats.botBatch,
@@ -35,6 +39,7 @@ void PrintBotDiagnostics(ChatHandler* handler)
         stats.assignedBotAccounts,
         stats.managerRandomAccounts,
         stats.managerCandidates,
+        stats.candidateCapacity,
         stats.pendingBotLogins);
 }
 
@@ -73,107 +78,88 @@ public:
 
         AdminPanelGameplay::PopulationStats const stats = AdminPanelGameplay::GetPopulationStats();
 
-        // A new target is a new population episode. This matters when the realm starts at 0,
-        // the operator later asks for 500/1000, or they deliberately change the target after an
-        // earlier exhausted repair cycle.
         if (!_haveTarget || stats.botTarget != _lastTarget)
         {
             _haveTarget = true;
             _lastTarget = stats.botTarget;
             _zeroElapsed = 0;
-            _attempts = 0;
-            _exhaustionLogged = false;
-            _wasHealthy = stats.bots > 0;
-
-            if (stats.botTarget > 0)
-                LOG_INFO("server.loading", "[AdminPanel] Bot watchdog armed for target={} (online={})", stats.botTarget, stats.bots);
-            return;
+            _stallElapsed = 0;
+            _lastOnline = stats.bots;
+            _lastCapacity = stats.candidateCapacity;
+            LOG_INFO(
+                "server.loading",
+                "[AdminPanel] Population controller target={} online={} usableCapacity={} selectedCandidates={} pending={}",
+                stats.botTarget, stats.bots, stats.candidateCapacity, stats.managerCandidates,
+                stats.pendingBotLogins);
         }
 
         if (stats.botTarget == 0)
         {
             _zeroElapsed = 0;
-            _attempts = 0;
-            _exhaustionLogged = false;
-            _wasHealthy = false;
             return;
         }
 
-        if (stats.bots > 0)
+        bool const capacityMissing = stats.botAccounts < stats.requiredBotAccounts ||
+            stats.candidateCapacity < stats.botTarget;
+        if (capacityMissing)
         {
-            // Seeing even one bot proves that the manager/pool is alive. Reset the outage budget
-            // so a later collapse to zero gets a fresh set of automatic repair attempts instead
-            // of being permanently ignored because the server was healthy once at startup.
-            if (!_wasHealthy)
-                LOG_INFO("server.loading", "[AdminPanel] Bot watchdog healthy: online={} target={}", stats.bots, stats.botTarget);
-            _zeroElapsed = 0;
-            _attempts = 0;
-            _exhaustionLogged = false;
-            _wasHealthy = true;
-            return;
+            bool const loginBackpressure = stats.pendingBotLogins >= MAX_PENDING_LOGINS;
+            bool const worldBackpressure = sWorldUpdateTime.GetLastUpdateTime() >= WORLD_TICK_BACKPRESSURE_MS;
+            if (!loginBackpressure && !worldBackpressure)
+                AdminPanelGameplay::AdvanceBotPopulationCapacity(PROVISION_ACCOUNTS_PER_STEP);
         }
 
-        if (_wasHealthy)
+        if (stats.bots == 0 && stats.managerCandidates == 0 && stats.pendingBotLogins == 0)
         {
-            LOG_WARN("server.loading", "[AdminPanel] Bot watchdog detected population collapse: target={} online=0", stats.botTarget);
-            _wasHealthy = false;
-            _zeroElapsed = 0;
-            _attempts = 0;
-            _exhaustionLogged = false;
-        }
-
-        _zeroElapsed += step;
-        uint32 const delay = _attempts == 0 ? FIRST_REPAIR_DELAY_MS : RETRY_DELAY_MS;
-        if (_zeroElapsed < delay)
-            return;
-
-        _zeroElapsed = 0;
-        if (_attempts >= MAX_AUTOMATIC_REPAIRS)
-        {
-            if (!_exhaustionLogged)
+            _zeroElapsed += step;
+            if (_zeroElapsed >= ZERO_POPULATION_REPAIR_MS)
             {
-                _exhaustionLogged = true;
-                LOG_ERROR(
+                _zeroElapsed = 0;
+                LOG_WARN(
                     "server.loading",
-                    "[AdminPanel] Bot watchdog exhausted {}/{} automatic repairs: target={} online=0 accounts={}/{} assignedDB={} managerAccounts={} candidates={} pending={}. Use .botdiag/.botrepair after inspecting the first Playerbots error.",
-                    uint32(_attempts),
-                    uint32(MAX_AUTOMATIC_REPAIRS),
-                    stats.botTarget,
-                    stats.botAccounts,
-                    stats.requiredBotAccounts,
-                    stats.assignedBotAccounts,
-                    stats.managerRandomAccounts,
-                    stats.managerCandidates,
-                    stats.pendingBotLogins);
+                    "[AdminPanel] Population recovery: target={} online=0 selectedCandidates=0 pending=0 usableCapacity={}",
+                    stats.botTarget, stats.candidateCapacity);
+                AdminPanelGameplay::RepairBotPopulation();
             }
-            return;
+        }
+        else
+        {
+            _zeroElapsed = 0;
         }
 
-        ++_attempts;
-        LOG_WARN(
-            "server.loading",
-            "[AdminPanel] Bot watchdog: target={} but online=0; repair attempt {}/{} (accounts={}/{} assignedDB={} managerAccounts={} candidates={} pending={})",
-            stats.botTarget,
-            uint32(_attempts),
-            uint32(MAX_AUTOMATIC_REPAIRS),
-            stats.botAccounts,
-            stats.requiredBotAccounts,
-            stats.assignedBotAccounts,
-            stats.managerRandomAccounts,
-            stats.managerCandidates,
-            stats.pendingBotLogins);
-
-        AdminPanelGameplay::RepairBotPopulation();
+        if (stats.bots != _lastOnline || stats.candidateCapacity != _lastCapacity)
+        {
+            _lastOnline = stats.bots;
+            _lastCapacity = stats.candidateCapacity;
+            _stallElapsed = 0;
+        }
+        else if (stats.bots != stats.botTarget)
+        {
+            _stallElapsed += step;
+            if (_stallElapsed >= STALL_DIAGNOSTIC_MS)
+            {
+                _stallElapsed = 0;
+                LOG_WARN(
+                    "server.loading",
+                    "[AdminPanel] Population convergence stalled: state={} online={} target={} usableCapacity={} selectedCandidates={} pending={} lastWorldTickMs={}",
+                    stats.populationState, stats.bots, stats.botTarget, stats.candidateCapacity,
+                    stats.managerCandidates, stats.pendingBotLogins, sWorldUpdateTime.GetLastUpdateTime());
+            }
+        }
+        else
+        {
+            _stallElapsed = 0;
+        }
     }
 
 private:
     uint32 _tickElapsed = 0;
     uint32 _zeroElapsed = 0;
+    uint32 _stallElapsed = 0;
     uint32 _lastTarget = 0;
-    uint8 _attempts = 0;
+    uint32 _lastOnline = 0;
+    uint32 _lastCapacity = 0;
     bool _haveTarget = false;
-    bool _wasHealthy = false;
-    bool _exhaustionLogged = false;
 };
 
 class AdminPanelBotRecoveryCommands final : public CommandScript
@@ -200,7 +186,7 @@ public:
     static bool HandleRepair(ChatHandler* handler)
     {
         PrintBotDiagnostics(handler);
-        handler->SendSysMessage("[BotPopulation] Rebuilding RNDbot capacity/assignments/add-events and kicking the login manager...");
+        handler->SendSysMessage("[BotPopulation] Running one bounded capacity/assignment recovery step and kicking the login manager...");
         AdminPanelGameplay::RepairBotPopulation();
         PrintBotDiagnostics(handler);
         return true;

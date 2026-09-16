@@ -52,7 +52,7 @@ bool DeliverReward(Player* player, uint64 rewardId, uint32 itemEntry, uint32 cou
         "UPDATE mod_titan_rune_player_rewards SET delivered=1, delivered_at=CURRENT_TIMESTAMP "
         "WHERE id={} AND guid={} AND delivered=0",
         rewardId, player->GetGUID().GetCounter());
-    CharacterDatabase.DirectCommitTransaction(trans);
+    CharacterDatabase.CommitTransaction(trans);
 
     Notify(player, reason + ": +" + std::to_string(count) + " " + item->Name1);
     return true;

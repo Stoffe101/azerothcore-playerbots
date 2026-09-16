@@ -10,6 +10,9 @@ class Player;
 
 namespace PBAIGuildServices
 {
+// Poll completion of queued character-DB transactions on the world thread.
+void UpdateAsyncTransactions();
+
 // Returns true when the line is a service command handled by the persistent AI-guild backend.
 bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message);
 
