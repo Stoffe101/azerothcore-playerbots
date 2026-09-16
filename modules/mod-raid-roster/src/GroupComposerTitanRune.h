@@ -1,0 +1,6 @@
+#ifndef MOD_RAID_ROSTER_GROUP_COMPOSER_TITAN_RUNE_H
+#define MOD_RAID_ROSTER_GROUP_COMPOSER_TITAN_RUNE_H
+
+void AddGroupComposerTitanRuneScripts();
+
+#endif
