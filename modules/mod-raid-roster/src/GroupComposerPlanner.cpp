@@ -330,7 +330,13 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
 
     auto makeOnline = [&](Player* bot, bool alreadyGrouped)
     {
-        if (!bot || !GET_PLAYERBOT_AI(bot) || bot == master) return;
+        PlayerbotAI* botAI = bot ? GET_PLAYERBOT_AI(bot) : nullptr;
+        if (!bot || !botAI || bot == master) return;
+
+        // Playerbots that currently belong to another game-client master are somebody else's
+        // companion, not part of this composer's available world/guild pool. Never hijack them.
+        if (botAI->HasGameClientMaster() && botAI->GetMaster() != master) return;
+
         if (bot->InBattleground() || bot->InBattlegroundQueue() || bot->IsSpectator()) return;
         if (bot->GetGroup() && bot->GetGroup() != masterGroup) return;
         if (!alreadyGrouped && bot->GetGroupInvite()) return;
@@ -408,9 +414,20 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
             && sCharacterCache->GetCharacterTeamByGuid(guid) != master->GetTeamId()) continue;
 
         Player* online = ObjectAccessor::FindConnectedPlayer(guid);
+        PlayerbotAI* onlineAI = online ? GET_PLAYERBOT_AI(online) : nullptr;
+        if (online && !onlineAI) continue;
+        if (onlineAI && onlineAI->HasGameClientMaster() && onlineAI->GetMaster() != master) continue;
         if (online && (online->InBattleground() || online->InBattlegroundQueue() || online->IsSpectator())) continue;
         if (online && online->GetGroup() && online->GetGroup() != masterGroup) continue;
-        bool alreadyGrouped = online && masterGroup && online->GetGroup() == masterGroup;
+
+        // Offline managed bots can still have persisted group membership in CharacterCache. Never
+        // log in a reserve bot that belongs to another group, and correctly retain one that is
+        // already a member of this composer's live group.
+        ObjectGuid cachedGroup = online ? ObjectGuid::Empty : sCharacterCache->GetCharacterGroupGuidByGuid(guid);
+        bool cachedWithMaster = !online && masterGroup && !cachedGroup.IsEmpty() && cachedGroup == masterGroup->GetGUID();
+        if (!online && !cachedGroup.IsEmpty() && !cachedWithMaster) continue;
+
+        bool alreadyGrouped = online ? (masterGroup && online->GetGroup() == masterGroup) : cachedWithMaster;
         if (online && !alreadyGrouped && (online->GetGroupInvite() || online->IsBeingTeleported() || online->GetInstanceId() != 0)) continue;
         if (!online && config.minimumItemLevel) continue; // unknown gear may not satisfy an explicit floor
 
