@@ -718,6 +718,17 @@ public:
             TryInviteMissing(master, plan);
             if (PlanMembershipComplete(master, plan) && !OwnerHasPendingSync(ownerLow))
             {
+                // The roster can drift while invitations and managed logins are completing. Re-run
+                // the same authoritative snapshot checks immediately before reporting success so a
+                // disconnect, role/spec change or late human join cannot slip through the assembly window.
+                std::string completionValidationError;
+                if (!ValidateAssemblySnapshot(master, plan, completionValidationError))
+                {
+                    plan.assembling = false;
+                    SendProtocol(master, "ERROR", completionValidationError);
+                    continue;
+                }
+
                 std::string arrangementError;
                 plan.assembling = false;
                 if (ApplyArrangement(master, plan, arrangementError))
