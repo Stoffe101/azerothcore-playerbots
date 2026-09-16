@@ -254,6 +254,17 @@ bool RaidSupports(std::string const& activity, uint8 size, bool heroic)
     return false;
 }
 
+bool UsesWrathRaidDifficulty(std::string const& activity)
+{
+    // Wrath introduced the 10/25-player raid difficulty split used by Group::SetRaidDifficulty.
+    // TBC/Classic raids use the legacy regular raid difficulty even when their roster size is 25/40.
+    static std::unordered_set<std::string> const raids = {
+        "naxxramas", "obsidian_sanctum", "eye_of_eternity", "ulduar", "trial_crusader",
+        "onyxia", "vault_archavon", "icecrown", "ruby_sanctum"
+    };
+    return raids.count(activity) != 0;
+}
+
 uint32 DungeonMapId(std::string const& activity)
 {
     static std::unordered_map<std::string, uint32> const maps = {
@@ -329,7 +340,13 @@ void ApplyGroupSettings(Player* master, Plan const& plan)
 
     if (plan.config.mode == "raid")
     {
-        if (plan.config.size == 10)
+        if (!UsesWrathRaidDifficulty(plan.config.activity))
+        {
+            // Classic/TBC raids have one regular instance difficulty. Their 20/25/40-player
+            // roster size must not leak a previous Wrath 25/Heroic difficulty into the live group.
+            group->SetRaidDifficulty(RAID_DIFFICULTY_10MAN_NORMAL);
+        }
+        else if (plan.config.size == 10)
             group->SetRaidDifficulty(plan.config.difficulty == "heroic" ? RAID_DIFFICULTY_10MAN_HEROIC : RAID_DIFFICULTY_10MAN_NORMAL);
         else if (plan.config.size == 25)
             group->SetRaidDifficulty(plan.config.difficulty == "heroic" ? RAID_DIFFICULTY_25MAN_HEROIC : RAID_DIFFICULTY_25MAN_NORMAL);

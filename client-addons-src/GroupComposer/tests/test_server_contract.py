@@ -57,6 +57,12 @@ client_raids = ids(raid_data)
 assert client_raids, "No addon raid metadata parsed"
 missing_raids = [raid for raid in client_raids if f'"{raid}"' not in raid_server]
 assert not missing_raids, f"Raid activity missing from backend validator: {missing_raids}"
+assert 'UsesWrathRaidDifficulty(plan.config.activity)' in SERVER, (
+    "Live raid difficulty application no longer distinguishes Wrath from legacy Classic/TBC raids"
+)
+assert 'group->SetRaidDifficulty(RAID_DIFFICULTY_10MAN_NORMAL);' in SERVER, (
+    "Legacy Classic/TBC raids must reset the live group to regular raid difficulty"
+)
 
 difficulty_data = section(DATA, "D.DUNGEON_DIFFICULTIES = {", "D.RAIDS = {")
 client_difficulties = ids(difficulty_data)
