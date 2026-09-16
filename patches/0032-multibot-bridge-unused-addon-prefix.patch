@@ -1,6 +1,9 @@
 diff --git a/modules/mod-multibot-bridge/src/MultiBotBridge.cpp b/modules/mod-multibot-bridge/src/MultiBotBridge.cpp
 --- a/modules/mod-multibot-bridge/src/MultiBotBridge.cpp
 +++ b/modules/mod-multibot-bridge/src/MultiBotBridge.cpp
-@@ -68,2 +68 @@
+@@ -66,5 +66,4 @@ namespace
+ {
 -char const* const kAddonPrefix = "MBOT";
  char const* const kAddonEnvelope = "MBOT\t";
+ char const* const kBridgeName = "mod-multibot-bridge";
+ char const* const kProtocolVersion = "1";

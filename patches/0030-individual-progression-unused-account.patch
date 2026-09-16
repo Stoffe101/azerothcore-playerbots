@@ -1,6 +1,7 @@
 diff --git a/modules/mod-individual-progression/src/IndividualProgression.cpp b/modules/mod-individual-progression/src/IndividualProgression.cpp
 --- a/modules/mod-individual-progression/src/IndividualProgression.cpp
 +++ b/modules/mod-individual-progression/src/IndividualProgression.cpp
-@@ -194,2 +194 @@ void IndividualProgression::UpdateAccountReputation(uint32 factionId, uint32 acc
+@@ -193,3 +193,2 @@ void IndividualProgression::UpdateAccountReputation(uint32 factionId, uint32 acc
+     Group* group = player->GetGroup();
 -    uint32 account = player->GetSession()->GetAccountId();
      std::string factionName = sFactionStore.LookupEntry(factionId)->name[0];
