@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - integration/bot-ai-refresh-2026-09-14
+      - test/runtime-hardening-group-composer
   workflow_dispatch:
 
 permissions:
