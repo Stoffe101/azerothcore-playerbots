@@ -106,6 +106,28 @@ assert "plan.humanInvitesSent.clear();" in SERVER, "Fresh Assemble must reset it
 assert "plan.humanInvitesSent.count(member.guid.GetCounter())" in SERVER, "Assembly can re-invite a human repeatedly"
 assert "plan.humanInvitesSent.insert(member.guid.GetCounter())" in SERVER, "Sent human invites are not remembered"
 
+# Offline humans remain roster anchors, but an offline group slot must never count as a successfully
+# assembled adventuring player. The online check must happen before the already-grouped fast path.
+validation = section(SERVER, "bool ValidateAssemblySnapshot(", "void InviteHuman(")
+offline_human_pos = validation.index("They remain a locked roster anchor")
+already_grouped_human_pos = validation.index("if (alreadyWithMaster) continue;")
+assert offline_human_pos < already_grouped_human_pos, (
+    "An offline human already in the group can bypass assembly revalidation"
+)
+
+# Ordinary guild/world bots are selected from their live role/spec/gear state. Re-check those hard
+# facts at the Assemble boundary so the reviewed preview cannot silently drift before pruning.
+assert "Planner::InferRole(live)" in validation, "Assemble no longer revalidates selected bot roles"
+assert "changed active role after the preview" in validation, "Role snapshot drift lacks a hard failure"
+assert "Planner::InferSpec(live)" in validation, "Assemble no longer revalidates selected bot specs"
+assert "changed specialization after the preview" in validation, "Spec snapshot drift lacks a hard failure"
+assert "fell below the configured minimum item level after the preview" in validation, (
+    "Configured item-level floor is not protected at the Assemble boundary"
+)
+assert "if (!member.managed)" in validation, (
+    "Managed RaidRoster bots must remain exempt from live role/spec checks because Assemble reconciles them"
+)
+
 # Instance conflicts mirror the stock invite rule: different instance IDs are incompatible only
 # when both players are in different copies of the same map. Merely being in different instances on
 # different maps must not make an otherwise eligible friend/bot disappear from the candidate pool.
@@ -125,5 +147,14 @@ assert required_pin_pos < required_pref_pos < preferred_pin_pos, (
     "Preferred pins must not consume slots before all hard requirements are secured"
 )
 assert "member.pinned = true;" in build, "A hard-selected familiar pin must retain stable/pinned identity"
+
+# Utility coverage describes actual WotLK raid tools, not later-expansion semantics. Soulstone is a
+# pre-applied self-resurrection safety net in this client era, not the planner's on-demand battle-rez
+# capability. Druid Rebirth remains the battle-rez source.
+utility = section(PLANNER, "uint32 Planner::UtilityMask(", "bool Planner::IsRangedDps(")
+warlock_utility = section(utility, "case CLASS_WARLOCK:", "case CLASS_DRUID:")
+druid_utility = section(utility, "case CLASS_DRUID:", "default:")
+assert "UTILITY_BATTLE_REZ" not in warlock_utility, "Warlock incorrectly advertises WotLK battle-rez coverage"
+assert "UTILITY_BATTLE_REZ" in druid_utility, "Druid Rebirth coverage disappeared"
 
 print("Group Composer client/server contract tests passed")
