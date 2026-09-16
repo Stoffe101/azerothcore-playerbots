@@ -348,7 +348,6 @@ UI.optionWidgets = {}
 local optionDefs = {
     { key = "preferGuild", label = "Prefer Guild Members", x = 14, y = -72 },
     { key = "fillWorld", label = "Fill Missing Roles With World Bots", x = 14, y = -108 },
-    { key = "keepMe", label = "Keep Me In Roster", x = 300, y = -72 },
     { key = "balanceClasses", label = "Balance Class / Utility Coverage", x = 300, y = -108 },
     { key = "avoidDuplicateClasses", label = "Avoid Duplicate Classes When Practical", x = 570, y = -72 },
 }
@@ -361,6 +360,10 @@ for _, def in ipairs(optionDefs) do
     cb:SetPoint("TOPLEFT", def.x, def.y)
     UI.optionWidgets[key] = cb
 end
+local anchorText = Text(optionsCard, "YOU - Locked human anchor", "GameFontNormalSmall", C.gold)
+anchorText:SetPoint("TOPLEFT", 304, -76)
+local anchorHint = Text(optionsCard, "Always included in every composed roster", "GameFontHighlightSmall", C.muted)
+anchorHint:SetPoint("TOPLEFT", 304, -91)
 local ilvlLabel = Text(optionsCard, "Minimum Item Level", "GameFontHighlightSmall", C.text)
 ilvlLabel:SetPoint("TOPLEFT", 570, -110)
 local ilvlInput = CreateFrame("EditBox", nil, optionsCard, "InputBoxTemplate")
@@ -389,6 +392,7 @@ SectionTitle(prefsCard, "Class / Spec Preferences", "Add soft preferences or har
 local prefsContainer = CreateFrame("Frame", nil, prefsCard)
 prefsContainer:SetPoint("TOPLEFT", 12, -58); prefsContainer:SetPoint("BOTTOMRIGHT", -12, 10)
 UI.prefRows = { TANK = {}, HEALER = {}, DPS = {} }
+UI.prefEmpty = {}
 UI.prefAreas = {}
 local function ClassItemsForRole(role)
     local items = { { value = "ANY", label = "Any valid class" } }
@@ -405,6 +409,7 @@ local function SpecItems(role, classToken)
     return items
 end
 local function RemovePreference(role, index)
+    if not role or not index then return end
     table.remove(GC:GetConfig().preferences[role], index)
     GC:ResetPlan("Preference changed"); GC:Fire("CONFIG_CHANGED", GC:GetConfig())
 end
@@ -414,59 +419,92 @@ local function AddPreference(role)
     list[#list + 1] = { class = "ANY", spec = "ANY", required = false }
     GC:ResetPlan("Preference changed"); GC:Fire("CONFIG_CHANGED", GC:GetConfig())
 end
-for i, role in ipairs({ "TANK", "HEALER", "DPS" }) do
+for i, roleValue in ipairs({ "TANK", "HEALER", "DPS" }) do
+    local role = roleValue
     local area = CreateFrame("Frame", nil, prefsContainer)
     area:SetWidth(246); area:SetPoint("TOPLEFT", (i - 1) * 258, 0); area:SetPoint("BOTTOM", 0, 0)
     local roleTitle = Text(area, RoleName(role), "GameFontNormal", ROLE_COLOR[role]); roleTitle:SetPoint("TOPLEFT", 4, 0)
     local add = Button(area, "+ Preference", 94, 22, function() AddPreference(role) end); add:SetPoint("TOPRIGHT", -2, 6)
     UI.prefAreas[role] = area
+    local empty = Text(area, "Any valid " .. string.lower(RoleName(role)), "GameFontHighlightSmall", C.dim)
+    empty:SetPoint("TOPLEFT", 4, -28); empty:Hide()
+    UI.prefEmpty[role] = empty
 end
-local function ClearPrefRows()
-    for _, role in ipairs({ "TANK", "HEALER", "DPS" }) do
-        for _, row in ipairs(UI.prefRows[role]) do row:Hide(); row:SetParent(nil) end
-        UI.prefRows[role] = {}
-    end
+
+local function AcquirePrefRow(role, index)
+    local existing = UI.prefRows[role][index]
+    if existing then return existing end
+    local area = UI.prefAreas[role]
+    local row = CreateFrame("Frame", nil, area)
+    row:SetHeight(36)
+
+    local classDD
+    classDD = Dropdown(row, 86,
+        function() return ClassItemsForRole(row.currentRole or role) end,
+        function()
+            local pref = row.currentPref
+            return pref and (pref.class or "ANY") or "ANY"
+        end,
+        function(value)
+            local pref = row.currentPref
+            if not pref then return end
+            pref.class = value; pref.spec = "ANY"
+            GC:ResetPlan("Preference changed"); GC:Fire("CONFIG_CHANGED", GC:GetConfig())
+        end)
+    classDD:SetPoint("LEFT", -14, 0)
+
+    local specDD
+    specDD = Dropdown(row, 78,
+        function()
+            local pref = row.currentPref
+            return SpecItems(row.currentRole or role, pref and pref.class or "ANY")
+        end,
+        function()
+            local pref = row.currentPref
+            if not pref then return "ANY" end
+            return pref.spec == nil and "ANY" or pref.spec
+        end,
+        function(value)
+            local pref = row.currentPref
+            if not pref then return end
+            pref.spec = value
+            GC:ResetPlan("Preference changed"); GC:Fire("CONFIG_CHANGED", GC:GetConfig())
+        end)
+    specDD:SetPoint("LEFT", classDD, "RIGHT", -22, 0)
+
+    local req = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
+    req:SetWidth(20); req:SetHeight(20); req:SetPoint("RIGHT", -26, 0)
+    req:SetScript("OnClick", function(self)
+        local pref = row.currentPref
+        if not pref then return end
+        pref.required = self:GetChecked() and true or false
+        GC:ResetPlan("Preference changed"); GC:Fire("CONFIG_CHANGED", GC:GetConfig())
+    end)
+    local reqText = Text(row, "Req", "GameFontHighlightSmall", C.muted); reqText:SetPoint("LEFT", req, "RIGHT", -2, 0)
+    local remove = CreateFrame("Button", nil, row, "UIPanelCloseButton")
+    remove:SetWidth(20); remove:SetHeight(20); remove:SetPoint("RIGHT", 2, 0)
+    remove:SetScript("OnClick", function() RemovePreference(row.currentRole, row.currentIndex) end)
+
+    row.classDD, row.specDD, row.required = classDD, specDD, req
+    UI.prefRows[role][index] = row
+    return row
 end
+
 local function BuildPrefRows()
-    ClearPrefRows()
     local c = GC:GetConfig()
     for _, role in ipairs({ "TANK", "HEALER", "DPS" }) do
-        local area, list = UI.prefAreas[role], c.preferences[role] or {}
+        UI.prefEmpty[role]:Hide()
+        for _, row in ipairs(UI.prefRows[role]) do row:Hide() end
+        local list = c.preferences[role] or {}
         if #list == 0 then
-            local empty = Text(area, "Any valid " .. string.lower(RoleName(role)), "GameFontHighlightSmall", C.dim)
-            empty:SetPoint("TOPLEFT", 4, -28)
-            local holder = CreateFrame("Frame", nil, area); holder:SetWidth(1); holder:SetHeight(1); holder.text = empty
-            holder:SetScript("OnHide", function(self) if self.text then self.text:Hide() end end)
-            UI.prefRows[role][1] = holder
+            UI.prefEmpty[role]:Show()
         else
             for index, pref in ipairs(list) do
-                local rowIndex, prefRef = index, pref
-                local row = CreateFrame("Frame", nil, area)
-                row:SetHeight(36); row:SetPoint("TOPLEFT", 0, -20 - (index - 1) * 38); row:SetPoint("RIGHT", 0, 0)
-                local classDD = Dropdown(row, 86, function() return ClassItemsForRole(role) end,
-                    function() return prefRef.class or "ANY" end,
-                    function(value)
-                        prefRef.class = value; prefRef.spec = "ANY"
-                        GC:ResetPlan("Preference changed"); GC:Fire("CONFIG_CHANGED", GC:GetConfig())
-                    end)
-                classDD:SetPoint("LEFT", -14, 0)
-                local specDD = Dropdown(row, 78, function() return SpecItems(role, prefRef.class) end,
-                    function() return prefRef.spec == nil and "ANY" or prefRef.spec end,
-                    function(value)
-                        prefRef.spec = value
-                        GC:ResetPlan("Preference changed"); GC:Fire("CONFIG_CHANGED", GC:GetConfig())
-                    end)
-                specDD:SetPoint("LEFT", classDD, "RIGHT", -22, 0)
-                local req = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
-                req:SetWidth(20); req:SetHeight(20); req:SetChecked(prefRef.required and true or false); req:SetPoint("RIGHT", -26, 0)
-                req:SetScript("OnClick", function(self)
-                    prefRef.required = self:GetChecked() and true or false
-                    GC:ResetPlan("Preference changed"); GC:Fire("CONFIG_CHANGED", GC:GetConfig())
-                end)
-                local reqText = Text(row, "Req", "GameFontHighlightSmall", C.muted); reqText:SetPoint("LEFT", req, "RIGHT", -2, 0)
-                local remove = CreateFrame("Button", nil, row, "UIPanelCloseButton")
-                remove:SetWidth(20); remove:SetHeight(20); remove:SetPoint("RIGHT", 2, 0); remove:SetScript("OnClick", function() RemovePreference(role, rowIndex) end)
-                UI.prefRows[role][#UI.prefRows[role] + 1] = row
+                local row = AcquirePrefRow(role, index)
+                row.currentRole, row.currentIndex, row.currentPref = role, index, pref
+                row:ClearAllPoints(); row:SetPoint("TOPLEFT", 0, -20 - (index - 1) * 38); row:SetPoint("RIGHT", 0, 0)
+                row.required:SetChecked(pref.required and true or false)
+                row.classDD:Refresh(); row.specDD:Refresh(); row:Show()
             end
         end
     end
@@ -552,43 +590,77 @@ local function RenderHumans()
     end
     humansText:SetText(table.concat(bits, "   •   "))
 end
-local function DestroyRosterRows()
-    for _, row in ipairs(UI.rosterRows) do row:Hide(); row:SetParent(nil) end
-    UI.rosterRows = {}
+local function HideRosterRows()
+    for _, row in ipairs(UI.rosterRows or {}) do row:Hide() end
+    for _, row in ipairs(UI.rosterGroupRows or {}) do row:Hide() end
+    if UI.rosterEmpty then UI.rosterEmpty:Hide() end
 end
+
+UI.rosterGroupRows = UI.rosterGroupRows or {}
+
+local function AcquireRosterGroup(index)
+    local holder = UI.rosterGroupRows[index]
+    if holder then return holder end
+    holder = CreateFrame("Frame", nil, rosterContent)
+    holder:SetWidth(272); holder:SetHeight(20)
+    holder.text = Text(holder, "", "GameFontNormalSmall", C.muted)
+    holder.text:SetPoint("LEFT", 2, 0)
+    UI.rosterGroupRows[index] = holder
+    return holder
+end
+
+local function AcquireRosterRow(index)
+    local row = UI.rosterRows[index]
+    if row then return row end
+    row = CreateFrame("Frame", nil, rosterContent)
+    row:SetWidth(272); row:SetHeight(28)
+    row.bg = Solid(row, "BACKGROUND", C.panel, 0.85); row.bg:SetAllPoints(row)
+    row.stripe = Solid(row, "ARTWORK", C.muted); row.stripe:SetPoint("TOPLEFT"); row.stripe:SetPoint("BOTTOMLEFT"); row.stripe:SetWidth(3)
+    row.nameText = Text(row, "", "GameFontHighlightSmall", C.text); row.nameText:SetPoint("LEFT", 8, 0); row.nameText:SetWidth(108); row.nameText:SetJustifyH("LEFT")
+    row.roleText = Text(row, "", "GameFontHighlightSmall", C.muted); row.roleText:SetPoint("LEFT", 120, 0); row.roleText:SetWidth(52); row.roleText:SetJustifyH("LEFT")
+    row.classText = Text(row, "", "GameFontHighlightSmall", C.muted); row.classText:SetPoint("LEFT", 176, 0); row.classText:SetWidth(72); row.classText:SetJustifyH("LEFT")
+    row.sourceText = Text(row, "", "GameFontNormalSmall", C.blue); row.sourceText:SetPoint("RIGHT", -6, 0)
+    UI.rosterRows[index] = row
+    return row
+end
+
 local function RenderRoster(plan)
-    DestroyRosterRows()
+    HideRosterRows()
     local members, rowHeight, lastGroup, y = plan.members or {}, 28, -1, 0
+    local groupIndex = 0
     for index, member in ipairs(members) do
         if member.subgroup and member.subgroup > 0 and member.subgroup ~= lastGroup then
             lastGroup = member.subgroup
-            local group = Text(rosterContent, "Group " .. member.subgroup, "GameFontNormalSmall", C.muted)
-            group:SetPoint("TOPLEFT", 2, -y); y = y + 20
-            local holder = CreateFrame("Frame", nil, rosterContent); holder:SetWidth(1); holder:SetHeight(1); holder.text = group
-            holder:SetScript("OnHide", function(self) if self.text then self.text:Hide() end end)
-            UI.rosterRows[#UI.rosterRows + 1] = holder
+            groupIndex = groupIndex + 1
+            local group = AcquireRosterGroup(groupIndex)
+            group:ClearAllPoints(); group:SetPoint("TOPLEFT", 0, -y)
+            group.text:SetText("Group " .. member.subgroup); group:Show(); y = y + 20
         end
-        local row = CreateFrame("Frame", nil, rosterContent)
-        row:SetWidth(272); row:SetHeight(rowHeight); row:SetPoint("TOPLEFT", 0, -y)
-        local bg = Solid(row, "BACKGROUND", index % 2 == 0 and C.panel2 or C.panel, 0.85); bg:SetAllPoints(row)
+
+        local row = AcquireRosterRow(index)
+        row:ClearAllPoints(); row:SetPoint("TOPLEFT", 0, -y)
+        local bg = index % 2 == 0 and C.panel2 or C.panel
+        row.bg:SetTexture(bg[1], bg[2], bg[3], 0.85)
         local color = ROLE_COLOR[member.role] or C.muted
-        local stripe = Solid(row, "ARTWORK", color); stripe:SetPoint("TOPLEFT"); stripe:SetPoint("BOTTOMLEFT"); stripe:SetWidth(3)
-        local name = Text(row, member.name or "?", "GameFontHighlightSmall", member.human and C.gold or C.text); name:SetPoint("LEFT", 8, 0); name:SetWidth(108); name:SetJustifyH("LEFT")
-        local role = Text(row, RoleName(member.role), "GameFontHighlightSmall", color); role:SetPoint("LEFT", 120, 0); role:SetWidth(52); role:SetJustifyH("LEFT")
-        local className = D.CLASS_LABEL[member.class] or member.class or "?"
-        local cls = Text(row, className, "GameFontHighlightSmall", C.muted); cls:SetPoint("LEFT", 176, 0); cls:SetWidth(72); cls:SetJustifyH("LEFT")
-        local sourceLetter = member.human and "H" or (member.source == "GUILD" and "G" or "W")
-        local src = Text(row, sourceLetter, "GameFontNormalSmall", member.human and C.gold or (member.source == "GUILD" and C.green or C.blue)); src:SetPoint("RIGHT", -6, 0)
-        UI.rosterRows[#UI.rosterRows + 1] = row
-        y = y + rowHeight + 2
+        row.stripe:SetTexture(color[1], color[2], color[3], color[4] or 1)
+        row.nameText:SetText(member.name or "?")
+        local nameColor = member.human and C.gold or C.text
+        row.nameText:SetTextColor(nameColor[1], nameColor[2], nameColor[3], nameColor[4] or 1)
+        row.roleText:SetText(RoleName(member.role)); row.roleText:SetTextColor(color[1], color[2], color[3], color[4] or 1)
+        row.classText:SetText(D.CLASS_LABEL[member.class] or member.class or "?")
+        local sourceLetter = member.human and "H" or (member.source == "GUILD" and "G" or (member.source == "ROSTER" and "R" or "W"))
+        row.sourceText:SetText(sourceLetter)
+        local sourceColor = member.human and C.gold or (member.source == "GUILD" and C.green or C.blue)
+        row.sourceText:SetTextColor(sourceColor[1], sourceColor[2], sourceColor[3], sourceColor[4] or 1)
+        row:Show(); y = y + rowHeight + 2
     end
+
     if #members == 0 then
-        local empty = Text(rosterContent, "No roster preview yet.\n\nFind Roster builds the team without inviting anyone.", "GameFontHighlightSmall", C.dim)
-        empty:SetPoint("TOPLEFT", 4, -8); empty:SetPoint("RIGHT", -8, 0); empty:SetJustifyH("LEFT")
-        local holder = CreateFrame("Frame", nil, rosterContent); holder:SetWidth(1); holder:SetHeight(1); holder.text = empty
-        holder:SetScript("OnHide", function(self) if self.text then self.text:Hide() end end)
-        UI.rosterRows[#UI.rosterRows + 1] = holder
-        y = 100
+        if not UI.rosterEmpty then
+            UI.rosterEmpty = Text(rosterContent, "No roster preview yet.\n\nFind Roster builds the team without inviting anyone.", "GameFontHighlightSmall", C.dim)
+            UI.rosterEmpty:SetPoint("TOPLEFT", 4, -8); UI.rosterEmpty:SetPoint("RIGHT", -8, 0); UI.rosterEmpty:SetJustifyH("LEFT")
+        end
+        UI.rosterEmpty:Show(); y = 100
     end
     rosterContent:SetHeight(math.max(340, y + 12))
 end

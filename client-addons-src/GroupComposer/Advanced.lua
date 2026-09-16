@@ -377,6 +377,7 @@ layoutHint:SetPoint("TOPLEFT", layoutTitle, "BOTTOMLEFT", 0, -4); layoutHint:Set
 local layoutArea = CreateFrame("Frame", nil, layout)
 layoutArea:SetPoint("TOPLEFT", 6, -58); layoutArea:SetPoint("BOTTOMRIGHT", -6, 6)
 A.layoutArea, A.layoutRows, A.groupCards = layoutArea, {}, {}
+A.layoutEmpty = nil
 
 local function FindDropGroup(frameUnderMouse)
     local node = frameUnderMouse
@@ -396,15 +397,82 @@ local function IsStableMember(config, member)
     return false
 end
 
+local function HideLayoutPool()
+    for _, row in ipairs(A.layoutRows) do row:Hide() end
+    for _, card in ipairs(A.groupCards) do card:Hide() end
+    if A.layoutEmpty then A.layoutEmpty:Hide() end
+end
+
+local function AcquireGroupCard(index)
+    local card = A.groupCards[index]
+    if card then return card end
+    card = CreateFrame("Frame", nil, layoutArea)
+    card:EnableMouse(true)
+    card.bg = Solid(card, "BACKGROUND", C.panel); card.bg:SetAllPoints(card)
+    card.header = Solid(card, "ARTWORK", C.panel2); card.header:SetPoint("TOPLEFT"); card.header:SetPoint("TOPRIGHT"); card.header:SetHeight(32)
+    card.groupText = Text(card, "", "GameFontNormal", C.text); card.groupText:SetPoint("TOPLEFT", 10, -9)
+    card.countText = Text(card, "", "GameFontHighlightSmall", C.gold); card.countText:SetPoint("TOPRIGHT", -10, -10)
+    A.groupCards[index] = card
+    return card
+end
+
+local function AcquireLayoutRow(index)
+    local row = A.layoutRows[index]
+    if row then return row end
+    row = CreateFrame("Button", nil, layoutArea)
+    row:RegisterForDrag("LeftButton")
+    row.bg = Solid(row, "BACKGROUND", C.bg, 0.86); row.bg:SetAllPoints(row)
+    row.stripe = Solid(row, "ARTWORK", C.muted); row.stripe:SetPoint("TOPLEFT"); row.stripe:SetPoint("BOTTOMLEFT"); row.stripe:SetWidth(3)
+    row.nameText = Text(row, "", "GameFontHighlightSmall", C.text); row.nameText:SetJustifyH("LEFT")
+    row.detailText = Text(row, "", "GameFontHighlightSmall", C.muted); row.detailText:SetJustifyH("LEFT")
+    row.leftButton = Button(row, "<", 26, 22, function()
+        local member = row.currentMember
+        if not member then return end
+        local target = (row.currentGroup or 1) - 1
+        if target < 1 then target = row.groupCount or 1 end
+        GC:MoveMember(member.name, target)
+    end)
+    row.rightButton = Button(row, ">", 26, 22, function()
+        local member = row.currentMember
+        if not member then return end
+        local target = (row.currentGroup or 1) + 1
+        if target > (row.groupCount or 1) then target = 1 end
+        GC:MoveMember(member.name, target)
+    end)
+    row.leftButton:SetPoint("RIGHT", -34, 0); row.rightButton:SetPoint("RIGHT", -5, 0)
+    row:SetScript("OnDragStart", function(self)
+        GC.dragMember = self.currentMember and self.currentMember.name or nil
+    end)
+    row:SetScript("OnDragStop", function()
+        local dragged = GC.dragMember
+        GC.dragMember = nil
+        local target = GetMouseFocus and FindDropGroup(GetMouseFocus()) or nil
+        if dragged and target then GC:MoveMember(dragged, target) end
+    end)
+    row:SetScript("OnEnter", function(self)
+        local member = self.currentMember
+        if not member then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(member.name or "?", 1, 1, 1)
+        GameTooltip:AddLine((D.ROLE_LABEL[member.role] or member.role or "?") .. " • " .. (D.CLASS_LABEL[member.class] or member.class or "?") .. " • " .. (member.spec or ""), 0.8, 0.85, 0.95)
+        GameTooltip:AddLine(member.human and "Human / locked" or ((member.source or "WORLD") .. (member.pinned and " / pinned" or "")), member.human and 1 or 0.7, member.human and 0.7 or 0.9, 0.3)
+        if IsStableMember(GC:GetConfig(), member) then GameTooltip:AddLine("This member's subgroup is saved with custom profiles.", 0.55, 0.85, 1, true) end
+        GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    A.layoutRows[index] = row
+    return row
+end
+
 function A:RefreshLayout()
-    A.layoutRows = ClearRows(A.layoutRows)
-    A.groupCards = ClearRows(A.groupCards)
+    HideLayoutPool()
     local plan, config = GC.plan, GC:GetConfig()
     if not plan.ready or #(plan.members or {}) == 0 then
-        local holder = CreateFrame("Frame", nil, layoutArea)
-        holder.attachedText = Text(layoutArea, "Find a roster first. The complete subgroup layout will appear here before anyone is invited.", "GameFontHighlight", C.dim)
-        holder.attachedText:SetPoint("TOPLEFT", 14, -10); holder.attachedText:SetWidth(950); holder.attachedText:SetJustifyH("LEFT")
-        A.layoutRows[#A.layoutRows + 1] = holder
+        if not A.layoutEmpty then
+            A.layoutEmpty = Text(layoutArea, "Find a roster first. The complete subgroup layout will appear here before anyone is invited.", "GameFontHighlight", C.dim)
+            A.layoutEmpty:SetPoint("TOPLEFT", 14, -10); A.layoutEmpty:SetWidth(950); A.layoutEmpty:SetJustifyH("LEFT")
+        end
+        A.layoutEmpty:Show()
         return
     end
 
@@ -422,62 +490,43 @@ function A:RefreshLayout()
         membersByGroup[group][#membersByGroup[group] + 1] = member
     end
 
+    local poolIndex = 0
     for group = 1, groupCount do
         local rowIndex = math.floor((group - 1) / columns)
         local columnIndex = (group - 1) % columns
-        local card = CreateFrame("Frame", nil, layoutArea)
-        card:SetWidth(cardWidth); card:SetHeight(cardHeight)
+        local card = AcquireGroupCard(group)
+        card:ClearAllPoints(); card:SetWidth(cardWidth); card:SetHeight(cardHeight)
         card:SetPoint("TOPLEFT", columnIndex * (cardWidth + gap), -(rowIndex * (cardHeight + gap)))
-        card.groupIndex = group; card:EnableMouse(true)
-        local cardBg = Solid(card, "BACKGROUND", C.panel); cardBg:SetAllPoints(card)
-        local cardHeader = Solid(card, "ARTWORK", C.panel2); cardHeader:SetPoint("TOPLEFT"); cardHeader:SetPoint("TOPRIGHT"); cardHeader:SetHeight(32)
-        local groupText = Text(card, "GROUP " .. group, "GameFontNormal", C.text); groupText:SetPoint("TOPLEFT", 10, -9)
-        local countText = Text(card, tostring(#membersByGroup[group]) .. "/5", "GameFontHighlightSmall", #membersByGroup[group] == 5 and C.green or C.gold)
-        countText:SetPoint("TOPRIGHT", -10, -10)
-        A.groupCards[#A.groupCards + 1] = card
+        card.groupIndex = group; card.groupText:SetText("GROUP " .. group)
+        card.countText:SetText(tostring(#membersByGroup[group]) .. "/5")
+        local countColor = #membersByGroup[group] == 5 and C.green or C.gold
+        card.countText:SetTextColor(countColor[1], countColor[2], countColor[3], countColor[4] or 1)
+        card:Show()
 
-        for index, memberValue in ipairs(membersByGroup[group]) do
-            local member = memberValue
+        for memberIndex, member in ipairs(membersByGroup[group]) do
+            poolIndex = poolIndex + 1
             local compact = rowCount > 1
             local rowHeight = compact and 34 or 58
             local rowStep = compact and 37 or 62
-            local row = CreateFrame("Button", nil, card)
-            row:SetHeight(rowHeight); row:SetPoint("TOPLEFT", 6, -36 - (index - 1) * rowStep); row:SetPoint("RIGHT", -6, 0)
-            row.groupIndex = group; row:RegisterForDrag("LeftButton")
-            local rowBg = Solid(row, "BACKGROUND", index % 2 == 0 and C.panel2 or C.bg, 0.86); rowBg:SetAllPoints(row)
+            local row = AcquireLayoutRow(poolIndex)
+            row:SetParent(card); row:ClearAllPoints(); row:SetHeight(rowHeight)
+            row:SetPoint("TOPLEFT", 6, -36 - (memberIndex - 1) * rowStep); row:SetPoint("RIGHT", -6, 0)
+            row.groupIndex, row.currentGroup, row.groupCount, row.currentMember = group, group, groupCount, member
+            local bg = memberIndex % 2 == 0 and C.panel2 or C.bg
+            row.bg:SetTexture(bg[1], bg[2], bg[3], 0.86)
             local roleColor = ROLE_COLOR[member.role] or C.muted
-            local stripe = Solid(row, "ARTWORK", roleColor); stripe:SetPoint("TOPLEFT"); stripe:SetPoint("BOTTOMLEFT"); stripe:SetWidth(3)
-            local name = Text(row, member.name or "?", "GameFontHighlightSmall", member.human and C.gold or C.text)
-            name:SetPoint("TOPLEFT", 8, compact and -5 or -10); name:SetWidth(cardWidth - 82); name:SetJustifyH("LEFT")
-            if not compact then
-                local detail = Text(row, (D.ROLE_LABEL[member.role] or member.role or "?") .. " • " .. (D.CLASS_LABEL[member.class] or member.class or "?"), "GameFontHighlightSmall", C.muted)
-                detail:SetPoint("BOTTOMLEFT", 8, 9); detail:SetWidth(cardWidth - 82); detail:SetJustifyH("LEFT")
+            row.stripe:SetTexture(roleColor[1], roleColor[2], roleColor[3], roleColor[4] or 1)
+            row.nameText:ClearAllPoints(); row.nameText:SetPoint("TOPLEFT", 8, compact and -5 or -10); row.nameText:SetWidth(cardWidth - 82)
+            row.nameText:SetText(member.name or "?")
+            local nameColor = member.human and C.gold or C.text
+            row.nameText:SetTextColor(nameColor[1], nameColor[2], nameColor[3], nameColor[4] or 1)
+            if compact then
+                row.detailText:Hide()
+            else
+                row.detailText:ClearAllPoints(); row.detailText:SetPoint("BOTTOMLEFT", 8, 9); row.detailText:SetWidth(cardWidth - 82)
+                row.detailText:SetText((D.ROLE_LABEL[member.role] or member.role or "?") .. " • " .. (D.CLASS_LABEL[member.class] or member.class or "?")); row.detailText:Show()
             end
-            local left = Button(row, "<", 26, 22, function()
-                local target = group - 1; if target < 1 then target = groupCount end
-                GC:MoveMember(member.name, target)
-            end); left:SetPoint("RIGHT", -34, 0)
-            local right = Button(row, ">", 26, 22, function()
-                local target = group + 1; if target > groupCount then target = 1 end
-                GC:MoveMember(member.name, target)
-            end); right:SetPoint("RIGHT", -5, 0)
-            row:SetScript("OnDragStart", function() GC.dragMember = member.name end)
-            row:SetScript("OnDragStop", function()
-                local dragged = GC.dragMember
-                GC.dragMember = nil
-                local target = GetMouseFocus and FindDropGroup(GetMouseFocus()) or nil
-                if dragged and target then GC:MoveMember(dragged, target) end
-            end)
-            row:SetScript("OnEnter", function(self)
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                GameTooltip:AddLine(member.name or "?", 1, 1, 1)
-                GameTooltip:AddLine((D.ROLE_LABEL[member.role] or member.role or "?") .. " • " .. (D.CLASS_LABEL[member.class] or member.class or "?") .. " • " .. (member.spec or ""), 0.8, 0.85, 0.95)
-                GameTooltip:AddLine(member.human and "Human / locked" or ((member.source or "WORLD") .. (member.pinned and " / pinned" or "")), member.human and 1 or 0.7, member.human and 0.7 or 0.9, 0.3)
-                if IsStableMember(config, member) then GameTooltip:AddLine("This member's subgroup is saved with custom profiles.", 0.55, 0.85, 1, true) end
-                GameTooltip:Show()
-            end)
-            row:SetScript("OnLeave", function() GameTooltip:Hide() end)
-            A.layoutRows[#A.layoutRows + 1] = row
+            row:Show()
         end
     end
 end

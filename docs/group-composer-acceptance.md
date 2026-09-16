@@ -137,7 +137,7 @@ Every failure must preserve humans, avoid silently assembling nonsense, explain 
 
 Open the People editor, repeatedly refresh anchors, switch modes, alter roles, Find Roster and clear/rebuild previews for at least 50 cycles. Test with a human-heavy raid if possible.
 
-Expected: role dropdowns and rows remain responsive, no progressive frame explosion or major FPS degradation occurs, and scrolling/section layout stays intact for large 25/40-player rosters.
+Expected: human-role dropdowns, class/spec preference rows, main roster preview rows and Roster Editor subgroup cards are pooled/reused. Repeated refreshes must remain responsive without progressive frame growth or major FPS degradation, and scrolling/section layout must stay intact for large 25/40-player rosters. Verify that the main Roster Rules panel shows the composing character as a locked human anchor and does not offer a fake "Keep Me" toggle.
 
 ## Release gate
 

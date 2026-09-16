@@ -12,6 +12,8 @@ import re
 ROOT = Path(__file__).resolve().parents[3]
 DATA = (ROOT / "client-addons-src/GroupComposer/Data.lua").read_text(encoding="utf-8")
 POLISH = (ROOT / "client-addons-src/GroupComposer/Polish.lua").read_text(encoding="utf-8")
+UI = (ROOT / "client-addons-src/GroupComposer/UI.lua").read_text(encoding="utf-8")
+ADVANCED = (ROOT / "client-addons-src/GroupComposer/Advanced.lua").read_text(encoding="utf-8")
 SERVER = (ROOT / "modules/mod-raid-roster/src/GroupComposerCommand.cpp").read_text(encoding="utf-8")
 PLANNER = (ROOT / "modules/mod-raid-roster/src/GroupComposerPlanner.cpp").read_text(encoding="utf-8")
 TYPES = (ROOT / "modules/mod-raid-roster/src/GroupComposerTypes.h").read_text(encoding="utf-8")
@@ -92,6 +94,18 @@ assert 'StaticPopupDialogs["GROUPCOMPOSER_CONFIRM_ASSEMBLY"]' in POLISH, (
 )
 assert 'StaticPopup_Show("GROUPCOMPOSER_CONFIRM_ASSEMBLY"' in POLISH, (
     "Assemble no longer routes through the confirmation popup"
+)
+assert 'key = "keepMe"' not in UI, (
+    "The immutable local-player anchor must not be exposed as a misleading toggle"
+)
+assert 'YOU - Locked human anchor' in UI, (
+    "The main composer should explain that the local player is always included"
+)
+assert 'local function AcquirePrefRow' in UI and 'local function AcquireRosterRow' in UI, (
+    "Main-window preference/preview rows must be pooled instead of leaking WoW frames on refresh"
+)
+assert 'local function AcquireLayoutRow' in ADVANCED and 'local function AcquireGroupCard' in ADVANCED, (
+    "Roster Editor layout rows/cards must be pooled for repeated 25/40-player refreshes"
 )
 
 # Safety invariants. These are intentionally source-level contracts because removing any one of
