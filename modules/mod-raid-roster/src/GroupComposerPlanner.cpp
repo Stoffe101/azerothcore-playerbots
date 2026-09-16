@@ -356,7 +356,9 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         AddCandidate(out, seen, std::move(c));
     };
 
-    // Keep already grouped bots eligible first; scoring strongly prefers them and avoids churn.
+    // Existing group bots remain eligible so an otherwise equal composition does not churn for no
+    // reason. They are not locked anchors, however; Prefer Guild must still be able to replace an
+    // ordinary world bot with a suitable persistent guild companion.
     if (masterGroup)
     {
         for (Group::MemberSlot const& slot : masterGroup->GetMemberSlots())
@@ -421,6 +423,9 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         c.online = online != nullptr;
         c.managed = true;
         c.alreadyGrouped = alreadyGrouped;
+        // Fill World is the user's fallback boundary. A non-guild managed reserve bot counts as
+        // fallback just like an ordinary random-world bot unless it is already in the live group.
+        if (!c.guild && !config.fillWorld && !c.alreadyGrouped) continue;
         if (online)
         {
             c.name = online->GetName();
@@ -454,8 +459,10 @@ int CandidateScore(Candidate const& candidate, Config const& config,
     std::array<uint8, 12> const& classCounts, Coverage const& coverage)
 {
     int score = 0;
-    if (candidate.alreadyGrouped) score += 10000;
-    if (config.preferGuild && candidate.guild) score += 2200;
+    // Guild preference is a product-level priority. Existing bots get a meaningful churn bonus, but
+    // that bonus must not overpower "Prefer Guild Members" and turn the option into a cosmetic flag.
+    if (config.preferGuild && candidate.guild) score += 5000;
+    if (candidate.alreadyGrouped) score += 1200;
     if (candidate.online) score += 250;
     if (candidate.managed) score += 80;
 
@@ -565,7 +572,7 @@ bool Planner::CanClassFillRole(uint8 cls, uint8 role)
     switch (cls)
     {
         case CLASS_WARRIOR:      return role == ROLE_TANK || role == ROLE_DPS;
-        case CLASS_PALADIN:      return true;
+        case CLASS_PALIN:        return true;
         case CLASS_HUNTER:       return role == ROLE_DPS;
         case CLASS_ROGUE:        return role == ROLE_DPS;
         case CLASS_PRIEST:       return role == ROLE_HEALER || role == ROLE_DPS;
@@ -807,8 +814,9 @@ bool Planner::Build(Player* master, Config const& config, Plan& out, std::string
         else if (member.managed) ++managedSelected;
         else ++worldSelected;
     }
-    if (config.preferGuild && worldSelected)
-        AddWarningOnce(out, std::to_string(worldSelected) + " world bot(s) were used because the guild/managed pool could not satisfy every slot.");
+    uint32 fallbackSelected = worldSelected + managedSelected;
+    if (config.preferGuild && fallbackSelected)
+        AddWarningOnce(out, std::to_string(fallbackSelected) + " non-guild fallback bot(s) were used because the guild pool could not satisfy every slot.");
     if (config.balanceClasses && config.size >= 10 && UniqueClassCount(out) < 5)
         AddWarningOnce(out, "Class diversity is limited; the roster is role-correct but could not cover many different classes.");
 
