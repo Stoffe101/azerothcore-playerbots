@@ -1,0 +1,88 @@
+name: Group Composer checks
+
+on:
+  push:
+    branches:
+      - test/runtime-hardening-group-composer
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: group-composer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lua-335:
+    name: Lua 5.1 addon checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1
+
+      - name: Parse every Group Composer Lua file
+        run: |
+          set -euo pipefail
+          find client-addons-src/GroupComposer -type f -name '*.lua' -print0 \
+            | xargs -0 -n1 luac5.1 -p
+
+      - name: Run data and profile tests
+        run: lua5.1 client-addons-src/GroupComposer/tests/test_data_profiles.lua
+
+  source-sanity:
+    name: Source and integration contract checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check addon manifest and backend registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '^## Interface: 30300$' client-addons-src/GroupComposer/GroupComposer.toc
+          grep -q '^Advanced.lua$' client-addons-src/GroupComposer/GroupComposer.toc
+          grep -q '^People.lua$' client-addons-src/GroupComposer/GroupComposer.toc
+          grep -q '^Polish.lua$' client-addons-src/GroupComposer/GroupComposer.toc
+          grep -q 'AddGroupComposerScripts();' modules/mod-raid-roster/src/RaidRosterLoader.cpp
+          grep -q 'AddGroupComposerTitanRuneScripts();' modules/mod-raid-roster/src/RaidRosterLoader.cpp
+          grep -q 'HandleAssemble' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'HandleQueue' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'Planner::Build' modules/mod-raid-roster/src/GroupComposerPlanner.cpp
+          grep -q 'SwapMembersGroup' patches/0015-core-atomic-raid-subgroup-swap.patch
+          test -f modules/mod-titan-rune/src/TitanRuneSystem.h
+          test -f modules/mod-raid-roster/src/GroupComposerTitanRune.cpp
+
+      - name: Check addon/backend activity contract
+        run: python3 client-addons-src/GroupComposer/tests/test_server_contract.py
+
+      - name: Check Titan Rune bridge contract
+        run: python3 client-addons-src/GroupComposer/tests/test_titan_bridge_contract.py
+
+      - name: Reject accidental modern classes in runtime source
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_files=(
+            client-addons-src/GroupComposer/Data.lua
+            client-addons-src/GroupComposer/Profiles.lua
+            client-addons-src/GroupComposer/Core.lua
+            client-addons-src/GroupComposer/UI.lua
+            client-addons-src/GroupComposer/Advanced.lua
+            client-addons-src/GroupComposer/People.lua
+            client-addons-src/GroupComposer/Polish.lua
+            modules/mod-raid-roster/src/GroupComposerCommand.cpp
+            modules/mod-raid-roster/src/GroupComposerPlanner.cpp
+            modules/mod-raid-roster/src/GroupComposerTypes.h
+            modules/mod-raid-roster/src/GroupComposerTitanRune.cpp
+          )
+          if grep -niE '\b(MONK|DEMONHUNTER|DEMON_HUNTER|EVOKER)\b' "${runtime_files[@]}"; then
+            echo 'Modern post-WotLK class token found in Group Composer runtime source.' >&2
+            exit 1
+          fi

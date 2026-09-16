@@ -1,17 +1,20 @@
 # Group Composer in-game test report
 
-Use this alongside `docs/group-composer-acceptance.md` when the feature reaches the live 3.3.5a realm. The acceptance matrix defines what must be tested; this file keeps the results reproducible instead of relying on memory.
+Use this alongside `docs/group-composer-acceptance.md` and the combined runtime-hardening acceptance procedure when testing the live WoW 3.3.5a realm. Record exact results rather than relying on memory.
 
 ## Environment
 
 - Date:
 - Tester:
-- Realm branch / commit:
+- Combined branch / commit:
+- Runtime-hardening base SHA: `6fa5137abba55030bcdc3ce4c38cdee7a3d78946`
 - WoW client: 3.3.5a build 12340
+- Client-pack SHA-256:
 - Resolution:
 - UI scale:
 - Character / class / role:
 - Number of online world Playerbots:
+- Population target / state / capacity / pending:
 - Number of eligible guild Playerbots:
 
 ## Result table
@@ -25,9 +28,12 @@ Use this alongside `docs/group-composer-acceptance.md` when the feature reaches 
 | Full-human party validation | ☐ Pass ☐ Fail | | |
 | Stock Normal RDF handoff | ☐ Pass ☐ Fail | | |
 | Stock Heroic RDF handoff | ☐ Pass ☐ Fail | | |
-| Titan Rune Alpha preserved / safe handoff refusal | ☐ Pass ☐ Fail | | |
-| Titan Rune Beta preserved / safe handoff refusal | ☐ Pass ☐ Fail | | |
-| Titan Rune Gamma preserved / safe handoff refusal | ☐ Pass ☐ Fail | | |
+| Titan Rune Alpha supported named handoff | ☐ Pass ☐ Fail | | |
+| Titan Rune Beta / Trial of the Champion handoff | ☐ Pass ☐ Fail | | |
+| Titan Rune Gamma / Frozen Halls handoff | ☐ Pass ☐ Fail | | |
+| Unsupported Alpha + Trial of the Champion rejected | ☐ Pass ☐ Fail | | |
+| Titan Rune Random queues only mode-supported Heroics | ☐ Pass ☐ Fail | | |
+| Titan Rune stale reviewed roster rejected | ☐ Pass ☐ Fail | | |
 | ICC 10 Normal | ☐ Pass ☐ Fail | | |
 | ICC 10 Heroic | ☐ Pass ☐ Fail | | |
 | ICC 25 Normal 2/6/17 | ☐ Pass ☐ Fail | | |
@@ -47,6 +53,8 @@ Use this alongside `docs/group-composer-acceptance.md` when the feature reaches 
 | Human decline does not invite-spam | ☐ Pass ☐ Fail | | |
 | Selected bot role/spec drift blocks stale Assemble | ☐ Pass ☐ Fail | | |
 | Bot controlled by another real player is protected | ☐ Pass ☐ Fail | | |
+| Composer works during population ramp | ☐ Pass ☐ Fail | | |
+| Protected grouped/LFG bots survive downscale | ☐ Pass ☐ Fail | | |
 | 1920x1080 layout / scrolling | ☐ Pass ☐ Fail | | |
 | 3440x1440 layout / scaling | ☐ Pass ☐ Fail | | |
 | 50-cycle UI/frame-pool regression | ☐ Pass ☐ Fail | | |
@@ -55,6 +63,6 @@ Use this alongside `docs/group-composer-acceptance.md` when the feature reaches 
 
 ## Failure capture
 
-For every failure, record the exact `[GC]` message shown in chat, what the live party/raid contained before pressing the button, the preview membership and subgroup layout, and whether any real player or unrelated Playerbot was changed. If the worldserver reports an assertion, crash or C++ error, capture the relevant server log block before retrying.
+For every failure, record the exact `[GC]` or `[Titan Rune]` message shown in chat, what the live party/raid contained before pressing the button, the preview membership and subgroup layout, the population-controller state, and whether any real player or unrelated Playerbot was changed. If worldserver reports an assertion, crash, C++ error or LFG/Titan diagnostic anomaly, capture the relevant server log block before retrying.
 
-Do not merge PR #20 solely because most rows pass. Any failure involving silent human removal, bot ownership hijacking, stale-preview destructive changes, incorrect 25/40-player subgroup membership, or server instability is a release blocker.
+Do not merge PR #20 or promote the combined branch solely because most rows pass. Any failure involving silent human removal, bot ownership hijacking, stale-preview destructive changes, unsupported Titan Rune activation, incorrect 25/40-player subgroup membership, population-controller corruption, or server instability is a release blocker.

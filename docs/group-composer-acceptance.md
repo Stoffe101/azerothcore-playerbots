@@ -1,6 +1,6 @@
 # Group Composer acceptance matrix
 
-This checklist is the manual in-game acceptance gate for the WoW 3.3.5a Group Composer feature. Automated CI validates syntax, protocol contracts and pinned backend compilation, but these scenarios must still be exercised on the actual realm because invitation flow, Playerbots login timing, RDF handoff and live raid subgroup placement are runtime behaviors.
+This checklist is the manual in-game acceptance gate for the WoW 3.3.5a Group Composer feature on the combined runtime-hardening stack. Automated CI validates Lua 5.1 syntax, protocol contracts, the Titan Rune bridge and the full pinned C++ server build, but invitation flow, Playerbots login timing, RDF state, Titan Rune activation and live raid subgroup placement still require the actual realm/client.
 
 ## Safety gate
 
@@ -10,7 +10,7 @@ If a real human joins after a preview was generated, Assemble must refuse and re
 
 ## Dungeon 5-player baseline
 
-Use a level-appropriate character and select a normal or heroic dungeon.
+Use a level-appropriate character and select a Normal or Heroic dungeon.
 
 1. Solo human DPS, target `1 Tank / 1 Healer / 3 DPS`.
 2. Find Roster.
@@ -19,8 +19,8 @@ Use a level-appropriate character and select a normal or heroic dungeon.
 5. Verify one tank, one healer and three DPS total.
 6. Assemble and confirm.
 7. Verify selected bots join automatically and no unselected human is touched.
-8. Queue through Dungeon Finder for a stock Normal/Heroic dungeon and verify the composed role masks are accepted.
-9. Enter the dungeon and verify existing Playerbots dungeon behavior still drives navigation/combat rather than Group Composer trying to become a second dungeon AI system.
+8. Queue through Dungeon Finder and verify the composed role masks are accepted.
+9. Enter the dungeon and verify Playerbots/Dungeon Clear own navigation and combat rather than Group Composer trying to become a second dungeon AI system.
 
 Repeat with the human manually overridden to Tank. The preview must then add `1 Healer + 3 DPS`, not another tank. Inside the dungeon, bots must respect human tank authority.
 
@@ -35,6 +35,21 @@ Expected composed result: `2 humans + 3 bots`, specifically `1 Healer + 2 DPS` b
 Form a complete five-human party and Find Roster.
 
 Expected: no bots selected. Group Composer acts only as a composition validator/organizer. Assemble must not manufacture bot slots simply because bot fallback is enabled.
+
+## Titan Rune RDF handoff
+
+Alpha, Beta and Gamma are realm protocols layered on stock Heroic RDF, not fake client difficulty IDs. Group Composer must preserve the selected protocol in the profile/preview and use the realm Titan Rune bridge at queue time.
+
+For each protocol, assemble a valid five-player roster first. The composing character must be the real party leader.
+
+1. **Alpha:** choose a supported base dungeon such as Utgarde Keep. Queue from Group Composer. Verify the party enters the Heroic instance and `.titan status` reports Alpha active after instance creation.
+2. **Beta:** repeat with Trial of the Champion, which is supported for Beta/Gamma but not Alpha. Verify Beta activates and Group Composer keeps the reviewed 1/1/3 roles.
+3. **Gamma:** repeat with a Frozen Halls dungeon. Verify Gamma reward-track activation while the realm preserves its intended Frozen Halls normal-Heroic stat behavior.
+4. Select **Alpha + Trial of the Champion**. Queue must fail clearly before joining RDF because that map/mode pair is unsupported.
+5. Select **Random Dungeon + Alpha/Beta/Gamma**. Group Composer must queue a set of mode-supported specific Heroics, not the unrestricted stock Random Heroic category. No selected dungeon may fall outside `TitanRune::IsSupportedDungeon` for that protocol.
+6. Change live party membership after preview and before Titan Rune queue. The bridge must reject the stale reviewed roster rather than applying role masks to a different party.
+
+The group leader's persisted Titan Rune selection is authoritative when the Heroic instance is created. This is an intentional integration with the realm's existing Titan Rune system.
 
 ## ICC 25 baseline
 
@@ -110,11 +125,11 @@ After Find Roster but before Assemble, deliberately change one selected ordinary
 
 Expected: Assemble revalidates the reviewed snapshot and refuses stale non-managed bot state. Managed roster bots may be reconciled by their controlled spec/gear lifecycle during assembly.
 
-## Titan Rune modes
+## Population-controller coexistence
 
-Select Alpha, Beta and Gamma in Dungeon mode.
+Exercise Group Composer while the runtime-hardening bot population controller is changing targets. At minimum, compose/queue a dungeon during one upward transition and assemble a raid after the target stabilizes.
 
-Expected: profiles and preview retain the selected Titan Rune mode. Group Composer must not pretend these custom modes are stock 3.3.5a RDF difficulty IDs. The ordinary Dungeon Finder handoff should refuse with the explicit Titan Rune message until/where the custom realm integration provides its supported entry path.
+Expected: Group Composer only uses candidates the Playerbots/runtime layer reports as live and eligible. Population downscale must not silently remove the composing human, a bot currently protected by the active group/LFG state, or a bot controlled by another real player. A candidate disappearing after preview must be caught by assembly revalidation.
 
 ## Failure and retry UX
 
@@ -130,6 +145,8 @@ Exercise at least these failures:
 - real human joins after preview
 - human declines invite
 - assembly timeout
+- unsupported Titan Rune map/mode pair
+- Titan Rune queue after live party drift
 
 Every failure must preserve humans, avoid silently assembling nonsense, explain why the reviewed roster cannot be committed, and allow the user to correct the configuration and retry.
 
@@ -137,21 +154,24 @@ Every failure must preserve humans, avoid silently assembling nonsense, explain 
 
 Open the People editor, repeatedly refresh anchors, switch modes, alter roles, Find Roster and clear/rebuild previews for at least 50 cycles. Test with a human-heavy raid if possible.
 
-Expected: human-role dropdowns, class/spec preference rows, main roster preview rows and Roster Editor subgroup cards are pooled/reused. Repeated refreshes must remain responsive without progressive frame growth or major FPS degradation, and scrolling/section layout must stay intact for large 25/40-player rosters. Verify that the main Roster Rules panel shows the composing character as a locked human anchor and does not offer a fake "Keep Me" toggle.
+Expected: human-role dropdowns, class/spec preference rows, main roster preview rows and Roster Editor subgroup cards are pooled/reused. Repeated refreshes must remain responsive without progressive frame growth or major FPS degradation, and scrolling/section layout must stay intact for large 25/40-player rosters. Verify that the main Roster Rules panel shows the composing character as a locked human anchor and does not offer a fake `Keep Me` toggle.
 
 ## Release gate
 
 Group Composer is ready to leave draft status only when:
 
 - Lua 5.1 checks pass.
-- Source/client-server contract checks pass.
-- Pinned AzerothCore + Playerbots backend compile passes.
+- Source/client-server and Titan Rune bridge contract checks pass.
+- The complete runtime-hardening + Group Composer pinned server stack compiles and installs with warnings-as-errors.
 - Dungeon 5-player acceptance passes.
+- Stock Normal/Heroic RDF handoff passes.
+- Alpha/Beta/Gamma supported and unsupported handoff cases pass.
 - 10/25/40 raid role-wide composition passes.
 - Full raid subgroup application passes.
 - Human-first safety cases pass.
 - Required/Preferred ordering passes.
 - Guild preference with world fallback passes.
+- Runtime population-controller coexistence passes.
 - No destructive action occurs before explicit confirmed Assemble.
 
 The product rule remains: **Admin Panel controls the world. Group Composer controls the adventure party.**
