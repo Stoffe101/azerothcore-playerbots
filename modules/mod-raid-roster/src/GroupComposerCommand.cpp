@@ -458,12 +458,25 @@ bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& err
 
         if (member.human)
         {
-            if (member.guid == master->GetGUID() || alreadyWithMaster) continue;
+            if (member.guid == master->GetGUID())
+            {
+                if (!live || GET_PLAYERBOT_AI(live))
+                {
+                    error = "Your character is no longer available as the live human roster anchor.";
+                    return false;
+                }
+                continue;
+            }
+
+            // Group membership persists for an offline character, so checking IsMember() first can
+            // make a disconnected friend look assembled. Preserve the human anchor, but require the
+            // real player to be online before committing the reviewed adventure roster.
             if (!live || GET_PLAYERBOT_AI(live))
             {
-                error = "Human player '" + member.name + "' is no longer online and available.";
+                error = "Human player '" + member.name + "' is offline. They remain a locked roster anchor, but the group cannot be assembled until they return or you explicitly reform the party and Find Roster again.";
                 return false;
             }
+            if (alreadyWithMaster) continue;
             if (live->GetGroup() && live->GetGroup() != group)
             {
                 error = "Human player '" + member.name + "' joined another group after the preview.";
@@ -510,6 +523,33 @@ bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& err
         {
             error = "Selected bot '" + member.name + "' is no longer available. Run Find Roster again.";
             return false;
+        }
+
+        // Ordinary guild/world bots are selected from their live state and are not rewritten by
+        // Group Composer. Revalidate the reviewed role/spec/item-level snapshot immediately before
+        // any pruning. Managed RaidRoster bots are intentionally excluded because Assemble owns
+        // their controlled talent/gear reconciliation lifecycle.
+        if (!member.managed)
+        {
+            uint8 liveRole = Planner::InferRole(live);
+            if (liveRole != member.role)
+            {
+                error = "Selected bot '" + member.name + "' changed active role after the preview. Run Find Roster again.";
+                return false;
+            }
+
+            uint8 liveSpec = Planner::InferSpec(live);
+            if (member.spec != ANY_SPEC && liveSpec != ANY_SPEC && liveSpec != member.spec)
+            {
+                error = "Selected bot '" + member.name + "' changed specialization after the preview. Run Find Roster again.";
+                return false;
+            }
+
+            if (plan.config.minimumItemLevel && live->GetAverageItemLevel() + 0.001f < plan.config.minimumItemLevel)
+            {
+                error = "Selected bot '" + member.name + "' fell below the configured minimum item level after the preview. Run Find Roster again.";
+                return false;
+            }
         }
     }
     return true;
