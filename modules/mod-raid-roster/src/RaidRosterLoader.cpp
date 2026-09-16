@@ -8,6 +8,7 @@
 #include "AutoDungeonClear.h"
 #include "EncounterLifecycle.h"
 #include "GroupComposerCommand.h"
+#include "GroupComposerTitanRune.h"
 #include "GuildGroupDirector.h"
 #include "RaidLeaderAuto.h"
 #include "RaidLeaderCommand.h"
@@ -40,6 +41,7 @@ void Addmod_raid_rosterScripts()
     new AdventureGuideCommand();
     new RaidLeaderCommand();
     AddGroupComposerScripts();
+    AddGroupComposerTitanRuneScripts();
     AddAdventureStartScripts();
     AddAdventureControlPlayerScripts();
     AddAdventureProgressionRewardScripts();
