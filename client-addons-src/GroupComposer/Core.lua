@@ -376,7 +376,13 @@ function GC:HandleProtocolMessage(message)
         GC:Fire("STATUS", fields[2] or "Server error")
     end
 
-    if kind ~= "ANCHOR" and kind ~= "ANCHORRESET" and kind ~= "ANCHORDONE" then GC:Fire("PLAN_CHANGED", GC.plan) end
+    -- META/MEMBER/COVERAGE/WARN form one multipart server snapshot. Rendering after every
+    -- member makes a 25/40-player preview rebuild its roster frames dozens of times and causes
+    -- visible hitching plus unnecessary hidden-frame churn on the 3.3.5a client. RESET clears
+    -- the previous preview immediately; READY publishes the complete new snapshot once.
+    if kind == "RESET" or kind == "READY" or kind == "ERROR" then
+        GC:Fire("PLAN_CHANGED", GC.plan)
+    end
     return true
 end
 
