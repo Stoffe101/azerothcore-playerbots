@@ -99,6 +99,17 @@ assert "group->GetMembersCount() == plan.members.size()" in SERVER, "Assembly mu
 assert "(void)keepMe; config.keepMe = true" in SERVER, "Local player anchor must remain mandatory server-side"
 assert "The group gained a real player after the preview" in SERVER, "Late human joins must force a fresh preview"
 
+# Assembly has an asynchronous window while bots log in and humans accept. The exact reviewed
+# snapshot must therefore be checked both before the first destructive step and once more before
+# success/subgroup application is reported.
+world_update = section(SERVER, "class GroupComposerWorld", "ChatCommandTable GroupComposerCommand::GetCommands")
+assert "ValidateAssemblySnapshot(master, plan, completionValidationError)" in world_update, (
+    "Assembly completion lost its second authoritative snapshot validation"
+)
+assert world_update.index("ValidateAssemblySnapshot(master, plan, completionValidationError)") < world_update.index("ApplyArrangement(master, plan, arrangementError)"), (
+    "Final snapshot validation must happen before live subgroup application"
+)
+
 # A real player's invite is user-facing state, not a retryable bot operation. One explicit Assemble
 # may send a human invite once; a later explicit Assemble is the retry boundary.
 assert "std::unordered_set<uint32> humanInvitesSent;" in TYPES, "Plan lost one-shot human invite tracking"
