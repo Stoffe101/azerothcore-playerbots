@@ -4,7 +4,8 @@ local UI = GC.UI
 
 -- Small compatibility/polish layer loaded after the main UI. This keeps safety rules out of the
 -- larger rendering/protocol files while preserving profiles written by earlier addon versions.
-D.VERSION = "0.3.0"
+-- Data.lua owns the canonical addon version. Do not overwrite it here or the runtime diagnostics
+-- can silently disagree with the TOC/package version after a release bump.
 GC.version = D.VERSION
 
 local function ForcePlayerAnchor()
@@ -12,6 +13,9 @@ local function ForcePlayerAnchor()
     config.options = config.options or {}
     config.options.keepMe = true
 
+    -- Compatibility for profiles/UI loaded from older Group Composer builds. Current UI versions
+    -- show the immutable local-player anchor as text rather than a toggle, so this branch is normally
+    -- absent while still making an in-place upgrade safe.
     if UI and UI.optionWidgets and UI.optionWidgets.keepMe then
         local cb = UI.optionWidgets.keepMe
         cb:SetChecked(true)
