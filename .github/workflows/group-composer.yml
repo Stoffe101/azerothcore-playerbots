@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/group-composer
+      - feature/group-composer-next
   workflow_dispatch:
 
 permissions:
