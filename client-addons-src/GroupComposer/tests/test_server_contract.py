@@ -136,6 +136,15 @@ assert "master->GetMapId() == other->GetMapId()" in planner_instances, (
     "Planner instance-conflict filtering drifted from the stock group-invite rule"
 )
 
+# Every WotLK playable class must remain represented in the server role-capability switch. This
+# deliberately catches misspelled enum names as well as accidental modern-class substitutions.
+role_caps = section(PLANNER, "bool Planner::CanClassFillRole(", "uint32 Planner::UtilityMask(")
+for token in (
+    "CLASS_WARRIOR", "CLASS_PALADIN", "CLASS_HUNTER", "CLASS_ROGUE", "CLASS_PRIEST",
+    "CLASS_DEATH_KNIGHT", "CLASS_SHAMAN", "CLASS_MAGE", "CLASS_WARLOCK", "CLASS_DRUID",
+):
+    assert token in role_caps, f"Role capability switch lost WotLK class token {token}"
+
 # Selection priority is part of correctness. Required pins and Required class/spec rows are hard
 # constraints. Preferred pins may be chosen before ordinary score-based filling, but never before a
 # hard class/spec requirement that could need the same final role slot.
@@ -147,6 +156,23 @@ assert required_pin_pos < required_pref_pos < preferred_pin_pos, (
     "Preferred pins must not consume slots before all hard requirements are secured"
 )
 assert "member.pinned = true;" in build, "A hard-selected familiar pin must retain stable/pinned identity"
+
+# Prefer Guild is a real selection priority, not a decorative checkbox. Keeping a currently grouped
+# bot is useful churn reduction, but it must not overpower the user's explicit persistent-guild
+# preference. Non-guild managed reserve bots also obey the same Fill World fallback boundary.
+score = section(PLANNER, "int CandidateScore(", "Candidate const* BestCandidate(")
+guild_bonus = re.search(r'preferGuild && candidate\.guild\) score \+= (\d+)', score)
+grouped_bonus = re.search(r'candidate\.alreadyGrouped\) score \+= (\d+)', score)
+assert guild_bonus and grouped_bonus, "Guild/grouped candidate priority bonuses are missing"
+assert int(guild_bonus.group(1)) > int(grouped_bonus.group(1)), (
+    "An already-grouped world bot can still outrank a suitable guild candidate"
+)
+assert "if (!c.guild && !config.fillWorld && !c.alreadyGrouped) continue;" in PLANNER, (
+    "Non-guild managed reserve bots bypass the Fill World fallback switch"
+)
+assert "fallbackSelected = worldSelected + managedSelected" in build, (
+    "Fallback warning no longer accounts for managed non-guild reserve bots"
+)
 
 # Utility coverage describes actual WotLK raid tools, not later-expansion semantics. Soulstone is a
 # pre-applied self-resurrection safety net in this client era, not the planner's on-demand battle-rez
