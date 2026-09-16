@@ -273,6 +273,13 @@ bool IsBotGuid(ObjectGuid guid)
     return (account && sPlayerbotAIConfig.IsInRandomAccountList(account)) || sRandomPlayerbotMgr.IsAddclassBot(guid.GetCounter());
 }
 
+bool BotHasOtherGameClientMaster(Player* master, Player* bot)
+{
+    if (!master || !bot) return false;
+    PlayerbotAI* ai = GET_PLAYERBOT_AI(bot);
+    return ai && ai->HasGameClientMaster() && ai->GetMaster() != master;
+}
+
 bool Selected(Plan const& plan, ObjectGuid guid)
 {
     for (Member const& member : plan.members) if (member.guid == guid) return true;
@@ -405,7 +412,12 @@ void PruneUnselectedBots(Player* master, Plan const& plan)
     if (!group) return;
     std::vector<ObjectGuid> remove;
     for (Group::MemberSlot const& slot : group->GetMemberSlots())
-        if (!Selected(plan, slot.guid) && IsBotGuid(slot.guid)) remove.push_back(slot.guid);
+    {
+        if (Selected(plan, slot.guid) || !IsBotGuid(slot.guid)) continue;
+        if (Player* bot = ObjectAccessor::FindConnectedPlayer(slot.guid))
+            if (BotHasOtherGameClientMaster(master, bot)) continue;
+        remove.push_back(slot.guid);
+    }
     for (ObjectGuid guid : remove) group->RemoveMember(guid);
 }
 
@@ -439,14 +451,24 @@ bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& err
             return false;
         }
 
-        // Humans are never silently pruned. If somebody joined after preview, force a new preview so
-        // the human becomes an explicit locked anchor before any bot is removed.
+        // Humans are never silently pruned. Playerbots actively controlled by another real client
+        // are protected for the same reason: they belong to that player's current play session, not
+        // to this composer's disposable candidate pool.
         for (Group::MemberSlot const& slot : group->GetMemberSlots())
         {
-            if (!Selected(plan, slot.guid) && !IsBotGuid(slot.guid))
+            if (Selected(plan, slot.guid)) continue;
+            if (!IsBotGuid(slot.guid))
             {
                 error = "The group gained a real player after the preview. Run Find Roster again so every human is locked into the composition.";
                 return false;
+            }
+            if (Player* bot = ObjectAccessor::FindConnectedPlayer(slot.guid))
+            {
+                if (BotHasOtherGameClientMaster(master, bot))
+                {
+                    error = "Playerbot '" + bot->GetName() + "' is controlled by another active player and cannot be silently removed. Reform the party or let that player manage their bot, then Find Roster again.";
+                    return false;
+                }
             }
         }
     }
@@ -512,6 +534,11 @@ bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& err
         if (!GET_PLAYERBOT_AI(live))
         {
             error = "Selected bot identity '" + member.name + "' is no longer controlled by Playerbots.";
+            return false;
+        }
+        if (BotHasOtherGameClientMaster(master, live))
+        {
+            error = "Selected bot '" + member.name + "' is now controlled by another active player. Run Find Roster again.";
             return false;
         }
         if (live->GetGroup() && live->GetGroup() != group)
@@ -604,6 +631,7 @@ void TryInviteMissing(Player* master, Plan& plan)
         if (member.human || member.guid == master->GetGUID()) continue;
         Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid);
         if (!bot || !GET_PLAYERBOT_AI(bot)) continue;
+        if (BotHasOtherGameClientMaster(master, bot)) continue;
         Group* current = master->GetGroup();
         if (current && current->IsMember(member.guid)) continue;
         if (bot->GetGroup() && bot->GetGroup() != current) continue;
