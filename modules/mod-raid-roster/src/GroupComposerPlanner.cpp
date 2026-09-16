@@ -572,7 +572,7 @@ bool Planner::CanClassFillRole(uint8 cls, uint8 role)
     switch (cls)
     {
         case CLASS_WARRIOR:      return role == ROLE_TANK || role == ROLE_DPS;
-        case CLASS_PALIN:        return true;
+        case CLASS_PALADIN:      return true;
         case CLASS_HUNTER:       return role == ROLE_DPS;
         case CLASS_ROGUE:        return role == ROLE_DPS;
         case CLASS_PRIEST:       return role == ROLE_HEALER || role == ROLE_DPS;
