@@ -61,6 +61,46 @@ function GC:CaptureStableArrangement()
     GC:GetConfig().stableHumans = humans
 end
 
+-- Titan Rune is a realm feature layered on top of stock Heroic RDF rather than a client-visible
+-- 3.3.5 difficulty ID. The runtime-hardening stack exposes an authoritative server bridge which
+-- persists the real group leader's protocol selection, restricts Random to mode-supported Heroics,
+-- validates the live five-player membership against this reviewed preview, and then queues through
+-- normal LFG plumbing. Keep ordinary Normal/Heroic queues on the original Group Composer backend.
+local originalQueueDungeon = GC.QueueDungeon
+local TITAN_MODE = { alpha = true, beta = true, gamma = true }
+local ROLE_TOKEN = { TANK = "T", HEALER = "H", DPS = "D" }
+
+function GC:QueueDungeon()
+    local config = GC:GetConfig()
+    if not TITAN_MODE[config.difficulty] then
+        return originalQueueDungeon(self)
+    end
+    if config.mode ~= "DUNGEON" then
+        GC:Fire("STATUS", "Titan Rune handoff is only available in Dungeon mode.")
+        return false
+    end
+    if not GC.plan or not GC.plan.ready or not GC.plan.valid or #(GC.plan.members or {}) ~= 5 then
+        GC:Fire("STATUS", "Find and assemble a valid five-player roster before queueing Titan Rune.")
+        return false
+    end
+
+    local encoded = {}
+    for _, member in ipairs(GC.plan.members) do
+        local name = GC.CleanCharacterName(member.name)
+        local role = ROLE_TOKEN[member.role]
+        if not name or not role then
+            GC:Fire("STATUS", "The reviewed roster contains an invalid name or role. Find Roster again.")
+            return false
+        end
+        encoded[#encoded + 1] = name .. ":" .. role
+    end
+
+    GC.pendingCommand = "queue"
+    SendChatMessage(".gctitan queue " .. config.difficulty .. " " .. tostring(config.activity or "random") .. " " .. table.concat(encoded, ","), "SAY")
+    GC:Fire("STATUS", "Selecting Titan Rune protocol and handing the reviewed party to Dungeon Finder...")
+    return true
+end
+
 -- A single outstanding server action owns pendingCommand. Rapid overlapping Find/Move/Assemble
 -- clicks used to overwrite that value and could attach a DONE/ERROR message to the wrong action.
 local function GuardAction(name)
