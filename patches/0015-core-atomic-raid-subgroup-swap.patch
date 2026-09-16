@@ -12,7 +12,7 @@ diff --git a/src/server/game/Groups/Group.h b/src/server/game/Groups/Group.h
 diff --git a/src/server/game/Groups/Group.cpp b/src/server/game/Groups/Group.cpp
 --- a/src/server/game/Groups/Group.cpp
 +++ b/src/server/game/Groups/Group.cpp
-@@ -2059,6 +2059,59 @@ void Group::ChangeMembersGroup(ObjectGuid guid, uint8 group)
+@@ -2059,6 +2059,60 @@ void Group::ChangeMembersGroup(ObjectGuid guid, uint8 group)
      // Broadcast the changes to the group
      SendUpdate();
  }
