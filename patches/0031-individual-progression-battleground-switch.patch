@@ -1,0 +1,12 @@
+diff --git a/modules/mod-individual-progression/src/IndividualProgressionBG.cpp b/modules/mod-individual-progression/src/IndividualProgressionBG.cpp
+--- a/modules/mod-individual-progression/src/IndividualProgressionBG.cpp
++++ b/modules/mod-individual-progression/src/IndividualProgressionBG.cpp
+@@ -114,6 +114,8 @@ public:
+             case BATTLEGROUND_WS:
+                 player->CastSpell(player, SPELL_WS_QUEST_REWARD, true);
+                 break;
++            default:
++                break;
+             }
+         }
+     }

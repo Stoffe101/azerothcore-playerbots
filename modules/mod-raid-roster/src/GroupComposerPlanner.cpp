@@ -541,13 +541,6 @@ Candidate const* FindNamedCandidate(std::vector<Candidate> const& candidates, st
     return nullptr;
 }
 
-uint8 SelectedCount(Plan const& plan, uint8 role)
-{
-    uint8 count = 0;
-    for (Member const& member : plan.members) if (member.role == role) ++count;
-    return count;
-}
-
 uint8 UniqueClassCount(Plan const& plan)
 {
     std::set<uint8> classes;
@@ -829,12 +822,12 @@ bool Planner::Build(Player* master, Config const& config, Plan& out, std::string
         return false;
     }
 
-    uint32 guildSelected = 0, worldSelected = 0, managedSelected = 0;
+    uint32 worldSelected = 0, managedSelected = 0;
     for (Member const& member : out.members)
     {
         if (member.human) continue;
-        if (member.guild) ++guildSelected;
-        else if (member.managed) ++managedSelected;
+        if (member.guild) continue;
+        if (member.managed) ++managedSelected;
         else ++worldSelected;
     }
     uint32 fallbackSelected = worldSelected + managedSelected;

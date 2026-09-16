@@ -1,0 +1,6 @@
+diff --git a/modules/mod-multibot-bridge/src/MultiBotBridge.cpp b/modules/mod-multibot-bridge/src/MultiBotBridge.cpp
+--- a/modules/mod-multibot-bridge/src/MultiBotBridge.cpp
++++ b/modules/mod-multibot-bridge/src/MultiBotBridge.cpp
+@@ -68,2 +68 @@
+-char const* const kAddonPrefix = "MBOT";
+ char const* const kAddonEnvelope = "MBOT\t";

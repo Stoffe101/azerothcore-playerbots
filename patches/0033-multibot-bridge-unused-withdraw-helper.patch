@@ -1,0 +1,21 @@
+diff --git a/modules/mod-multibot-bridge/src/MultiBotBridge.cpp b/modules/mod-multibot-bridge/src/MultiBotBridge.cpp
+--- a/modules/mod-multibot-bridge/src/MultiBotBridge.cpp
++++ b/modules/mod-multibot-bridge/src/MultiBotBridge.cpp
+@@ -4195,17 +4195 @@
+-int32 GetGuildBankWithdrawRemaining(Guild* guild, Player* player)
+-{
+-    int32 bestRemaining = 0;
+-    for (uint8 tabId = 0; tabId < GUILD_BANK_MAX_TABS; ++tabId)
+-    {
+-        int32 const remaining = GetGuildBankTabWithdrawRemaining(guild, player, tabId);
+-        if (remaining == std::numeric_limits<int32>::max())
+-            return remaining;
+-
+-        if (remaining > bestRemaining)
+-            bestRemaining = remaining;
+-    }
+-
+-    return bestRemaining;
+-}
+-
+ int32 GetEffectiveGuildBankWithdrawRemaining(Guild* guild, Player* requester, Player* bot)
