@@ -139,6 +139,46 @@ assert "if (!member.managed)" in validation, (
     "Managed RaidRoster bots must remain exempt from live role/spec checks because Assemble reconciles them"
 )
 
+# Bots with a different active game-client master belong to that player's current play session.
+# Group Composer must exclude them during planning, refuse to prune them if they appear after preview,
+# and refuse to keep/invite a selected bot if ownership changes during the asynchronous assemble step.
+build_candidates = section(PLANNER, "std::vector<Candidate> BuildCandidates(", "int CandidateScore(")
+assert "botAI->HasGameClientMaster() && botAI->GetMaster() != master" in build_candidates, (
+    "Online guild/world candidates can still hijack another player's actively controlled bot"
+)
+assert "onlineAI->HasGameClientMaster() && onlineAI->GetMaster() != master" in build_candidates, (
+    "Managed online candidates can still hijack another player's actively controlled bot"
+)
+assert "bool BotHasOtherGameClientMaster(Player* master, Player* bot)" in SERVER, (
+    "Server lost the shared active-player bot ownership guard"
+)
+prune = section(SERVER, "void PruneUnselectedBots(", "bool ValidateAssemblySnapshot(")
+assert "BotHasOtherGameClientMaster(master, bot)" in prune, (
+    "Pruning can silently remove a bot actively controlled by another player"
+)
+assert "controlled by another active player and cannot be silently removed" in validation, (
+    "A late human-owned Playerbot no longer blocks destructive assembly"
+)
+assert "Selected bot '" in validation and "is now controlled by another active player" in validation, (
+    "Selected Playerbot ownership changes are not revalidated at Assemble"
+)
+try_invite = section(SERVER, "void TryInviteMissing(", "uint8 LfgRole(")
+assert "BotHasOtherGameClientMaster(master, bot)" in try_invite, (
+    "Asynchronous invite retries can still pull a bot away from another active player"
+)
+
+# Offline managed reserve bots may retain persisted group membership. Never log in a reserve bot
+# that belongs to another group, while preserving one whose cached group is this composer's group.
+assert "GetCharacterGroupGuidByGuid(guid)" in build_candidates, (
+    "Offline managed candidates no longer consult persisted group ownership"
+)
+assert "cachedGroup == masterGroup->GetGUID()" in build_candidates, (
+    "Offline managed candidate cannot recognize persisted membership in the composer's group"
+)
+assert "if (!online && !cachedGroup.IsEmpty() && !cachedWithMaster) continue;" in build_candidates, (
+    "Offline managed bot from another persisted group can be force-logged into this roster"
+)
+
 # Instance conflicts mirror the stock invite rule: different instance IDs are incompatible only
 # when both players are in different copies of the same map. Merely being in different instances on
 # different maps must not make an otherwise eligible friend/bot disappear from the candidate pool.
