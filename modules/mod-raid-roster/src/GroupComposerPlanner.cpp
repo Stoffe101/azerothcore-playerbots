@@ -572,8 +572,14 @@ void AddCoverageWarnings(Plan& plan)
 
 uint8 Planner::InferRole(Player* player)
 {
-    if (player && PlayerbotAI::IsTank(player, true)) return ROLE_TANK;
-    if (player && PlayerbotAI::IsHeal(player, true)) return ROLE_HEALER;
+    if (!player) return ROLE_DPS;
+
+    // A live Playerbot's current strategies describe the role it is actually configured to
+    // perform. Humans have no bot strategies, so infer their role from the active talent spec
+    // and let explicit human-role overrides resolve hybrids/edge cases in the composer UI.
+    bool bySpec = GET_PLAYERBOT_AI(player) == nullptr;
+    if (PlayerbotAI::IsTank(player, bySpec)) return ROLE_TANK;
+    if (PlayerbotAI::IsHeal(player, bySpec)) return ROLE_HEALER;
     return ROLE_DPS;
 }
 
