@@ -7,6 +7,7 @@
 #include "AdventureGuideCommand.h"
 #include "AutoDungeonClear.h"
 #include "EncounterLifecycle.h"
+#include "GroupComposerCommand.h"
 #include "GuildGroupDirector.h"
 #include "RaidLeaderAuto.h"
 #include "RaidLeaderCommand.h"
@@ -29,7 +30,7 @@ public:
 
 void Addmod_raid_rosterScripts()
 {
-    LOG_INFO("server.loading", "[RaidRoster] Registering complete adventure stack.");
+    LOG_INFO("server.loading", "[RaidRoster] Registering complete adventure stack and Group Composer backend.");
     new RaidRosterWorld();
     new RaidRosterCommand();
     new AdventureCommand();
@@ -38,6 +39,7 @@ void Addmod_raid_rosterScripts()
     new AdventureCacheCommand();
     new AdventureGuideCommand();
     new RaidLeaderCommand();
+    AddGroupComposerScripts();
     AddAdventureStartScripts();
     AddAdventureControlPlayerScripts();
     AddAdventureProgressionRewardScripts();
