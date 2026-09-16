@@ -1,0 +1,181 @@
+name: Group Composer checks
+
+on:
+  push:
+    branches:
+      - feature/group-composer
+      - feature/group-composer-next
+      - feature/group-composer-audit
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: group-composer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lua-335:
+    name: Lua 5.1 addon checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1
+
+      - name: Parse every Group Composer Lua file
+        run: |
+          set -euo pipefail
+          find client-addons-src/GroupComposer -type f -name '*.lua' -print0 \
+            | xargs -0 -n1 luac5.1 -p
+
+      - name: Run data and profile tests
+        run: lua5.1 client-addons-src/GroupComposer/tests/test_data_profiles.lua
+
+  source-sanity:
+    name: Source contract checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check addon manifest and protocol contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '^## Interface: 30300$' client-addons-src/GroupComposer/GroupComposer.toc
+          grep -q '^Advanced.lua$' client-addons-src/GroupComposer/GroupComposer.toc
+          grep -q '^People.lua$' client-addons-src/GroupComposer/GroupComposer.toc
+          grep -q '^Polish.lua$' client-addons-src/GroupComposer/GroupComposer.toc
+          grep -q 'AddGroupComposerScripts();' modules/mod-raid-roster/src/RaidRosterLoader.cpp
+          grep -q 'HandleAssemble' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'HandleQueue' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'HandleAnchors' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'Planner::Build' modules/mod-raid-roster/src/GroupComposerPlanner.cpp
+          grep -q 'SwapMembersGroup' patches/0015-core-atomic-raid-subgroup-swap.patch
+
+      - name: Check addon/backend activity contract
+        run: python3 client-addons-src/GroupComposer/tests/test_server_contract.py
+
+      - name: Reject accidental modern classes in runtime source
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_files=(
+            client-addons-src/GroupComposer/Data.lua
+            client-addons-src/GroupComposer/Profiles.lua
+            client-addons-src/GroupComposer/Core.lua
+            client-addons-src/GroupComposer/UI.lua
+            client-addons-src/GroupComposer/Advanced.lua
+            client-addons-src/GroupComposer/People.lua
+            client-addons-src/GroupComposer/Polish.lua
+            modules/mod-raid-roster/src/GroupComposerCommand.cpp
+            modules/mod-raid-roster/src/GroupComposerPlanner.cpp
+            modules/mod-raid-roster/src/GroupComposerTypes.h
+          )
+          if grep -niE '\b(MONK|DEMONHUNTER|DEMON_HUNTER|EVOKER)\b' "${runtime_files[@]}"; then
+            echo 'Modern post-WotLK class token found in Group Composer runtime source.' >&2
+            exit 1
+          fi
+
+  pinned-backend-compile:
+    name: Pinned backend compile
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      CORE_SHA: 413bea61a85e20d9caef7d66fc601a661fdddd9d
+      PLAYERBOTS_SHA: b949b50bfcdd4fab937781bac2d7765e39330e4b
+      IP_SHA: 977e2005bacf97f35e506eb27b8af6b2ea1136af
+      ERA_SHA: 3a0d9776c6837d8a5e5038c23c01c4fc388d90f8
+    steps:
+      - name: Checkout project branch
+        uses: actions/checkout@v4
+
+      - name: Materialize pinned realm source
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          clone_pin() {
+            local url="$1" dir="$2" sha="$3"
+            git clone --filter=blob:none --no-checkout "$url" "$dir"
+            git -C "$dir" fetch --depth 1 origin "$sha"
+            git -C "$dir" checkout --detach "$sha"
+          }
+
+          clone_pin https://github.com/mod-playerbots/azerothcore-wotlk.git ac "$CORE_SHA"
+          mkdir -p ac/modules
+          clone_pin https://github.com/mod-playerbots/mod-playerbots.git ac/modules/mod-playerbots "$PLAYERBOTS_SHA"
+          clone_pin https://github.com/ZhengPeiRu21/mod-individual-progression.git ac/modules/mod-individual-progression "$IP_SHA"
+          clone_pin https://github.com/lathcf/azerothcore-mod-era-talents.git ac/modules/mod-era-talents "$ERA_SHA"
+          cp -a modules/mod-raid-roster ac/modules/mod-raid-roster
+
+          # Mirror setup.sh's tracked patch stack. Git 2.55 treats the IP nested checkout more
+          # strictly than the production host, so that one patch is applied from the module root
+          # with its a/modules/mod-individual-progression prefix stripped explicitly.
+          for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
+            [[ -e "$patch" ]] || continue
+            name="$(basename "$patch")"
+            if [[ "$name" == "0014-ip-force-progression-limit.patch" ]]; then
+              if git -C ac/modules/mod-individual-progression apply -p3 --reverse --check "$patch" >/dev/null 2>&1; then
+                echo "Patch already applied: $name"
+              elif git -C ac/modules/mod-individual-progression apply -p3 --check "$patch" >/dev/null 2>&1; then
+                git -C ac/modules/mod-individual-progression apply -p3 "$patch"
+                echo "Applied nested-module patch: $name"
+              else
+                echo "ERROR: tracked IP patch no longer applies: $name" >&2
+                git -C ac/modules/mod-individual-progression apply -p3 --check "$patch" || true
+                exit 1
+              fi
+            elif git -C ac apply --reverse --check "$patch" >/dev/null 2>&1; then
+              echo "Patch already applied: $name"
+            elif git -C ac apply --check "$patch" >/dev/null 2>&1; then
+              git -C ac apply "$patch"
+              echo "Applied patch: $name"
+            else
+              echo "ERROR: tracked realm patch no longer applies: $name" >&2
+              git -C ac apply --check "$patch" || true
+              exit 1
+            fi
+          done
+
+          # setup.sh applies the Era Talents compatibility layer after our tracked patch stack.
+          if [[ -x ac/modules/mod-era-talents/apply-patches.sh ]]; then
+            ac/modules/mod-era-talents/apply-patches.sh "$GITHUB_WORKSPACE/ac"
+          fi
+
+          # This old core header relies on a PCH/transitive <string> include. CI disables PCH to
+          # expose module include mistakes, so add the unrelated include only to the ephemeral clone.
+          if ! grep -q '^#include <string>$' ac/src/server/database/Database/Field.h; then
+            sed -i '/#include <string_view>/i #include <string>' ac/src/server/database/Database/Field.h
+          fi
+
+      - name: Install AzerothCore build dependencies
+        shell: bash
+        working-directory: ac
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y git lsb-release sudo
+          ./acore.sh install-deps
+
+      - name: Configure pinned backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S ac -B ac/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DSCRIPTS=static \
+            -DUSE_COREPCH=0 \
+            -DUSE_SCRIPTPCH=0
+
+      - name: Compile module target
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake --build ac/build --target modules --parallel 2

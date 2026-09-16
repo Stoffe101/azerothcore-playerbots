@@ -1,0 +1,77 @@
+diff --git a/src/server/game/Groups/Group.h b/src/server/game/Groups/Group.h
+--- a/src/server/game/Groups/Group.h
++++ b/src/server/game/Groups/Group.h
+@@ -267,6 +267,7 @@ public:
+     void DoMinimapPing(ObjectGuid sourceGuid, float mapX, float mapY);
+ 
+     void ChangeMembersGroup(ObjectGuid guid, uint8 group);
++    void SwapMembersGroup(ObjectGuid guid1, ObjectGuid guid2);
+     void SetTargetIcon(uint8 id, ObjectGuid whoGuid, ObjectGuid targetGuid);
+     void SetGroupMemberFlag(ObjectGuid guid, bool apply, GroupMemberFlags flag);
+     void RemoveUniqueGroupMemberFlag(GroupMemberFlags flag);
+diff --git a/src/server/game/Groups/Group.cpp b/src/server/game/Groups/Group.cpp
+--- a/src/server/game/Groups/Group.cpp
++++ b/src/server/game/Groups/Group.cpp
+@@ -2059,6 +2059,62 @@ void Group::ChangeMembersGroup(ObjectGuid guid, uint8 group)
+     // Broadcast the changes to the group
+     SendUpdate();
+ }
++
++void Group::SwapMembersGroup(ObjectGuid guid1, ObjectGuid guid2)
++{
++    if (!isRaidGroup() || guid1 == guid2)
++        return;
++
++    member_witerator slot1 = _getMemberWSlot(guid1);
++    member_witerator slot2 = _getMemberWSlot(guid2);
++    if (slot1 == m_memberSlots.end() || slot2 == m_memberSlots.end())
++        return;
++
++    uint8 group1 = slot1->group;
++    uint8 group2 = slot2->group;
++    if (group1 == group2)
++        return;
++
++    // This is an atomic logical swap: subgroup occupancy does not change, so full 40-player
++    // raids can be rearranged without ever creating a transient 6-player subgroup.
++    slot1->group = group2;
++    slot2->group = group1;
++
++    if (!isBGGroup() && !isBFGroup())
++    {
++        CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
++
++        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_GROUP_MEMBER_SUBGROUP);
++        stmt->SetData(0, group2);
++        stmt->SetData(1, guid1.GetCounter());
++        trans->Append(stmt);
++
++        stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_GROUP_MEMBER_SUBGROUP);
++        stmt->SetData(0, group1);
++        stmt->SetData(1, guid2.GetCounter());
++        trans->Append(stmt);
++
++        CharacterDatabase.CommitTransaction(trans);
++    }
++
++    if (Player* player = ObjectAccessor::FindConnectedPlayer(guid1))
++    {
++        if (player->GetGroup() == this)
++            player->GetGroupRef().setSubGroup(group2);
++        else
++            player->GetOriginalGroupRef().setSubGroup(group2);
++    }
++
++    if (Player* player = ObjectAccessor::FindConnectedPlayer(guid2))
++    {
++        if (player->GetGroup() == this)
++            player->GetGroupRef().setSubGroup(group1);
++        else
++            player->GetOriginalGroupRef().setSubGroup(group1);
++    }
++
++    SendUpdate();
++}
+ 
+ // Retrieve the next Round-Roubin player for the group
+ //
