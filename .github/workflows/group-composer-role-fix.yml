@@ -1,0 +1,58 @@
+name: One-shot Group Composer role fix
+
+on:
+  push:
+    branches:
+      - feature/group-composer-audit
+    paths:
+      - .github/workflows/group-composer-role-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/group-composer-audit
+      - name: Prefer active Playerbot role strategies
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('modules/mod-raid-roster/src/GroupComposerPlanner.cpp')
+          text = path.read_text()
+          old = '''uint8 Planner::InferRole(Player* player)
+          {
+              if (player && PlayerbotAI::IsTank(player, true)) return ROLE_TANK;
+              if (player && PlayerbotAI::IsHeal(player, true)) return ROLE_HEALER;
+              return ROLE_DPS;
+          }
+          '''
+          new = '''uint8 Planner::InferRole(Player* player)
+          {
+              if (!player) return ROLE_DPS;
+
+              // A live Playerbot's current strategies describe the role it is actually configured to
+              // perform. Humans have no bot strategies, so infer their role from the active talent spec
+              // and let explicit human-role overrides resolve hybrids/edge cases in the composer UI.
+              bool bySpec = GET_PLAYERBOT_AI(player) == nullptr;
+              if (PlayerbotAI::IsTank(player, bySpec)) return ROLE_TANK;
+              if (PlayerbotAI::IsHeal(player, bySpec)) return ROLE_HEALER;
+              return ROLE_DPS;
+          }
+          '''
+          if old not in text:
+              raise SystemExit('Expected InferRole block not found; refusing a blind edit')
+          path.write_text(text.replace(old, new, 1))
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Group Composer CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add modules/mod-raid-roster/src/GroupComposerPlanner.cpp
+          git diff --cached --check
+          git commit -m 'fix: infer active Playerbot roles from strategies'
+          git push origin HEAD:feature/group-composer-audit
