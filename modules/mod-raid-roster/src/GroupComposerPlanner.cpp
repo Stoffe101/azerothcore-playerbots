@@ -601,7 +601,9 @@ uint32 Planner::UtilityMask(uint8 cls, uint8 spec, uint8 /*role*/)
         case CLASS_MAGE:
             return UTILITY_INTERRUPT | UTILITY_RAID_BUFF | UTILITY_CC;
         case CLASS_WARLOCK:
-            return UTILITY_CC | UTILITY_BATTLE_REZ;
+            // WotLK Soulstone is not an on-demand combat resurrection of an already-dead ally.
+            // Do not let a warlock satisfy the planner's battle-rez coverage signal.
+            return UTILITY_CC;
         case CLASS_DRUID:
             return UTILITY_DISPEL | UTILITY_RAID_BUFF | UTILITY_BATTLE_REZ | UTILITY_CC;
         default:
