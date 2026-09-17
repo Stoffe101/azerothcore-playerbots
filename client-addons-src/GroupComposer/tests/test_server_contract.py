@@ -231,7 +231,7 @@ assert "member.pinned = true;" in build, "A hard-selected familiar pin must reta
 # Prefer Guild is a real selection priority, not a decorative checkbox. Keeping a currently grouped
 # bot is useful churn reduction, but it must not overpower the user's explicit persistent-guild
 # preference. Non-guild managed reserve bots also obey the same Fill World fallback boundary.
-score = section(PLANNER, "int CandidateScore(", "Candidate const* BestCandidate(")
+score = section(PLANNER, "int CandidateScore(", "bool SpecCanFillRole(")
 guild_bonus = re.search(r'preferGuild && candidate\.guild\) score \+= (\d+)', score)
 grouped_bonus = re.search(r'candidate\.alreadyGrouped\) score \+= (\d+)', score)
 assert guild_bonus and grouped_bonus, "Guild/grouped candidate priority bonuses are missing"
@@ -243,6 +243,23 @@ assert "if (!c.guild && !config.fillWorld && !c.alreadyGrouped) continue;" in PL
 )
 assert "fallbackSelected = worldSelected + managedSelected" in build, (
     "Fallback warning no longer accounts for managed non-guild reserve bots"
+)
+
+# Ordinary autonomous bots are allowed to change jobs for an explicit player-composed roster. Exact
+# current role/spec remains preferred, but capability must be enough to prevent a large bot world
+# from failing simply because every available hybrid is currently running a DPS strategy.
+retask = section(PLANNER, "bool SpecCanFillRole(", "uint8 UniqueClassCount(")
+assert "Planner::CanClassFillRole(candidate.cls, role)" in retask, (
+    "Composer no longer falls back from current active role to class role capability"
+)
+assert "projected.managed = true;" in retask, (
+    "Retasked world/guild bots are not routed through assembly-time spec/strategy synchronization"
+)
+assert "candidate.role != projected.role) score -= 400" in retask, (
+    "Already-correct active roles must remain preferred over unnecessary bot retasking"
+)
+assert "ProjectCandidateForRole(candidate, role, required, projected)" in retask, (
+    "Required class/spec selection bypasses the same deterministic role projection path"
 )
 
 # Utility coverage describes actual WotLK raid tools, not later-expansion semantics. Soulstone is a
