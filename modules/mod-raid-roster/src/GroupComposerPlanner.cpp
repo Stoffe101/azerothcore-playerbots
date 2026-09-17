@@ -511,34 +511,111 @@ int CandidateScore(Candidate const& candidate, Config const& config,
     return score;
 }
 
-Candidate const* BestCandidate(std::vector<Candidate> const& candidates, Config const& config,
-    uint8 role, Preference const* required, std::unordered_set<uint32> const& used,
-    std::array<uint8, 12> const& classCounts, Coverage const& coverage)
+bool SpecCanFillRole(uint8 cls, uint8 spec, uint8 role)
 {
-    Candidate const* best = nullptr;
+    if (spec == ANY_SPEC) return false;
+    switch (cls)
+    {
+        case CLASS_WARRIOR:      return (spec == 2 && role == ROLE_TANK) || (spec <= 1 && role == ROLE_DPS);
+        case CLASS_PALADIN:      return (spec == 0 && role == ROLE_HEALER) || (spec == 1 && role == ROLE_TANK) || (spec == 2 && role == ROLE_DPS);
+        case CLASS_HUNTER:       return role == ROLE_DPS && spec <= 2;
+        case CLASS_ROGUE:        return role == ROLE_DPS && spec <= 2;
+        case CLASS_PRIEST:       return ((spec == 0 || spec == 1) && role == ROLE_HEALER) || (spec == 2 && role == ROLE_DPS);
+        case CLASS_DEATH_KNIGHT: return (spec == 0 && role == ROLE_TANK) || ((spec == 1 || spec == 2) && role == ROLE_DPS);
+        case CLASS_SHAMAN:       return (spec == 2 && role == ROLE_HEALER) || ((spec == 0 || spec == 1) && role == ROLE_DPS);
+        case CLASS_MAGE:         return role == ROLE_DPS && spec <= 2;
+        case CLASS_WARLOCK:      return role == ROLE_DPS && spec <= 2;
+        case CLASS_DRUID:        return (spec == 2 && role == ROLE_HEALER) || (spec == 1 && (role == ROLE_TANK || role == ROLE_DPS)) || (spec == 0 && role == ROLE_DPS);
+        default:                 return false;
+    }
+}
+
+uint8 DefaultSpecForRole(uint8 cls, uint8 role, uint8 currentSpec)
+{
+    if (SpecCanFillRole(cls, currentSpec, role)) return currentSpec;
+    switch (cls)
+    {
+        case CLASS_WARRIOR:      return role == ROLE_TANK ? 2 : role == ROLE_DPS ? 1 : ANY_SPEC;
+        case CLASS_PALADIN:      return role == ROLE_TANK ? 1 : role == ROLE_HEALER ? 0 : role == ROLE_DPS ? 2 : ANY_SPEC;
+        case CLASS_HUNTER:       return role == ROLE_DPS ? 0 : ANY_SPEC;
+        case CLASS_ROGUE:        return role == ROLE_DPS ? 0 : ANY_SPEC;
+        case CLASS_PRIEST:       return role == ROLE_HEALER ? 1 : role == ROLE_DPS ? 2 : ANY_SPEC;
+        case CLASS_DEATH_KNIGHT: return role == ROLE_TANK ? 0 : role == ROLE_DPS ? 1 : ANY_SPEC;
+        case CLASS_SHAMAN:       return role == ROLE_HEALER ? 2 : role == ROLE_DPS ? 0 : ANY_SPEC;
+        case CLASS_MAGE:         return role == ROLE_DPS ? 0 : ANY_SPEC;
+        case CLASS_WARLOCK:      return role == ROLE_DPS ? 0 : ANY_SPEC;
+        case CLASS_DRUID:        return role == ROLE_TANK ? 1 : role == ROLE_HEALER ? 2 : role == ROLE_DPS ? 0 : ANY_SPEC;
+        default:                 return ANY_SPEC;
+    }
+}
+
+bool ProjectCandidateForRole(Candidate const& candidate, uint8 role, Preference const* required, Candidate& projected)
+{
+    if (!Planner::CanClassFillRole(candidate.cls, role)) return false;
+    if (required && required->cls && candidate.cls != required->cls) return false;
+
+    uint8 desiredSpec = DefaultSpecForRole(candidate.cls, role, candidate.spec);
+    if (required && required->spec != ANY_SPEC)
+    {
+        if (!SpecCanFillRole(candidate.cls, required->spec, role)) return false;
+        desiredSpec = required->spec;
+    }
+    if (desiredSpec == ANY_SPEC) return false;
+
+    projected = candidate;
+    projected.role = role;
+    projected.spec = desiredSpec;
+    projected.utilityMask = Planner::UtilityMask(projected.cls, projected.spec, projected.role);
+    projected.rangedDps = Planner::IsRangedDps(projected.cls, projected.spec, projected.role);
+
+    // Retasking is an explicit Composer action. Mark the selected bot for the existing assembly-time
+    // spec/strategy/gear synchronization path so a DPS hybrid does not merely get labelled "tank".
+    if (candidate.role != projected.role || candidate.spec != projected.spec)
+        projected.managed = true;
+
+    return !required || CandidateMatches(projected, *required);
+}
+
+bool BestCandidate(std::vector<Candidate> const& candidates, Config const& config,
+    uint8 role, Preference const* required, std::unordered_set<uint32> const& used,
+    std::array<uint8, 12> const& classCounts, Coverage const& coverage, Candidate& result)
+{
+    bool found = false;
     int bestScore = std::numeric_limits<int>::min();
     for (Candidate const& candidate : candidates)
     {
-        if (candidate.role != role || used.count(candidate.guid.GetCounter())) continue;
-        if (required && !CandidateMatches(candidate, *required)) continue;
-        int score = CandidateScore(candidate, config, classCounts, coverage);
-        if (!best || score > bestScore || (score == bestScore && candidate.name < best->name))
+        if (used.count(candidate.guid.GetCounter())) continue;
+
+        Candidate projected;
+        if (!ProjectCandidateForRole(candidate, role, required, projected)) continue;
+
+        int score = CandidateScore(projected, config, classCounts, coverage);
+        // Existing role/spec is cheapest and therefore preferred, but capability is enough. This is
+        // what lets a 500-bot world satisfy a roster immediately even when the right hybrid happens
+        // to be wandering around in a DPS setup at the moment Find Roster is pressed.
+        if (candidate.role != projected.role) score -= 400;
+        if (candidate.spec != projected.spec) score -= 100;
+
+        if (!found || score > bestScore || (score == bestScore && projected.name < result.name))
         {
-            best = &candidate;
+            result = std::move(projected);
             bestScore = score;
+            found = true;
         }
     }
-    return best;
+    return found;
 }
 
-Candidate const* FindNamedCandidate(std::vector<Candidate> const& candidates, std::string const& name,
-    uint8 role, std::unordered_set<uint32> const& used)
+bool FindNamedCandidate(std::vector<Candidate> const& candidates, std::string const& name,
+    uint8 role, std::unordered_set<uint32> const& used, Candidate& result)
 {
     std::string needle = Lower(name);
     for (Candidate const& candidate : candidates)
-        if (!used.count(candidate.guid.GetCounter()) && candidate.role == role && Lower(candidate.name) == needle)
-            return &candidate;
-    return nullptr;
+    {
+        if (used.count(candidate.guid.GetCounter()) || Lower(candidate.name) != needle) continue;
+        if (ProjectCandidateForRole(candidate, role, nullptr, result)) return true;
+    }
+    return false;
 }
 
 uint8 UniqueClassCount(Plan const& plan)
@@ -720,8 +797,8 @@ bool Planner::Build(Player* master, Config const& config, Plan& out, std::string
     for (Pin const& pin : config.pins)
     {
         if (!pin.required) continue;
-        Candidate const* candidate = FindNamedCandidate(candidates, pin.name, pin.role, used);
-        if (!candidate)
+        Candidate candidate;
+        if (!FindNamedCandidate(candidates, pin.name, pin.role, used, candidate))
         {
             error = "Required pinned member '" + pin.name + "' is unavailable in the requested role.";
             return false;
@@ -731,7 +808,7 @@ bool Planner::Build(Player* master, Config const& config, Plan& out, std::string
             error = "Required pinned member '" + pin.name + "' has no remaining slot in the requested role.";
             return false;
         }
-        AddSelectedMember(out, *candidate, true, roleCounts, classCounts, used);
+        AddSelectedMember(out, candidate, true, roleCounts, classCounts, used);
     }
 
     // Every Required preference row consumes one unique roster member. This avoids one Mage silently
@@ -759,14 +836,14 @@ bool Planner::Build(Player* master, Config const& config, Plan& out, std::string
             return false;
         }
 
-        Candidate const* candidate = BestCandidate(candidates, config, pref.role, &pref, used, classCounts, out.coverage);
-        if (!candidate)
+        Candidate candidate;
+        if (!BestCandidate(candidates, config, pref.role, &pref, used, classCounts, out.coverage, candidate))
         {
             error = "A required class/spec preference has no eligible candidate.";
             return false;
         }
-        AddSelectedMember(out, *candidate, false, roleCounts, classCounts, used);
-        requiredMemberUsed.insert(candidate->guid.GetCounter());
+        AddSelectedMember(out, candidate, false, roleCounts, classCounts, used);
+        requiredMemberUsed.insert(candidate.guid.GetCounter());
     }
 
     // Preferred pins remain stronger than ordinary score-based filling, but only after every hard
@@ -788,8 +865,8 @@ bool Planner::Build(Player* master, Config const& config, Plan& out, std::string
         }
         if (alreadySelected) continue;
 
-        Candidate const* candidate = FindNamedCandidate(candidates, pin.name, pin.role, used);
-        if (!candidate)
+        Candidate candidate;
+        if (!FindNamedCandidate(candidates, pin.name, pin.role, used, candidate))
         {
             AddWarningOnce(out, "Preferred pinned member '" + pin.name + "' is unavailable; a fallback may be used.");
             continue;
@@ -799,20 +876,20 @@ bool Planner::Build(Player* master, Config const& config, Plan& out, std::string
             AddWarningOnce(out, "Preferred pinned member '" + pin.name + "' could not fit because that role is already full.");
             continue;
         }
-        AddSelectedMember(out, *candidate, true, roleCounts, classCounts, used);
+        AddSelectedMember(out, candidate, true, roleCounts, classCounts, used);
     }
 
     for (uint8 role = 0; role < 3; ++role)
     {
         while (roleCounts[role] < targets[role])
         {
-            Candidate const* candidate = BestCandidate(candidates, config, role, nullptr, used, classCounts, out.coverage);
-            if (!candidate)
+            Candidate candidate;
+            if (!BestCandidate(candidates, config, role, nullptr, used, classCounts, out.coverage, candidate))
             {
                 error = "Not enough eligible " + std::string(role == ROLE_TANK ? "tanks" : role == ROLE_HEALER ? "healers" : "DPS") + " to complete the roster.";
                 return false;
             }
-            AddSelectedMember(out, *candidate, false, roleCounts, classCounts, used);
+            AddSelectedMember(out, candidate, false, roleCounts, classCounts, used);
         }
     }
 
