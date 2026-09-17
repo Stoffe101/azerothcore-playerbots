@@ -155,8 +155,11 @@ assert "changed specialization after the preview" in validation, "Spec snapshot 
 assert "fell below the configured minimum item level after the preview" in validation, (
     "Configured item-level floor is not protected at the Assemble boundary"
 )
-assert "if (!member.managed)" in validation, (
-    "Managed RaidRoster bots must remain exempt from live role/spec checks because Assemble reconciles them"
+assert "if (!member.managed && !member.needsPreparation && !member.reserve)" in validation, (
+    "Only already-correct ordinary live bots should be hard-revalidated before preparation"
+)
+assert "bool reserve = false;" in TYPES and "bool needsPreparation = false;" in TYPES, (
+    "Reserve/preparation state must remain explicit instead of overloading the legacy managed flag"
 )
 
 # Bots with a different active game-client master belong to that player's current play session.
@@ -252,8 +255,8 @@ retask = section(PLANNER, "bool SpecCanFillRole(", "uint8 UniqueClassCount(")
 assert "Planner::CanClassFillRole(candidate.cls, role)" in retask, (
     "Composer no longer falls back from current active role to class role capability"
 )
-assert "projected.managed = true;" in retask, (
-    "Retasked world/guild bots are not routed through assembly-time spec/strategy synchronization"
+assert "projected.needsPreparation = true;" in retask, (
+    "Retasked world/guild bots are not routed through assembly-time build preparation"
 )
 assert "candidate.role != projected.role) score -= 400" in retask, (
     "Already-correct active roles must remain preferred over unnecessary bot retasking"
@@ -272,3 +275,18 @@ assert "UTILITY_BATTLE_REZ" not in warlock_utility, "Warlock incorrectly adverti
 assert "UTILITY_BATTLE_REZ" in druid_utility, "Druid Rebirth coverage disappeared"
 
 print("Group Composer client/server contract tests passed")
+# Shared Composer reserve semantics: population target stays authoritative while up to two full
+# 40-bot sessions can lease protected online slots from the same world population.
+RESERVE_H = (ROOT / "modules/mod-raid-roster/src/GroupComposerReserve.h").read_text(encoding="utf-8")
+RESERVE_CPP = (ROOT / "modules/mod-raid-roster/src/GroupComposerReserve.cpp").read_text(encoding="utf-8")
+RESERVE_PATCH = (ROOT / "patches/0034-playerbot-group-composer-reserve.patch").read_text(encoding="utf-8")
+assert "GLOBAL_LIMIT = 80" in RESERVE_H, "Global Composer reserve must remain 80 bot slots"
+assert "PER_OWNER_LIMIT = 40" in RESERVE_H, "One player must not consume more than a full 40-bot roster"
+assert "Reserve::AcquirePlan(master, plan, reserveError)" in SERVER, "Assemble no longer leases Composer capacity before destructive work"
+assert "reserve = true" in PLANNER, "Offline RNDbot class bodies are no longer exposed to the Composer reserve"
+assert "ActivateGroupComposerBot" in RESERVE_PATCH and "ReleaseGroupComposerBot" in RESERVE_PATCH, (
+    "Playerbot population integration lost Composer activation/release hooks"
+)
+assert "IsGroupComposerReserved(guid)" in RESERVE_PATCH, (
+    "Composer-owned bots are no longer protected from ordinary population removal"
+)
