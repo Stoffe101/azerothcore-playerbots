@@ -18,6 +18,22 @@ void EquipCatchup(Player* player, uint32 quality, uint32 itemLevel);
 // Returns false when the bot was skipped (not in world / below level 5) or gearing
 // was too incomplete to trust (< 8 pieces equipped).
 bool EquipForSpec(Player* bot, Player* master, int specTab);
+
+// Group Composer finalization is role-aware because WotLK talent tabs are not always a
+// complete PvE build identity. The important example is Druid Feral: Playerbots ships
+// separate Bear PvE and Cat PvE premades even though both live in talent tab 1. This
+// helper locks the correct Playerbots PvE premade for the requested active role, then
+// refreshes glyphs/AI/supplies before delegating to the deterministic gear pass above.
+bool EquipForComposerRole(Player* bot, Player* master, int specTab, uint8 role);
 }
+
+// GroupComposerCommand.cpp historically calls EquipForSpec after it has performed the
+// generic talent-tab reconciliation. Redirect that single call to the richer finalizer
+// without changing every other RaidRoster caller. The command header is included before
+// this file in that translation unit, so the guard is a narrow, compile-time scope marker.
+// No other translation unit sees this macro.
+#if defined(MOD_RAID_ROSTER_GROUP_COMPOSER_COMMAND_H)
+#define EquipForSpec(bot, master, specTab) EquipForComposerRole((bot), (master), (specTab), role)
+#endif
 
 #endif
