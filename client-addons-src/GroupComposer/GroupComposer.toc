@@ -2,11 +2,12 @@
 ## Title: Group Composer
 ## Notes: Build, save, preview and assemble dungeon and raid groups for AzerothCore Playerbots.
 ## Author: Stoffe101
-## Version: 0.3.1
+## Version: 0.3.2
 ## SavedVariables: GroupComposerDB
 Data.lua
 Profiles.lua
 Core.lua
+Compat335.lua
 UI.lua
 Advanced.lua
 People.lua
