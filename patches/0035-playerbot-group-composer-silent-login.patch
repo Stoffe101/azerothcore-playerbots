@@ -40,7 +40,7 @@ diff --git a/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp b/modules/mod-playe
      botLoading.emplace(playerGuid, masterAccountId);
  
      // Always login in with world session to avoid race condition
-@@ -382,6 +386,7 @@ void PlayerbotHolder::OnBotLogin(Player* const bot)
+@@ -382,4 +386,5 @@ void PlayerbotHolder::OnBotLogin(Player* const bot)
  {
 +    bool const groupComposerSilent = s_groupComposerSilentLogins.erase(bot->GetGUID()) != 0;
      // Prevent duplicate login
