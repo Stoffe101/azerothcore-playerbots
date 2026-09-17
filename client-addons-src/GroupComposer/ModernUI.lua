@@ -164,7 +164,7 @@ local function Toggle(parent, label, getter, setter)
     end)
     function row:Refresh()
         local on = getter() and true or false
-        self.tick:SetShown(on)
+        if on then self.tick:Show() else self.tick:Hide() end
         if on then
             self.box:SetBackdropBorderColor(C.gold[1], C.gold[2], C.gold[3], 1)
         else
