@@ -86,6 +86,8 @@ struct Candidate
     bool guild = false;
     bool online = false;
     bool managed = false;
+    bool reserve = false;
+    bool needsPreparation = false;
     bool alreadyGrouped = false;
     float itemLevel = 0.0f;
 
@@ -106,6 +108,8 @@ struct Member
     bool locked = false;
     bool guild = false;
     bool managed = false;
+    bool reserve = false;
+    bool needsPreparation = false;
     bool pinned = false;
     bool online = true;
 

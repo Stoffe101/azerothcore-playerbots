@@ -123,6 +123,8 @@ void AddSelectedMember(Plan& plan, Candidate const& candidate, bool pinned,
     member.spec = candidate.spec;
     member.guild = candidate.guild;
     member.managed = candidate.managed;
+    member.reserve = candidate.reserve;
+    member.needsPreparation = candidate.needsPreparation;
     member.pinned = pinned;
     member.online = candidate.online;
     member.utilityMask = candidate.utilityMask;
@@ -396,6 +398,59 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         }
     }
 
+    // Group Composer reserve pool. The population controller provisions every RNDbot account with
+    // broad WotLK class coverage, so an exact composition must be able to draw a suitable CLASS
+    // body even when that character is currently offline. Build preparation owns the eventual
+    // level/spec/gear rewrite; this candidate pass only establishes safe identity/class/faction.
+    //
+    // Never force-login persistent guild identities through this fallback. Guild members are
+    // handled by the normal guild path above, and bots already grouped elsewhere are protected.
+    if (config.fillWorld && !sPlayerbotAIConfig.randomBotAccounts.empty())
+    {
+        std::string accountList;
+        for (uint32 accountId : sPlayerbotAIConfig.randomBotAccounts)
+        {
+            if (!accountList.empty()) accountList += ',';
+            accountList += std::to_string(accountId);
+        }
+
+        if (!accountList.empty())
+        {
+            QueryResult reserveRows = CharacterDatabase.Query(
+                "SELECT guid, name, class FROM characters WHERE account IN ({}) ORDER BY guid", accountList);
+            if (reserveRows)
+            {
+                do
+                {
+                    Field* fields = reserveRows->Fetch();
+                    uint32 low = fields[0].Get<uint32>();
+                    if (seen.count(low)) continue;
+
+                    ObjectGuid guid = ObjectGuid::Create<HighGuid::Player>(low);
+                    if (ObjectAccessor::FindConnectedPlayer(guid)) continue;
+                    if (!sCharacterCache->GetCharacterGroupGuidByGuid(guid).IsEmpty()) continue;
+                    if (sCharacterCache->GetCharacterGuildIdByGuid(guid)) continue;
+                    if (!master->IsGameMaster() && !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP)
+                        && sCharacterCache->GetCharacterTeamByGuid(guid) != master->GetTeamId()) continue;
+
+                    Candidate c;
+                    c.guid = guid;
+                    c.name = fields[1].Get<std::string>();
+                    c.cls = fields[2].Get<uint8>();
+                    c.role = ROLE_DPS;
+                    c.spec = ANY_SPEC;
+                    c.online = false;
+                    c.managed = true;       // offline lifecycle is controlled by assembly
+                    c.reserve = true;       // consumes a Composer lease when assembled
+                    c.needsPreparation = true;
+                    c.utilityMask = Planner::UtilityMask(c.cls, c.spec, c.role);
+                    c.rangedDps = Planner::IsRangedDps(c.cls, c.spec, c.role);
+                    AddCandidate(out, seen, std::move(c));
+                } while (reserveRows->NextRow());
+            }
+        }
+    }
+
     // The legacy RaidRoster pool is a safe, explicitly reserved fallback. Those addclass bots have a
     // known owner and a known login/spec/gear lifecycle, so offline members may be selected here.
     uint8 masterLevel = master->GetLevel();
@@ -568,10 +623,10 @@ bool ProjectCandidateForRole(Candidate const& candidate, uint8 role, Preference 
     projected.utilityMask = Planner::UtilityMask(projected.cls, projected.spec, projected.role);
     projected.rangedDps = Planner::IsRangedDps(projected.cls, projected.spec, projected.role);
 
-    // Retasking is an explicit Composer action. Mark the selected bot for the existing assembly-time
-    // spec/strategy/gear synchronization path so a DPS hybrid does not merely get labelled "tank".
+    // Retasking is an explicit Composer action. Selection only projects the desired final state;
+    // Assemble must really rebuild talents/AI/gear before the bot is invited.
     if (candidate.role != projected.role || candidate.spec != projected.spec)
-        projected.managed = true;
+        projected.needsPreparation = true;
 
     return !required || CandidateMatches(projected, *required);
 }

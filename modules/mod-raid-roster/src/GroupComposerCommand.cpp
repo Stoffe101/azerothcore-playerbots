@@ -1,6 +1,7 @@
 #include "GroupComposerCommand.h"
 
 #include "GroupComposerPlanner.h"
+#include "GroupComposerReserve.h"
 #include "GroupComposerTypes.h"
 #include "RaidRosterEra.h"
 #include "RaidRosterGear.h"
@@ -45,6 +46,7 @@ namespace
 struct PendingSync
 {
     uint32 ownerGuid = 0;
+    uint8 role = ROLE_DPS;
     uint8 spec = ANY_SPEC;
     uint32 elapsed = 0;
 };
@@ -310,9 +312,10 @@ bool ConflictingInstances(Player* master, Player* other)
         && master->GetInstanceId() != other->GetInstanceId() && master->GetMapId() == other->GetMapId();
 }
 
-void SyncManagedBot(Player* master, Player* bot, uint8 spec)
+void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec)
 {
     if (!master || !bot) return;
+    (void)role; // carried explicitly now; role-aware build/gear finalization consumes it next
     if (spec > 2) spec = Planner::InferSpec(bot);
     if (spec > 2) return;
 
@@ -541,7 +544,7 @@ bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& err
 
         if (!live)
         {
-            if (!member.managed)
+            if (!member.managed && !member.reserve)
             {
                 error = "Selected bot '" + member.name + "' went offline after the preview. Run Find Roster again.";
                 return false;
@@ -573,7 +576,7 @@ bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& err
         // Group Composer. Revalidate the reviewed role/spec/item-level snapshot immediately before
         // any pruning. Managed RaidRoster bots are intentionally excluded because Assemble owns
         // their controlled talent/gear reconciliation lifecycle.
-        if (!member.managed)
+        if (!member.managed && !member.needsPreparation && !member.reserve)
         {
             uint8 liveRole = Planner::InferRole(live);
             if (liveRole != member.role)
@@ -730,6 +733,7 @@ public:
 
     void OnUpdate(uint32 diff) override
     {
+        Reserve::Update(diff);
         for (auto itr = s_pendingSync.begin(); itr != s_pendingSync.end(); )
         {
             itr->second.elapsed += diff;
@@ -739,7 +743,7 @@ public:
             Player* master = ObjectAccessor::FindConnectedPlayer(ownerGuid);
             if (bot && master)
             {
-                SyncManagedBot(master, bot, itr->second.spec);
+                SyncManagedBot(master, bot, itr->second.role, itr->second.spec);
                 itr = s_pendingSync.erase(itr);
             }
             else if (itr->second.elapsed > 30000) itr = s_pendingSync.erase(itr);
@@ -770,6 +774,7 @@ public:
                 if (!ValidateAssemblySnapshot(master, plan, completionValidationError))
                 {
                     plan.assembling = false;
+                    Reserve::ReleaseUnjoined(master);
                     SendProtocol(master, "ERROR", completionValidationError);
                     continue;
                 }
@@ -784,6 +789,7 @@ public:
             else if (plan.assembleElapsed > 30000)
             {
                 plan.assembling = false;
+                Reserve::ReleaseUnjoined(master);
                 SendProtocol(master, "ERROR", "Assembly timed out. Accepted humans and joined bots were kept; review availability and retry.");
             }
         }
@@ -1029,10 +1035,17 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
 
     bool needsManagedLogin = false;
     for (Member const& member : plan.members)
-        if (!member.human && member.managed && !ObjectAccessor::FindConnectedPlayer(member.guid)) { needsManagedLogin = true; break; }
+        if (!member.human && member.managed && !member.reserve && !ObjectAccessor::FindConnectedPlayer(member.guid)) { needsManagedLogin = true; break; }
 
     PlayerbotMgr* mgr = needsManagedLogin ? GET_PLAYERBOT_MGR(master) : nullptr;
     if (needsManagedLogin && !mgr) { SendError(handler, "Playerbot manager is unavailable for the offline managed bot(s) in this roster."); return true; }
+
+    std::string reserveError;
+    if (!Reserve::AcquirePlan(master, plan, reserveError))
+    {
+        SendError(handler, reserveError);
+        return true;
+    }
 
     // A fresh explicit Assemble is also the explicit retry boundary for human invitations. During
     // this attempt each real player receives at most one invite, so a decline is never turned into
@@ -1045,15 +1058,19 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
     uint32 account = master->GetSession()->GetAccountId();
     for (Member const& member : plan.members)
     {
-        if (member.human || !member.managed) continue;
+        if (member.human || (!member.managed && !member.needsPreparation && !member.reserve)) continue;
         Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid);
         if (bot)
         {
-            SyncManagedBot(master, bot, member.spec);
+            SyncManagedBot(master, bot, member.role, member.spec);
             continue;
         }
-        mgr->AddPlayerBot(member.guid, account);
-        s_pendingSync[member.guid.GetCounter()] = { owner, member.spec, 0 };
+
+        // Reserve::AcquirePlan has already asked RandomPlayerbotMgr to rotate/login ordinary
+        // RNDbot reserve characters. Only the legacy managed pool uses the per-player manager.
+        if (!member.reserve)
+            mgr->AddPlayerBot(member.guid, account);
+        s_pendingSync[member.guid.GetCounter()] = { owner, member.role, member.spec, 0 };
     }
 
     plan.assembling = true;
@@ -1155,6 +1172,7 @@ bool GroupComposerCommand::HandleClear(ChatHandler* handler)
         SendError(handler, "Wait for the active assembly to finish before clearing the preview.");
         return true;
     }
+    Reserve::ReleaseUnjoined(master);
     s_drafts.erase(owner);
     s_plans.erase(owner);
     ClearPendingForOwner(owner);
@@ -1175,6 +1193,7 @@ bool GroupComposerCommand::HandleStatus(ChatHandler* handler)
         handler->PSendSysMessage("[GC]|STATUS|{}", plan->second.assembling ? "Assembly in progress." : "Preview synchronized from server.");
         return true;
     }
+    handler->PSendSysMessage("[GC]|DIAG|{}", Sanitize(Reserve::Status(owner)));
     if (s_drafts.count(owner)) handler->SendSysMessage("[GC]|STATUS|Configuration draft exists; press Find Roster to build a preview.");
     else handler->SendSysMessage("[GC]|STATUS|Group Composer backend ready.");
     return true;
