@@ -13,7 +13,10 @@
 #include "GroupMgr.h"
 #include "LFG.h"
 #include "LFGMgr.h"
+#include "Map.h"
+#include "MapMgr.h"
 #include "ObjectAccessor.h"
+#include "ObjectMgr.h"
 #include "Player.h"
 #include "PlayerbotAI.h"
 #include "PlayerbotAIConfig.h"
@@ -24,6 +27,7 @@
 #include "RBAC.h"
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
+#include "TitanRuneSystem.h"
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
@@ -289,6 +293,28 @@ uint32 DungeonMapId(std::string const& activity)
     return itr == maps.end() ? 0 : itr->second;
 }
 
+uint32 RaidMapId(std::string const& activity)
+{
+    static std::unordered_map<std::string, uint32> const maps = {
+        { "naxxramas", 533 }, { "obsidian_sanctum", 615 }, { "eye_of_eternity", 616 },
+        { "ulduar", 603 }, { "trial_crusader", 649 }, { "onyxia", 249 },
+        { "vault_archavon", 624 }, { "icecrown", 631 }, { "ruby_sanctum", 724 },
+        { "karazhan", 532 }, { "zulaman", 568 }, { "gruul", 565 }, { "magtheridon", 544 },
+        { "serpentshrine", 548 }, { "tempest_keep", 550 }, { "hyjal", 534 },
+        { "black_temple", 564 }, { "sunwell", 580 }, { "zul_gurub", 309 }, { "aq20", 509 },
+        { "molten_core", 409 }, { "blackwing_lair", 469 }, { "aq40", 531 },
+    };
+    auto itr = maps.find(activity);
+    return itr == maps.end() ? 0 : itr->second;
+}
+
+uint32 ActivityMapId(Plan const& plan)
+{
+    if (plan.config.mode == "dungeon") return DungeonMapId(plan.config.activity);
+    if (plan.config.mode == "raid") return RaidMapId(plan.config.activity);
+    return 0;
+}
+
 bool IsBotGuid(ObjectGuid guid)
 {
     if (Player* player = ObjectAccessor::FindConnectedPlayer(guid)) return GET_PLAYERBOT_AI(player) != nullptr;
@@ -455,6 +481,155 @@ bool ApplyArrangement(Player* master, Plan const& plan, std::string& error)
         }
     }
     group->SendUpdate();
+    return true;
+}
+
+char const* EnterStateReason(Map::EnterState state)
+{
+    switch (state)
+    {
+        case Map::CANNOT_ENTER_NO_ENTRY: return "the instance map is unavailable";
+        case Map::CANNOT_ENTER_UNINSTANCED_DUNGEON: return "the instance template is unavailable";
+        case Map::CANNOT_ENTER_DIFFICULTY_UNAVAILABLE: return "that difficulty is unavailable";
+        case Map::CANNOT_ENTER_NOT_IN_RAID: return "the player is not in a valid raid group";
+        case Map::CANNOT_ENTER_CORPSE_IN_DIFFERENT_INSTANCE: return "their corpse belongs to another instance";
+        case Map::CANNOT_ENTER_INSTANCE_BIND_MISMATCH: return "their saved lockout conflicts with the group instance";
+        case Map::CANNOT_ENTER_TOO_MANY_INSTANCES: return "they have entered too many instances recently";
+        case Map::CANNOT_ENTER_MAX_PLAYERS: return "the target instance is already full";
+        case Map::CANNOT_ENTER_ZONE_IN_COMBAT: return "an encounter is already in progress in the target instance";
+        default: return "AzerothCore rejected instance entry";
+    }
+}
+
+bool ResolveTitanTravelMode(Plan const& plan, uint32 mapId, TitanRuneMode& mode, std::string& error)
+{
+    mode = TitanRuneMode::Off;
+    if (plan.config.mode != "dungeon") return true;
+
+    bool requested = true;
+    if (plan.config.difficulty == "alpha") mode = TitanRuneMode::Alpha;
+    else if (plan.config.difficulty == "beta") mode = TitanRuneMode::Beta;
+    else if (plan.config.difficulty == "gamma") mode = TitanRuneMode::Gamma;
+    else requested = false;
+
+    if (requested && !TitanRune::IsSupportedDungeon(mapId, mode))
+    {
+        error = std::string("Defense Protocol ") + TitanRune::ModeName(mode) +
+            " is not supported by the selected dungeon on this realm.";
+        return false;
+    }
+    return true;
+}
+
+bool TeleportCompletedPlan(Player* master, Plan const& plan, std::string& detail, std::string& error)
+{
+    if (!master)
+    {
+        error = "Group Composer lost the live group leader before travel.";
+        return false;
+    }
+
+    uint32 mapId = ActivityMapId(plan);
+    if (!mapId)
+    {
+        // Random Dungeon has no destination until Dungeon Finder chooses one. Named activities are
+        // always mapped and travel automatically after Assemble.
+        if (plan.config.mode == "dungeon" && plan.config.activity == "random")
+        {
+            detail = "Roster assembled. Random Dungeon is ready for Dungeon Finder.";
+            return true;
+        }
+        error = "The selected activity has no configured instance map for automatic travel.";
+        return false;
+    }
+
+    Group* group = master->GetGroup();
+    if (!group || group->GetMembersCount() != plan.members.size())
+    {
+        error = "Automatic travel requires the complete reviewed roster to still be grouped.";
+        return false;
+    }
+
+    AreaTriggerTeleport const* destination = sObjectMgr->GetMapEntranceTrigger(mapId);
+    if (!destination || destination->target_mapId != mapId)
+    {
+        error = "AzerothCore has no canonical entrance trigger for the selected instance.";
+        return false;
+    }
+
+    TitanRuneMode titanMode = TitanRuneMode::Off;
+    if (!ResolveTitanTravelMode(plan, mapId, titanMode, error)) return false;
+
+    std::vector<Player*> travelers;
+    travelers.reserve(plan.members.size());
+    for (Member const& member : plan.members)
+    {
+        Player* player = ObjectAccessor::FindConnectedPlayer(member.guid);
+        if (!player)
+        {
+            error = "'" + member.name + "' went offline before automatic instance travel.";
+            return false;
+        }
+        if (player->GetGroup() != group)
+        {
+            error = "'" + member.name + "' left the reviewed group before automatic instance travel.";
+            return false;
+        }
+        if (player->IsBeingTeleported())
+        {
+            error = "'" + member.name + "' is already being teleported; wait a moment and Assemble again.";
+            return false;
+        }
+        if (player->IsInCombat())
+        {
+            error = "'" + member.name + "' is in combat. Automatic instance travel waits until the full group is out of combat.";
+            return false;
+        }
+        if (player->InBattleground() || player->IsSpectator())
+        {
+            error = "'" + member.name + "' is in a battleground/spectator state and cannot enter the selected instance.";
+            return false;
+        }
+
+        Map::EnterState state = sMapMgr->PlayerCannotEnter(mapId, player);
+        if (state != Map::CAN_ENTER && state != Map::CANNOT_ENTER_ALREADY_IN_MAP)
+        {
+            error = "'" + member.name + "' cannot enter the selected instance because " + EnterStateReason(state) + ".";
+            return false;
+        }
+        travelers.push_back(player);
+    }
+
+    // The explicit Composer selection must beat any stale personal setting. Heroic/Normal turns the
+    // next-dungeon protocol off; Alpha/Beta/Gamma persists the selected protocol before the leader
+    // enters so TitanRune::ActivateForPlayer sees the correct authoritative group-leader setting.
+    if (plan.config.mode == "dungeon")
+        TitanRune::SaveSelectedMode(master, titanMode);
+
+    auto teleport = [&](Player* player)
+    {
+        if (!player) return;
+        if (player->IsInFlight())
+        {
+            player->GetMotionMaster()->MovementExpired();
+            player->CleanupAfterTaxiFlight();
+        }
+        else
+            player->SaveRecallPosition();
+
+        player->TeleportTo(destination->target_mapId, destination->target_X, destination->target_Y,
+            destination->target_Z, destination->target_Orientation);
+    };
+
+    // Let the real group leader create/resolve the destination instance first, then move every other
+    // reviewed member into that group-owned copy. This keeps raid lockouts and instance ownership in
+    // AzerothCore's normal path instead of inventing a Composer-specific instance ID.
+    teleport(master);
+    for (Player* player : travelers)
+        if (player != master) teleport(player);
+
+    detail = std::string("Roster assembled and entering the selected ") +
+        (plan.config.mode == "raid" ? "raid." : "dungeon.");
     return true;
 }
 
@@ -662,6 +837,28 @@ bool BotHasPendingSync(ObjectGuid guid)
     return s_pendingSync.count(guid.GetCounter()) != 0;
 }
 
+void ClearPendingSync(uint32 ownerLow)
+{
+    for (auto itr = s_pendingSync.begin(); itr != s_pendingSync.end(); )
+    {
+        if (itr->second.ownerGuid == ownerLow) itr = s_pendingSync.erase(itr);
+        else ++itr;
+    }
+}
+
+std::vector<uint32> UnreadyBotGuids(Plan const& plan)
+{
+    std::vector<uint32> failed;
+    for (Member const& member : plan.members)
+    {
+        if (member.human) continue;
+        Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid);
+        if (!bot || !GET_PLAYERBOT_AI(bot) || BotHasPendingSync(member.guid))
+            failed.push_back(member.guid.GetCounter());
+    }
+    return failed;
+}
+
 uint32 SelectedBotCount(Plan const& plan)
 {
     uint32 total = 0;
@@ -721,6 +918,61 @@ bool PreparePlan(Player* master, Plan& plan, std::string& error)
     plan.prepareProgressElapsed = 0;
     plan.preparing = OwnerHasPendingSync(owner);
     plan.prepared = !plan.preparing;
+    return true;
+}
+
+bool ReplaceUnreadyCandidates(Player* master, Plan& plan, std::string& detail)
+{
+    if (!master) { detail = "Composer lost its owner while replacing unavailable bots."; return false; }
+    if (plan.prepareAttempts >= 3)
+    {
+        detail = "Composer exhausted three automatic replacement attempts.";
+        return false;
+    }
+
+    std::vector<uint32> failed = UnreadyBotGuids(plan);
+    if (failed.empty())
+    {
+        detail = "No replaceable unavailable bot was identified.";
+        return false;
+    }
+
+    std::string firstFailed = "bot";
+    for (Member const& member : plan.members)
+        if (std::find(failed.begin(), failed.end(), member.guid.GetCounter()) != failed.end()) { firstFailed = member.name; break; }
+
+    std::unordered_set<uint32> rejected = plan.rejectedCandidates;
+    for (uint32 low : failed) rejected.insert(low);
+    Config config = plan.config;
+    uint8 nextAttempt = static_cast<uint8>(plan.prepareAttempts + 1);
+    uint32 ownerLow = master->GetGUID().GetCounter();
+
+    ClearPendingSync(ownerLow);
+    Reserve::ReleaseUnjoined(master);
+
+    Plan replacement;
+    std::string buildError;
+    if (!Planner::Build(master, config, replacement, buildError, rejected))
+    {
+        detail = "Could not replace unavailable '" + firstFailed + "': " + buildError;
+        return false;
+    }
+    replacement.prepareAttempts = nextAttempt;
+    replacement.rejectedCandidates = std::move(rejected);
+
+    std::string prepareError;
+    if (!PreparePlan(master, replacement, prepareError))
+    {
+        detail = "Replacement roster could not reserve/prepare fresh capacity: " + prepareError;
+        return false;
+    }
+
+    plan = std::move(replacement);
+    ChatHandler handler(master->GetSession());
+    SendPlan(&handler, plan);
+    detail = "Replaced unavailable '" + firstFailed + "' automatically; preparing fresh capacity (attempt "
+        + std::to_string(unsigned(plan.prepareAttempts)) + "/3).";
+    SendProgress(master, plan.prepared ? "READY" : "PREPARING", PreparedBotCount(plan), SelectedBotCount(plan), detail);
     return true;
 }
 
@@ -874,7 +1126,7 @@ public:
                 SyncManagedBot(master, bot, itr->second.role, itr->second.spec, itr->second.fullRebuild);
                 itr = s_pendingSync.erase(itr);
             }
-            else if (itr->second.elapsed > 30000) itr = s_pendingSync.erase(itr);
+            else if (itr->second.elapsed > 60000) itr = s_pendingSync.erase(itr);
             else ++itr;
         }
 
@@ -904,15 +1156,20 @@ public:
                     plan.prepared = true;
                     if (master) SendProgress(master, "READY", readyBots, totalBots, "All selected bots are online and ready to assemble.");
                 }
-                else if (plan.prepareElapsed > 45000)
+                else if (plan.prepareElapsed > 12000 && master)
                 {
-                    plan.preparing = false;
-                    plan.prepared = false;
-                    if (master)
+                    std::string replacementDetail;
+                    if (!ReplaceUnreadyCandidates(master, plan, replacementDetail))
                     {
+                        plan.preparing = false;
+                        plan.prepared = false;
                         Reserve::ReleaseUnjoined(master);
-                        SendProgress(master, "ERROR", readyBots, totalBots, "Preparation timed out before every selected bot became ready. Build & Prepare again to replace unavailable capacity.");
+                        ClearPendingSync(ownerLow);
+                        SendProgress(master, "ERROR", readyBots, totalBots, replacementDetail);
+                        SendProtocol(master, "ERROR", replacementDetail);
                     }
+                    // Successful replacement resets the new plan's preparation timers internally.
+                    continue;
                 }
             }
 
@@ -952,8 +1209,20 @@ public:
                 plan.assembling = false;
                 if (ApplyArrangement(master, plan, arrangementError))
                 {
-                    SendProgress(master, "DONE", uint32(plan.members.size()), uint32(plan.members.size()), "Roster assembled and subgroup layout applied.");
-                    SendProtocol(master, "DONE", "Roster assembled and subgroup layout applied.");
+                    std::string travelDetail, travelError;
+                    if (ActivityMapId(plan))
+                        SendProgress(master, "TRAVEL", uint32(plan.members.size()), uint32(plan.members.size()), "Roster complete. Entering the selected instance...");
+
+                    if (TeleportCompletedPlan(master, plan, travelDetail, travelError))
+                    {
+                        SendProgress(master, "DONE", uint32(plan.members.size()), uint32(plan.members.size()), travelDetail);
+                        SendProtocol(master, "DONE", travelDetail);
+                    }
+                    else
+                    {
+                        SendProgress(master, "ERROR", uint32(plan.members.size()), uint32(plan.members.size()), travelError);
+                        SendProtocol(master, "ERROR", travelError);
+                    }
                 }
                 else
                     SendProtocol(master, "ERROR", arrangementError);

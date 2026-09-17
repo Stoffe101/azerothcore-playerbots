@@ -34,7 +34,7 @@ def ids(block: str) -> list[str]:
 dungeon_data = section(DATA, "D.DUNGEONS = {", "D.DUNGEON_DIFFICULTIES = {")
 raid_data = section(DATA, "D.RAIDS = {", "D.RAID_DIFFICULTIES = {")
 raid_server = section(SERVER, "bool RaidSupports(", "uint32 DungeonMapId(")
-dungeon_server = section(SERVER, "uint32 DungeonMapId(", "bool IsBotGuid(")
+dungeon_server = section(SERVER, "uint32 DungeonMapId(", "uint32 RaidMapId(")
 
 client_dungeons: dict[str, int] = {}
 for entry in re.finditer(r'\{\s*id\s*=\s*"([^"]+)"([^}]*)\}', dungeon_data):
@@ -345,3 +345,24 @@ assert "ActivateGroupComposerBot" in RESERVE_PATCH and "ReleaseGroupComposerBot"
 assert "IsGroupComposerReserved(guid)" in RESERVE_PATCH, (
     "Composer-owned bots are no longer protected from ordinary population removal"
 )
+
+
+# V4 selected-activity travel. A named dungeon/raid is entered only after the exact reviewed roster
+# is complete and subgroup application succeeds. Runtime coordinates come from AzerothCore's
+# canonical map entrance trigger; Random Dungeon remains queue-selected and is never guessed here.
+travel = section(SERVER, "bool TeleportCompletedPlan(", "void PruneUnselectedBots(")
+assert "sObjectMgr->GetMapEntranceTrigger(mapId)" in travel, "Selected activity travel must use canonical instance entrance data"
+assert "sMapMgr->PlayerCannotEnter(mapId, player)" in travel, "Every member must pass authoritative instance-entry preflight"
+assert "player->IsInCombat()" in travel and "player->IsBeingTeleported()" in travel, "Travel lost combat/teleport safety guards"
+assert "TitanRune::SaveSelectedMode(master, titanMode)" in travel, "Named Titan Rune travel no longer persists the reviewed protocol"
+assert "player->TeleportTo(destination->target_mapId" in travel, "Completed rosters are no longer teleported into the selected activity"
+assert 'plan.config.activity == "random"' in travel, "Random Dungeon must remain destination-less until Dungeon Finder selects it"
+for map_id in (533, 615, 616, 603, 649, 249, 624, 631, 724, 532, 568, 565, 544, 548, 550, 534, 564, 580, 309, 509, 409, 469, 531):
+    assert str(map_id) in SERVER, f"Raid map {map_id} disappeared from Group Composer travel mapping"
+world_update = section(SERVER, "class GroupComposerWorld", "ChatCommandTable GroupComposerCommand::GetCommands")
+assert world_update.index("ApplyArrangement(master, plan, arrangementError)") < world_update.index("TeleportCompletedPlan(master, plan, travelDetail, travelError)"), (
+    "Automatic activity travel must happen only after subgroup layout has been committed"
+)
+assert 'SendProgress(master, "TRAVEL"' in world_update, "Client no longer receives selected-activity travel progress"
+assert 'GC:GetConfig().activity == "random"' in CORE, "Named dungeons must not queue again after direct travel"
+assert 'TRAVEL="Entering activity"' in DASHBOARD, "Dashboard lost the explicit automatic travel phase"

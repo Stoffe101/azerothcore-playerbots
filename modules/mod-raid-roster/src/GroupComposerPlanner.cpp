@@ -795,8 +795,16 @@ bool Planner::IsRangedDps(uint8 cls, uint8 spec, uint8 role)
 
 bool Planner::Build(Player* master, Config const& config, Plan& out, std::string& error)
 {
+    static std::unordered_set<uint32> const none;
+    return Build(master, config, out, error, none);
+}
+
+bool Planner::Build(Player* master, Config const& config, Plan& out, std::string& error,
+    std::unordered_set<uint32> const& excludedCandidates)
+{
     out = Plan{};
     out.config = config;
+    out.rejectedCandidates = excludedCandidates;
     if (!master)
     {
         error = "Composer requires an in-world player.";
@@ -851,6 +859,25 @@ bool Planner::Build(Player* master, Config const& config, Plan& out, std::string
     }
 
     std::vector<Candidate> candidates = BuildCandidates(master, config, out);
+    if (!excludedCandidates.empty())
+    {
+        candidates.erase(std::remove_if(candidates.begin(), candidates.end(), [&](Candidate const& candidate)
+        {
+            return excludedCandidates.count(candidate.guid.GetCounter()) != 0;
+        }), candidates.end());
+
+        // Diagnostics describe the usable candidate snapshot, not bodies intentionally rejected by
+        // an earlier preparation attempt.
+        out.guildCandidates = 0;
+        out.worldCandidates = 0;
+        out.managedCandidates = 0;
+        for (Candidate const& candidate : candidates)
+        {
+            if (candidate.guild) ++out.guildCandidates;
+            else ++out.worldCandidates;
+            if (candidate.managed) ++out.managedCandidates;
+        }
+    }
     std::unordered_set<uint32> used;
     for (Member const& member : out.members) used.insert(member.guid.GetCounter());
 

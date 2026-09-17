@@ -397,7 +397,7 @@ function GC:HandleProtocolMessage(message)
             GC:SetProgress("DONE", tonumber(GC.plan.summary.total) or #GC.plan.members, tonumber(GC.plan.summary.total) or #GC.plan.members, fields[2] or "Roster ready.")
         end
         GC:Fire("STATUS", fields[2] or "Done.")
-        if completed == "assemble" and GC:GetConfig().mode == "DUNGEON" and GC:GetConfig().options.queueAfterAssemble then
+        if completed == "assemble" and GC:GetConfig().mode == "DUNGEON" and GC:GetConfig().activity == "random" and GC:GetConfig().options.queueAfterAssemble then
             GC:QueueDungeon()
         end
     elseif kind == "ERROR" then

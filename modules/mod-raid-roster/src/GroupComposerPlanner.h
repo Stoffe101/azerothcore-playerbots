@@ -15,6 +15,8 @@ public:
     // Build is deterministic for a snapshot of currently available candidates. It never invites,
     // logs in, removes or mutates a player. All destructive/action work belongs to assembly.
     static bool Build(Player* master, Config const& config, Plan& out, std::string& error);
+    static bool Build(Player* master, Config const& config, Plan& out, std::string& error,
+        std::unordered_set<uint32> const& excludedCandidates);
 
     // Rearrange an already-selected roster. Membership and active roles never change here.
     static void Arrange(Plan& plan);

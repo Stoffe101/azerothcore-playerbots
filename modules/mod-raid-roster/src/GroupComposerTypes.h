@@ -149,6 +149,8 @@ struct Plan
     bool prepared = false;
     uint32 prepareElapsed = 0;
     uint32 prepareProgressElapsed = 0;
+    uint8 prepareAttempts = 0;
+    std::unordered_set<uint32> rejectedCandidates;
 
     bool assembling = false;
     uint32 assembleElapsed = 0;

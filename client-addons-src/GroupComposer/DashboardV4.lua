@@ -128,7 +128,7 @@ end
 local function SetStatusTexture(t,kind)
     if kind=="READY" or kind=="DONE" then t:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
     elseif kind=="ERROR" then t:SetTexture("Interface\\DialogFrame\\UI-Dialog-Icon-AlertNew")
-    elseif kind=="PREPARING" or kind=="BUILDING" or kind=="ASSEMBLING" then t:SetTexture("Interface\\Icons\\INV_Misc_PocketWatch_01")
+    elseif kind=="PREPARING" or kind=="BUILDING" or kind=="ASSEMBLING" or kind=="TRAVEL" then t:SetTexture("Interface\\Icons\\INV_Misc_PocketWatch_01")
     else t:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark") end
 end
 
@@ -484,8 +484,8 @@ local function RefreshActivity()
 end
 local function RefreshCommand()
     local p=GC.progress or {phase="IDLE",current=0,total=0,detail=""}; local phase=p.phase or "IDLE"; SetStatusTexture(phaseIcon,phase)
-    local titles={IDLE="Configure roster",BUILDING="Selecting roster",PREPARING="Preparing bots",READY="Ready to assemble",ASSEMBLING="Assembling group",DONE="Group ready",ERROR="Needs attention"}; phaseTitle:SetText(titles[phase] or phase)
-    local pc=C.blue; if phase=="READY" or phase=="DONE" then pc=C.green elseif phase=="ERROR" then pc=C.red elseif phase=="PREPARING" or phase=="ASSEMBLING" then pc=C.gold end
+    local titles={IDLE="Configure roster",BUILDING="Selecting roster",PREPARING="Preparing bots",READY="Ready to assemble",ASSEMBLING="Assembling group",TRAVEL="Entering activity",DONE="Group ready",ERROR="Needs attention"}; phaseTitle:SetText(titles[phase] or phase)
+    local pc=C.blue; if phase=="READY" or phase=="DONE" then pc=C.green elseif phase=="ERROR" then pc=C.red elseif phase=="PREPARING" or phase=="ASSEMBLING" or phase=="TRAVEL" then pc=C.gold end
     phaseTitle:SetTextColor(pc[1],pc[2],pc[3],1); phaseDetail:SetText(p.detail or "")
     local humans=#Humans(); local total=GC.plan.ready and (tonumber(GC.plan.summary.total) or #GC.plan.members) or humans; local target=tonumber(GC:GetConfig().size) or 5; count:SetText(tostring(total).." / "..target); countSub:SetText(tostring(humans).." human"..(humans==1 and "" or "s").." - "..math.max(0,target-humans).." bot slots")
     local ratio=(p.total and p.total>0) and math.min(1,p.current/p.total) or (phase=="READY" or phase=="DONE") and 1 or 0; progFill:SetWidth(math.max(1,284*ratio)); local showProgress=phase=="PREPARING" or phase=="ASSEMBLING" or phase=="READY" or phase=="DONE"; progressText:SetText(showProgress and (tostring(p.current or 0).." / "..tostring(p.total or 0).." - "..(p.detail or "")) or "")
