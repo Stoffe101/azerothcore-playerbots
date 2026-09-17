@@ -41,6 +41,8 @@ jobs:
           python3 client-addons-src/GroupComposer/tests/test_server_contract.py
           git diff --check
           grep -q 'group->AddMember(bot)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'AddPlayerBot(member.guid, account, true)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'groupComposerSilent' patches/0035-playerbot-group-composer-silent-login.patch
           grep -q 'PROGRESS' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           ! grep -q 'InviteToGroupAction' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'prepared previews stay reserved for three minutes' modules/mod-raid-roster/src/GroupComposerReserve.cpp
