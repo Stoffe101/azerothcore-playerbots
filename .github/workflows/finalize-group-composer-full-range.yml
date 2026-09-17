@@ -1,0 +1,131 @@
+name: Finalize Group Composer full range
+
+on:
+  push:
+    branches:
+      - test/runtime-hardening-group-composer
+    paths:
+      - .github/workflows/finalize-group-composer-full-range.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/runtime-hardening-group-composer
+
+      - name: Expose complete raid planner range safely
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one match, found {count}\n--- needle ---\n{old}")
+              p.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          dashboard = "client-addons-src/GroupComposer/DashboardV3.lua"
+          replace_once(dashboard,
+          '''local READY_RAIDS = {
+              "obsidian_sanctum", "eye_of_eternity", "onyxia", "icecrown", "ruby_sanctum", "gruul", "magtheridon",
+          }
+          ''',
+          '''local ENCOUNTER_READY_RAIDS = {
+              obsidian_sanctum = true, eye_of_eternity = true, onyxia = true,
+              icecrown = true, ruby_sanctum = true, gruul = true, magtheridon = true,
+          }
+          local function EncounterReadyRaid(id)
+              return id and ENCOUNTER_READY_RAIDS[id] and true or false
+          end
+          ''')
+
+          replace_once(dashboard,
+          '''for i, size in ipairs({10, 25, 40}) do
+              local b = Button(raidSetup, tostring(size) .. "-man", 90, 34, function() GC:SetRaidSize(size) end); b:SetPoint("TOPLEFT", 16 + ((i - 1) * 98), -35); b.sizeValue = size; sizeButtons[#sizeButtons + 1] = b
+          end
+          ''',
+          '''for i, size in ipairs({10, 20, 25, 40}) do
+              local b = Button(raidSetup, tostring(size) .. "-man", 72, 34, function() GC:SetRaidSize(size) end); b:SetPoint("TOPLEFT", 16 + ((i - 1) * 78), -35); b.sizeValue = size; sizeButtons[#sizeButtons + 1] = b
+          end
+          ''')
+
+          replace_once(dashboard,
+          '''local raidTitle = Text(raidSetup, "BOT-READY RAID", "GameFontNormalSmall", C.muted); raidTitle:SetPoint("TOPLEFT", 335, -13)
+          local function RaidItems()
+              local out = {}
+              for _, id in ipairs(READY_RAIDS) do local r = D.GetRaidById(id); if r then out[#out + 1] = {value = id, label = r.era .. "  •  " .. r.label} end end
+              return out
+          end
+          ''',
+          '''local raidTitle = Text(raidSetup, "RAID", "GameFontNormalSmall", C.muted); raidTitle:SetPoint("TOPLEFT", 335, -13)
+          local function RaidItems()
+              local out = {}
+              for _, r in ipairs(D.RAIDS or {}) do
+                  local status = EncounterReadyRaid(r.id) and "BOT-READY" or "ROSTER ONLY"
+                  out[#out + 1] = {value = r.id, label = r.era .. "  •  " .. r.label .. "  •  " .. status}
+              end
+              return out
+          end
+          ''')
+
+          replace_once(dashboard,
+          '''local raidReady = Text(raidSetup, "✓ Encounter-supported", "GameFontNormal", C.green); raidReady:SetPoint("TOPRIGHT", -20, -47)
+          ''',
+          '''local raidReady = Text(raidSetup, "", "GameFontNormal", C.green); raidReady:SetPoint("TOPRIGHT", -20, -47)
+          ''')
+
+          replace_once(dashboard,
+          '''    local ready = HumanReady(); rPreview:SetEnabledState(ready); rAssemble:SetEnabledState(plan.ready and plan.valid)
+          ''',
+          '''    if EncounterReadyRaid(c.activity) then
+                  raidReady:SetText("✓ Encounter AI certified")
+                  raidReady:SetTextColor(C.green[1], C.green[2], C.green[3], 1)
+              else
+                  raidReady:SetText("Roster planner • encounter AI not certified")
+                  raidReady:SetTextColor(C.gold[1], C.gold[2], C.gold[3], 1)
+              end
+              local ready = HumanReady(); rPreview:SetEnabledState(ready); rAssemble:SetEnabledState(plan.ready and plan.valid)
+          ''')
+
+          tests = "client-addons-src/GroupComposer/tests/test_server_contract.py"
+          p = Path(tests)
+          text = p.read_text(encoding="utf-8")
+          marker = '''assert 'RemainingBotSlots("TANK")' in DASHBOARD and 'RemainingBotSlots("HEALER")' in DASHBOARD
+
+          # Utility coverage'''
+          replacement = '''assert 'RemainingBotSlots("TANK")' in DASHBOARD and 'RemainingBotSlots("HEALER")' in DASHBOARD
+          assert 'ipairs({10, 20, 25, 40})' in DASHBOARD, "Dashboard no longer exposes all supported raid-size families"
+          assert 'for _, r in ipairs(D.RAIDS or {}) do' in DASHBOARD, "Dashboard hard-filters the full raid planner catalog"
+          assert 'ROSTER ONLY' in DASHBOARD and 'encounter AI not certified' in DASHBOARD, (
+              "Planner-only raids must remain visibly distinct from certified encounter automation"
+          )
+          assert 'READY_RAIDS' not in DASHBOARD, "Legacy hard-coded raid whitelist still restricts Group Composer"
+
+          # Utility coverage'''
+          if text.count(marker) != 1:
+              raise SystemExit("test marker mismatch")
+          p.write_text(text.replace(marker, replacement, 1), encoding="utf-8")
+          PY
+
+      - name: Verify focused contracts
+        run: |
+          python3 client-addons-src/GroupComposer/tests/test_server_contract.py
+          git diff --check
+
+      - name: Commit full-range fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add client-addons-src/GroupComposer/DashboardV3.lua client-addons-src/GroupComposer/tests/test_server_contract.py
+          git diff --cached --check
+          git commit -m "fix(group-composer): expose complete raid planner range"
+          git push origin HEAD:test/runtime-hardening-group-composer
