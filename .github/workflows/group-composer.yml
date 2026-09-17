@@ -46,10 +46,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '^## Interface: 30300$' client-addons-src/GroupComposer/GroupComposer.toc
-          grep -q '^Advanced.lua$' client-addons-src/GroupComposer/GroupComposer.toc
-          grep -q '^People.lua$' client-addons-src/GroupComposer/GroupComposer.toc
-          grep -q '^Polish.lua$' client-addons-src/GroupComposer/GroupComposer.toc
+          toc=client-addons-src/GroupComposer/GroupComposer.toc
+          grep -q '^## Interface: 30300$' "$toc"
+          grep -q '^## X-UI-Shell: DashboardV3$' "$toc"
+          grep -q '^Data.lua$' "$toc"
+          grep -q '^Profiles.lua$' "$toc"
+          grep -q '^Core.lua$' "$toc"
+          grep -q '^ComposerPolicy.lua$' "$toc"
+          grep -q '^DashboardV3Dialogs.lua$' "$toc"
+          grep -q '^DashboardV3.lua$' "$toc"
+          for legacy in UI.lua Advanced.lua People.lua Polish.lua ModernUI.lua DashboardUI.lua DashboardPolish.lua; do
+            if grep -qx "$legacy" "$toc"; then
+              echo "Legacy Group Composer shell unexpectedly loaded: $legacy" >&2
+              exit 1
+            fi
+          done
           grep -q 'AddGroupComposerScripts();' modules/mod-raid-roster/src/RaidRosterLoader.cpp
           grep -q 'AddGroupComposerTitanRuneScripts();' modules/mod-raid-roster/src/RaidRosterLoader.cpp
           grep -q 'HandleAssemble' modules/mod-raid-roster/src/GroupComposerCommand.cpp
@@ -73,10 +84,9 @@ jobs:
             client-addons-src/GroupComposer/Data.lua
             client-addons-src/GroupComposer/Profiles.lua
             client-addons-src/GroupComposer/Core.lua
-            client-addons-src/GroupComposer/UI.lua
-            client-addons-src/GroupComposer/Advanced.lua
-            client-addons-src/GroupComposer/People.lua
-            client-addons-src/GroupComposer/Polish.lua
+            client-addons-src/GroupComposer/ComposerPolicy.lua
+            client-addons-src/GroupComposer/DashboardV3Dialogs.lua
+            client-addons-src/GroupComposer/DashboardV3.lua
             modules/mod-raid-roster/src/GroupComposerCommand.cpp
             modules/mod-raid-roster/src/GroupComposerPlanner.cpp
             modules/mod-raid-roster/src/GroupComposerTypes.h
