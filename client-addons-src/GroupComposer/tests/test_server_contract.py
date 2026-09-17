@@ -264,6 +264,9 @@ assert "projected.needsPreparation = true;" in retask, (
 assert "candidate.role != projected.role) score -= 400" in retask, (
     "Already-correct active roles must remain preferred over unnecessary bot retasking"
 )
+assert "projected.guild && candidate.spec != projected.spec) score -= 10000" in retask, (
+    "Persistent guild spec swaps must rank below safely preparable fallback bots"
+)
 assert "ProjectCandidateForRole(candidate, role, required, projected)" in retask, (
     "Required class/spec selection bypasses the same deterministic role projection path"
 )

@@ -651,6 +651,14 @@ bool BestCandidate(std::vector<Candidate> const& candidates, Config const& confi
         if (candidate.role != projected.role) score -= 400;
         if (candidate.spec != projected.spec) score -= 100;
 
+        // Prefer a role-ready or safely rebuildable world/reserve bot over changing the active
+        // specialization of a persistent guild companion. Guild companions keep their earned gear,
+        // so a forced spec swap could otherwise create a Protection tank in Retribution gear (or
+        // the equivalent mismatch for another hybrid). This is only a ranking penalty: if world
+        // fallback is disabled, or a named pin explicitly requests the companion, the guild bot can
+        // still be selected and retasked.
+        if (projected.guild && candidate.spec != projected.spec) score -= 10000;
+
         if (!found || score > bestScore || (score == bestScore && projected.name < result.name))
         {
             result = std::move(projected);

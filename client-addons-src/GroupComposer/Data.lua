@@ -1,7 +1,7 @@
 GroupComposerData = GroupComposerData or {}
 local D = GroupComposerData
 
-D.VERSION = "0.3.1"
+D.VERSION = "0.4.1"
 
 D.ROLE = {
     TANK = "TANK",

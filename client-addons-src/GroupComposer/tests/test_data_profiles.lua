@@ -15,6 +15,12 @@ local function truth(value, label)
     if not value then error(label or "expected truthy value", 2) end
 end
 
+local tocFile = assert(io.open("client-addons-src/GroupComposer/GroupComposer.toc", "r"))
+local toc = tocFile:read("*a")
+tocFile:close()
+local tocVersion = string.match(toc, "## Version:%s*([^\r\n]+)")
+eq(D.VERSION, tocVersion, "runtime/package version")
+
 eq(#D.CLASS_ORDER, 10, "WotLK class count")
 truth(not D.CLASS_ID.MONK, "Monk must not exist")
 truth(not D.CLASS_ID.DEMONHUNTER, "Demon Hunter must not exist")

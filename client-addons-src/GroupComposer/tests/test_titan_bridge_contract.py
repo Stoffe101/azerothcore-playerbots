@@ -2,19 +2,25 @@
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[3]
-polish = (root / "client-addons-src/GroupComposer/Polish.lua").read_text()
+toc = (root / "client-addons-src/GroupComposer/GroupComposer.toc").read_text()
+runtime = (root / "client-addons-src/GroupComposer/RuntimeGuards.lua").read_text()
 bridge = (root / "modules/mod-raid-roster/src/GroupComposerTitanRune.cpp").read_text()
 loader = (root / "modules/mod-raid-roster/src/RaidRosterLoader.cpp").read_text()
 titan_h = (root / "modules/mod-titan-rune/src/TitanRuneSystem.h").read_text()
 titan_cpp = (root / "modules/mod-titan-rune/src/TitanRuneSystem.cpp").read_text()
 
+assert "RuntimeGuards.lua" in toc, "V3 runtime guard layer is not loaded by the addon manifest"
+assert "\nPolish.lua\n" not in toc, "Legacy Polish.lua unexpectedly returned to the V3 addon manifest"
+
 required_client = [
     '.gctitan queue ',
     'ROLE_TOKEN = { TANK = "T", HEALER = "H", DPS = "D" }',
     'GC.pendingCommand = "queue"',
+    'GROUPCOMPOSER_CONFIRM_ASSEMBLY',
+    'if GC.pendingCommand == "status" then GC.pendingCommand = nil end',
 ]
 for token in required_client:
-    assert token in polish, f"missing Titan Rune client handoff contract: {token}"
+    assert token in runtime, f"missing loaded Titan/runtime safety contract: {token}"
 
 required_bridge = [
     'TitanRune::SaveSelectedMode(master, mode)',
@@ -44,4 +50,4 @@ assert 'TitanCandidateMaps(mode)' in bridge
 for map_id in (574, 575, 576, 578, 595, 599, 600, 601, 602, 604, 608, 619, 650, 632, 658, 668):
     assert str(map_id) in bridge, f"Titan Rune map {map_id} missing from queue candidate universe"
 
-print("Group Composer Titan Rune bridge contract passed")
+print("Group Composer loaded Titan Rune/runtime safety bridge contract passed")
