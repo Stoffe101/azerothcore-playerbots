@@ -241,6 +241,14 @@ local navDungeon=Button(side,"Dungeon",158,42,function() GC:SetMode("DUNGEON") e
 local navRaid=Button(side,"Raid",158,42,function() GC:SetMode("RAID") end); navRaid:SetPoint("TOPLEFT",16,-126)
 local navTemplates=Button(side,"Templates",158,42,function() U:ShowTemplates() end); navTemplates:SetPoint("TOPLEFT",16,-188)
 local navPeople=Button(side,"Humans & Pins",158,42,function() U:ShowPeople() end); navPeople:SetPoint("TOPLEFT",16,-238)
+local function DecorateNav(button,iconPath)
+    button.icon=Icon(button,iconPath,20); button.icon:SetPoint("LEFT",12,0)
+    button.label:ClearAllPoints(); button.label:SetPoint("LEFT",button.icon,"RIGHT",9,0); button.label:SetPoint("RIGHT",-8,0); button.label:SetJustifyH("LEFT")
+end
+DecorateNav(navDungeon,"Interface\\Icons\\Achievement_Dungeon_GloryoftheHERO")
+DecorateNav(navRaid,"Interface\\Icons\\Achievement_General_StayClassy")
+DecorateNav(navTemplates,"Interface\\Icons\\INV_Misc_Book_09")
+DecorateNav(navPeople,"Interface\\Icons\\INV_Misc_GroupNeedMore")
 local helpIcon=Icon(side,"Interface\\Icons\\INV_Misc_QuestionMark",22); helpIcon:SetPoint("BOTTOMLEFT",18,20); AddTooltip(helpIcon,"How Composer works","Choose a legal role for every real player. Build & Prepare selects, reserves and prepares bots without changing your live group. Assemble commits the reviewed roster. Humans are never silently removed or respecced.")
 local helpText=Text(side,"How it works","GameFontHighlightSmall",C.muted); helpText:SetPoint("LEFT",helpIcon,"RIGHT",7,0)
 
@@ -565,17 +573,67 @@ local tpName=CreateFrame("EditBox",nil,templates,"InputBoxTemplate"); tpName:Set
 function U:RefreshTemplates()
     local names=U.templateTab=="CUSTOM" and P.ListCustom() or P.ListBuiltins(); tpBuilt:SetAccent(C.blue,U.templateTab=="BUILTIN"); tpMine:SetAccent(C.blue,U.templateTab=="CUSTOM")
     for _,r in ipairs(tpRows) do r:Hide() end
-    for i,name in ipairs(names) do local nameCopy=name; local r=tpRows[i]; if not r then r=Panel(tpChild,C.card,C.line); r:SetWidth(850); r:SetHeight(54); r.name=Text(r,"","GameFontNormal",C.text); r.name:SetPoint("TOPLEFT",12,-9); r.info=Text(r,"","GameFontHighlightSmall",C.muted); r.info:SetPoint("TOPLEFT",12,-29); r.load=Button(r,"Load",74,28); r.load:SetPoint("RIGHT",-10,0); tpRows[i]=r end; r:ClearAllPoints(); r:SetPoint("TOPLEFT",0,-(i-1)*60); r.name:SetText(name); local p=P.Get(name); r.info:SetText(p and ((p.mode=="RAID" and tostring(p.size).." player raid" or "5 player dungeon").." - "..tostring(p.tanks).."T / "..tostring(p.healers).."H / "..tostring(p.dps).."D") or ""); r.load:SetScript("OnMouseDown",function() GC:LoadProfile(nameCopy); templates:Hide() end); r:Show() end; tpChild:SetHeight(math.max(450,#names*60+10))
+    for i,name in ipairs(names) do
+        local nameCopy=name; local r=tpRows[i]
+        if not r then
+            r=Panel(tpChild,C.card,C.line); r:SetWidth(850); r:SetHeight(54)
+            r.icon=Icon(r,"Interface\\Icons\\INV_Misc_QuestionMark",36); r.icon:SetPoint("LEFT",10,0)
+            r.name=Text(r,"","GameFontNormal",C.text); r.name:SetPoint("TOPLEFT",58,-9)
+            r.info=Text(r,"","GameFontHighlightSmall",C.muted); r.info:SetPoint("TOPLEFT",58,-29)
+            r.load=Button(r,"Load",74,28); r.load:SetPoint("RIGHT",-10,0); tpRows[i]=r
+        end
+        r:ClearAllPoints(); r:SetPoint("TOPLEFT",0,-(i-1)*60); r.name:SetText(name)
+        local p=P.Get(name)
+        if p then
+            local activity=p.mode=="RAID" and D.GetRaidById(p.activity) or D.GetDungeonById(p.activity)
+            local iconPath=p.mode=="RAID" and RAID_ART[p.activity] or DUNGEON_ART[p.activity]
+            r.icon:SetTexture(iconPath or (p.mode=="RAID" and "Interface\\Icons\\Achievement_General_StayClassy" or DUNGEON_ART.random))
+            local activityLabel=activity and activity.label or (p.mode=="RAID" and "Raid" or "Dungeon")
+            r.info:SetText(activityLabel.."  |  "..(p.mode=="RAID" and tostring(p.size).." player" or "5 player").."  |  "..tostring(p.tanks).."T / "..tostring(p.healers).."H / "..tostring(p.dps).."D")
+        else
+            r.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark"); r.info:SetText("")
+        end
+        r.load:SetScript("OnMouseDown",function() GC:LoadProfile(nameCopy); templates:Hide() end); r:Show()
+    end
+    tpChild:SetHeight(math.max(450,#names*60+10))
 end
 function U:ShowTemplates() CloseMenu(); U:RefreshTemplates(); templates:Show() end
 
 -- Humans and pins modal
 local people=Panel(frame,C.bg,C.lineStrong); people:SetWidth(960); people:SetHeight(650); people:SetPoint("CENTER"); people:SetFrameStrata("FULLSCREEN_DIALOG"); people:Hide(); U.people=people
 local ppTitle=Text(people,"HUMANS & FAMILIAR COMPANIONS","GameFontNormalLarge",C.text); ppTitle:SetPoint("TOPLEFT",20,-18); local ppSub=Text(people,"Humans are immutable. Pin persistent guild companions only when you want a familiar character.","GameFontHighlightSmall",C.muted); ppSub:SetPoint("TOPLEFT",ppTitle,"BOTTOMLEFT",0,-4); local ppClose=Button(people,"Close  X",100,30,function() people:Hide() end); ppClose:SetPoint("TOPRIGHT",-16,-15); ppClose:SetAccent(C.red,true)
-local ppHum=Panel(people,C.card,C.line); ppHum:SetPoint("TOPLEFT",20,-72); ppHum:SetWidth(920); ppHum:SetHeight(230); local ppHT=Text(ppHum,"REAL PLAYERS","GameFontNormal",C.text); ppHT:SetPoint("TOPLEFT",14,-12); local ppHumanRows={}
+local ppHum=Panel(people,C.card,C.line); ppHum:SetPoint("TOPLEFT",20,-72); ppHum:SetWidth(920); ppHum:SetHeight(230)
+local ppHT=Text(ppHum,"REAL PLAYERS","GameFontNormal",C.text); ppHT:SetPoint("TOPLEFT",14,-12)
+local ppHumanCount=Text(ppHum,"","GameFontHighlightSmall",C.muted); ppHumanCount:SetPoint("TOPRIGHT",-14,-12); ppHumanCount:SetWidth(220); ppHumanCount:SetJustifyH("RIGHT")
+local ppHumanScroll=CreateFrame("ScrollFrame",nil,ppHum); ppHumanScroll:SetPoint("TOPLEFT",12,-40); ppHumanScroll:SetPoint("BOTTOMRIGHT",-12,10); ppHumanScroll:EnableMouseWheel(true)
+local ppHumanChild=CreateFrame("Frame",nil,ppHumanScroll); ppHumanChild:SetWidth(892); ppHumanChild:SetHeight(180); ppHumanScroll:SetScrollChild(ppHumanChild)
+local ppHumanRows={}
+ppHumanScroll:SetScript("OnMouseWheel",function(self,d) self:SetVerticalScroll(math.max(0,math.min(self:GetVerticalScrollRange(),self:GetVerticalScroll()-d*36))) end)
 local ppPins=Panel(people,C.card,C.line); ppPins:SetPoint("TOPLEFT",20,-316); ppPins:SetWidth(920); ppPins:SetHeight(305); local ppPT=Text(ppPins,"PINNED GUILD COMPANIONS","GameFontNormal",C.text); ppPT:SetPoint("TOPLEFT",14,-12); local pinName=CreateFrame("EditBox",nil,ppPins,"InputBoxTemplate"); pinName:SetWidth(220); pinName:SetHeight(28); pinName:SetAutoFocus(false); pinName:SetPoint("TOPLEFT",14,-43); local pinRole="DPS"; local pinRoleDD=Selector(ppPins,130,function() return {{value="TANK",label="Tank"},{value="HEALER",label="Healer"},{value="DPS",label="DPS"}} end,function() return pinRole end,function(v) pinRole=v end,3); pinRoleDD:SetPoint("LEFT",pinName,"RIGHT",8,0); local pinReq=false; local pinReqT=Toggle(ppPins,"Required",function() return pinReq end,function(v) pinReq=v end); pinReqT:SetPoint("LEFT",pinRoleDD,"RIGHT",12,0); pinReqT:SetWidth(100); local pinAdd=Button(ppPins,"Pin Member",110,30,function() local n=pinName:GetText(); if n and n~="" then GC:AddPinnedMember(n,pinRole,pinReq); pinName:SetText(""); U:RefreshPeople() end end); pinAdd:SetPoint("TOPRIGHT",-14,-42); pinAdd:SetAccent(C.blue,true); local ppPinRows={}
 function U:RefreshPeople()
-    for _,r in ipairs(ppHumanRows) do r:Hide() end; local hs=Humans(); for i,h in ipairs(hs) do if i>5 then break end; local r=ppHumanRows[i]; if not r then r=Panel(ppHum,C.bg,C.line); r:SetWidth(890); r:SetHeight(32); r.icon=ClassIcon(r,"WARRIOR",22); r.icon:SetPoint("LEFT",7,0); r.name=Text(r,"","GameFontNormal",C.text); r.name:SetPoint("LEFT",36,0); r.name:SetWidth(180); r.roles={}; local off=0; for _,role in ipairs(ROLE_ORDER) do local b=Button(r,D.ROLE_LABEL[role],72,24); b:SetPoint("RIGHT",-7-off,0); r.roles[role]=b; off=off+78 end; ppHumanRows[i]=r end; r:ClearAllPoints(); r:SetPoint("TOPLEFT",14,-42-(i-1)*36); SetClassIcon(r.icon,h.class); r.name:SetText((h.isPlayer and "YOU - " or "")..h.name); local sel=GC:GetConfig().humanRoles[h.name]; local humanName=h.name; local humanClass=h.class; for _,role in ipairs(ROLE_ORDER) do local roleKey=role; local b=r.roles[roleKey]; local allowed=ClassCanRole(humanClass,roleKey); b:SetEnabledState(allowed); b:SetAccent(ROLE_COLOR[roleKey],sel==roleKey); b:SetScript("OnMouseDown",function() if allowed then GC:SetHumanRole(humanName,roleKey); U:RefreshPeople() end end) end; r:Show() end
+    for _,r in ipairs(ppHumanRows) do r:Hide() end
+    local hs=Humans(); ppHumanCount:SetText(tostring(#hs).." locked human anchor"..(#hs==1 and "" or "s"))
+    for i,h in ipairs(hs) do
+        local r=ppHumanRows[i]
+        if not r then
+            r=Panel(ppHumanChild,C.bg,C.line); r:SetWidth(890); r:SetHeight(32)
+            r.icon=ClassIcon(r,"WARRIOR",22); r.icon:SetPoint("LEFT",7,0)
+            r.name=Text(r,"","GameFontNormal",C.text); r.name:SetPoint("LEFT",36,0); r.name:SetWidth(180)
+            r.roles={}; local off=0
+            for _,role in ipairs(ROLE_ORDER) do local b=Button(r,D.ROLE_LABEL[role],72,24); b:SetPoint("RIGHT",-7-off,0); r.roles[role]=b; off=off+78 end
+            ppHumanRows[i]=r
+        end
+        r:ClearAllPoints(); r:SetPoint("TOPLEFT",0,-(i-1)*36); SetClassIcon(r.icon,h.class)
+        r.name:SetText((h.isPlayer and "YOU - " or "")..h.name)
+        local sel=GC:GetConfig().humanRoles[h.name]; local humanName=h.name; local humanClass=h.class
+        for _,role in ipairs(ROLE_ORDER) do
+            local roleKey=role; local b=r.roles[roleKey]; local allowed=ClassCanRole(humanClass,roleKey)
+            b:SetEnabledState(allowed); b:SetAccent(ROLE_COLOR[roleKey],sel==roleKey)
+            b:SetScript("OnMouseDown",function() if allowed then GC:SetHumanRole(humanName,roleKey); U:RefreshPeople() end end)
+        end
+        r:Show()
+    end
+    ppHumanChild:SetHeight(math.max(180,#hs*36)); ppHumanScroll:SetVerticalScroll(math.min(ppHumanScroll:GetVerticalScroll(),ppHumanScroll:GetVerticalScrollRange()))
     for _,r in ipairs(ppPinRows) do r:Hide() end; for i,p in ipairs(GC:GetConfig().pinned or {}) do if i>5 then break end; local r=ppPinRows[i]; if not r then r=Panel(ppPins,C.bg,C.line); r:SetWidth(890); r:SetHeight(32); r.name=Text(r,"","GameFontNormal",C.text); r.name:SetPoint("LEFT",8,0); r.name:SetWidth(220); r.info=Text(r,"","GameFontHighlightSmall",C.muted); r.info:SetPoint("LEFT",240,0); r.remove=Button(r,"Remove",78,24); r.remove:SetPoint("RIGHT",-7,0); r.remove:SetAccent(C.red,true); ppPinRows[i]=r end; r:ClearAllPoints(); r:SetPoint("TOPLEFT",14,-84-(i-1)*36); r.name:SetText(p.name); r.info:SetText((D.ROLE_LABEL[p.role] or p.role).." - "..(p.required and "Required" or "Preferred")); local pinIndex=i; r.remove:SetScript("OnMouseDown",function() GC:RemovePinnedMember(pinIndex); U:RefreshPeople() end); r:Show() end; pinReqT:Refresh(); pinRoleDD:Refresh()
 end
 function U:ShowPeople() CloseMenu(); U:RefreshPeople(); people:Show() end
