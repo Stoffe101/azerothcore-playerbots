@@ -534,8 +534,23 @@ end
 function U:ShowPeople() CloseMenu(); U:RefreshPeople(); people:Show() end
 
 -- In-dashboard confirmation, never a Blizzard popup.
-local shade=CreateFrame("Frame",nil,frame); shade:SetAllPoints(frame); shade:SetFrameLevel(frame:GetFrameLevel()+30); local shadeTex=Solid(shade,{0,0,0,0.72}); shadeTex:SetAllPoints(shade); shade:Hide(); local confirm=Panel(shade,C.chrome,C.gold); confirm:SetWidth(540); confirm:SetHeight(250); confirm:SetPoint("CENTER"); local cIcon=Icon(confirm,"Interface\\Icons\\Achievement_General_StayClassy",54); cIcon:SetPoint("TOP",0,-24); local cTitle=Text(confirm,"ASSEMBLE PREPARED ROSTER?","GameFontNormalLarge",C.text); cTitle:SetPoint("TOP",cIcon,"BOTTOM",0,-12); local cText=Text(confirm,"All selected bots are prepared. This now applies the reviewed roster to your live group. Playerbots attach directly; real players receive a normal invite.","GameFontHighlight",C.muted); cText:SetPoint("TOPLEFT",34,-116); cText:SetWidth(472); cText:SetJustifyH("CENTER"); cText:SetJustifyV("TOP"); local cCancel=Button(confirm,"Cancel",120,34,function() shade:Hide() end); cCancel:SetPoint("BOTTOMLEFT",130,20); local cGo=Button(confirm,"Assemble",120,34,function() shade:Hide(); GC:Assemble() end); cGo:SetPoint("BOTTOMRIGHT",-130,20); cGo:SetAccent(C.gold,true)
-function U:ShowAssembleConfirm() if not GC.progress or GC.progress.phase~="READY" then GC:Fire("STATUS","Build & Prepare must finish first."); return end; shade:Show() end
+local shade=CreateFrame("Frame",nil,frame); shade:SetAllPoints(frame); shade:SetFrameLevel(frame:GetFrameLevel()+30); local shadeTex=Solid(shade,{0,0,0,0.72}); shadeTex:SetAllPoints(shade); shade:Hide(); local confirm=Panel(shade,C.chrome,C.gold); confirm:SetWidth(540); confirm:SetHeight(250); confirm:SetPoint("CENTER"); local cIcon=Icon(confirm,"Interface\\Icons\\Achievement_General_StayClassy",54); cIcon:SetPoint("TOP",0,-24); local cTitle=Text(confirm,"ASSEMBLE PREPARED ROSTER?","GameFontNormalLarge",C.text); cTitle:SetPoint("TOP",cIcon,"BOTTOM",0,-12); local cText=Text(confirm,"All selected bots are prepared.","GameFontHighlight",C.muted); cText:SetPoint("TOPLEFT",34,-116); cText:SetWidth(472); cText:SetJustifyH("CENTER"); cText:SetJustifyV("TOP"); local cCancel=Button(confirm,"Cancel",120,34,function() shade:Hide() end); cCancel:SetPoint("BOTTOMLEFT",130,20); local cGo=Button(confirm,"Assemble",120,34,function() shade:Hide(); GC:Assemble() end); cGo:SetPoint("BOTTOMRIGHT",-130,20); cGo:SetAccent(C.gold,true)
+function U:ShowAssembleConfirm()
+    if not GC.progress or GC.progress.phase~="READY" then GC:Fire("STATUS","Build & Prepare must finish first."); return end
+    local c=GC:GetConfig(); local retry=string.find(GC.progress.detail or "","Enter Activity",1,true)~=nil
+    local activity=c.mode=="RAID" and D.GetRaidById(c.activity) or D.GetDungeonById(c.activity); local label=activity and activity.label or "the selected activity"
+    if retry then
+        cTitle:SetText("ENTER SELECTED ACTIVITY?"); cGo:SetText("Enter Activity")
+        cText:SetText("The reviewed roster is already assembled. This retries automatic travel for the complete group into "..label..". No roster rebuild is performed.")
+    elseif c.mode=="DUNGEON" and c.activity=="random" then
+        cTitle:SetText("ASSEMBLE PREPARED ROSTER?"); cGo:SetText("Assemble")
+        cText:SetText("This applies the reviewed roster to your live party. Playerbots attach directly; real players receive a normal invite. Dungeon Finder chooses the destination after assembly.")
+    else
+        cTitle:SetText("ASSEMBLE & ENTER?"); cGo:SetText("Assemble")
+        cText:SetText("This applies the reviewed roster to your live group, then automatically moves the complete group into "..label.." after validation.")
+    end
+    shade:Show()
+end
 
 local function AdjustRole(role,delta)
     local c=GC:GetConfig(); if role=="DPS" then return end; local key=role=="TANK" and "tanks" or "healers"; local next=math.max(0,(c[key] or 0)+delta); local dps=(c.dps or 0)-delta; if dps<0 then return end; c[key]=next; c.dps=dps; GC:Touch("Role composition changed")
@@ -547,10 +562,10 @@ local function RefreshActivity()
     if c.mode=="RAID" then
         raidSizeLabel:Show(); local selectedRaid=D.GetRaidById(c.activity)
         for size,b in pairs(raidSizeButtons) do local supported=false; if selectedRaid then for _,s in ipairs(selectedRaid.sizes or {}) do if s==size then supported=true end end end; b:Show(); b:SetEnabledState(supported); b:SetAccent(C.gold,supported and c.size==size) end
-        local r=selectedRaid; activityTitle:SetText(r and r.label or "Raid Setup"); activitySub:SetText((r and r.era or "Raid").." - "..tostring(c.size).." player - "..(c.difficulty=="heroic" and "Heroic" or "Normal")); activityIcon:SetTexture(RAID_ART[c.activity] or "Interface\\Icons\\Achievement_Boss_LichKing"); if ENCOUNTER_READY[c.activity] then SetStatusTexture(badgeIcon,"READY"); badgeText:SetText("Encounter AI certified"); badgeText:SetTextColor(C.green[1],C.green[2],C.green[3],1) else SetStatusTexture(badgeIcon,"BUILDING"); badgeText:SetText("Roster planner only"); badgeText:SetTextColor(C.gold[1],C.gold[2],C.gold[3],1) end
+        local r=selectedRaid; activityTitle:SetText(r and r.label or "Raid Setup"); activitySub:SetText((r and r.era or "Raid").." - "..tostring(c.size).." player - "..(c.difficulty=="heroic" and "Heroic" or "Normal").." | Auto travel after Assemble"); activityIcon:SetTexture(RAID_ART[c.activity] or "Interface\\Icons\\Achievement_Boss_LichKing"); if ENCOUNTER_READY[c.activity] then SetStatusTexture(badgeIcon,"READY"); badgeText:SetText("Encounter AI certified"); badgeText:SetTextColor(C.green[1],C.green[2],C.green[3],1) else SetStatusTexture(badgeIcon,"BUILDING"); badgeText:SetText("Roster planner only"); badgeText:SetTextColor(C.gold[1],C.gold[2],C.gold[3],1) end
     else
         raidSizeLabel:Hide(); for _,b in pairs(raidSizeButtons) do b:Hide() end
-        local d=D.GetDungeonById(c.activity); activityTitle:SetText(d and d.label or "Dungeon Group"); activitySub:SetText((c.difficulty=="alpha" and "Titan Rune Alpha" or c.difficulty=="beta" and "Titan Rune Beta" or c.difficulty=="gamma" and "Titan Rune Gamma" or c.difficulty=="heroic" and "Heroic" or "Normal").." - 5 player"); activityIcon:SetTexture(DUNGEON_ART[c.activity] or DUNGEON_ART.random); SetStatusTexture(badgeIcon,"READY"); badgeText:SetText("Dungeon Clear supported"); badgeText:SetTextColor(C.green[1],C.green[2],C.green[3],1) end
+        local d=D.GetDungeonById(c.activity); activityTitle:SetText(d and d.label or "Dungeon Group"); local travelHint=c.activity=="random" and " | Dungeon Finder selects destination" or " | Auto travel after Assemble"; activitySub:SetText((c.difficulty=="alpha" and "Titan Rune Alpha" or c.difficulty=="beta" and "Titan Rune Beta" or c.difficulty=="gamma" and "Titan Rune Gamma" or c.difficulty=="heroic" and "Heroic" or "Normal").." - 5 player"..travelHint); activityIcon:SetTexture(DUNGEON_ART[c.activity] or DUNGEON_ART.random); SetStatusTexture(badgeIcon,"READY"); badgeText:SetText("Dungeon Clear supported"); badgeText:SetTextColor(C.green[1],C.green[2],C.green[3],1) end
 end
 local function RefreshCommand()
     local p=GC.progress or {phase="IDLE",current=0,total=0,detail=""}; local phase=p.phase or "IDLE"; SetStatusTexture(phaseIcon,phase)
@@ -561,7 +576,10 @@ local function RefreshCommand()
     local ratio=(p.total and p.total>0) and math.min(1,p.current/p.total) or (phase=="READY" or phase=="DONE") and 1 or 0; progFill:SetWidth(math.max(1,284*ratio)); local showProgress=phase=="PREPARING" or phase=="ASSEMBLING" or phase=="READY" or phase=="DONE"; progressText:SetText(showProgress and (tostring(p.current or 0).." / "..tostring(p.total or 0).." - "..(p.detail or "")) or "")
     coverageText:SetText(GC.plan.summary and ((GC.plan.summary.utility or "No utility snapshot yet").."\nRanged DPS: "..tostring(GC.plan.summary.ranged or 0).."   Melee DPS: "..tostring(GC.plan.summary.melee or 0)) or "Build a preview to inspect utility coverage.")
     local warnings=GC.plan.warnings or {}; for i=1,3 do warnRows[i]:SetText(warnings[i] or (i==1 and (phase=="READY" and "Prepared roster is ready for review." or phase=="PREPARING" and "Bots are being prepared in the background." or "Choose your role, then Build & Prepare.") or "")) end
-    buildBtn:SetEnabledState(HumanReady() and phase~="PREPARING" and phase~="ASSEMBLING"); assembleBtn:SetEnabledState(GC.plan.ready and GC.plan.valid and phase=="READY")
+    local travelRetry=phase=="READY" and string.find(p.detail or "","Enter Activity",1,true)~=nil
+    assembleBtn:SetText(travelRetry and "Enter Activity" or "Assemble")
+    if travelRetry then phaseTitle:SetText("Ready to enter activity") end
+    buildBtn:SetEnabledState(HumanReady() and phase~="PREPARING" and phase~="ASSEMBLING" and phase~="TRAVEL"); assembleBtn:SetEnabledState(GC.plan.ready and GC.plan.valid and phase=="READY")
 end
 local function RefreshRaidQuick()
     local c=GC:GetConfig(); roleCards.TANK.count:SetText(tostring(c.tanks)); roleCards.HEALER.count:SetText(tostring(c.healers)); roleCards.DPS.count:SetText(tostring(c.dps)); for _,role in ipairs(ROLE_ORDER) do roleCards[role].need:SetText(tostring(Remaining(role)).." bot slots after humans") end

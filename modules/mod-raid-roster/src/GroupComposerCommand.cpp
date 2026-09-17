@@ -1220,8 +1220,13 @@ public:
                     }
                     else
                     {
-                        SendProgress(master, "ERROR", uint32(plan.members.size()), uint32(plan.members.size()), travelError);
+                        // The roster itself is already committed and valid. Surface the travel
+                        // blocker as an error/warning first, then return the plan to READY so the
+                        // user can clear a temporary blocker (combat, teleport state, etc.) and
+                        // retry entry without rebuilding or replacing a perfectly good roster.
                         SendProtocol(master, "ERROR", travelError);
+                        SendProgress(master, "READY", uint32(plan.members.size()), uint32(plan.members.size()),
+                            "Group is assembled. Clear the travel blocker and press Enter Activity to retry.");
                     }
                 }
                 else

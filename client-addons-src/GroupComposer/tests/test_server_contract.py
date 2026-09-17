@@ -366,3 +366,17 @@ assert world_update.index("ApplyArrangement(master, plan, arrangementError)") < 
 assert 'SendProgress(master, "TRAVEL"' in world_update, "Client no longer receives selected-activity travel progress"
 assert 'GC:GetConfig().activity == "random"' in CORE, "Named dungeons must not queue again after direct travel"
 assert 'TRAVEL="Entering activity"' in DASHBOARD, "Dashboard lost the explicit automatic travel phase"
+
+
+# A travel-only failure happens after the exact roster is already live. It must preserve that valid
+# plan and return the UI to READY after surfacing the blocker, so combat/teleport-state failures are
+# retryable without rebuilding 5/25/40 members.
+travel_update = section(SERVER, "if (ApplyArrangement(master, plan, arrangementError))", "else if (plan.assembleElapsed > 45000)")
+assert 'SendProtocol(master, "ERROR", travelError);' in travel_update
+assert 'SendProgress(master, "READY"' in travel_update
+assert travel_update.index('SendProtocol(master, "ERROR", travelError);') < travel_update.index('SendProgress(master, "READY"'), (
+    "Travel blocker must be recorded before the valid assembled roster returns to READY"
+)
+assert 'press Enter Activity to retry' in travel_update
+assert 'Ready to enter activity' in DASHBOARD and 'ENTER SELECTED ACTIVITY?' in DASHBOARD
+assert 'Auto travel after Assemble' in DASHBOARD and 'Dungeon Finder selects destination' in DASHBOARD
