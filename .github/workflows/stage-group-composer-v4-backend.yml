@@ -18,15 +18,18 @@ jobs:
           ref: test/group-composer-v4
 
       - name: Apply V4 backend patch
-        run: python3 .github/scripts/apply_group_composer_v4_backend.py
+        run: |
+          python3 .github/scripts/apply_group_composer_v4_backend.py
+          python3 .github/scripts/apply_group_composer_v4_contract.py
 
       - name: Focused source checks
         run: |
           set -euo pipefail
           python3 client-addons-src/GroupComposer/tests/test_server_contract.py
           git diff --check
-          grep -q 'Group::AddMember\|group->AddMember' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'group->AddMember(bot)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'PROGRESS' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          ! grep -q 'InviteToGroupAction' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'prepared previews stay reserved for three minutes' modules/mod-raid-roster/src/GroupComposerReserve.cpp
 
       - name: Commit generated backend changes
@@ -38,6 +41,6 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add modules/mod-raid-roster/src/GroupComposerCommand.cpp modules/mod-raid-roster/src/GroupComposerReserve.cpp
+          git add modules/mod-raid-roster/src/GroupComposerCommand.cpp modules/mod-raid-roster/src/GroupComposerReserve.cpp client-addons-src/GroupComposer/tests/test_server_contract.py
           git commit -m 'feat(group-composer): prewarm and directly attach prepared bots'
           git push origin HEAD:test/group-composer-v4
