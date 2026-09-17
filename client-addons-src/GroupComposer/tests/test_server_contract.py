@@ -354,7 +354,15 @@ travel = section(SERVER, "bool TeleportCompletedPlan(", "void PruneUnselectedBot
 assert "sObjectMgr->GetMapEntranceTrigger(mapId)" in travel, "Selected activity travel must use canonical instance entrance data"
 assert "sMapMgr->PlayerCannotEnter(mapId, player)" in travel, "Every member must pass authoritative instance-entry preflight"
 assert "player->IsInCombat()" in travel and "player->IsBeingTeleported()" in travel, "Travel lost combat/teleport safety guards"
-assert "TitanRune::SaveSelectedMode(master, titanMode)" in travel, "Named Titan Rune travel no longer persists the reviewed protocol"
+assert "group->GetLeader()" in travel and "GET_PLAYERBOT_AI(travelLeader)" in travel, (
+    "Automatic travel must resolve a live real group leader instead of treating a Composer assistant as authority"
+)
+assert "TitanRune::SaveSelectedMode(travelLeader, titanMode)" in travel, (
+    "Named Titan Rune travel must persist the reviewed protocol on the actual group leader"
+)
+assert "teleport(travelLeader)" in travel and "player != travelLeader" in travel, (
+    "Selected activity travel must start from the authoritative group leader"
+)
 assert "player->TeleportTo(destination->target_mapId" in travel, "Completed rosters are no longer teleported into the selected activity"
 assert 'plan.config.activity == "random"' in travel, "Random Dungeon must remain destination-less until Dungeon Finder selects it"
 for map_id in (533, 615, 616, 603, 649, 249, 624, 631, 724, 532, 568, 565, 544, 548, 550, 534, 564, 580, 309, 509, 409, 469, 531):
@@ -370,13 +378,38 @@ assert 'TRAVEL="Entering activity"' in DASHBOARD, "Dashboard lost the explicit a
 
 # A travel-only failure happens after the exact roster is already live. It must preserve that valid
 # plan and return the UI to READY after surfacing the blocker, so combat/teleport-state failures are
-# retryable without rebuilding 5/25/40 members.
+# retryable without rebuilding 5/25/40 members. It is status, not a roster ERROR, otherwise the
+# client carries a stale red warning after the temporary blocker is gone.
 travel_update = section(SERVER, "if (ApplyArrangement(master, plan, arrangementError))", "else if (plan.assembleElapsed > 45000)")
-assert 'SendProtocol(master, "ERROR", travelError);' in travel_update
+assert 'SendProtocol(master, "STATUS", travelError);' in travel_update
+assert 'SendProtocol(master, "ERROR", travelError);' not in travel_update
 assert 'SendProgress(master, "READY"' in travel_update
-assert travel_update.index('SendProtocol(master, "ERROR", travelError);') < travel_update.index('SendProgress(master, "READY"'), (
-    "Travel blocker must be recorded before the valid assembled roster returns to READY"
+assert travel_update.index('SendProtocol(master, "STATUS", travelError);') < travel_update.index('SendProgress(master, "READY"'), (
+    "Travel blocker status must be surfaced before the valid assembled roster returns to READY"
+)
+assert 'GC.pendingCommand == "assemble"' in CORE and '"Enter Activity"' in CORE, (
+    "Retryable travel must release the client assembly action lock"
 )
 assert 'press Enter Activity to retry' in travel_update
 assert 'Ready to enter activity' in DASHBOARD and 'ENTER SELECTED ACTIVITY?' in DASHBOARD
 assert 'Auto travel after Assemble' in DASHBOARD and 'Dungeon Finder selects destination' in DASHBOARD
+
+# V4 sends an explicit local-player marker with each roster member. Human no longer implies YOU,
+# which matters as soon as a real friend is part of the reviewed raid.
+send_plan = section(SERVER, "void SendPlan(", "bool RaidSupports(")
+assert "viewer && member.guid == viewer->GetGUID()" in send_plan, "Roster protocol lost the local-player marker"
+assert 'isPlayer = fields[13] == "1"' in CORE, "Client no longer parses the local-player roster marker"
+assert '(m.isPlayer and "YOU " or "")' in DASHBOARD, "Raid preview labels every human as YOU again"
+
+# Runtime-load and visual-density contracts for the polished V4 dashboard.
+group_decl = DASHBOARD.index('local groupScroll=CreateFrame("ScrollFrame"')
+content_decl = DASHBOARD.index('local content=Panel(body,C.card,C.line)')
+assert 'groupScroll:Hide()' not in DASHBOARD[content_decl:group_decl], (
+    "Dashboard touches groupScroll before its local declaration; Lua 5.1 would load a nil global"
+)
+assert "summaryRoles" in DASHBOARD and "SpecIdByLabel" in DASHBOARD, (
+    "V4 lost the compact role summary or class/spec icon presentation"
+)
+assert "humanOverflow" in DASHBOARD and "more human anchor" in DASHBOARD, (
+    "Main dashboard no longer explains when additional real-player anchors are hidden from the compact strip"
+)
