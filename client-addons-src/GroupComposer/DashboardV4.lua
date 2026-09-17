@@ -141,19 +141,34 @@ end
 local activeMenu
 local function CloseMenu() if activeMenu then activeMenu:Hide(); activeMenu=nil end end
 local function Selector(parent,w,getItems,getValue,setValue,maxVisible)
-    local b=Button(parent,"Select",w or 180,30); b.label:ClearAllPoints(); b.label:SetPoint("LEFT",10,0); b.label:SetPoint("RIGHT",-25,0); b.label:SetJustifyH("LEFT")
+    local b=Button(parent,"Select",w or 180,30)
+    b.selectIcon=Icon(b,"Interface\\Icons\\INV_Misc_QuestionMark",18); b.selectIcon:SetPoint("LEFT",8,0); b.selectIcon:Hide()
+    b.label:ClearAllPoints(); b.label:SetPoint("LEFT",10,0); b.label:SetPoint("RIGHT",-25,0); b.label:SetJustifyH("LEFT")
     b.arrow=Text(b,"v","GameFontHighlightSmall",C.muted); b.arrow:SetPoint("RIGHT",-9,0)
     local menu=Panel(b,C.bg,C.blue); menu:SetFrameStrata("TOOLTIP"); menu:SetWidth(w or 180); menu:Hide(); menu.rows={}; menu.offset=1; menu.maxVisible=maxVisible or 8
+    local function ApplySelectorIcon(texture,item)
+        if not texture or not item then return false end
+        if item.class then
+            SetClassIcon(texture,item.class); texture:Show(); return true
+        end
+        if item.icon then
+            texture:SetTexture(item.icon); texture:SetTexCoord(0.08,0.92,0.08,0.92); texture:Show(); return true
+        end
+        texture:Hide(); return false
+    end
     local function refreshRows()
         local items=getItems and getItems() or {}; local count=math.min(#items,menu.maxVisible)
         for i=1,menu.maxVisible do
             local row=menu.rows[i]
             if not row then
-                row=Button(menu,"",(w or 180)-8,24); row.label:ClearAllPoints(); row.label:SetPoint("LEFT",8,0); row.label:SetPoint("RIGHT",-5,0); row.label:SetJustifyH("LEFT"); menu.rows[i]=row
+                row=Button(menu,"",(w or 180)-8,24)
+                row.selectIcon=Icon(row,"Interface\\Icons\\INV_Misc_QuestionMark",16); row.selectIcon:SetPoint("LEFT",5,0); row.selectIcon:Hide()
+                row.label:ClearAllPoints(); row.label:SetPoint("LEFT",8,0); row.label:SetPoint("RIGHT",-5,0); row.label:SetJustifyH("LEFT"); menu.rows[i]=row
             end
             local idx=menu.offset+i-1; local item=items[idx]
             if item then
-                row:ClearAllPoints(); row:SetPoint("TOPLEFT",4,-4-(i-1)*26); row.label:SetText(item.label); row:Show()
+                row:ClearAllPoints(); row:SetPoint("TOPLEFT",4,-4-(i-1)*26); row.label:SetText(item.label)
+                row.label:ClearAllPoints(); if ApplySelectorIcon(row.selectIcon,item) then row.label:SetPoint("LEFT",27,0) else row.label:SetPoint("LEFT",8,0) end; row.label:SetPoint("RIGHT",-5,0); row:Show()
                 local valueCopy=item.value; row:SetScript("OnMouseDown",function() if setValue then setValue(valueCopy) end; CloseMenu(); b:Refresh() end)
             else row:Hide() end
         end
@@ -163,9 +178,11 @@ local function Selector(parent,w,getItems,getValue,setValue,maxVisible)
         local items=getItems and getItems() or {}; local max=math.max(1,#items-menu.maxVisible+1); menu.offset=math.max(1,math.min(max,menu.offset-delta)); refreshRows()
     end)
     function b:Refresh()
-        local value=getValue and getValue(); local label="Select"
-        for _,item in ipairs(getItems and getItems() or {}) do if item.value==value then label=item.label break end end
-        self.label:SetText(label)
+        local value=getValue and getValue(); local label="Select"; local selected=nil
+        for _,item in ipairs(getItems and getItems() or {}) do if item.value==value then label=item.label; selected=item; break end end
+        self.label:SetText(label); self.label:ClearAllPoints()
+        if ApplySelectorIcon(self.selectIcon,selected) then self.label:SetPoint("LEFT",34,0) else self.label:SetPoint("LEFT",10,0) end
+        self.label:SetPoint("RIGHT",-25,0)
     end
     function b:Open()
         CloseMenu(); menu.offset=1; refreshRows(); menu:ClearAllPoints(); menu:SetPoint("TOPLEFT",b,"BOTTOMLEFT",0,-3); menu:Show(); activeMenu=menu
@@ -183,13 +200,13 @@ end
 
 local function ClassCanRole(class,role) return D.CLASS_ROLE[role] and D.CLASS_ROLE[role][class] and true or false end
 local function ClassesForRole(role,any)
-    local out={}; if any then out[#out+1]={value="ANY",label="Auto - any class"} end
-    for _,c in ipairs(D.CLASS_ORDER) do if ClassCanRole(c,role) then out[#out+1]={value=c,label=D.CLASS_LABEL[c]} end end; return out
+    local out={}; if any then out[#out+1]={value="ANY",label="Auto - any class",icon="Interface\\Icons\\INV_Misc_QuestionMark"} end
+    for _,c in ipairs(D.CLASS_ORDER) do if ClassCanRole(c,role) then out[#out+1]={value=c,label=D.CLASS_LABEL[c],class=c} end end; return out
 end
 local function SpecsForRole(class,role,any)
-    local out={}; if any then out[#out+1]={value="ANY",label="Auto - any spec"} end
+    local out={}; if any then out[#out+1]={value="ANY",label="Auto - any spec",icon="Interface\\Icons\\INV_Misc_QuestionMark"} end
     if class=="ANY" then return out end
-    for _,s in ipairs(D.SPECS[class] or {}) do if s.role==role or (role=="TANK" and s.canTank) then out[#out+1]={value=s.id,label=s.label} end end; return out
+    for _,s in ipairs(D.SPECS[class] or {}) do if s.role==role or (role=="TANK" and s.canTank) then out[#out+1]={value=s.id,label=s.label,icon=SpecIconPath(class,s.id)} end end; return out
 end
 local function PlayerSpec()
     local name,index,pts="Current build",nil,-1
@@ -265,9 +282,9 @@ local selectorA,selectorB
 local badge=Panel(activity,C.card2,C.lineStrong); badge:SetWidth(190); badge:SetHeight(34); badge:SetPoint("RIGHT",-16,0)
 local badgeIcon=StatusTexture(badge,20); badgeIcon:SetPoint("LEFT",8,0); local badgeText=Text(badge,"Supported","GameFontHighlightSmall",C.green); badgeText:SetPoint("LEFT",badgeIcon,"RIGHT",7,0)
 
-local function DungeonItems() local out={}; for _,d in ipairs(D.DUNGEONS) do out[#out+1]={value=d.id,label=d.label} end; return out end
+local function DungeonItems() local out={}; for _,d in ipairs(D.DUNGEONS) do out[#out+1]={value=d.id,label=d.label,icon=DUNGEON_ART[d.id] or DUNGEON_ART.random} end; return out end
 local function DifficultyItems() local out={}; for _,d in ipairs(D.DUNGEON_DIFFICULTIES) do out[#out+1]={value=d.id,label=d.label} end; return out end
-local function RaidItems() local out={}; for _,r in ipairs(D.RAIDS) do out[#out+1]={value=r.id,label=r.era.." - "..r.label} end; return out end
+local function RaidItems() local out={}; for _,r in ipairs(D.RAIDS) do out[#out+1]={value=r.id,label=r.era.." - "..r.label,icon=RAID_ART[r.id] or "Interface\\Icons\\Achievement_General_StayClassy"} end; return out end
 local function RaidDiffItems() local r=D.GetRaidById(GC:GetConfig().activity); local out={{value="normal",label="Normal"}}; if r and r.heroic then out[#out+1]={value="heroic",label="Heroic"} end; return out end
 selectorA=Selector(activity,315,function() return GC:GetConfig().mode=="RAID" and RaidItems() or DungeonItems() end,function() return GC:GetConfig().activity end,function(v) if GC:GetConfig().mode=="RAID" then GC:SetRaidActivity(v) else GC:SetDungeonActivity(v) end end,8); selectorA:SetPoint("TOPLEFT",102,-58)
 selectorB=Selector(activity,190,function() return GC:GetConfig().mode=="RAID" and RaidDiffItems() or DifficultyItems() end,function() return GC:GetConfig().difficulty end,function(v) GC:GetConfig().difficulty=v; GC:Touch("Difficulty changed") end,7); selectorB:SetPoint("LEFT",selectorA,"RIGHT",10,0)
@@ -609,7 +626,7 @@ local ppHumanScroll=CreateFrame("ScrollFrame",nil,ppHum); ppHumanScroll:SetPoint
 local ppHumanChild=CreateFrame("Frame",nil,ppHumanScroll); ppHumanChild:SetWidth(892); ppHumanChild:SetHeight(180); ppHumanScroll:SetScrollChild(ppHumanChild)
 local ppHumanRows={}
 ppHumanScroll:SetScript("OnMouseWheel",function(self,d) self:SetVerticalScroll(math.max(0,math.min(self:GetVerticalScrollRange(),self:GetVerticalScroll()-d*36))) end)
-local ppPins=Panel(people,C.card,C.line); ppPins:SetPoint("TOPLEFT",20,-316); ppPins:SetWidth(920); ppPins:SetHeight(305); local ppPT=Text(ppPins,"PINNED GUILD COMPANIONS","GameFontNormal",C.text); ppPT:SetPoint("TOPLEFT",14,-12); local pinName=CreateFrame("EditBox",nil,ppPins,"InputBoxTemplate"); pinName:SetWidth(220); pinName:SetHeight(28); pinName:SetAutoFocus(false); pinName:SetPoint("TOPLEFT",14,-43); local pinRole="DPS"; local pinRoleDD=Selector(ppPins,130,function() return {{value="TANK",label="Tank"},{value="HEALER",label="Healer"},{value="DPS",label="DPS"}} end,function() return pinRole end,function(v) pinRole=v end,3); pinRoleDD:SetPoint("LEFT",pinName,"RIGHT",8,0); local pinReq=false; local pinReqT=Toggle(ppPins,"Required",function() return pinReq end,function(v) pinReq=v end); pinReqT:SetPoint("LEFT",pinRoleDD,"RIGHT",12,0); pinReqT:SetWidth(100); local pinAdd=Button(ppPins,"Pin Member",110,30,function() local n=pinName:GetText(); if n and n~="" then GC:AddPinnedMember(n,pinRole,pinReq); pinName:SetText(""); U:RefreshPeople() end end); pinAdd:SetPoint("TOPRIGHT",-14,-42); pinAdd:SetAccent(C.blue,true); local ppPinRows={}
+local ppPins=Panel(people,C.card,C.line); ppPins:SetPoint("TOPLEFT",20,-316); ppPins:SetWidth(920); ppPins:SetHeight(305); local ppPT=Text(ppPins,"PINNED GUILD COMPANIONS","GameFontNormal",C.text); ppPT:SetPoint("TOPLEFT",14,-12); local pinName=CreateFrame("EditBox",nil,ppPins,"InputBoxTemplate"); pinName:SetWidth(220); pinName:SetHeight(28); pinName:SetAutoFocus(false); pinName:SetPoint("TOPLEFT",14,-43); local pinRole="DPS"; local pinRoleDD=Selector(ppPins,130,function() return {{value="TANK",label="Tank",icon=D.ROLE_ICON.TANK},{value="HEALER",label="Healer",icon=D.ROLE_ICON.HEALER},{value="DPS",label="DPS",icon=D.ROLE_ICON.DPS}} end,function() return pinRole end,function(v) pinRole=v end,3); pinRoleDD:SetPoint("LEFT",pinName,"RIGHT",8,0); local pinReq=false; local pinReqT=Toggle(ppPins,"Required",function() return pinReq end,function(v) pinReq=v end); pinReqT:SetPoint("LEFT",pinRoleDD,"RIGHT",12,0); pinReqT:SetWidth(100); local pinAdd=Button(ppPins,"Pin Member",110,30,function() local n=pinName:GetText(); if n and n~="" then GC:AddPinnedMember(n,pinRole,pinReq); pinName:SetText(""); U:RefreshPeople() end end); pinAdd:SetPoint("TOPRIGHT",-14,-42); pinAdd:SetAccent(C.blue,true); local ppPinRows={}
 function U:RefreshPeople()
     for _,r in ipairs(ppHumanRows) do r:Hide() end
     local hs=Humans(); ppHumanCount:SetText(tostring(#hs).." locked human anchor"..(#hs==1 and "" or "s"))
