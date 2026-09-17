@@ -24,10 +24,9 @@ jobs:
       - name: Apply deterministic reserve transformation
         run: python3 tools/apply_group_composer_reserve.py
 
-      - name: Remove one-shot generator
+      - name: Keep generated commit source-only
         run: |
-          rm -f tools/apply_group_composer_reserve.py
-          rm -f .github/workflows/apply-group-composer-reserve.yml
+          git checkout -- .github/workflows/group-composer.yml
 
       - name: Commit generated source
         shell: bash
