@@ -1,0 +1,43 @@
+name: Stage Group Composer V4 backend
+
+on:
+  push:
+    branches:
+      - test/group-composer-v4
+
+permissions:
+  contents: write
+
+jobs:
+  stage:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/group-composer-v4
+
+      - name: Apply V4 backend patch
+        run: python3 .github/scripts/apply_group_composer_v4_backend.py
+
+      - name: Focused source checks
+        run: |
+          set -euo pipefail
+          python3 client-addons-src/GroupComposer/tests/test_server_contract.py
+          git diff --check
+          grep -q 'Group::AddMember\|group->AddMember' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'PROGRESS' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'prepared previews stay reserved for three minutes' modules/mod-raid-roster/src/GroupComposerReserve.cpp
+
+      - name: Commit generated backend changes
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'V4 backend already applied.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add modules/mod-raid-roster/src/GroupComposerCommand.cpp modules/mod-raid-roster/src/GroupComposerReserve.cpp
+          git commit -m 'feat(group-composer): prewarm and directly attach prepared bots'
+          git push origin HEAD:test/group-composer-v4
