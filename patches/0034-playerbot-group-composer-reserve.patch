@@ -33,7 +33,7 @@ diff --git a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp b/modules/mod
          uint32 const guildId = bot ? bot->GetGuildId() : sCharacterCache->GetCharacterGuildIdByGuid(guid);
          if (guildId && PlayerbotGuildMgr::instance().IsRealGuild(guildId))
              return true;
-@@ -540,6 +543,58 @@ bool RandomPlayerbotMgr::IsAccountType(uint32 accountId, uint8 accountType)
+@@ -540,6 +543,60 @@ bool RandomPlayerbotMgr::IsAccountType(uint32 accountId, uint8 accountType)
      return result != nullptr;
  }
  
