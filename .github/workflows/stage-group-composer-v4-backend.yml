@@ -30,6 +30,7 @@ jobs:
           if ! grep -q 'bool TeleportCompletedPlan' modules/mod-raid-roster/src/GroupComposerCommand.cpp; then
             python3 .github/scripts/apply_group_composer_v4_travel.py
           fi
+          python3 .github/scripts/fix_group_composer_v4_travel_contract.py
 
       - name: Focused source checks
         run: |
