@@ -31,8 +31,8 @@ enum Utility : uint32
 struct Preference
 {
     uint8 role = ROLE_DPS;
-    uint8 cls = 0;          // 0 = any class
-    uint8 spec = ANY_SPEC;  // talent tab, or ANY_SPEC
+    uint8 cls = 0;
+    uint8 spec = ANY_SPEC;
     bool required = false;
 };
 
@@ -135,14 +135,24 @@ struct Plan
     uint32 worldCandidates = 0;
     uint32 managedCandidates = 0;
 
-    // Human invitations are intentionally one-shot for each explicit Assemble attempt. If a real
-    // player declines, the composer waits and eventually reports a timeout instead of re-inviting
-    // them every world update tick. A fresh Assemble click clears this set and is the explicit retry.
+    // Human invitations stay player-like and are intentionally one-shot for each explicit
+    // Assemble attempt. Playerbots are attached server-side after preparation and never use the
+    // chatty invitation handshake.
     std::unordered_set<uint32> humanInvitesSent;
 
     bool valid = false;
+
+    // V4 splits expensive bot readiness from the destructive live-group commit. Build & Prepare
+    // may reserve/login/provision disposable bots without inviting anybody. Assemble becomes a
+    // short commit step once every selected bot is available.
+    bool preparing = false;
+    bool prepared = false;
+    uint32 prepareElapsed = 0;
+    uint32 prepareProgressElapsed = 0;
+
     bool assembling = false;
     uint32 assembleElapsed = 0;
+    uint32 assembleProgressElapsed = 0;
 };
 }
 
