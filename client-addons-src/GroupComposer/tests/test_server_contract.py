@@ -19,6 +19,7 @@ DASHBOARD = (ROOT / "client-addons-src/GroupComposer/DashboardV4.lua").read_text
 SERVER = (ROOT / "modules/mod-raid-roster/src/GroupComposerCommand.cpp").read_text(encoding="utf-8")
 PLANNER = (ROOT / "modules/mod-raid-roster/src/GroupComposerPlanner.cpp").read_text(encoding="utf-8")
 TYPES = (ROOT / "modules/mod-raid-roster/src/GroupComposerTypes.h").read_text(encoding="utf-8")
+SILENT_LOGIN_PATCH = (ROOT / "patches/0035-playerbot-group-composer-silent-login.patch").read_text(encoding="utf-8")
 
 
 def section(text: str, start: str, end: str) -> str:
@@ -198,6 +199,19 @@ assert "InviteHuman(master, player)" in attach, (
 assert "InviteToGroupAction" not in SERVER, (
     "V4 must not regress Playerbots to the slow invite/accept handshake"
 )
+
+# Build & Prepare may need to log in managed/offline Playerbots, but doing so through the ordinary
+# Playerbot login lifecycle used to generate a "Hello!" whisper per bot and auto-queue group joins.
+# Composer owns both UX and membership, so its dedicated silent-login flag must suppress those two
+# side effects while preserving the normal master/AI relationship.
+assert "mgr->AddPlayerBot(member.guid, account, true);" in SERVER, (
+    "Composer preparation no longer requests the silent Playerbot login path"
+)
+assert "bool groupComposerSilent = false" in SILENT_LOGIN_PATCH
+assert "s_groupComposerSilentLogins" in SILENT_LOGIN_PATCH
+assert "if (!groupComposerSilent)" in SILENT_LOGIN_PATCH
+assert '"hello", "Hello!"' in SILENT_LOGIN_PATCH
+assert "GroupInviteOperation" in SILENT_LOGIN_PATCH
 
 # Offline managed reserve bots may retain persisted group membership. Never log in a reserve bot
 # that belongs to another group, while preserving one whose cached group is this composer's group.
