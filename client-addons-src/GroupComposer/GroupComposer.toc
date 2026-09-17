@@ -3,7 +3,7 @@
 ## Notes: Build, save, preview and assemble dungeon and raid groups for AzerothCore Playerbots.
 ## Author: Stoffe101
 ## Version: 0.3.2
-## X-UI-Shell: ModernMockupV1
+## X-UI-Shell: DashboardV2
 ## SavedVariables: GroupComposerDB
 Data.lua
 Profiles.lua
@@ -14,3 +14,4 @@ Advanced.lua
 People.lua
 Polish.lua
 ModernUI.lua
+DashboardUI.lua
