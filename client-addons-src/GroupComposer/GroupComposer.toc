@@ -8,13 +8,6 @@
 Data.lua
 Profiles.lua
 Core.lua
-Compat335.lua
-UI.lua
-Advanced.lua
-People.lua
-Polish.lua
-ModernUI.lua
-DashboardUI.lua
-DashboardPolish.lua
 ComposerPolicy.lua
+DashboardV3Dialogs.lua
 DashboardV3.lua
