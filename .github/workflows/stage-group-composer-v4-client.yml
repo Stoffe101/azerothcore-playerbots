@@ -1,0 +1,51 @@
+name: Stage Group Composer V4 client
+
+on:
+  push:
+    branches:
+      - test/group-composer-v4
+
+permissions:
+  contents: write
+
+jobs:
+  stage:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/group-composer-v4
+      - name: Apply V4 client patches
+        run: |
+          python3 .github/scripts/apply_group_composer_v4_client_core.py
+          python3 .github/scripts/apply_group_composer_v4_dashboard_compat.py
+          python3 .github/scripts/apply_group_composer_v4_layout_polish.py
+          python3 .github/scripts/apply_group_composer_v4_ui_contract.py
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1
+      - name: Validate V4 client
+        run: |
+          set -euo pipefail
+          find client-addons-src/GroupComposer -type f -name '*.lua' -print0 | xargs -0 -n1 luac5.1 -p
+          lua5.1 client-addons-src/GroupComposer/tests/test_data_profiles.lua
+          python3 client-addons-src/GroupComposer/tests/test_server_contract.py
+          python3 client-addons-src/GroupComposer/tests/test_titan_bridge_contract.py
+          grep -q '^DashboardV4.lua$' client-addons-src/GroupComposer/GroupComposer.toc
+          ! grep -q '^DashboardV3.lua$' client-addons-src/GroupComposer/GroupComposer.toc
+          ! grep -R 'SetShown(' client-addons-src/GroupComposer/DashboardV4.lua
+          git diff --check
+      - name: Commit generated client changes
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'V4 client already applied.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add client-addons-src/GroupComposer/Data.lua client-addons-src/GroupComposer/Core.lua client-addons-src/GroupComposer/RuntimeGuards.lua client-addons-src/GroupComposer/DashboardV4.lua client-addons-src/GroupComposer/tests/test_server_contract.py
+          git commit -m 'feat(group-composer): ship Dashboard V4 interaction model'
+          git push origin HEAD:test/group-composer-v4
