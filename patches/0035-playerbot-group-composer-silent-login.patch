@@ -1,0 +1,76 @@
+diff --git a/modules/mod-playerbots/src/Bot/PlayerbotMgr.h b/modules/mod-playerbots/src/Bot/PlayerbotMgr.h
+--- a/modules/mod-playerbots/src/Bot/PlayerbotMgr.h
++++ b/modules/mod-playerbots/src/Bot/PlayerbotMgr.h
+@@ -24,7 +24,7 @@ public:
+     PlayerbotHolder();
+     virtual ~PlayerbotHolder(){};
+ 
+-    void AddPlayerBot(ObjectGuid guid, uint32 masterAccountId);
++    void AddPlayerBot(ObjectGuid guid, uint32 masterAccountId, bool groupComposerSilent = false);
+     bool IsAccountLinked(uint32 accountId, uint32 masterAccountId);
+     void HandlePlayerBotLoginCallback(PlayerbotLoginQueryHolder const& holder);
+ 
+diff --git a/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp b/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp
+--- a/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp
++++ b/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp
+@@ -52,6 +52,7 @@ private:
+ 
+ std::unordered_set<ObjectGuid> BotInitGuard::botsBeingInitialized;
+ std::unordered_map<ObjectGuid, uint32> PlayerbotHolder::botLoading;
++static std::unordered_set<ObjectGuid> s_groupComposerSilentLogins;
+ 
+ PlayerbotHolder::PlayerbotHolder() : PlayerbotAIBase(false) {}
+ class PlayerbotLoginQueryHolder : public LoginQueryHolder
+@@ -68,7 +69,7 @@ public:
+     uint32 GetMasterAccountId() const { return masterAccountId; }
+ };
+ 
+-void PlayerbotHolder::AddPlayerBot(ObjectGuid playerGuid, uint32 masterAccountId)
++void PlayerbotHolder::AddPlayerBot(ObjectGuid playerGuid, uint32 masterAccountId, bool groupComposerSilent)
+ {
+     if (botLoading.find(playerGuid) != botLoading.end())
+         return;
+@@ -126,6 +127,9 @@ void PlayerbotHolder::AddPlayerBot(ObjectGuid playerGuid, uint32 masterAccountId)
+         return;
+     }
+ 
++    if (groupComposerSilent)
++        s_groupComposerSilentLogins.insert(playerGuid);
++
+     botLoading.emplace(playerGuid, masterAccountId);
+ 
+     // Always login in with world session to avoid race condition
+@@ -382,6 +386,7 @@ void PlayerbotHolder::OnBotLogin(Player* const bot)
+ {
++    bool const groupComposerSilent = s_groupComposerSilentLogins.erase(bot->GetGUID()) != 0;
+     // Prevent duplicate login
+     if (playerBots.find(bot->GetGUID()) != playerBots.end())
+     {
+@@ -448,11 +453,14 @@ void PlayerbotHolder::OnBotLogin(Player* const bot)
+     // set delay on login
+     botAI->SetNextCheckDelay(urand(2000, 4000));
+ 
+-    botAI->TellMaster(PlayerbotTextMgr::instance().GetBotTextOrDefault(
+-        "hello", "Hello!", {}), PLAYERBOT_SECURITY_TALK);
++    if (!groupComposerSilent)
++        botAI->TellMaster(PlayerbotTextMgr::instance().GetBotTextOrDefault(
++            "hello", "Hello!", {}), PLAYERBOT_SECURITY_TALK);
+ 
+-    // Queue group operations for world thread
+-    if (master && master->GetGroup() && !group)
++    // Normal manual bot login keeps the historical convenience behavior. Group Composer prepares
++    // bots before commit, so it must not emit 5/25/40 greetings or race its own reviewed group
++    // membership by auto-inviting each bot during login.
++    if (!groupComposerSilent && master && master->GetGroup() && !group)
+     {
+         Group* mgroup = master->GetGroup();
+         if (mgroup->GetMembersCount() >= 5)
+@@ -479,7 +487,7 @@ void PlayerbotHolder::OnBotLogin(Player* const bot)
+             PlayerbotWorldThreadProcessor::instance().QueueOperation(std::move(addOp));
+         }
+     }
+-    else if (master && !group)
++    else if (!groupComposerSilent && master && !group)
+     {
+         // Queue group creation and AddMember operation
+         auto inviteOp = std::make_unique<GroupInviteOperation>(master->GetGUID(), bot->GetGUID());
