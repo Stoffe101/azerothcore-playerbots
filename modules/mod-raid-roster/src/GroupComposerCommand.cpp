@@ -929,7 +929,10 @@ bool PreparePlan(Player* master, Plan& plan, std::string& error)
         }
 
         if (!member.reserve)
-            mgr->AddPlayerBot(member.guid, account);
+            // Keep Composer preparation quiet and non-destructive. The patched Playerbots login path
+            // still gives the bot its normal master/AI, but skips the login greeting and automatic
+            // group invite. Composer owns membership later, during the reviewed Assemble commit.
+            mgr->AddPlayerBot(member.guid, account, true);
         s_pendingSync[member.guid.GetCounter()] = { owner, member.role, member.spec, FullProvisionFor(member), 0 };
     }
 
