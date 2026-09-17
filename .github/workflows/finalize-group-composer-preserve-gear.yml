@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   finalize:
-    if: github.event.head_commit.message != 'fix(group-composer): preserve persistent companion gear'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -21,6 +20,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if grep -q 'bool FullProvisionFor(Member const& member)' modules/mod-raid-roster/src/GroupComposerCommand.cpp; then
+            echo "Persistent companion gear safeguard already present."
+            exit 0
+          fi
           python3 - <<'PY'
           from pathlib import Path
 
@@ -150,6 +153,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if git diff --quiet; then
+            echo "No safeguard changes to commit."
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add modules/mod-raid-roster/src/GroupComposerCommand.cpp \
