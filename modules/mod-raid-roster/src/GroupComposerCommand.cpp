@@ -227,17 +227,18 @@ void SendPlan(ChatHandler* handler, Plan const& plan)
         plan.config.mode, plan.config.activity, plan.config.difficulty,
         uint32(plan.config.size), uint32(plan.config.tanks), uint32(plan.config.healers), uint32(plan.config.dps));
 
+    Player* viewer = handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
     uint32 guild = 0, world = 0, humans = 0;
     for (Member const& member : plan.members)
     {
         if (member.human) ++humans;
         else if (member.guild) ++guild;
         else ++world;
-        handler->PSendSysMessage("[GC]|MEMBER|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+        handler->PSendSysMessage("[GC]|MEMBER|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             uint32(member.subgroup), Sanitize(member.name), RoleToken(member.role), ClassToken(member.cls),
             SpecName(member.cls, member.spec), SourceToken(member), member.human ? 1 : 0,
             member.locked ? 1 : 0, member.pinned ? 1 : 0, member.needsPreparation ? 1 : 0,
-            member.reserve ? 1 : 0);
+            member.reserve ? 1 : 0, viewer && member.guid == viewer->GetGUID() ? 1 : 0);
     }
 
     handler->PSendSysMessage("[GC]|COVERAGE|{}|{}|{}", uint32(plan.coverage.rangedDps),
@@ -550,6 +551,24 @@ bool TeleportCompletedPlan(Player* master, Plan const& plan, std::string& detail
         return false;
     }
 
+    // Composer may be operated by a real raid assistant, but instance ownership and Titan Rune
+    // authority belong to the actual live group leader. Resolve that player explicitly instead of
+    // accidentally treating the assistant who opened Composer as the leader.
+    Player* travelLeader = group->GetLeader();
+    if (!travelLeader || GET_PLAYERBOT_AI(travelLeader))
+    {
+        error = "Automatic travel requires the real group leader to be online.";
+        return false;
+    }
+    bool leaderReviewed = false;
+    for (Member const& member : plan.members)
+        if (member.guid == travelLeader->GetGUID()) { leaderReviewed = true; break; }
+    if (!leaderReviewed)
+    {
+        error = "The current group leader is not part of the reviewed roster. Build & Prepare again so every human anchor is included.";
+        return false;
+    }
+
     AreaTriggerTeleport const* destination = sObjectMgr->GetMapEntranceTrigger(mapId);
     if (!destination || destination->target_mapId != mapId)
     {
@@ -601,10 +620,10 @@ bool TeleportCompletedPlan(Player* master, Plan const& plan, std::string& detail
     }
 
     // The explicit Composer selection must beat any stale personal setting. Heroic/Normal turns the
-    // next-dungeon protocol off; Alpha/Beta/Gamma persists the selected protocol before the leader
-    // enters so TitanRune::ActivateForPlayer sees the correct authoritative group-leader setting.
+    // next-dungeon protocol off; Alpha/Beta/Gamma persists the selected protocol on the actual group
+    // leader before entry so TitanRune::ActivateForPlayer reads the same authority as normal play.
     if (plan.config.mode == "dungeon")
-        TitanRune::SaveSelectedMode(master, titanMode);
+        TitanRune::SaveSelectedMode(travelLeader, titanMode);
 
     auto teleport = [&](Player* player)
     {
@@ -621,12 +640,12 @@ bool TeleportCompletedPlan(Player* master, Plan const& plan, std::string& detail
             destination->target_Z, destination->target_Orientation);
     };
 
-    // Let the real group leader create/resolve the destination instance first, then move every other
-    // reviewed member into that group-owned copy. This keeps raid lockouts and instance ownership in
-    // AzerothCore's normal path instead of inventing a Composer-specific instance ID.
-    teleport(master);
+    // Start with the authoritative group leader, then move every other reviewed member. This keeps
+    // raid lockouts and instance ownership on AzerothCore's normal group path instead of binding them
+    // to whichever assistant happened to operate Composer.
+    teleport(travelLeader);
     for (Player* player : travelers)
-        if (player != master) teleport(player);
+        if (player != travelLeader) teleport(player);
 
     detail = std::string("Roster assembled and entering the selected ") +
         (plan.config.mode == "raid" ? "raid." : "dungeon.");
@@ -1220,11 +1239,10 @@ public:
                     }
                     else
                     {
-                        // The roster itself is already committed and valid. Surface the travel
-                        // blocker as an error/warning first, then return the plan to READY so the
-                        // user can clear a temporary blocker (combat, teleport state, etc.) and
-                        // retry entry without rebuilding or replacing a perfectly good roster.
-                        SendProtocol(master, "ERROR", travelError);
+                        // The roster itself is already committed and valid. Travel blockers are
+                        // actionable status, not roster errors: keep the plan clean, return to READY,
+                        // and let the user retry entry without carrying a stale red warning forever.
+                        SendProtocol(master, "STATUS", travelError);
                         SendProgress(master, "READY", uint32(plan.members.size()), uint32(plan.members.size()),
                             "Group is assembled. Clear the travel blocker and press Enter Activity to retry.");
                     }
