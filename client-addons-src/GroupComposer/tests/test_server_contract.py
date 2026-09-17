@@ -284,6 +284,12 @@ assert 'needsPreparation = fields[11] == "1"' in CORE and 'reserve = fields[12] 
 assert "Policy.HumanRoleCounts = HumanRoleCounts" in POLICY
 assert 'local function RemainingBotSlots(role)' in DASHBOARD
 assert 'RemainingBotSlots("TANK")' in DASHBOARD and 'RemainingBotSlots("HEALER")' in DASHBOARD
+assert 'ipairs({10, 20, 25, 40})' in DASHBOARD, "Dashboard no longer exposes all supported raid-size families"
+assert 'for _, r in ipairs(D.RAIDS or {}) do' in DASHBOARD, "Dashboard hard-filters the full raid planner catalog"
+assert 'ROSTER ONLY' in DASHBOARD and 'encounter AI not certified' in DASHBOARD, (
+    "Planner-only raids must remain visibly distinct from certified encounter automation"
+)
+assert 'local READY_RAIDS = {' not in DASHBOARD, "Legacy hard-coded raid whitelist still restricts Group Composer"
 
 # Utility coverage describes actual WotLK raid tools, not later-expansion semantics. Soulstone is a
 # pre-applied self-resurrection safety net in this client era, not the planner's on-demand battle-rez

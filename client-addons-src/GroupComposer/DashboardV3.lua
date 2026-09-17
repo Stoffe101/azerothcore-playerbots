@@ -19,9 +19,13 @@ local C = {
 }
 local ROLE_COLOR = { TANK = C.blue, HEALER = C.green, DPS = C.red }
 local ROLE_SHORT = { TANK = "T", HEALER = "H", DPS = "D" }
-local READY_RAIDS = {
-    "obsidian_sanctum", "eye_of_eternity", "onyxia", "icecrown", "ruby_sanctum", "gruul", "magtheridon",
+local ENCOUNTER_READY_RAIDS = {
+    obsidian_sanctum = true, eye_of_eternity = true, onyxia = true,
+    icecrown = true, ruby_sanctum = true, gruul = true, magtheridon = true,
 }
+local function EncounterReadyRaid(id)
+    return id and ENCOUNTER_READY_RAIDS[id] and true or false
+end
 
 local SPEC_ICON = {
     WARRIOR = {"Interface\\Icons\\Ability_Warrior_SavageBlow", "Interface\\Icons\\Ability_Warrior_InnerRage", "Interface\\Icons\\Ability_Warrior_DefensiveStance"},
@@ -490,13 +494,16 @@ SectionTitle(raidPage, "Raid Setup", "Build the exact class/spec composition you
 local raidSetup = Panel(raidPage, C.panel, C.lineSoft); raidSetup:SetPoint("TOPLEFT", 0, -48); raidSetup:SetPoint("TOPRIGHT", 0, -48); raidSetup:SetHeight(112)
 local sizeTitle = Text(raidSetup, "RAID SIZE", "GameFontNormalSmall", C.muted); sizeTitle:SetPoint("TOPLEFT", 16, -13)
 local sizeButtons = {}
-for i, size in ipairs({10, 25, 40}) do
-    local b = Button(raidSetup, tostring(size) .. "-man", 90, 34, function() GC:SetRaidSize(size) end); b:SetPoint("TOPLEFT", 16 + ((i - 1) * 98), -35); b.sizeValue = size; sizeButtons[#sizeButtons + 1] = b
+for i, size in ipairs({10, 20, 25, 40}) do
+    local b = Button(raidSetup, tostring(size) .. "-man", 72, 34, function() GC:SetRaidSize(size) end); b:SetPoint("TOPLEFT", 16 + ((i - 1) * 78), -35); b.sizeValue = size; sizeButtons[#sizeButtons + 1] = b
 end
-local raidTitle = Text(raidSetup, "BOT-READY RAID", "GameFontNormalSmall", C.muted); raidTitle:SetPoint("TOPLEFT", 335, -13)
+local raidTitle = Text(raidSetup, "RAID", "GameFontNormalSmall", C.muted); raidTitle:SetPoint("TOPLEFT", 335, -13)
 local function RaidItems()
     local out = {}
-    for _, id in ipairs(READY_RAIDS) do local r = D.GetRaidById(id); if r then out[#out + 1] = {value = id, label = r.era .. "  •  " .. r.label} end end
+    for _, r in ipairs(D.RAIDS or {}) do
+        local status = EncounterReadyRaid(r.id) and "BOT-READY" or "ROSTER ONLY"
+        out[#out + 1] = {value = r.id, label = r.era .. "  •  " .. r.label .. "  •  " .. status}
+    end
     return out
 end
 local raidDD = Selector(raidSetup, 360, RaidItems, function() return GC:GetConfig().activity end, function(value) GC:SetRaidActivity(value) end); raidDD:SetPoint("TOPLEFT", 327, -35)
@@ -507,7 +514,7 @@ local function RaidDiffItems()
     return out
 end
 local raidDiff = Selector(raidSetup, 160, RaidDiffItems, function() return GC:GetConfig().difficulty end, function(value) GC:GetConfig().difficulty = value; GC:Touch("Raid difficulty changed") end); raidDiff:SetPoint("TOPLEFT", 717, -35)
-local raidReady = Text(raidSetup, "✓ Encounter-supported", "GameFontNormal", C.green); raidReady:SetPoint("TOPRIGHT", -20, -47)
+local raidReady = Text(raidSetup, "", "GameFontNormal", C.green); raidReady:SetPoint("TOPRIGHT", -20, -47)
 
 local rHuman = HumanCard(raidPage, 0, -170, 1000, 105)
 local raidStatus = Panel(raidPage, C.panel, C.lineSoft); raidStatus:SetPoint("TOPRIGHT", 0, -170); raidStatus:SetWidth(245); raidStatus:SetHeight(105)
@@ -729,6 +736,13 @@ local function RefreshRaid()
     for _, b in ipairs(sizeButtons) do
         local supported = false; if selectedRaid then for _, s in ipairs(selectedRaid.sizes or {}) do if s == b.sizeValue then supported = true end end end
         b:SetEnabledState(supported); b:SetAccent(C.gold, supported and c.size == b.sizeValue)
+    end
+    if EncounterReadyRaid(c.activity) then
+        raidReady:SetText("✓ Encounter AI certified")
+        raidReady:SetTextColor(C.green[1], C.green[2], C.green[3], 1)
+    else
+        raidReady:SetText("Roster planner • encounter AI not certified")
+        raidReady:SetTextColor(C.gold[1], C.gold[2], C.gold[3], 1)
     end
     local ready = HumanReady(); rPreview:SetEnabledState(ready); rAssemble:SetEnabledState(plan.ready and plan.valid)
     rsCount:SetText(tostring(plan.summary and plan.summary.total or #(plan.members or {})) .. " / " .. tostring(c.size))
