@@ -48,7 +48,10 @@ jobs:
           grep -q 'function U:OpenBuildEditor' client-addons-src/GroupComposer/DashboardV4.lua
           grep -q 'SPECIALIZATION' client-addons-src/GroupComposer/DashboardV4.lua
           grep -q 'Save Build' client-addons-src/GroupComposer/DashboardV4.lua
-          grep -q 'Remove' client-addons-src/GroupComposer/DashboardV4.lua
+          grep -q 'ENTER SELECTED ACTIVITY?' client-addons-src/GroupComposer/DashboardV4.lua
+          grep -q 'Auto travel after Assemble' client-addons-src/GroupComposer/DashboardV4.lua
+          grep -q 'Dungeon Finder selects destination' client-addons-src/GroupComposer/DashboardV4.lua
+          grep -q 'Ready to enter activity' client-addons-src/GroupComposer/DashboardV4.lua
           git diff --check
 
       - name: Commit generated client changes
