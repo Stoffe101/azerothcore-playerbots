@@ -14,6 +14,9 @@ DATA = (ROOT / "client-addons-src/GroupComposer/Data.lua").read_text(encoding="u
 POLISH = (ROOT / "client-addons-src/GroupComposer/Polish.lua").read_text(encoding="utf-8")
 UI = (ROOT / "client-addons-src/GroupComposer/UI.lua").read_text(encoding="utf-8")
 ADVANCED = (ROOT / "client-addons-src/GroupComposer/Advanced.lua").read_text(encoding="utf-8")
+CORE = (ROOT / "client-addons-src/GroupComposer/Core.lua").read_text(encoding="utf-8")
+POLICY = (ROOT / "client-addons-src/GroupComposer/ComposerPolicy.lua").read_text(encoding="utf-8")
+DASHBOARD = (ROOT / "client-addons-src/GroupComposer/DashboardV3.lua").read_text(encoding="utf-8")
 SERVER = (ROOT / "modules/mod-raid-roster/src/GroupComposerCommand.cpp").read_text(encoding="utf-8")
 PLANNER = (ROOT / "modules/mod-raid-roster/src/GroupComposerPlanner.cpp").read_text(encoding="utf-8")
 TYPES = (ROOT / "modules/mod-raid-roster/src/GroupComposerTypes.h").read_text(encoding="utf-8")
@@ -264,6 +267,23 @@ assert "candidate.role != projected.role) score -= 400" in retask, (
 assert "ProjectCandidateForRole(candidate, role, required, projected)" in retask, (
     "Required class/spec selection bypasses the same deterministic role projection path"
 )
+
+# Preparation is allowed to rebuild combat state, not a persistent companion's life history.
+sync = section(SERVER, "void SyncManagedBot(", "void ApplyGroupSettings(")
+assert "bool fullRebuild" in sync, "Managed preparation lost the reserve-only full rebuild boundary"
+assert "if (fullRebuild) factory.Randomize(false);" in sync
+assert sync.count("factory.Randomize(false)") == 1, "Full randomization must have one guarded call site"
+assert "CLASS_DRUID" in sync and "role == ROLE_DPS" in sync and "buildSpec = 3" in sync, (
+    "Feral DPS no longer maps to Playerbots/Era Talents Cat pseudo-spec 3"
+)
+assemble = section(SERVER, "bool GroupComposerCommand::HandleAssemble", "bool GroupComposerCommand::HandleQueue")
+assert "member.reserve" in assemble, "Reserve identity is not carried into assembly-time preparation"
+assert "bool fullRebuild = false;" in SERVER and "itr->second.fullRebuild" in SERVER
+assert 'if (member.reserve) return "RESERVE";' in SERVER
+assert 'needsPreparation = fields[11] == "1"' in CORE and 'reserve = fields[12] == "1"' in CORE
+assert "Policy.HumanRoleCounts = HumanRoleCounts" in POLICY
+assert 'local function RemainingBotSlots(role)' in DASHBOARD
+assert 'RemainingBotSlots("TANK")' in DASHBOARD and 'RemainingBotSlots("HEALER")' in DASHBOARD
 
 # Utility coverage describes actual WotLK raid tools, not later-expansion semantics. Soulstone is a
 # pre-applied self-resurrection safety net in this client era, not the planner's on-demand battle-rez

@@ -45,6 +45,7 @@ local function HumanRoleCounts(config)
     end
     return counts
 end
+Policy.HumanRoleCounts = HumanRoleCounts
 
 -- Exact class/spec rows describe BOT slots. Human anchors already consume role slots, so trim any
 -- stale exact requirements that no longer fit when the player changes their own role. This keeps

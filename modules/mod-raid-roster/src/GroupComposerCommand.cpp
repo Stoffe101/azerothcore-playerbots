@@ -48,6 +48,7 @@ struct PendingSync
     uint32 ownerGuid = 0;
     uint8 role = ROLE_DPS;
     uint8 spec = ANY_SPEC;
+    bool fullRebuild = false;
     uint32 elapsed = 0;
 };
 
@@ -202,6 +203,7 @@ char const* SourceToken(Member const& member)
 {
     if (member.human) return "HUMAN";
     if (member.guild) return "GUILD";
+    if (member.reserve) return "RESERVE";
     if (member.managed) return "ROSTER";
     return "WORLD";
 }
@@ -220,10 +222,11 @@ void SendPlan(ChatHandler* handler, Plan const& plan)
         if (member.human) ++humans;
         else if (member.guild) ++guild;
         else ++world;
-        handler->PSendSysMessage("[GC]|MEMBER|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+        handler->PSendSysMessage("[GC]|MEMBER|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             uint32(member.subgroup), Sanitize(member.name), RoleToken(member.role), ClassToken(member.cls),
             SpecName(member.cls, member.spec), SourceToken(member), member.human ? 1 : 0,
-            member.locked ? 1 : 0, member.pinned ? 1 : 0);
+            member.locked ? 1 : 0, member.pinned ? 1 : 0, member.needsPreparation ? 1 : 0,
+            member.reserve ? 1 : 0);
     }
 
     handler->PSendSysMessage("[GC]|COVERAGE|{}|{}|{}", uint32(plan.coverage.rangedDps),
@@ -312,17 +315,27 @@ bool ConflictingInstances(Player* master, Player* other)
         && master->GetInstanceId() != other->GetInstanceId() && master->GetMapId() == other->GetMapId();
 }
 
-void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec)
+void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, bool fullRebuild)
 {
     if (!master || !bot) return;
-    (void)role; // carried explicitly now; role-aware build/gear finalization consumes it next
     if (spec > 2) spec = Planner::InferSpec(bot);
     if (spec > 2) return;
 
+    // Reserve capacity may need full provisioning. Persistent companions may be
+    // retasked for combat, but their quests, professions and inventory history
+    // must never be broadly randomized by Group Composer.
     PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_LEGENDARY, 0);
-    factory.Randomize(false);
-    if (!EraTalentBots::FactoryReconcile(bot, spec)) PlayerbotFactory::InitTalentsBySpecNo(bot, spec, true);
+    if (fullRebuild) factory.Randomize(false);
+
+    // Playerbots / Era Talents use pseudo-spec 3 for Feral Cat PvE. Keep the
+    // public Composer spec as Feral (1) and use role only for build selection.
+    uint8 buildSpec = spec;
+    if (bot->IsClass(CLASS_DRUID) && spec == 1 && role == ROLE_DPS) buildSpec = 3;
+
+    if (!EraTalentBots::FactoryReconcile(bot, buildSpec))
+        PlayerbotFactory::InitTalentsBySpecNo(bot, buildSpec, true);
     if (PlayerbotAI* ai = GET_PLAYERBOT_AI(bot)) ai->ResetStrategies(false);
+    factory.InitGlyphs(false);
     RaidRosterGear::EquipForSpec(bot, master, spec);
     factory.ApplyEnchantAndGemsNew();
     factory.InitAmmo();
@@ -743,7 +756,7 @@ public:
             Player* master = ObjectAccessor::FindConnectedPlayer(ownerGuid);
             if (bot && master)
             {
-                SyncManagedBot(master, bot, itr->second.role, itr->second.spec);
+                SyncManagedBot(master, bot, itr->second.role, itr->second.spec, itr->second.fullRebuild);
                 itr = s_pendingSync.erase(itr);
             }
             else if (itr->second.elapsed > 30000) itr = s_pendingSync.erase(itr);
@@ -1062,7 +1075,7 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
         Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid);
         if (bot)
         {
-            SyncManagedBot(master, bot, member.role, member.spec);
+            SyncManagedBot(master, bot, member.role, member.spec, member.reserve);
             continue;
         }
 
@@ -1070,7 +1083,7 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
         // RNDbot reserve characters. Only the legacy managed pool uses the per-player manager.
         if (!member.reserve)
             mgr->AddPlayerBot(member.guid, account);
-        s_pendingSync[member.guid.GetCounter()] = { owner, member.role, member.spec, 0 };
+        s_pendingSync[member.guid.GetCounter()] = { owner, member.role, member.spec, member.reserve, 0 };
     }
 
     plan.assembling = true;

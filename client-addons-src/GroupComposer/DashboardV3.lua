@@ -235,6 +235,15 @@ local function HumanRoleProblems()
     return {}
 end
 
+local function RemainingBotSlots(role)
+    local config = GC:GetConfig()
+    local target = role == "TANK" and (tonumber(config.tanks) or 0)
+        or role == "HEALER" and (tonumber(config.healers) or 0)
+        or (tonumber(config.dps) or 0)
+    local humans = GC.Policy and GC.Policy.HumanRoleCounts and GC.Policy.HumanRoleCounts(config) or {}
+    return math.max(0, target - (tonumber(humans[role]) or 0))
+end
+
 local function ExpandedRequired(role)
     local out = {}
     for _, pref in ipairs(GC:GetConfig().preferences[role] or {}) do
@@ -429,10 +438,13 @@ local function BuildDungeonRole(role, x, width, target)
     end
     function p:Refresh()
         local slots = ExpandedRequired(role)
+        local remaining = RemainingBotSlots(role)
+        sub:SetText(tostring(remaining) .. (remaining == 1 and " bot slot" or " bot slots"))
         for i, row in ipairs(self.rows) do
-            local s = slots[i]
+            local s = i <= remaining and slots[i] or nil
             row.class = s and s.class or "ANY"; row.spec = s and s.spec or "ANY"
             row.classDD:Refresh(); row.specDD:Refresh()
+            if i <= remaining then row:Show() else row:Hide() end
         end
     end
     dRolePanels[role] = p
@@ -440,7 +452,10 @@ local function BuildDungeonRole(role, x, width, target)
 end
 BuildDungeonRole("TANK", 14, 250, 1); BuildDungeonRole("HEALER", 294, 250, 1); BuildDungeonRole("DPS", 574, 250, 3)
 function U:WriteDungeonSlots(role)
-    local out = {}; for _, row in ipairs(dRolePanels[role].rows) do out[#out + 1] = {class = row.class, spec = row.spec} end
+    local out, remaining = {}, RemainingBotSlots(role)
+    for i, row in ipairs(dRolePanels[role].rows) do
+        if i <= remaining then out[#out + 1] = {class = row.class, spec = row.spec} end
+    end
     WriteRequired(role, out)
 end
 
@@ -503,7 +518,7 @@ local rsState = Text(raidStatus, "Choose your role", "GameFontNormalSmall", C.go
 
 local exact = Panel(raidPage, C.panel, C.lineSoft); exact:SetPoint("TOPLEFT", 0, -285); exact:SetPoint("TOPRIGHT", 0, -285); exact:SetHeight(282)
 local exTitle = Text(exact, "EXACT COMPOSITION", "GameFontNormal", C.text); exTitle:SetPoint("TOPLEFT", 16, -12)
-local exHint = Text(exact, "Add exact builds such as Fire Mage ×6 or Discipline Priest ×1. Unspecified role slots are auto-filled.", "GameFontHighlightSmall", C.muted); exHint:SetPoint("TOPLEFT", exTitle, "BOTTOMLEFT", 0, -3)
+local exHint = Text(exact, "Exact rows are bot slots only; human anchors already consume their roles. Unspecified bot slots are auto-filled.", "GameFontHighlightSmall", C.muted); exHint:SetPoint("TOPLEFT", exTitle, "BOTTOMLEFT", 0, -3)
 local exactColumns = {}
 local function BuildExactColumn(role, x, width)
     local color = ROLE_COLOR[role]
@@ -517,9 +532,10 @@ local function BuildExactColumn(role, x, width)
     scroll:SetScript("OnMouseWheel", function(self, delta) local v = self:GetVerticalScroll(); local r = self:GetVerticalScrollRange(); self:SetVerticalScroll(math.max(0, math.min(r, v - delta * 28))) end)
     function col:Refresh()
         local rows = AggregatedRequired(role)
-        local target = role == "TANK" and GC:GetConfig().tanks or role == "HEALER" and GC:GetConfig().healers or GC:GetConfig().dps
+        local target = RemainingBotSlots(role)
         local exactCount = 0; for _, r in ipairs(rows) do exactCount = exactCount + r.count end
-        self.cap:SetText(exactCount .. " exact / " .. target .. " total")
+        self.cap:SetText(exactCount .. " exact / " .. target .. " bot slots")
+        self.add:SetEnabledState(exactCount < target)
         for _, ui in ipairs(self.rows) do ui:Hide() end
         for i, data in ipairs(rows) do
             local ui = self.rows[i]
@@ -546,7 +562,7 @@ local function BuildExactColumn(role, x, width)
             ui.classDD:Refresh(); ui.specDD:Refresh()
             ui.minus:SetScript("OnMouseDown", function() local rowsNow = AggregatedRequired(role); local idx = ui.index; if idx and rowsNow[idx] then rowsNow[idx].count = math.max(1, rowsNow[idx].count - 1); WriteAggregated(role, rowsNow) end end)
             ui.plus:SetScript("OnMouseDown", function()
-                local rowsNow = AggregatedRequired(role); local targetNow = role == "TANK" and GC:GetConfig().tanks or role == "HEALER" and GC:GetConfig().healers or GC:GetConfig().dps
+                local rowsNow = AggregatedRequired(role); local targetNow = RemainingBotSlots(role)
                 local total = 0; for _, r in ipairs(rowsNow) do total = total + r.count end
                 local idx = ui.index; if idx and rowsNow[idx] and total < targetNow then rowsNow[idx].count = rowsNow[idx].count + 1; WriteAggregated(role, rowsNow) else GC:Fire("STATUS", "That role already has " .. tostring(targetNow) .. " exact slot(s).") end
             end)
@@ -555,7 +571,7 @@ local function BuildExactColumn(role, x, width)
         end
         child:SetHeight(math.max(145, #rows * 34 + 4))
         self.add:SetScript("OnMouseDown", function()
-            local rowsNow = AggregatedRequired(role); local targetNow = role == "TANK" and GC:GetConfig().tanks or role == "HEALER" and GC:GetConfig().healers or GC:GetConfig().dps
+            local rowsNow = AggregatedRequired(role); local targetNow = RemainingBotSlots(role)
             local total = 0; for _, r in ipairs(rowsNow) do total = total + r.count end
             if total >= targetNow then GC:Fire("STATUS", "All " .. tostring(targetNow) .. " " .. string.lower(D.ROLE_LABEL[role]) .. " slot(s) are already exact."); return end
             local classes = ClassesForRole(role, false); local cls = classes[1] and classes[1].value
@@ -664,6 +680,7 @@ local function RefreshDungeon()
     dFind:SetEnabledState(ready)
     dAssemble:SetEnabledState(plan.ready and plan.valid)
     dCount:SetText(tostring(plan.summary and plan.summary.total or #(plan.members or {})) .. " / 5")
+    dRoleCount:SetText("Bots needed: " .. RemainingBotSlots("TANK") .. " T  •  " .. RemainingBotSlots("HEALER") .. " H  •  " .. RemainingBotSlots("DPS") .. " D")
     if not ready then dState:SetText("CHOOSE YOUR ROLE"); dState:SetTextColor(C.gold[1],C.gold[2],C.gold[3],1)
     elseif plan.ready and plan.valid then dState:SetText("READY"); dState:SetTextColor(C.green[1],C.green[2],C.green[3],1)
     else dState:SetText("BUILD PREVIEW"); dState:SetTextColor(C.blue[1],C.blue[2],C.blue[3],1) end
@@ -674,7 +691,9 @@ local function RefreshDungeon()
             row:Show(); UpdateClassIcon(row.icon, member.class); row.name:SetText(member.name or "?")
             local cc = ClassColor(member.class); row.name:SetTextColor(cc[1],cc[2],cc[3],1)
             row.build:SetText((member.spec or "Any") .. " " .. (D.CLASS_LABEL[member.class] or member.class or "") .. "  •  " .. (D.ROLE_LABEL[member.role] or member.role or ""))
-            row.source:SetText(member.human and "HUMAN" or member.source == "GUILD" and "GUILD" or member.source == "ROSTER" and "PREP" or "WORLD")
+            local source = member.human and "HUMAN" or member.reserve and "RESERVE" or member.source == "GUILD" and "GUILD" or member.source == "ROSTER" and "ROSTER" or "WORLD"
+            if not member.human then source = source .. (member.needsPreparation and " PREP" or " READY") end
+            row.source:SetText(source)
             local rc = ROLE_COLOR[member.role] or C.muted; local soft = member.role=="TANK" and C.blueSoft or member.role=="HEALER" and C.greenSoft or C.redSoft
             SetBorder(row.badge, rc); row.badge.bg:SetTexture(soft[1], soft[2], soft[3], 1); if row.badge.icon then row.badge.icon:SetTexture(D.ROLE_ICON[member.role] or D.ROLE_ICON.DPS) end
         else
@@ -713,7 +732,7 @@ local function RefreshRaid()
     end
     local ready = HumanReady(); rPreview:SetEnabledState(ready); rAssemble:SetEnabledState(plan.ready and plan.valid)
     rsCount:SetText(tostring(plan.summary and plan.summary.total or #(plan.members or {})) .. " / " .. tostring(c.size))
-    rsRoles:SetText(tostring(c.tanks) .. " Tank  •  " .. tostring(c.healers) .. " Heal  •  " .. tostring(c.dps) .. " DPS")
+    rsRoles:SetText("Bots: " .. RemainingBotSlots("TANK") .. " T  •  " .. RemainingBotSlots("HEALER") .. " H  •  " .. RemainingBotSlots("DPS") .. " D")
     if not ready then rsState:SetText("Choose human role"); rsState:SetTextColor(C.gold[1],C.gold[2],C.gold[3],1)
     elseif plan.ready and plan.valid then rsState:SetText("Roster ready"); rsState:SetTextColor(C.green[1],C.green[2],C.green[3],1)
     else rsState:SetText("Build a preview"); rsState:SetTextColor(C.blue[1],C.blue[2],C.blue[3],1) end
