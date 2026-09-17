@@ -1,0 +1,32 @@
+name: Apply Group Composer reserve contract update
+
+on:
+  push:
+    branches:
+      - test/runtime-hardening-group-composer
+    paths:
+      - tools/update_group_composer_reserve_contract.py
+      - .github/workflows/apply-group-composer-contract-update.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/runtime-hardening-group-composer
+          fetch-depth: 0
+      - name: Update contract test
+        run: python3 tools/update_group_composer_reserve_contract.py
+      - name: Commit source-only test update
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add client-addons-src/GroupComposer/tests/test_server_contract.py
+          git commit -m "test(group-composer): cover shared reserve semantics"
+          git push origin HEAD:test/runtime-hardening-group-composer
