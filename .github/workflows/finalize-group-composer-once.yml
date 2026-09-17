@@ -1,0 +1,369 @@
+name: Finalize Group Composer once
+
+on:
+  push:
+    branches:
+      - test/runtime-hardening-group-composer
+    paths:
+      - .github/workflows/finalize-group-composer-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/runtime-hardening-group-composer
+      - name: Apply final hardening
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one replacement, found {count}\n--- needle ---\n{old}")
+              p.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          command = "modules/mod-raid-roster/src/GroupComposerCommand.cpp"
+          replace_once(command,
+          '''    uint8 spec = ANY_SPEC;
+              uint32 elapsed = 0;
+          ''',
+          '''    uint8 spec = ANY_SPEC;
+              bool fullRebuild = false;
+              uint32 elapsed = 0;
+          ''')
+
+          replace_once(command,
+          '''char const* SourceToken(Member const& member)
+          {
+              if (member.human) return "HUMAN";
+              if (member.guild) return "GUILD";
+              if (member.managed) return "ROSTER";
+              return "WORLD";
+          }
+          ''',
+          '''char const* SourceToken(Member const& member)
+          {
+              if (member.human) return "HUMAN";
+              if (member.guild) return "GUILD";
+              if (member.reserve) return "RESERVE";
+              if (member.managed) return "ROSTER";
+              return "WORLD";
+          }
+          ''')
+
+          replace_once(command,
+          '''        handler->PSendSysMessage("[GC]|MEMBER|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+                      uint32(member.subgroup), Sanitize(member.name), RoleToken(member.role), ClassToken(member.cls),
+                      SpecName(member.cls, member.spec), SourceToken(member), member.human ? 1 : 0,
+                      member.locked ? 1 : 0, member.pinned ? 1 : 0);
+          ''',
+          '''        handler->PSendSysMessage("[GC]|MEMBER|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+                      uint32(member.subgroup), Sanitize(member.name), RoleToken(member.role), ClassToken(member.cls),
+                      SpecName(member.cls, member.spec), SourceToken(member), member.human ? 1 : 0,
+                      member.locked ? 1 : 0, member.pinned ? 1 : 0, member.needsPreparation ? 1 : 0,
+                      member.reserve ? 1 : 0);
+          ''')
+
+          replace_once(command,
+          '''void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec)
+          {
+              if (!master || !bot) return;
+              (void)role; // carried explicitly now; role-aware build/gear finalization consumes it next
+              if (spec > 2) spec = Planner::InferSpec(bot);
+              if (spec > 2) return;
+
+              PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_LEGENDARY, 0);
+              factory.Randomize(false);
+              if (!EraTalentBots::FactoryReconcile(bot, spec)) PlayerbotFactory::InitTalentsBySpecNo(bot, spec, true);
+              if (PlayerbotAI* ai = GET_PLAYERBOT_AI(bot)) ai->ResetStrategies(false);
+              RaidRosterGear::EquipForSpec(bot, master, spec);
+              factory.ApplyEnchantAndGemsNew();
+              factory.InitAmmo();
+
+              if (bot->IsClass(CLASS_DEATH_KNIGHT))
+              {
+                  uint32 quest = bot->GetTeamId(true) == TEAM_ALLIANCE ? 13188 : 13189;
+                  if (!bot->IsQuestRewarded(quest)) bot->SetRewardedQuest(quest);
+              }
+              RaidRosterEra::SyncBotToMaster(master, bot);
+          }
+          ''',
+          '''void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, bool fullRebuild)
+          {
+              if (!master || !bot) return;
+              if (spec > 2) spec = Planner::InferSpec(bot);
+              if (spec > 2) return;
+
+              // A reserve character is explicitly leased as Composer capacity and may need full
+              // provisioning. Persistent guild/world companions are different: retasking them may
+              // change their combat build and equipped gear, but must never randomize quests,
+              // professions, inventory history or the rest of their persistent identity.
+              PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_LEGENDARY, 0);
+              if (fullRebuild) factory.Randomize(false);
+
+              // Playerbots and Era Talents expose a dedicated pseudo-spec 3 for Feral Cat while
+              // the client-facing talent tab remains Feral (1). Role disambiguates Cat DPS from
+              // Bear tank without leaking pseudo-spec 3 into profiles or the addon protocol.
+              uint8 buildSpec = spec;
+              if (bot->IsClass(CLASS_DRUID) && spec == 1 && role == ROLE_DPS) buildSpec = 3;
+
+              if (!EraTalentBots::FactoryReconcile(bot, buildSpec))
+                  PlayerbotFactory::InitTalentsBySpecNo(bot, buildSpec, true);
+              if (PlayerbotAI* ai = GET_PLAYERBOT_AI(bot)) ai->ResetStrategies(false);
+              factory.InitGlyphs(false);
+              RaidRosterGear::EquipForSpec(bot, master, spec);
+              factory.ApplyEnchantAndGemsNew();
+              factory.InitAmmo();
+
+              if (bot->IsClass(CLASS_DEATH_KNIGHT))
+              {
+                  uint32 quest = bot->GetTeamId(true) == TEAM_ALLIANCE ? 13188 : 13189;
+                  if (!bot->IsQuestRewarded(quest)) bot->SetRewardedQuest(quest);
+              }
+              RaidRosterEra::SyncBotToMaster(master, bot);
+          }
+          ''')
+
+          replace_once(command,
+          '''                SyncManagedBot(master, bot, itr->second.role, itr->second.spec);
+          ''',
+          '''                SyncManagedBot(master, bot, itr->second.role, itr->second.spec, itr->second.fullRebuild);
+          ''')
+
+          replace_once(command,
+          '''            SyncManagedBot(master, bot, member.role, member.spec);
+          ''',
+          '''            SyncManagedBot(master, bot, member.role, member.spec, member.reserve);
+          ''')
+
+          replace_once(command,
+          '''        s_pendingSync[member.guid.GetCounter()] = { owner, member.role, member.spec, 0 };
+          ''',
+          '''        s_pendingSync[member.guid.GetCounter()] = { owner, member.role, member.spec, member.reserve, 0 };
+          ''')
+
+          core = "client-addons-src/GroupComposer/Core.lua"
+          replace_once(core,
+          '''            human = fields[8] == "1", locked = fields[9] == "1", pinned = fields[10] == "1",
+          ''',
+          '''            human = fields[8] == "1", locked = fields[9] == "1", pinned = fields[10] == "1",
+                      needsPreparation = fields[11] == "1", reserve = fields[12] == "1",
+          ''')
+
+          policy = "client-addons-src/GroupComposer/ComposerPolicy.lua"
+          replace_once(policy,
+          '''    return counts
+          end
+
+          -- Exact class/spec rows describe BOT slots.''',
+          '''    return counts
+          end
+          Policy.HumanRoleCounts = HumanRoleCounts
+
+          -- Exact class/spec rows describe BOT slots.''')
+
+          dashboard = "client-addons-src/GroupComposer/DashboardV3.lua"
+          replace_once(dashboard,
+          '''local function HumanRoleProblems()
+              if GC.Policy and GC.Policy.HumanRoleProblems then return GC.Policy:HumanRoleProblems() end
+              return {}
+          end
+
+          local function ExpandedRequired(role)
+          ''',
+          '''local function HumanRoleProblems()
+              if GC.Policy and GC.Policy.HumanRoleProblems then return GC.Policy:HumanRoleProblems() end
+              return {}
+          end
+
+          local function RemainingBotSlots(role)
+              local config = GC:GetConfig()
+              local target = role == "TANK" and (tonumber(config.tanks) or 0)
+                  or role == "HEALER" and (tonumber(config.healers) or 0)
+                  or (tonumber(config.dps) or 0)
+              local humans = GC.Policy and GC.Policy.HumanRoleCounts and GC.Policy.HumanRoleCounts(config) or {}
+              return math.max(0, target - (tonumber(humans[role]) or 0))
+          end
+
+          local function ExpandedRequired(role)
+          ''')
+
+          replace_once(dashboard,
+          '''    function p:Refresh()
+                  local slots = ExpandedRequired(role)
+                  for i, row in ipairs(self.rows) do
+                      local s = slots[i]
+                      row.class = s and s.class or "ANY"; row.spec = s and s.spec or "ANY"
+                      row.classDD:Refresh(); row.specDD:Refresh()
+                  end
+              end
+          ''',
+          '''    function p:Refresh()
+                  local slots = ExpandedRequired(role)
+                  local remaining = RemainingBotSlots(role)
+                  sub:SetText(tostring(remaining) .. (remaining == 1 and " bot slot" or " bot slots"))
+                  for i, row in ipairs(self.rows) do
+                      local s = i <= remaining and slots[i] or nil
+                      row.class = s and s.class or "ANY"; row.spec = s and s.spec or "ANY"
+                      row.classDD:Refresh(); row.specDD:Refresh()
+                      if i <= remaining then row:Show() else row:Hide() end
+                  end
+              end
+          ''')
+
+          replace_once(dashboard,
+          '''function U:WriteDungeonSlots(role)
+              local out = {}; for _, row in ipairs(dRolePanels[role].rows) do out[#out + 1] = {class = row.class, spec = row.spec} end
+              WriteRequired(role, out)
+          end
+          ''',
+          '''function U:WriteDungeonSlots(role)
+              local out, remaining = {}, RemainingBotSlots(role)
+              for i, row in ipairs(dRolePanels[role].rows) do
+                  if i <= remaining then out[#out + 1] = {class = row.class, spec = row.spec} end
+              end
+              WriteRequired(role, out)
+          end
+          ''')
+
+          replace_once(dashboard,
+          '''        local target = role == "TANK" and GC:GetConfig().tanks or role == "HEALER" and GC:GetConfig().healers or GC:GetConfig().dps
+                  local exactCount = 0; for _, r in ipairs(rows) do exactCount = exactCount + r.count end
+                  self.cap:SetText(exactCount .. " exact / " .. target .. " total")
+          ''',
+          '''        local target = RemainingBotSlots(role)
+                  local exactCount = 0; for _, r in ipairs(rows) do exactCount = exactCount + r.count end
+                  self.cap:SetText(exactCount .. " exact / " .. target .. " bot slots")
+                  self.add:SetEnabledState(exactCount < target)
+          ''')
+
+          replace_once(dashboard,
+          '''            ui.plus:SetScript("OnMouseDown", function()
+                      local rowsNow = AggregatedRequired(role); local targetNow = role == "TANK" and GC:GetConfig().tanks or role == "HEALER" and GC:GetConfig().healers or GC:GetConfig().dps
+          ''',
+          '''            ui.plus:SetScript("OnMouseDown", function()
+                      local rowsNow = AggregatedRequired(role); local targetNow = RemainingBotSlots(role)
+          ''')
+
+          replace_once(dashboard,
+          '''        self.add:SetScript("OnMouseDown", function()
+                  local rowsNow = AggregatedRequired(role); local targetNow = role == "TANK" and GC:GetConfig().tanks or role == "HEALER" and GC:GetConfig().healers or GC:GetConfig().dps
+          ''',
+          '''        self.add:SetScript("OnMouseDown", function()
+                  local rowsNow = AggregatedRequired(role); local targetNow = RemainingBotSlots(role)
+          ''')
+
+          replace_once(dashboard,
+          '''            row.source:SetText(member.human and "HUMAN" or member.source == "GUILD" and "GUILD" or member.source == "ROSTER" and "PREP" or "WORLD")
+          ''',
+          '''            local source = member.human and "HUMAN" or member.reserve and "RESERVE" or member.source == "GUILD" and "GUILD" or member.source == "ROSTER" and "ROSTER" or "WORLD"
+                      if not member.human then source = source .. (member.needsPreparation and " PREP" or " READY") end
+                      row.source:SetText(source)
+          ''')
+
+          replace_once(dashboard,
+          '''    dCount:SetText(tostring(plan.summary and plan.summary.total or #(plan.members or {})) .. " / 5")
+          ''',
+          '''    dCount:SetText(tostring(plan.summary and plan.summary.total or #(plan.members or {})) .. " / 5")
+              dRoleCount:SetText("Bots needed: " .. RemainingBotSlots("TANK") .. " T  •  " .. RemainingBotSlots("HEALER") .. " H  •  " .. RemainingBotSlots("DPS") .. " D")
+          ''')
+
+          replace_once(dashboard,
+          '''    rsRoles:SetText(tostring(c.tanks) .. " Tank  •  " .. tostring(c.healers) .. " Heal  •  " .. tostring(c.dps) .. " DPS")
+          ''',
+          '''    rsRoles:SetText("Bots: " .. RemainingBotSlots("TANK") .. " T  •  " .. RemainingBotSlots("HEALER") .. " H  •  " .. RemainingBotSlots("DPS") .. " D")
+          ''')
+
+          replace_once(dashboard,
+          '''local exHint = Text(exact, "Add exact builds such as Fire Mage ×6 or Discipline Priest ×1. Unspecified role slots are auto-filled.", "GameFontHighlightSmall", C.muted); exHint:SetPoint("TOPLEFT", exTitle, "BOTTOMLEFT", 0, -3)
+          ''',
+          '''local exHint = Text(exact, "Exact rows are bot slots only; human anchors already consume their roles. Unspecified bot slots are auto-filled.", "GameFontHighlightSmall", C.muted); exHint:SetPoint("TOPLEFT", exTitle, "BOTTOMLEFT", 0, -3)
+          ''')
+
+          workflow = ".github/workflows/integration-build.yml"
+          replace_once(workflow, "    timeout-minutes: 75\n", "    timeout-minutes: 100\n")
+
+          tests = "client-addons-src/GroupComposer/tests/test_server_contract.py"
+          replace_once(tests,
+          '''ADVANCED = (ROOT / "client-addons-src/GroupComposer/Advanced.lua").read_text(encoding="utf-8")
+          SERVER =''',
+          '''ADVANCED = (ROOT / "client-addons-src/GroupComposer/Advanced.lua").read_text(encoding="utf-8")
+          CORE = (ROOT / "client-addons-src/GroupComposer/Core.lua").read_text(encoding="utf-8")
+          POLICY = (ROOT / "client-addons-src/GroupComposer/ComposerPolicy.lua").read_text(encoding="utf-8")
+          DASHBOARD = (ROOT / "client-addons-src/GroupComposer/DashboardV3.lua").read_text(encoding="utf-8")
+          SERVER =''')
+
+          replace_once(tests,
+          '''assert "ProjectCandidateForRole(candidate, role, required, projected)" in retask, (
+              "Required class/spec selection bypasses the same deterministic role projection path"
+          )
+
+          # Utility coverage''',
+          '''assert "ProjectCandidateForRole(candidate, role, required, projected)" in retask, (
+              "Required class/spec selection bypasses the same deterministic role projection path"
+          )
+
+          # Preparation must preserve persistent companion identity. Only an explicitly leased reserve
+          # character may receive PlayerbotFactory's broad Randomize pass; ordinary guild/world retasks
+          # are limited to combat build, glyph, strategy and gear reconciliation.
+          sync = section(SERVER, "void SyncManagedBot(", "void ApplyGroupSettings(")
+          assert "bool fullRebuild" in sync, "Managed preparation lost the reserve-only full rebuild boundary"
+          assert "if (fullRebuild) factory.Randomize(false);" in sync, (
+              "Persistent companion retasking can again trigger an unconditional full Playerbot randomization"
+          )
+          assert sync.count("factory.Randomize(false)") == 1, "Full randomization must have one guarded call site"
+          assert "CLASS_DRUID" in sync and "role == ROLE_DPS" in sync and "buildSpec = 3" in sync, (
+              "Feral DPS no longer maps to Playerbots/Era Talents Cat pseudo-spec 3"
+          )
+          assert "member.reserve" in section(SERVER, "bool GroupComposerCommand::HandleAssemble", "bool GroupComposerCommand::HandleQueue"), (
+              "Reserve identity is not carried into assembly-time preparation"
+          )
+          assert "bool fullRebuild = false;" in SERVER and "itr->second.fullRebuild" in SERVER, (
+              "Asynchronous bot login lost the reserve-only rebuild decision"
+          )
+          assert 'if (member.reserve) return "RESERVE";' in SERVER, "Preview source no longer distinguishes reserve capacity"
+          assert 'needsPreparation = fields[11] == "1"' in CORE and 'reserve = fields[12] == "1"' in CORE, (
+              "Addon preview lost server preparation/reserve state"
+          )
+          assert "Policy.HumanRoleCounts = HumanRoleCounts" in POLICY, "Human-aware bot slot accounting is no longer exposed to the dashboard"
+          assert 'local function RemainingBotSlots(role)' in DASHBOARD, "Dashboard lost human-aware bot slot counts"
+          assert 'RemainingBotSlots("TANK")' in DASHBOARD and 'RemainingBotSlots("HEALER")' in DASHBOARD, (
+              "Exact-composition UI can again imply extra bot roles already occupied by humans"
+          )
+
+          # Utility coverage''')
+          PY
+
+      - name: Verify focused contracts
+        run: |
+          python3 client-addons-src/GroupComposer/tests/test_server_contract.py
+          if command -v lua5.1 >/dev/null 2>&1; then
+            find client-addons-src/GroupComposer -maxdepth 1 -name '*.lua' -print0 | xargs -0 -n1 lua5.1 -p
+          fi
+
+      - name: Commit final hardening
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add modules/mod-raid-roster/src/GroupComposerCommand.cpp \
+                  client-addons-src/GroupComposer/Core.lua \
+                  client-addons-src/GroupComposer/ComposerPolicy.lua \
+                  client-addons-src/GroupComposer/DashboardV3.lua \
+                  client-addons-src/GroupComposer/tests/test_server_contract.py \
+                  .github/workflows/integration-build.yml
+          git commit -m "fix(group-composer): preserve companions during role preparation"
+          git push origin HEAD:test/runtime-hardening-group-composer
