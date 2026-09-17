@@ -362,6 +362,11 @@ function GC:HandleProtocolMessage(message)
         local detail = fields[5] or ""
         GC:SetProgress(phase, current, total, detail)
         if phase == "READY" and GC.pendingCommand == "find" then GC.pendingCommand = nil end
+        if phase == "READY" and GC.pendingCommand == "assemble" and string.find(detail, "Enter Activity", 1, true) then
+            -- The group is already committed; only automatic travel was blocked. Release the action
+            -- lock so the in-dashboard Enter Activity button can retry without rebuilding the roster.
+            GC.pendingCommand = nil
+        end
         if phase == "ERROR" then GC.pendingCommand = nil end
     elseif kind == "STATUS" then
         GC:Fire("STATUS", fields[2] or "Server ready")
@@ -374,7 +379,7 @@ function GC:HandleProtocolMessage(message)
             subgroup = ParseNumber(fields[2], 0), name = fields[3] or "?", role = fields[4] or "DPS",
             class = fields[5] or "UNKNOWN", spec = fields[6] or "", source = fields[7] or "WORLD",
             human = fields[8] == "1", locked = fields[9] == "1", pinned = fields[10] == "1",
-            needsPreparation = fields[11] == "1", reserve = fields[12] == "1",
+            needsPreparation = fields[11] == "1", reserve = fields[12] == "1", isPlayer = fields[13] == "1",
         }
     elseif kind == "COVERAGE" then
         GC.plan.summary.ranged = ParseNumber(fields[2], 0); GC.plan.summary.melee = ParseNumber(fields[3], 0); GC.plan.summary.utility = fields[4] or ""
