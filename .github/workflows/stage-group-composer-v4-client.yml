@@ -19,7 +19,7 @@ jobs:
       - name: Apply V4 client patches
         run: |
           python3 .github/scripts/apply_group_composer_v4_client_core.py
-          python3 .github/scripts/apply_group_composer_v4_dashboard_compat.py
+          python3 .github/scripts/apply_group_composer_v4_dashboard_compat2.py
           python3 .github/scripts/apply_group_composer_v4_layout_polish.py
           python3 .github/scripts/apply_group_composer_v4_ui_contract.py
       - name: Install Lua 5.1
