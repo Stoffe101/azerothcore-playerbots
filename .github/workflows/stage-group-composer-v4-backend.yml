@@ -31,6 +31,9 @@ jobs:
             python3 .github/scripts/apply_group_composer_v4_travel.py
           fi
           python3 .github/scripts/fix_group_composer_v4_travel_contract.py
+          if ! grep -q 'press Enter Activity to retry' modules/mod-raid-roster/src/GroupComposerCommand.cpp; then
+            python3 .github/scripts/apply_group_composer_v4_travel_retry_ui.py
+          fi
 
       - name: Focused source checks
         run: |
@@ -46,6 +49,8 @@ jobs:
           grep -q 'GetMapEntranceTrigger(mapId)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'TeleportCompletedPlan' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'TitanRune::SaveSelectedMode(master, titanMode)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'press Enter Activity to retry' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'Ready to enter activity' client-addons-src/GroupComposer/DashboardV4.lua
 
       - name: Commit generated backend changes
         run: |
@@ -65,5 +70,5 @@ jobs:
             client-addons-src/GroupComposer/Core.lua \
             client-addons-src/GroupComposer/DashboardV4.lua \
             client-addons-src/GroupComposer/tests/test_server_contract.py
-          git commit -m 'feat(group-composer): recover failed bots and enter selected activity'
+          git commit -m 'feat(group-composer): make selected activity travel retryable'
           git push origin HEAD:test/group-composer-v4
