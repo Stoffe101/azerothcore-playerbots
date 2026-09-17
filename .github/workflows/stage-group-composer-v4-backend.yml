@@ -48,7 +48,9 @@ jobs:
           grep -q 'ReplaceUnreadyCandidates' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'GetMapEntranceTrigger(mapId)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'TeleportCompletedPlan' modules/mod-raid-roster/src/GroupComposerCommand.cpp
-          grep -q 'TitanRune::SaveSelectedMode(master, titanMode)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'TitanRune::SaveSelectedMode(travelLeader, titanMode)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'Player\* travelLeader = group->GetLeader()' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'SendProtocol(master, "STATUS", travelError)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'press Enter Activity to retry' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'Ready to enter activity' client-addons-src/GroupComposer/DashboardV4.lua
 
