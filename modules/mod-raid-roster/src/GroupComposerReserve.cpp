@@ -178,7 +178,7 @@ void Update(uint32 diff)
     {
         uint32 botLow = entry.first;
         Lease const& lease = entry.second;
-        if (now - lease.acquired < 60) continue; // assembly itself times out at 30 s
+        if (now - lease.acquired < 180) continue; // prepared previews stay reserved for three minutes
 
         Player* owner = ObjectAccessor::FindConnectedPlayer(ObjectGuid::Create<HighGuid::Player>(lease.owner));
         if (!owner)

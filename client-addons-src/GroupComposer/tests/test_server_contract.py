@@ -167,7 +167,7 @@ assert "bool reserve = false;" in TYPES and "bool needsPreparation = false;" in 
 
 # Bots with a different active game-client master belong to that player's current play session.
 # Group Composer must exclude them during planning, refuse to prune them if they appear after preview,
-# and refuse to keep/invite a selected bot if ownership changes during the asynchronous assemble step.
+# and refuse to attach a selected bot if ownership changes during the asynchronous commit step.
 build_candidates = section(PLANNER, "std::vector<Candidate> BuildCandidates(", "int CandidateScore(")
 assert "botAI->HasGameClientMaster() && botAI->GetMaster() != master" in build_candidates, (
     "Online guild/world candidates can still hijack another player's actively controlled bot"
@@ -188,9 +188,18 @@ assert "controlled by another active player and cannot be silently removed" in v
 assert "Selected bot '" in validation and "is now controlled by another active player" in validation, (
     "Selected Playerbot ownership changes are not revalidated at Assemble"
 )
-try_invite = section(SERVER, "void TryInviteMissing(", "uint8 LfgRole(")
-assert "BotHasOtherGameClientMaster(master, bot)" in try_invite, (
-    "Asynchronous invite retries can still pull a bot away from another active player"
+attach = section(SERVER, "void TryAttachMissing(", "uint8 LfgRole(")
+assert "BotHasOtherGameClientMaster(master, bot)" in attach, (
+    "Direct Composer attachment can still pull a bot away from another active player"
+)
+assert "group->AddMember(bot)" in attach, (
+    "Prepared Playerbots must be attached through AzerothCore group membership instead of the chatty invite handshake"
+)
+assert "InviteHuman(master, player)" in attach, (
+    "Real humans must keep the normal player-facing invitation path"
+)
+assert "InviteToGroupAction" not in SERVER, (
+    "V4 must not regress Playerbots to the slow invite/accept handshake"
 )
 
 # Offline managed reserve bots may retain persisted group membership. Never log in a reserve bot
@@ -287,8 +296,18 @@ assert "{ owner, member.role, member.spec, FullProvisionFor(member), 0 }" in SER
 assert "CLASS_DRUID" in sync and "role == ROLE_DPS" in sync and "buildSpec = 3" in sync, (
     "Feral DPS no longer maps to Playerbots/Era Talents Cat pseudo-spec 3"
 )
+prepare = section(SERVER, "bool PreparePlan(Player* master, Plan& plan", "bool EnsureComposerGroup(")
+assert "Reserve::AcquirePlan(master, plan" in prepare, "Build & Prepare no longer reserves selected bot capacity"
+assert "s_pendingSync[member.guid.GetCounter()]" in prepare, "Offline prepared bots are no longer tracked through login synchronization"
+assert "bool preparing = false;" in TYPES and "bool prepared = false;" in TYPES, (
+    "Plan lost the explicit V4 preparation state"
+)
+assert 'PSendSysMessage("[GC]|PROGRESS|' in SERVER, "Server no longer publishes granular V4 progress"
 assemble = section(SERVER, "bool GroupComposerCommand::HandleAssemble", "bool GroupComposerCommand::HandleQueue")
-assert "member.reserve" in assemble, "Reserve identity is not carried into assembly-time preparation"
+assert "!plan.prepared || plan.preparing || OwnerHasPendingSync(owner)" in assemble, (
+    "Assemble can commit before Build & Prepare is complete"
+)
+assert "PruneUnselectedBots(master, plan)" in assemble, "Destructive commit boundary disappeared"
 assert "bool fullRebuild = false;" in SERVER and "itr->second.fullRebuild" in SERVER
 assert 'if (member.reserve) return "RESERVE";' in SERVER
 assert 'needsPreparation = fields[11] == "1"' in CORE and 'reserve = fields[12] == "1"' in CORE
@@ -319,7 +338,9 @@ RESERVE_CPP = (ROOT / "modules/mod-raid-roster/src/GroupComposerReserve.cpp").re
 RESERVE_PATCH = (ROOT / "patches/0034-playerbot-group-composer-reserve.patch").read_text(encoding="utf-8")
 assert "GLOBAL_LIMIT = 80" in RESERVE_H, "Global Composer reserve must remain 80 bot slots"
 assert "PER_OWNER_LIMIT = 40" in RESERVE_H, "One player must not consume more than a full 40-bot roster"
-assert "Reserve::AcquirePlan(master, plan, reserveError)" in SERVER, "Assemble no longer leases Composer capacity before destructive work"
+assert SERVER.count("Reserve::AcquirePlan(master, plan") >= 2, (
+    "Composer must reserve at preview preparation and revalidate the lease at Assemble"
+)
 assert "reserve = true" in PLANNER, "Offline RNDbot class bodies are no longer exposed to the Composer reserve"
 assert "ActivateGroupComposerBot" in RESERVE_PATCH and "ReleaseGroupComposerBot" in RESERVE_PATCH, (
     "Playerbot population integration lost Composer activation/release hooks"
