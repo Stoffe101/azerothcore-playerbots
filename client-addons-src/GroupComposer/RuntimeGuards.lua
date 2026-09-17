@@ -91,32 +91,6 @@ GC:RegisterCallback("STATUS", function()
     if GC.pendingCommand == "status" then GC.pendingCommand = nil end
 end)
 
--- Assemble is the destructive boundary: it can prune unselected bots, prepare selected bots and
--- send invitations. Require a deliberate confirmation after the preview has been reviewed.
-local confirmedAssemble = GC.Assemble
-StaticPopupDialogs = StaticPopupDialogs or {}
-StaticPopupDialogs["GROUPCOMPOSER_CONFIRM_ASSEMBLY"] = {
-    text = "Assemble this %d-player roster?\n\nThis applies the reviewed composition to your live group. Unselected bots may be removed and selected players/bots invited. Real players are never silently removed.",
-    button1 = "Assemble Roster",
-    button2 = CANCEL,
-    OnAccept = function()
-        confirmedAssemble(GC)
-    end,
-    timeout = 0,
-    whileDead = true,
-    hideOnEscape = true,
-    preferredIndex = 3,
-}
-
-function GC:Assemble()
-    if GC.pendingCommand then
-        GC:Fire("STATUS", "Group Composer is still processing " .. tostring(GC.pendingCommand) .. ".")
-        return false
-    end
-    if not GC.plan or not GC.plan.ready or not GC.plan.valid then
-        GC:Fire("STATUS", "Find and validate a roster before assembling it.")
-        return false
-    end
-    StaticPopup_Show("GROUPCOMPOSER_CONFIRM_ASSEMBLY", tonumber(GC:GetConfig().size) or #(GC.plan.members or {}))
-    return true
-end
+-- Dashboard V4 owns the visible confirmation inside the Composer window. Keep the guarded
+-- GC.Assemble function itself untouched here so internal server progress/retry state can never
+-- reopen a Blizzard StaticPopup or force the user through repeated confirmations.

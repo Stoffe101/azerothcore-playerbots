@@ -7,6 +7,7 @@ GC.version = D.VERSION
 GC.db = nil
 GC.config = nil
 GC.plan = { members = {}, warnings = {}, valid = false, ready = false, summary = {} }
+GC.progress = { phase = "IDLE", current = 0, total = 0, detail = "Configure a roster to begin." }
 GC.callbacks = {}
 GC.backendSeen = false
 GC.pendingCommand = nil
@@ -64,11 +65,30 @@ function GC:Fire(event, ...)
     end
 end
 
+function GC:SetProgress(phase, current, total, detail)
+    GC.progress = {
+        phase = phase or "IDLE",
+        current = tonumber(current) or 0,
+        total = tonumber(total) or 0,
+        detail = detail or "",
+    }
+    GC:Fire("PROGRESS_CHANGED", GC.progress)
+end
+
+function GC:AddWarningOnce(value)
+    value = tostring(value or "Unknown warning")
+    for _, existing in ipairs(GC.plan.warnings or {}) do
+        if existing == value then return end
+    end
+    GC.plan.warnings[#GC.plan.warnings + 1] = value
+end
+
 function GC:ResetPlan(reason)
     GC.plan = {
         members = {}, warnings = {}, valid = false, ready = false,
         summary = {}, reason = reason,
     }
+    GC:SetProgress("IDLE", 0, 0, reason or "Configure a roster to begin.")
     GC:Fire("PLAN_CHANGED", GC.plan)
 end
 
@@ -261,7 +281,8 @@ function GC:FindRoster()
 
     GC:ResetPlan("Searching")
     GC.pendingCommand = "find"
-    GC:Fire("STATUS", "Building roster preview...")
+    GC:SetProgress("BUILDING", 0, 0, "Selecting a valid roster...")
+    GC:Fire("STATUS", "Building and preparing roster...")
     SendRawServer("begin " .. GC:BeginPayload())
     local config = GC:GetConfig()
     for _, role in ipairs(D.ROLE_ORDER) do
@@ -278,8 +299,13 @@ function GC:FindRoster()
 end
 
 function GC:Assemble()
-    if not GC.plan.ready or not GC.plan.valid then GC:Fire("STATUS", "Find and validate a roster before assembling it."); return false end
-    GC:SendServer("assemble", "Assembling roster...")
+    if not GC.plan.ready or not GC.plan.valid then GC:Fire("STATUS", "Build and validate a roster before assembling it."); return false end
+    if not GC.progress or GC.progress.phase ~= "READY" then
+        GC:Fire("STATUS", "Selected bots are still being prepared. Assemble unlocks automatically when they are ready.")
+        return false
+    end
+    GC:SetProgress("ASSEMBLING", 1, tonumber(GC.plan.summary.total) or #GC.plan.members, "Committing prepared roster to the live group...")
+    GC:SendServer("assemble", "Assembling prepared roster...")
     return true
 end
 
@@ -329,6 +355,14 @@ function GC:HandleProtocolMessage(message)
     elseif kind == "ANCHORDONE" then
         GC.anchorsReady = true
         GC:Fire("HUMANS_CHANGED", GC:ScanHumans())
+    elseif kind == "PROGRESS" then
+        local phase = fields[2] or "IDLE"
+        local current = ParseNumber(fields[3], 0)
+        local total = ParseNumber(fields[4], 0)
+        local detail = fields[5] or ""
+        GC:SetProgress(phase, current, total, detail)
+        if phase == "READY" and GC.pendingCommand == "find" then GC.pendingCommand = nil end
+        if phase == "ERROR" then GC.pendingCommand = nil end
     elseif kind == "STATUS" then
         GC:Fire("STATUS", fields[2] or "Server ready")
     elseif kind == "META" then
@@ -349,16 +383,19 @@ function GC:HandleProtocolMessage(message)
         GC.pendingCommand = nil
         GC:Fire("DIAGNOSTICS", GC.plan.summary.diagnostics)
     elseif kind == "WARN" then
-        GC.plan.warnings[#GC.plan.warnings + 1] = fields[2] or "Unknown warning"
+        GC:AddWarningOnce(fields[2] or "Unknown warning")
     elseif kind == "READY" then
         GC.plan.valid = fields[2] == "1"; GC.plan.ready = true
         GC.plan.summary.guild = ParseNumber(fields[3], 0); GC.plan.summary.world = ParseNumber(fields[4], 0)
         GC.plan.summary.humans = ParseNumber(fields[5], 0); GC.plan.summary.total = ParseNumber(fields[6], #GC.plan.members)
-        GC.pendingCommand = nil
-        GC:Fire("STATUS", GC.plan.valid and "Roster ready for review." or "Roster needs attention.")
+        if not GC.plan.valid then GC.pendingCommand = nil end
+        GC:Fire("STATUS", GC.plan.valid and "Roster selected. Preparing selected bots..." or "Roster needs attention.")
     elseif kind == "DONE" then
         local completed = GC.pendingCommand
         GC.pendingCommand = nil
+        if completed == "assemble" then
+            GC:SetProgress("DONE", tonumber(GC.plan.summary.total) or #GC.plan.members, tonumber(GC.plan.summary.total) or #GC.plan.members, fields[2] or "Roster ready.")
+        end
         GC:Fire("STATUS", fields[2] or "Done.")
         if completed == "assemble" and GC:GetConfig().mode == "DUNGEON" and GC:GetConfig().options.queueAfterAssemble then
             GC:QueueDungeon()
@@ -367,7 +404,8 @@ function GC:HandleProtocolMessage(message)
         local failedCommand = GC.pendingCommand
         local hadValidPlan = GC.plan.ready and GC.plan.valid
         GC.pendingCommand = nil
-        GC.plan.warnings[#GC.plan.warnings + 1] = fields[2] or "Server error"
+        GC:AddWarningOnce(fields[2] or "Server error")
+        GC:SetProgress("ERROR", GC.progress and GC.progress.current or 0, GC.progress and GC.progress.total or 0, fields[2] or "Server error")
         -- An action failure (queue, move, diagnostics, assembly timeout) does not make the
         -- previously validated composition structurally invalid. Only a failed Find/build does.
         if failedCommand == "find" or not hadValidPlan then

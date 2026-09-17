@@ -148,7 +148,7 @@ local function Selector(parent,w,getItems,getValue,setValue,maxVisible)
             local idx=menu.offset+i-1; local item=items[idx]
             if item then
                 row:ClearAllPoints(); row:SetPoint("TOPLEFT",4,-4-(i-1)*26); row.label:SetText(item.label); row:Show()
-                row:SetScript("OnMouseDown",function() if setValue then setValue(item.value) end; CloseMenu(); b:Refresh() end)
+                local valueCopy=item.value; row:SetScript("OnMouseDown",function() if setValue then setValue(valueCopy) end; CloseMenu(); b:Refresh() end)
             else row:Hide() end
         end
         menu:SetHeight(math.max(34,count*26+8))
@@ -257,6 +257,13 @@ local function RaidItems() local out={}; for _,r in ipairs(D.RAIDS) do out[#out+
 local function RaidDiffItems() local r=D.GetRaidById(GC:GetConfig().activity); local out={{value="normal",label="Normal"}}; if r and r.heroic then out[#out+1]={value="heroic",label="Heroic"} end; return out end
 selectorA=Selector(activity,315,function() return GC:GetConfig().mode=="RAID" and RaidItems() or DungeonItems() end,function() return GC:GetConfig().activity end,function(v) if GC:GetConfig().mode=="RAID" then GC:SetRaidActivity(v) else GC:SetDungeonActivity(v) end end,8); selectorA:SetPoint("TOPLEFT",102,-58)
 selectorB=Selector(activity,190,function() return GC:GetConfig().mode=="RAID" and RaidDiffItems() or DifficultyItems() end,function() return GC:GetConfig().difficulty end,function(v) GC:GetConfig().difficulty=v; GC:Touch("Difficulty changed") end,7); selectorB:SetPoint("LEFT",selectorA,"RIGHT",10,0)
+local raidSizeLabel=Text(activity,"RAID SIZE","GameFontNormalSmall",C.muted); raidSizeLabel:SetPoint("TOPLEFT",650,-17)
+local raidSizeButtons={}
+for i,size in ipairs({10,20,25,40}) do
+    local sizeCopy=size
+    local b=Button(activity,tostring(size).."-man",72,30,function() GC:SetRaidSize(sizeCopy) end)
+    b:SetPoint("TOPLEFT",642+(i-1)*78,-55); raidSizeButtons[size]=b
+end
 
 local anchors=Panel(body,C.card,C.line); anchors:SetPoint("TOPLEFT",0,-116); anchors:SetWidth(936); anchors:SetHeight(112)
 local anchTitle=Text(anchors,"YOUR PARTY","GameFontNormal",C.text); anchTitle:SetPoint("TOPLEFT",14,-11)
@@ -279,7 +286,7 @@ local function RefreshHumans()
         row.name:SetText((h.isPlayer and "YOU - " or "")..tostring(h.name)); local cc=ClassColor(h.class); row.name:SetTextColor(cc[1],cc[2],cc[3],1)
         local spec=h.isPlayer and PlayerSpec() or (D.CLASS_LABEL[h.class] or h.class); row.spec:SetText(tostring(spec))
         local selected=GC:GetConfig().humanRoles[h.name]
-        for _,role in ipairs(ROLE_ORDER) do local rb=row.roles[role]; local allowed=ClassCanRole(h.class,role); rb:SetEnabledState(allowed); rb:SetAccent(ROLE_COLOR[role],selected==role); rb:SetScript("OnMouseDown",function() if allowed then GC:SetHumanRole(h.name,role) end end); AddTooltip(rb,D.ROLE_LABEL[role],allowed and "Lock this real player to this role." or "This class cannot perform this role in WotLK.") end
+        local humanName=h.name; local humanClass=h.class; for _,role in ipairs(ROLE_ORDER) do local roleKey=role; local rb=row.roles[roleKey]; local allowed=ClassCanRole(humanClass,roleKey); rb:SetEnabledState(allowed); rb:SetAccent(ROLE_COLOR[roleKey],selected==roleKey); rb:SetScript("OnMouseDown",function() if allowed then GC:SetHumanRole(humanName,roleKey) end end); AddTooltip(rb,D.ROLE_LABEL[roleKey],allowed and "Lock this real player to this role." or "This class cannot perform this role in WotLK.") end
         row:Show()
     end
 end
@@ -302,7 +309,7 @@ local warnRows={}; for i=1,3 do local t=Text(command,"","GameFontHighlightSmall"
 local buildBtn=Button(command,"Build & Prepare",138,38,function() GC:FindRoster() end); buildBtn:SetPoint("BOTTOMLEFT",16,18); buildBtn:SetAccent(C.blue,true)
 local assembleBtn=Button(command,"Assemble",138,38,function() U:ShowAssembleConfirm() end); assembleBtn:SetPoint("BOTTOMRIGHT",-16,18); assembleBtn:SetAccent(C.gold,true)
 
-local content=Panel(body,C.card,C.line); content:SetPoint("TOPLEFT",0,-240); content:SetWidth(936); content:SetHeight(528)
+local content=Panel(body,C.card,C.line); content:SetPoint("TOPLEFT",0,-240); content:SetWidth(936); content:SetHeight(456); groupScroll:Hide()
 local contentTitle=Text(content,"PARTY COMPOSITION","GameFontNormal",C.text); contentTitle:SetPoint("TOPLEFT",14,-12)
 local contentHint=Text(content,"Auto slots require no work. Pick a class/spec only where you care.","GameFontHighlightSmall",C.muted); contentHint:SetPoint("TOPLEFT",contentTitle,"BOTTOMLEFT",0,-3)
 
@@ -351,7 +358,7 @@ local roleCards={}
 for i,role in ipairs(ROLE_ORDER) do
     local card=Panel(quick,ROLE_SOFT[role],ROLE_COLOR[role]); card:SetWidth(286); card:SetHeight(145); card:SetPoint("TOPLEFT",(i-1)*300,0)
     local ri=RoleIcon(card,role,42); ri:SetPoint("TOPLEFT",14,-14); local rt=Text(card,D.ROLE_LABEL[role],"GameFontNormalLarge",ROLE_COLOR[role]); rt:SetPoint("LEFT",ri,"RIGHT",10,6)
-    card.count=Text(card,"0","GameFontNormalHuge",C.text); card.count:SetPoint("TOPRIGHT",-18,-18); card.need=Text(card,"0 bots after humans","GameFontHighlightSmall",C.muted); card.need:SetPoint("TOPLEFT",14,-74)
+    card.count=Text(card,"0","GameFontNormalLarge",C.text); card.count:SetPoint("TOPRIGHT",-18,-18); card.need=Text(card,"0 bots after humans","GameFontHighlightSmall",C.muted); card.need:SetPoint("TOPLEFT",14,-74)
     if role~="DPS" then card.minus=Button(card,"-",30,28); card.minus:SetPoint("BOTTOMLEFT",14,12); card.plus=Button(card,"+",30,28); card.plus:SetPoint("LEFT",card.minus,"RIGHT",6,0) end
     roleCards[role]=card
 end
@@ -360,48 +367,73 @@ local qIcon=Icon(quickHelp,"Interface\\Icons\\INV_Misc_Map_01",42); qIcon:SetPoi
 
 local exact=CreateFrame("Frame",nil,raidView); exact:SetPoint("TOPLEFT",0,-44); exact:SetPoint("BOTTOMRIGHT",0,0); exact:Hide(); local exactCols={}
 for i,role in ipairs(ROLE_ORDER) do
-    local col=Panel(exact,C.bg,ROLE_COLOR[role]); col:SetWidth(286); col:SetHeight(330); col:SetPoint("TOPLEFT",(i-1)*300,0); col.rows={}
+    local col=Panel(exact,C.bg,ROLE_COLOR[role]); col:SetWidth(286); col:SetHeight(250); col:SetPoint("TOPLEFT",(i-1)*300,0); col.rows={}
     local ri=RoleIcon(col,role,32); ri:SetPoint("TOPLEFT",12,-10); local tt=Text(col,D.ROLE_LABEL[role].." BUILDS","GameFontNormal",ROLE_COLOR[role]); tt:SetPoint("LEFT",ri,"RIGHT",8,5); col.cap=Text(col,"","GameFontHighlightSmall",C.muted); col.cap:SetPoint("LEFT",ri,"RIGHT",8,-12)
     col.add=Button(col,"Add Build",86,26); col.add:SetPoint("TOPRIGHT",-10,-12)
     exactCols[role]=col
 end
 local function RefreshExact()
     for _,role in ipairs(ROLE_ORDER) do
-        local col=exactCols[role]; local rows=Aggregated(role); local total=0; for _,r in ipairs(rows) do total=total+(r.count or 1) end; local cap=Remaining(role); col.cap:SetText(total.." exact / "..cap.." bot slots")
+        local roleKey=role
+        local col=exactCols[roleKey]; local rows=Aggregated(roleKey); local total=0; for _,r in ipairs(rows) do total=total+(r.count or 1) end; local cap=Remaining(roleKey); col.cap:SetText(total.." exact / "..cap.." bot slots")
         for _,r in ipairs(col.rows) do r:Hide() end
         for i,data in ipairs(rows) do
-            if i>6 then break end
+            if i>5 then break end
             local r=col.rows[i]
             if not r then
-                r=Panel(col,C.card2,C.line); r:SetWidth(266); r:SetHeight(38); r.class=Text(r,"","GameFontNormal",C.text); r.class:SetPoint("TOPLEFT",8,-7); r.class:SetWidth(135); r.spec=Text(r,"","GameFontHighlightSmall",C.muted); r.spec:SetPoint("TOPLEFT",8,-23); r.spec:SetWidth(135); r.count=Text(r,"","GameFontNormal",C.text); r.count:SetPoint("RIGHT",-67,0); r.minus=Button(r,"-",24,24); r.minus:SetPoint("RIGHT",-36,0); r.plus=Button(r,"+",24,24); r.plus:SetPoint("RIGHT",-8,0); col.rows[i]=r
+                r=Panel(col,C.card2,C.line); r:SetWidth(266); r:SetHeight(34); r.class=Text(r,"","GameFontNormal",C.text); r.class:SetPoint("TOPLEFT",8,-7); r.class:SetWidth(135); r.spec=Text(r,"","GameFontHighlightSmall",C.muted); r.spec:SetPoint("TOPLEFT",8,-23); r.spec:SetWidth(135); r.count=Text(r,"","GameFontNormal",C.text); r.count:SetPoint("RIGHT",-67,0); r.minus=Button(r,"-",24,24); r.minus:SetPoint("RIGHT",-36,0); r.plus=Button(r,"+",24,24); r.plus:SetPoint("RIGHT",-8,0); col.rows[i]=r
             end
-            r:ClearAllPoints(); r:SetPoint("TOPLEFT",10,-52-(i-1)*43); r.data=data; local spec=D.GetSpec(data.class,data.spec); r.class:SetText(D.CLASS_LABEL[data.class] or data.class); local cc=ClassColor(data.class); r.class:SetTextColor(cc[1],cc[2],cc[3],1); r.spec:SetText(spec and spec.label or "Any spec"); r.count:SetText("x"..tostring(data.count or 1)); r:Show()
-            r.minus:SetScript("OnMouseDown",function() local now=Aggregated(role); if now[i] then now[i].count=(now[i].count or 1)-1; if now[i].count<=0 then table.remove(now,i) end; WriteAggregated(role,now) end end)
-            r.plus:SetScript("OnMouseDown",function() local now=Aggregated(role); local n=0; for _,x in ipairs(now) do n=n+(x.count or 1) end; if now[i] and n<Remaining(role) then now[i].count=(now[i].count or 1)+1; WriteAggregated(role,now) end end)
+            r:ClearAllPoints(); r:SetPoint("TOPLEFT",10,-48-(i-1)*38); r.data=data; local spec=D.GetSpec(data.class,data.spec); r.class:SetText(D.CLASS_LABEL[data.class] or data.class); local cc=ClassColor(data.class); r.class:SetTextColor(cc[1],cc[2],cc[3],1); r.spec:SetText(spec and spec.label or "Any spec"); r.count:SetText("x"..tostring(data.count or 1)); r:Show()
+            r.minus:SetScript("OnMouseDown",function() local now=Aggregated(roleKey); if now[i] then now[i].count=(now[i].count or 1)-1; if now[i].count<=0 then table.remove(now,i) end; WriteAggregated(roleKey,now) end end)
+            r.plus:SetScript("OnMouseDown",function() local now=Aggregated(roleKey); local n=0; for _,x in ipairs(now) do n=n+(x.count or 1) end; if now[i] and n<Remaining(roleKey) then now[i].count=(now[i].count or 1)+1; WriteAggregated(roleKey,now) end end)
         end
-        col.add:SetEnabledState(total<cap); col.add:SetScript("OnMouseDown",function() local rowsNow=Aggregated(role); local classes=ClassesForRole(role,false); local cls=classes[1] and classes[1].value; local specs=SpecsForRole(cls,role,false); if cls and #rowsNow<cap then rowsNow[#rowsNow+1]={class=cls,spec=specs[1] and specs[1].value or "ANY",count=1}; WriteAggregated(role,rowsNow) end end)
+        col.add:SetEnabledState(total<cap); col.add:SetScript("OnMouseDown",function() local rowsNow=Aggregated(roleKey); local classes=ClassesForRole(roleKey,false); local cls=classes[1] and classes[1].value; local specs=SpecsForRole(cls,roleKey,false); if cls and #rowsNow<cap then rowsNow[#rowsNow+1]={class=cls,spec=specs[1] and specs[1].value or "ANY",count=1}; WriteAggregated(roleKey,rowsNow) end end)
     end
 end
 
-local raidGroups=Panel(body,C.card,C.line); raidGroups:SetPoint("TOPLEFT",0,-780); raidGroups:SetWidth(936); raidGroups:SetHeight(1); raidGroups:Hide()
+local groupScroll=CreateFrame("ScrollFrame",nil,body); groupScroll:SetPoint("TOPLEFT",0,-568); groupScroll:SetWidth(936); groupScroll:SetHeight(160); groupScroll:EnableMouseWheel(true); groupScroll:Hide()
+local groupChild=CreateFrame("Frame",nil,groupScroll); groupChild:SetWidth(936); groupChild:SetHeight(160); groupScroll:SetScrollChild(groupChild)
+groupScroll:SetScript("OnMouseWheel",function(self,d) self:SetVerticalScroll(math.max(0,math.min(self:GetVerticalScrollRange(),self:GetVerticalScroll()-d*55))) end)
 local groupCards={}
 local function EnsureGroupCard(g)
     if groupCards[g] then return groupCards[g] end
-    local card=Panel(body,C.card,C.lineStrong); card:SetWidth(174); card:SetHeight(206); card.rows={}; local gt=Text(card,"GROUP "..g,"GameFontNormalSmall",C.text); gt:SetPoint("TOPLEFT",10,-9); card.count=Text(card,"0/5","GameFontHighlightSmall",C.muted); card.count:SetPoint("TOPRIGHT",-10,-9)
-    for i=1,5 do local r=Panel(card,C.bg,C.line); r:SetWidth(154); r:SetHeight(30); r:SetPoint("TOPLEFT",10,-32-(i-1)*33); r.role=RoleIcon(r,"DPS",20); r.role:SetPoint("LEFT",4,0); r.class=ClassIcon(r,"WARRIOR",20); r.class:SetPoint("LEFT",r.role,"RIGHT",3,0); r.name=Text(r,"Empty","GameFontHighlightSmall",C.dim); r.name:SetPoint("TOPLEFT",52,-4); r.name:SetWidth(96); r.build=Text(r,"","GameFontHighlightSmall",C.dim); r.build:SetPoint("TOPLEFT",52,-17); r.build:SetWidth(96); card.rows[i]=r end
+    local card=Panel(groupChild,C.card,C.lineStrong); card:SetWidth(174); card:SetHeight(158); card.rows={}
+    local gt=Text(card,"GROUP "..g,"GameFontNormalSmall",C.text); gt:SetPoint("TOPLEFT",8,-7)
+    card.count=Text(card,"0/5","GameFontHighlightSmall",C.muted); card.count:SetPoint("TOPRIGHT",-8,-7)
+    for i=1,5 do
+        local r=Panel(card,C.bg,C.line); r:SetHeight(23); r:SetPoint("TOPLEFT",7,-28-(i-1)*25); r:SetPoint("RIGHT",-7,0)
+        r.role=RoleIcon(r,"DPS",15); r.role:SetPoint("LEFT",3,0)
+        r.class=ClassIcon(r,"WARRIOR",15); r.class:SetPoint("LEFT",r.role,"RIGHT",2,0)
+        r.name=Text(r,"Empty","GameFontHighlightSmall",C.dim); r.name:SetPoint("LEFT",39,0); r.name:SetWidth(72)
+        r.build=Text(r,"","GameFontHighlightSmall",C.dim); r.build:SetPoint("RIGHT",-3,0); r.build:SetWidth(55); r.build:SetJustifyH("RIGHT")
+        card.rows[i]=r
+    end
     groupCards[g]=card; return card
 end
 local function RefreshGroups()
     for _,card in ipairs(groupCards) do card:Hide() end
-    if GC:GetConfig().mode~="RAID" or not GC.plan.ready then return end
-    local groups=math.min(8,math.ceil((GC:GetConfig().size or 25)/5)); local indexes={}
-    for g=1,groups do local card=EnsureGroupCard(g); local cols=GC:GetConfig().size==40 and 4 or math.min(5,groups); local row=math.floor((g-1)/cols); local col=(g-1)%cols; local w=GC:GetConfig().size==40 and 216 or 174; card:SetWidth(w); card:ClearAllPoints(); card:SetPoint("TOPLEFT",body, "TOPLEFT", col*(w+12), -568-row*218); card:Show(); for _,r in ipairs(card.rows) do r.name:SetText("Empty"); r.name:SetTextColor(C.dim[1],C.dim[2],C.dim[3],1); r.build:SetText("") end end
-    for _,m in ipairs(GC.plan.members or {}) do local g=tonumber(m.subgroup) or 1; indexes[g]=(indexes[g] or 0)+1; local i=indexes[g]; local card=groupCards[g]; local r=card and card.rows[i]; if r then r.role:SetTexture(D.ROLE_ICON[m.role] or D.ROLE_ICON.DPS); SetClassIcon(r.class,m.class); r.name:SetText((m.human and "YOU - " or "")..m.name); local cc=ClassColor(m.class); r.name:SetTextColor(cc[1],cc[2],cc[3],1); r.build:SetText((m.spec or "Any")..(m.needsPreparation and " - PREP" or "")); r.build:SetTextColor((m.needsPreparation and C.gold or C.muted)[1],(m.needsPreparation and C.gold or C.muted)[2],(m.needsPreparation and C.gold or C.muted)[3],1) end end
+    if GC:GetConfig().mode~="RAID" or not GC.plan.ready then groupScroll:Hide(); return end
+    groupScroll:Show(); groupScroll:SetVerticalScroll(0)
+    local groups=math.min(8,math.ceil((GC:GetConfig().size or 25)/5)); local indexes={}; local cols=GC:GetConfig().size==40 and 4 or math.min(5,groups); local cardW=GC:GetConfig().size==40 and 216 or 174; local cardH=158
+    local rows=math.ceil(groups/cols); groupChild:SetHeight(math.max(160,rows*166))
+    for g=1,groups do
+        local card=EnsureGroupCard(g); local rr=math.floor((g-1)/cols); local cc=(g-1)%cols
+        card:SetWidth(cardW); card:ClearAllPoints(); card:SetPoint("TOPLEFT",cc*(cardW+12),-rr*166); card:Show()
+        for _,r in ipairs(card.rows) do r.name:SetText("Empty"); r.name:SetTextColor(C.dim[1],C.dim[2],C.dim[3],1); r.build:SetText("") end
+    end
+    for _,m in ipairs(GC.plan.members or {}) do
+        local g=tonumber(m.subgroup) or 1; indexes[g]=(indexes[g] or 0)+1; local i=indexes[g]; local card=groupCards[g]; local r=card and card.rows[i]
+        if r then
+            r.role:SetTexture(D.ROLE_ICON[m.role] or D.ROLE_ICON.DPS); SetClassIcon(r.class,m.class)
+            r.name:SetText((m.human and "YOU " or "")..m.name); local cc=ClassColor(m.class); r.name:SetTextColor(cc[1],cc[2],cc[3],1)
+            local build=m.spec or "Any"; if m.needsPreparation then build="Prep" end; r.build:SetText(build); local bc=m.needsPreparation and C.gold or C.muted; r.build:SetTextColor(bc[1],bc[2],bc[3],1)
+        end
+    end
     for g=1,groups do local card=groupCards[g]; card.count:SetText(tostring(indexes[g] or 0).."/5") end
 end
 
 -- Options strip
-local opts=Panel(body,C.card,C.line); opts:SetPoint("TOPLEFT",0,-780); opts:SetWidth(936); opts:SetHeight(48)
+local opts=Panel(body,C.card,C.line); opts:SetPoint("TOPLEFT",0,-740); opts:SetWidth(936); opts:SetHeight(38)
 local tGuild=Toggle(opts,"Prefer guild",function() return GC:GetConfig().options.preferGuild end,function(v) GC:GetConfig().options.preferGuild=v; GC:Touch("Option changed") end); tGuild:SetPoint("LEFT",14,0); tGuild:SetWidth(170)
 local tWorld=Toggle(opts,"World / reserve fallback",function() return GC:GetConfig().options.fillWorld end,function(v) GC:GetConfig().options.fillWorld=v; GC:Touch("Option changed") end); tWorld:SetPoint("LEFT",205,0); tWorld:SetWidth(195)
 local tUtil=Toggle(opts,"Balance utility",function() return GC:GetConfig().options.balanceUtility end,function(v) GC:GetConfig().options.balanceUtility=v; GC:Touch("Option changed") end); tUtil:SetPoint("LEFT",425,0); tUtil:SetWidth(160)
@@ -416,7 +448,7 @@ local tpName=CreateFrame("EditBox",nil,templates,"InputBoxTemplate"); tpName:Set
 function U:RefreshTemplates()
     local names=U.templateTab=="CUSTOM" and P.ListCustom() or P.ListBuiltins(); tpBuilt:SetAccent(C.blue,U.templateTab=="BUILTIN"); tpMine:SetAccent(C.blue,U.templateTab=="CUSTOM")
     for _,r in ipairs(tpRows) do r:Hide() end
-    for i,name in ipairs(names) do local r=tpRows[i]; if not r then r=Panel(tpChild,C.card,C.line); r:SetWidth(850); r:SetHeight(54); r.name=Text(r,"","GameFontNormal",C.text); r.name:SetPoint("TOPLEFT",12,-9); r.info=Text(r,"","GameFontHighlightSmall",C.muted); r.info:SetPoint("TOPLEFT",12,-29); r.load=Button(r,"Load",74,28); r.load:SetPoint("RIGHT",-10,0); tpRows[i]=r end; r:ClearAllPoints(); r:SetPoint("TOPLEFT",0,-(i-1)*60); r.name:SetText(name); local p=P.Get(name); r.info:SetText(p and ((p.mode=="RAID" and tostring(p.size).." player raid" or "5 player dungeon").." - "..tostring(p.tanks).."T / "..tostring(p.healers).."H / "..tostring(p.dps).."D") or ""); r.load:SetScript("OnMouseDown",function() GC:LoadProfile(name); templates:Hide() end); r:Show() end; tpChild:SetHeight(math.max(450,#names*60+10))
+    for i,name in ipairs(names) do local nameCopy=name; local r=tpRows[i]; if not r then r=Panel(tpChild,C.card,C.line); r:SetWidth(850); r:SetHeight(54); r.name=Text(r,"","GameFontNormal",C.text); r.name:SetPoint("TOPLEFT",12,-9); r.info=Text(r,"","GameFontHighlightSmall",C.muted); r.info:SetPoint("TOPLEFT",12,-29); r.load=Button(r,"Load",74,28); r.load:SetPoint("RIGHT",-10,0); tpRows[i]=r end; r:ClearAllPoints(); r:SetPoint("TOPLEFT",0,-(i-1)*60); r.name:SetText(name); local p=P.Get(name); r.info:SetText(p and ((p.mode=="RAID" and tostring(p.size).." player raid" or "5 player dungeon").." - "..tostring(p.tanks).."T / "..tostring(p.healers).."H / "..tostring(p.dps).."D") or ""); r.load:SetScript("OnMouseDown",function() GC:LoadProfile(nameCopy); templates:Hide() end); r:Show() end; tpChild:SetHeight(math.max(450,#names*60+10))
 end
 function U:ShowTemplates() CloseMenu(); U:RefreshTemplates(); templates:Show() end
 
@@ -426,13 +458,13 @@ local ppTitle=Text(people,"HUMANS & FAMILIAR COMPANIONS","GameFontNormalLarge",C
 local ppHum=Panel(people,C.card,C.line); ppHum:SetPoint("TOPLEFT",20,-72); ppHum:SetWidth(920); ppHum:SetHeight(230); local ppHT=Text(ppHum,"REAL PLAYERS","GameFontNormal",C.text); ppHT:SetPoint("TOPLEFT",14,-12); local ppHumanRows={}
 local ppPins=Panel(people,C.card,C.line); ppPins:SetPoint("TOPLEFT",20,-316); ppPins:SetWidth(920); ppPins:SetHeight(305); local ppPT=Text(ppPins,"PINNED GUILD COMPANIONS","GameFontNormal",C.text); ppPT:SetPoint("TOPLEFT",14,-12); local pinName=CreateFrame("EditBox",nil,ppPins,"InputBoxTemplate"); pinName:SetWidth(220); pinName:SetHeight(28); pinName:SetAutoFocus(false); pinName:SetPoint("TOPLEFT",14,-43); local pinRole="DPS"; local pinRoleDD=Selector(ppPins,130,function() return {{value="TANK",label="Tank"},{value="HEALER",label="Healer"},{value="DPS",label="DPS"}} end,function() return pinRole end,function(v) pinRole=v end,3); pinRoleDD:SetPoint("LEFT",pinName,"RIGHT",8,0); local pinReq=false; local pinReqT=Toggle(ppPins,"Required",function() return pinReq end,function(v) pinReq=v end); pinReqT:SetPoint("LEFT",pinRoleDD,"RIGHT",12,0); pinReqT:SetWidth(100); local pinAdd=Button(ppPins,"Pin Member",110,30,function() local n=pinName:GetText(); if n and n~="" then GC:AddPinnedMember(n,pinRole,pinReq); pinName:SetText(""); U:RefreshPeople() end end); pinAdd:SetPoint("TOPRIGHT",-14,-42); pinAdd:SetAccent(C.blue,true); local ppPinRows={}
 function U:RefreshPeople()
-    for _,r in ipairs(ppHumanRows) do r:Hide() end; local hs=Humans(); for i,h in ipairs(hs) do if i>5 then break end; local r=ppHumanRows[i]; if not r then r=Panel(ppHum,C.bg,C.line); r:SetWidth(890); r:SetHeight(32); r.icon=ClassIcon(r,"WARRIOR",22); r.icon:SetPoint("LEFT",7,0); r.name=Text(r,"","GameFontNormal",C.text); r.name:SetPoint("LEFT",36,0); r.name:SetWidth(180); r.roles={}; local off=0; for _,role in ipairs(ROLE_ORDER) do local b=Button(r,D.ROLE_LABEL[role],72,24); b:SetPoint("RIGHT",-7-off,0); r.roles[role]=b; off=off+78 end; ppHumanRows[i]=r end; r:ClearAllPoints(); r:SetPoint("TOPLEFT",14,-42-(i-1)*36); SetClassIcon(r.icon,h.class); r.name:SetText((h.isPlayer and "YOU - " or "")..h.name); local sel=GC:GetConfig().humanRoles[h.name]; for _,role in ipairs(ROLE_ORDER) do local b=r.roles[role]; local allowed=ClassCanRole(h.class,role); b:SetEnabledState(allowed); b:SetAccent(ROLE_COLOR[role],sel==role); b:SetScript("OnMouseDown",function() if allowed then GC:SetHumanRole(h.name,role); U:RefreshPeople() end end) end; r:Show() end
-    for _,r in ipairs(ppPinRows) do r:Hide() end; for i,p in ipairs(GC:GetConfig().pinned or {}) do if i>5 then break end; local r=ppPinRows[i]; if not r then r=Panel(ppPins,C.bg,C.line); r:SetWidth(890); r:SetHeight(32); r.name=Text(r,"","GameFontNormal",C.text); r.name:SetPoint("LEFT",8,0); r.name:SetWidth(220); r.info=Text(r,"","GameFontHighlightSmall",C.muted); r.info:SetPoint("LEFT",240,0); r.remove=Button(r,"Remove",78,24); r.remove:SetPoint("RIGHT",-7,0); r.remove:SetAccent(C.red,true); ppPinRows[i]=r end; r:ClearAllPoints(); r:SetPoint("TOPLEFT",14,-84-(i-1)*36); r.name:SetText(p.name); r.info:SetText((D.ROLE_LABEL[p.role] or p.role).." - "..(p.required and "Required" or "Preferred")); r.remove:SetScript("OnMouseDown",function() GC:RemovePinnedMember(i); U:RefreshPeople() end); r:Show() end; pinReqT:Refresh(); pinRoleDD:Refresh()
+    for _,r in ipairs(ppHumanRows) do r:Hide() end; local hs=Humans(); for i,h in ipairs(hs) do if i>5 then break end; local r=ppHumanRows[i]; if not r then r=Panel(ppHum,C.bg,C.line); r:SetWidth(890); r:SetHeight(32); r.icon=ClassIcon(r,"WARRIOR",22); r.icon:SetPoint("LEFT",7,0); r.name=Text(r,"","GameFontNormal",C.text); r.name:SetPoint("LEFT",36,0); r.name:SetWidth(180); r.roles={}; local off=0; for _,role in ipairs(ROLE_ORDER) do local b=Button(r,D.ROLE_LABEL[role],72,24); b:SetPoint("RIGHT",-7-off,0); r.roles[role]=b; off=off+78 end; ppHumanRows[i]=r end; r:ClearAllPoints(); r:SetPoint("TOPLEFT",14,-42-(i-1)*36); SetClassIcon(r.icon,h.class); r.name:SetText((h.isPlayer and "YOU - " or "")..h.name); local sel=GC:GetConfig().humanRoles[h.name]; local humanName=h.name; local humanClass=h.class; for _,role in ipairs(ROLE_ORDER) do local roleKey=role; local b=r.roles[roleKey]; local allowed=ClassCanRole(humanClass,roleKey); b:SetEnabledState(allowed); b:SetAccent(ROLE_COLOR[roleKey],sel==roleKey); b:SetScript("OnMouseDown",function() if allowed then GC:SetHumanRole(humanName,roleKey); U:RefreshPeople() end end) end; r:Show() end
+    for _,r in ipairs(ppPinRows) do r:Hide() end; for i,p in ipairs(GC:GetConfig().pinned or {}) do if i>5 then break end; local r=ppPinRows[i]; if not r then r=Panel(ppPins,C.bg,C.line); r:SetWidth(890); r:SetHeight(32); r.name=Text(r,"","GameFontNormal",C.text); r.name:SetPoint("LEFT",8,0); r.name:SetWidth(220); r.info=Text(r,"","GameFontHighlightSmall",C.muted); r.info:SetPoint("LEFT",240,0); r.remove=Button(r,"Remove",78,24); r.remove:SetPoint("RIGHT",-7,0); r.remove:SetAccent(C.red,true); ppPinRows[i]=r end; r:ClearAllPoints(); r:SetPoint("TOPLEFT",14,-84-(i-1)*36); r.name:SetText(p.name); r.info:SetText((D.ROLE_LABEL[p.role] or p.role).." - "..(p.required and "Required" or "Preferred")); local pinIndex=i; r.remove:SetScript("OnMouseDown",function() GC:RemovePinnedMember(pinIndex); U:RefreshPeople() end); r:Show() end; pinReqT:Refresh(); pinRoleDD:Refresh()
 end
 function U:ShowPeople() CloseMenu(); U:RefreshPeople(); people:Show() end
 
 -- In-dashboard confirmation, never a Blizzard popup.
-local shade=CreateFrame("Frame",nil,frame); shade:SetAllPoints(frame); shade:SetFrameLevel(frame:GetFrameLevel()+30); local shadeTex=Solid(shade,{0,0,0,0.72}); shadeTex:SetAllPoints(shade); shade:Hide(); local confirm=Panel(shade,C.chrome,C.gold); confirm:SetWidth(540); confirm:SetHeight(250); confirm:SetPoint("CENTER"); local cIcon=Icon(confirm,"Interface\\Icons\\INV_Misc_GroupLooking",54); cIcon:SetPoint("TOP",0,-24); local cTitle=Text(confirm,"ASSEMBLE PREPARED ROSTER?","GameFontNormalLarge",C.text); cTitle:SetPoint("TOP",cIcon,"BOTTOM",0,-12); local cText=Text(confirm,"All selected bots are prepared. This now applies the reviewed roster to your live group. Playerbots attach directly; real players receive a normal invite.","GameFontHighlight",C.muted); cText:SetPoint("TOPLEFT",34,-116); cText:SetWidth(472); cText:SetJustifyH("CENTER"); cText:SetJustifyV("TOP"); local cCancel=Button(confirm,"Cancel",120,34,function() shade:Hide() end); cCancel:SetPoint("BOTTOMLEFT",130,20); local cGo=Button(confirm,"Assemble",120,34,function() shade:Hide(); GC:Assemble() end); cGo:SetPoint("BOTTOMRIGHT",-130,20); cGo:SetAccent(C.gold,true)
+local shade=CreateFrame("Frame",nil,frame); shade:SetAllPoints(frame); shade:SetFrameLevel(frame:GetFrameLevel()+30); local shadeTex=Solid(shade,{0,0,0,0.72}); shadeTex:SetAllPoints(shade); shade:Hide(); local confirm=Panel(shade,C.chrome,C.gold); confirm:SetWidth(540); confirm:SetHeight(250); confirm:SetPoint("CENTER"); local cIcon=Icon(confirm,"Interface\\Icons\\Achievement_General_StayClassy",54); cIcon:SetPoint("TOP",0,-24); local cTitle=Text(confirm,"ASSEMBLE PREPARED ROSTER?","GameFontNormalLarge",C.text); cTitle:SetPoint("TOP",cIcon,"BOTTOM",0,-12); local cText=Text(confirm,"All selected bots are prepared. This now applies the reviewed roster to your live group. Playerbots attach directly; real players receive a normal invite.","GameFontHighlight",C.muted); cText:SetPoint("TOPLEFT",34,-116); cText:SetWidth(472); cText:SetJustifyH("CENTER"); cText:SetJustifyV("TOP"); local cCancel=Button(confirm,"Cancel",120,34,function() shade:Hide() end); cCancel:SetPoint("BOTTOMLEFT",130,20); local cGo=Button(confirm,"Assemble",120,34,function() shade:Hide(); GC:Assemble() end); cGo:SetPoint("BOTTOMRIGHT",-130,20); cGo:SetAccent(C.gold,true)
 function U:ShowAssembleConfirm() if not GC.progress or GC.progress.phase~="READY" then GC:Fire("STATUS","Build & Prepare must finish first."); return end; shade:Show() end
 
 local function AdjustRole(role,delta)
@@ -442,12 +474,19 @@ roleCards.TANK.minus:SetScript("OnMouseDown",function() AdjustRole("TANK",-1) en
 
 local function RefreshActivity()
     local c=GC:GetConfig(); selectorA:Refresh(); selectorB:Refresh()
-    if c.mode=="RAID" then local r=D.GetRaidById(c.activity); activityTitle:SetText(r and r.label or "Raid Setup"); activitySub:SetText((r and r.era or "Raid").." - "..tostring(c.size).." player - "..(c.difficulty=="heroic" and "Heroic" or "Normal")); activityIcon:SetTexture(RAID_ART[c.activity] or "Interface\\Icons\\Achievement_Boss_LichKing"); if ENCOUNTER_READY[c.activity] then SetStatusTexture(badgeIcon,"READY"); badgeText:SetText("Encounter AI certified"); badgeText:SetTextColor(C.green[1],C.green[2],C.green[3],1) else SetStatusTexture(badgeIcon,"BUILDING"); badgeText:SetText("Roster planner only"); badgeText:SetTextColor(C.gold[1],C.gold[2],C.gold[3],1) end
-    else local d=D.GetDungeonById(c.activity); activityTitle:SetText(d and d.label or "Dungeon Group"); activitySub:SetText((c.difficulty=="alpha" and "Titan Rune Alpha" or c.difficulty=="beta" and "Titan Rune Beta" or c.difficulty=="gamma" and "Titan Rune Gamma" or c.difficulty=="heroic" and "Heroic" or "Normal").." - 5 player"); activityIcon:SetTexture(DUNGEON_ART[c.activity] or DUNGEON_ART.random); SetStatusTexture(badgeIcon,"READY"); badgeText:SetText("Dungeon Clear supported"); badgeText:SetTextColor(C.green[1],C.green[2],C.green[3],1) end
+    if c.mode=="RAID" then
+        raidSizeLabel:Show(); local selectedRaid=D.GetRaidById(c.activity)
+        for size,b in pairs(raidSizeButtons) do local supported=false; if selectedRaid then for _,s in ipairs(selectedRaid.sizes or {}) do if s==size then supported=true end end end; b:Show(); b:SetEnabledState(supported); b:SetAccent(C.gold,supported and c.size==size) end
+        local r=selectedRaid; activityTitle:SetText(r and r.label or "Raid Setup"); activitySub:SetText((r and r.era or "Raid").." - "..tostring(c.size).." player - "..(c.difficulty=="heroic" and "Heroic" or "Normal")); activityIcon:SetTexture(RAID_ART[c.activity] or "Interface\\Icons\\Achievement_Boss_LichKing"); if ENCOUNTER_READY[c.activity] then SetStatusTexture(badgeIcon,"READY"); badgeText:SetText("Encounter AI certified"); badgeText:SetTextColor(C.green[1],C.green[2],C.green[3],1) else SetStatusTexture(badgeIcon,"BUILDING"); badgeText:SetText("Roster planner only"); badgeText:SetTextColor(C.gold[1],C.gold[2],C.gold[3],1) end
+    else
+        raidSizeLabel:Hide(); for _,b in pairs(raidSizeButtons) do b:Hide() end
+        local d=D.GetDungeonById(c.activity); activityTitle:SetText(d and d.label or "Dungeon Group"); activitySub:SetText((c.difficulty=="alpha" and "Titan Rune Alpha" or c.difficulty=="beta" and "Titan Rune Beta" or c.difficulty=="gamma" and "Titan Rune Gamma" or c.difficulty=="heroic" and "Heroic" or "Normal").." - 5 player"); activityIcon:SetTexture(DUNGEON_ART[c.activity] or DUNGEON_ART.random); SetStatusTexture(badgeIcon,"READY"); badgeText:SetText("Dungeon Clear supported"); badgeText:SetTextColor(C.green[1],C.green[2],C.green[3],1) end
 end
 local function RefreshCommand()
     local p=GC.progress or {phase="IDLE",current=0,total=0,detail=""}; local phase=p.phase or "IDLE"; SetStatusTexture(phaseIcon,phase)
-    local titles={IDLE="Configure roster",BUILDING="Selecting roster",PREPARING="Preparing bots",READY="Ready to assemble",ASSEMBLING="Assembling group",DONE="Group ready",ERROR="Needs attention"}; phaseTitle:SetText(titles[phase] or phase); local pc=phase=="READY" or phase=="DONE" and C.green or phase=="ERROR" and C.red or phase=="PREPARING" or phase=="ASSEMBLING" and C.gold or C.blue; phaseTitle:SetTextColor(pc[1],pc[2],pc[3],1); phaseDetail:SetText(p.detail or "")
+    local titles={IDLE="Configure roster",BUILDING="Selecting roster",PREPARING="Preparing bots",READY="Ready to assemble",ASSEMBLING="Assembling group",DONE="Group ready",ERROR="Needs attention"}; phaseTitle:SetText(titles[phase] or phase)
+    local pc=C.blue; if phase=="READY" or phase=="DONE" then pc=C.green elseif phase=="ERROR" then pc=C.red elseif phase=="PREPARING" or phase=="ASSEMBLING" then pc=C.gold end
+    phaseTitle:SetTextColor(pc[1],pc[2],pc[3],1); phaseDetail:SetText(p.detail or "")
     local humans=#Humans(); local total=GC.plan.ready and (tonumber(GC.plan.summary.total) or #GC.plan.members) or humans; local target=tonumber(GC:GetConfig().size) or 5; count:SetText(tostring(total).." / "..target); countSub:SetText(tostring(humans).." human"..(humans==1 and "" or "s").." - "..math.max(0,target-humans).." bot slots")
     local ratio=(p.total and p.total>0) and math.min(1,p.current/p.total) or (phase=="READY" or phase=="DONE") and 1 or 0; progFill:SetWidth(math.max(1,284*ratio)); local showProgress=phase=="PREPARING" or phase=="ASSEMBLING" or phase=="READY" or phase=="DONE"; progressText:SetText(showProgress and (tostring(p.current or 0).." / "..tostring(p.total or 0).." - "..(p.detail or "")) or "")
     coverageText:SetText(GC.plan.summary and ((GC.plan.summary.utility or "No utility snapshot yet").."\nRanged DPS: "..tostring(GC.plan.summary.ranged or 0).."   Melee DPS: "..tostring(GC.plan.summary.melee or 0)) or "Build a preview to inspect utility coverage.")
@@ -458,7 +497,17 @@ local function RefreshRaidQuick()
     local c=GC:GetConfig(); roleCards.TANK.count:SetText(tostring(c.tanks)); roleCards.HEALER.count:SetText(tostring(c.healers)); roleCards.DPS.count:SetText(tostring(c.dps)); for _,role in ipairs(ROLE_ORDER) do roleCards[role].need:SetText(tostring(Remaining(role)).." bot slots after humans") end
 end
 local function LayoutForMode()
-    local raid=GC:GetConfig().mode=="RAID"; if raid then raidView:Show(); dungeonView:Hide(); contentTitle:SetText("RAID COMPOSITION"); contentHint:SetText(U.raidExact and "Exact rows are hard class/spec requirements. Everything else remains Auto." or "Start simple. Composer fills around your humans and balances the unspecified slots."); quick:SetShown(not U.raidExact); exact:SetShown(U.raidExact); modeQuick:SetAccent(C.blue,not U.raidExact); modeExact:SetAccent(C.gold,U.raidExact); opts:ClearAllPoints(); opts:SetPoint("TOPLEFT",0,-780); opts:SetWidth(936); content:SetHeight(320); command:SetHeight(652) else raidView:Hide(); dungeonView:Show(); contentTitle:SetText("FIVE-PLAYER PARTY"); contentHint:SetText("Your human slot is locked. Auto-fill the rest or choose exact bot builds."); content:SetHeight(528) end
+    local raid=GC:GetConfig().mode=="RAID"
+    if raid then
+        raidView:Show(); dungeonView:Hide(); contentTitle:SetText("RAID COMPOSITION")
+        contentHint:SetText(U.raidExact and "Exact rows are hard class/spec requirements. Everything else remains Auto." or "Start simple. Composer fills around your humans and balances the unspecified slots.")
+        if U.raidExact then quick:Hide(); exact:Show() else quick:Show(); exact:Hide() end
+        modeQuick:SetAccent(C.blue,not U.raidExact); modeExact:SetAccent(C.gold,U.raidExact)
+        opts:ClearAllPoints(); opts:SetPoint("TOPLEFT",0,-740); opts:SetWidth(936); content:SetHeight(316); command:SetHeight(652); groupScroll:Show()
+    else
+        raidView:Hide(); dungeonView:Show(); contentTitle:SetText("FIVE-PLAYER PARTY")
+        contentHint:SetText("Your human slot is locked. Auto-fill the rest or choose exact bot builds."); content:SetHeight(528)
+    end
 end
 function U:Refresh()
     if not frame:IsShown() then return end

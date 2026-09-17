@@ -11,12 +11,11 @@ import re
 
 ROOT = Path(__file__).resolve().parents[3]
 DATA = (ROOT / "client-addons-src/GroupComposer/Data.lua").read_text(encoding="utf-8")
-POLISH = (ROOT / "client-addons-src/GroupComposer/Polish.lua").read_text(encoding="utf-8")
-UI = (ROOT / "client-addons-src/GroupComposer/UI.lua").read_text(encoding="utf-8")
-ADVANCED = (ROOT / "client-addons-src/GroupComposer/Advanced.lua").read_text(encoding="utf-8")
+RUNTIME = (ROOT / "client-addons-src/GroupComposer/RuntimeGuards.lua").read_text(encoding="utf-8")
+TOC = (ROOT / "client-addons-src/GroupComposer/GroupComposer.toc").read_text(encoding="utf-8")
 CORE = (ROOT / "client-addons-src/GroupComposer/Core.lua").read_text(encoding="utf-8")
 POLICY = (ROOT / "client-addons-src/GroupComposer/ComposerPolicy.lua").read_text(encoding="utf-8")
-DASHBOARD = (ROOT / "client-addons-src/GroupComposer/DashboardV3.lua").read_text(encoding="utf-8")
+DASHBOARD = (ROOT / "client-addons-src/GroupComposer/DashboardV4.lua").read_text(encoding="utf-8")
 SERVER = (ROOT / "modules/mod-raid-roster/src/GroupComposerCommand.cpp").read_text(encoding="utf-8")
 PLANNER = (ROOT / "modules/mod-raid-roster/src/GroupComposerPlanner.cpp").read_text(encoding="utf-8")
 TYPES = (ROOT / "modules/mod-raid-roster/src/GroupComposerTypes.h").read_text(encoding="utf-8")
@@ -87,28 +86,26 @@ for command in (
         f"Missing server command registration: {command}"
     )
 
-# Client safety contracts. A passive status sync must not leave the whole addon action-locked, and
-# Assemble must remain an explicit commit step rather than a one-click destructive operation.
-assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in POLISH, (
+# Client safety and architecture contracts. Dashboard V4 owns presentation while RuntimeGuards owns
+# protocol-only safety. No unloaded legacy UI file may be required for live behavior.
+assert 'DashboardV4.lua' in TOC and 'DashboardV3.lua' not in TOC, "The live addon must load only Dashboard V4"
+assert '## Version: 0.5.0' in TOC and '## X-UI-Shell: DashboardV4' in TOC
+assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
-assert 'StaticPopupDialogs["GROUPCOMPOSER_CONFIRM_ASSEMBLY"]' in POLISH, (
-    "Live roster assembly lost its explicit confirmation boundary"
+assert 'GROUPCOMPOSER_CONFIRM_ASSEMBLY' not in RUNTIME and 'StaticPopup_Show' not in RUNTIME, (
+    "V4 must not use the legacy Blizzard assembly popup"
 )
-assert 'StaticPopup_Show("GROUPCOMPOSER_CONFIRM_ASSEMBLY"' in POLISH, (
-    "Assemble no longer routes through the confirmation popup"
+assert 'function U:ShowAssembleConfirm()' in DASHBOARD and 'GC:Assemble()' in DASHBOARD, (
+    "Dashboard V4 lost its in-window assembly confirmation boundary"
 )
-assert 'key = "keepMe"' not in UI, (
-    "The immutable local-player anchor must not be exposed as a misleading toggle"
+assert 'SetShown(' not in DASHBOARD, "Dashboard V4 uses a post-Wrath frame API"
+assert 'UI-CheckBox-Check' in DASHBOARD, "V4 status/toggles should use real textures instead of unsupported Unicode glyphs"
+assert 'maxVisible' in DASHBOARD and 'EnableMouseWheel(true)' in DASHBOARD, (
+    "V4 selectors/templates must remain bounded and scrollable"
 )
-assert 'YOU - Locked human anchor' in UI, (
-    "The main composer should explain that the local player is always included"
-)
-assert 'local function AcquirePrefRow' in UI and 'local function AcquireRosterRow' in UI, (
-    "Main-window preference/preview rows must be pooled instead of leaking WoW frames on refresh"
-)
-assert 'local function AcquireLayoutRow' in ADVANCED and 'local function AcquireGroupCard' in ADVANCED, (
-    "Roster Editor layout rows/cards must be pooled for repeated 25/40-player refreshes"
+assert 'Build & Prepare' in DASHBOARD and 'PROGRESS_CHANGED' in DASHBOARD, (
+    "V4 must expose preparation as a visible first-class phase"
 )
 
 # Safety invariants. These are intentionally source-level contracts because removing any one of
@@ -312,11 +309,11 @@ assert "bool fullRebuild = false;" in SERVER and "itr->second.fullRebuild" in SE
 assert 'if (member.reserve) return "RESERVE";' in SERVER
 assert 'needsPreparation = fields[11] == "1"' in CORE and 'reserve = fields[12] == "1"' in CORE
 assert "Policy.HumanRoleCounts = HumanRoleCounts" in POLICY
-assert 'local function RemainingBotSlots(role)' in DASHBOARD
-assert 'RemainingBotSlots("TANK")' in DASHBOARD and 'RemainingBotSlots("HEALER")' in DASHBOARD
-assert 'ipairs({10, 20, 25, 40})' in DASHBOARD, "Dashboard no longer exposes all supported raid-size families"
-assert 'for _, r in ipairs(D.RAIDS or {}) do' in DASHBOARD, "Dashboard hard-filters the full raid planner catalog"
-assert 'ROSTER ONLY' in DASHBOARD and 'encounter AI not certified' in DASHBOARD, (
+assert 'local function Remaining(role)' in DASHBOARD
+assert 'Remaining("TANK")' in DASHBOARD or 'Remaining(role)' in DASHBOARD
+assert 'ipairs({10,20,25,40})' in DASHBOARD, "Dashboard no longer exposes all supported raid-size families"
+assert 'for _,r in ipairs(D.RAIDS)' in DASHBOARD, "Dashboard hard-filters the full raid planner catalog"
+assert 'Roster planner only' in DASHBOARD and 'Encounter AI certified' in DASHBOARD, (
     "Planner-only raids must remain visibly distinct from certified encounter automation"
 )
 assert 'local READY_RAIDS = {' not in DASHBOARD, "Legacy hard-coded raid whitelist still restricts Group Composer"
