@@ -122,6 +122,12 @@ end
 local function SpecIconPath(class,spec)
     spec=tonumber(spec); return SPEC_ICON[class] and spec and SPEC_ICON[class][spec+1] or nil
 end
+local function SpecIdByLabel(class,label)
+    if not class or not label then return nil end
+    for _,spec in ipairs(D.SPECS[class] or {}) do
+        if spec.label==label then return spec.id end
+    end
+end
 local function StatusTexture(parent,size)
     local t=parent:CreateTexture(nil,"ARTWORK"); t:SetWidth(size or 18); t:SetHeight(size or 18); return t
 end
@@ -269,8 +275,11 @@ local anchors=Panel(body,C.card,C.line); anchors:SetPoint("TOPLEFT",0,-116); anc
 local anchTitle=Text(anchors,"YOUR PARTY","GameFontNormal",C.text); anchTitle:SetPoint("TOPLEFT",14,-11)
 local anchHint=Text(anchors,"Real players are locked anchors. Choose only a role your class can actually play.","GameFontHighlightSmall",C.muted); anchHint:SetPoint("TOPLEFT",anchTitle,"BOTTOMLEFT",0,-3)
 local humanRows={}
+local humanOverflow=Text(anchors,"","GameFontHighlightSmall",C.gold); humanOverflow:SetPoint("TOPRIGHT",-112,-14); humanOverflow:SetWidth(150); humanOverflow:SetJustifyH("RIGHT"); humanOverflow:Hide()
+local manageHumans=Button(anchors,"Manage",88,26,function() U:ShowPeople() end); manageHumans:SetPoint("TOPRIGHT",-14,-10); manageHumans:SetAccent(C.blue,true); manageHumans:Hide()
 local function RefreshHumans()
     local humans=Humans(); for _,r in ipairs(humanRows) do r:Hide() end
+    if #humans>3 then humanOverflow:SetText("+"..tostring(#humans-3).." more human anchor"..((#humans-3)==1 and "" or "s")); humanOverflow:Show(); manageHumans:Show() else humanOverflow:Hide(); manageHumans:Hide() end
     for i,h in ipairs(humans) do
         if i>3 then break end
         local row=humanRows[i]
@@ -292,24 +301,32 @@ local function RefreshHumans()
 end
 
 local command=Panel(body,C.card,C.lineStrong); command:SetPoint("TOPRIGHT",0,-116); command:SetWidth(320); command:SetHeight(652)
-local cmdTitle=Text(command,"COMPOSER STATUS","GameFontNormal",C.text); cmdTitle:SetPoint("TOPLEFT",16,-14)
+local cmdTitle=Text(command,"COMPOSITION & STATUS","GameFontNormal",C.text); cmdTitle:SetPoint("TOPLEFT",16,-14)
 local phaseIcon=StatusTexture(command,28); phaseIcon:SetPoint("TOPLEFT",16,-45)
 local phaseTitle=Text(command,"Configure roster","GameFontNormalLarge",C.gold); phaseTitle:SetPoint("LEFT",phaseIcon,"RIGHT",10,4)
 local phaseDetail=Text(command,"Choose your role and build a roster.","GameFontHighlightSmall",C.muted); phaseDetail:SetPoint("TOPLEFT",phaseTitle,"BOTTOMLEFT",0,-3); phaseDetail:SetWidth(244); phaseDetail:SetJustifyV("TOP")
 local count=Text(command,"1 / 5","GameFontNormalLarge",C.text); count:SetPoint("TOPLEFT",16,-103)
 local countSub=Text(command,"1 human - 4 bots needed","GameFontHighlightSmall",C.muted); countSub:SetPoint("TOPLEFT",16,-128)
-local progBG=Panel(command,C.bg,C.line); progBG:SetPoint("TOPLEFT",16,-158); progBG:SetWidth(288); progBG:SetHeight(14)
+local summaryRoles={}
+for i,role in ipairs(ROLE_ORDER) do
+    local rc=ROLE_COLOR[role]
+    local chip=Panel(command,ROLE_SOFT[role],rc); chip:SetWidth(88); chip:SetHeight(32); chip:SetPoint("TOPLEFT",16+(i-1)*100,-150)
+    chip.icon=RoleIcon(chip,role,18); chip.icon:SetPoint("LEFT",7,0)
+    chip.label=Text(chip,"0 "..string.sub(D.ROLE_LABEL[role],1,1),"GameFontHighlightSmall",rc); chip.label:SetPoint("LEFT",chip.icon,"RIGHT",6,0)
+    summaryRoles[role]=chip
+end
+local progBG=Panel(command,C.bg,C.line); progBG:SetPoint("TOPLEFT",16,-194); progBG:SetWidth(288); progBG:SetHeight(14)
 local progFill=Solid(progBG,C.blue,"ARTWORK"); progFill:SetPoint("TOPLEFT",2,-2); progFill:SetPoint("BOTTOMLEFT",2,2); progFill:SetWidth(1)
-local progressText=Text(command,"","GameFontHighlightSmall",C.muted); progressText:SetPoint("TOPLEFT",16,-179)
-local divider=Solid(command,C.line,"ARTWORK"); divider:SetPoint("TOPLEFT",16,-206); divider:SetWidth(288); divider:SetHeight(1)
-local coverageTitle=Text(command,"COVERAGE","GameFontNormalSmall",C.muted); coverageTitle:SetPoint("TOPLEFT",16,-220)
-local coverageText=Text(command,"Build a preview to inspect utility coverage.","GameFontHighlightSmall",C.muted); coverageText:SetPoint("TOPLEFT",16,-244); coverageText:SetWidth(288); coverageText:SetJustifyV("TOP")
-local warnTitle=Text(command,"WARNINGS / NEXT STEP","GameFontNormalSmall",C.gold); warnTitle:SetPoint("TOPLEFT",16,-326)
-local warnRows={}; for i=1,3 do local t=Text(command,"","GameFontHighlightSmall",i==1 and C.gold or C.muted); t:SetPoint("TOPLEFT",16,-350-(i-1)*38); t:SetWidth(288); t:SetJustifyV("TOP"); warnRows[i]=t end
+local progressText=Text(command,"","GameFontHighlightSmall",C.muted); progressText:SetPoint("TOPLEFT",16,-215)
+local divider=Solid(command,C.line,"ARTWORK"); divider:SetPoint("TOPLEFT",16,-242); divider:SetWidth(288); divider:SetHeight(1)
+local coverageTitle=Text(command,"COVERAGE","GameFontNormalSmall",C.muted); coverageTitle:SetPoint("TOPLEFT",16,-256)
+local coverageText=Text(command,"Build a preview to inspect utility coverage.","GameFontHighlightSmall",C.muted); coverageText:SetPoint("TOPLEFT",16,-280); coverageText:SetWidth(288); coverageText:SetJustifyV("TOP")
+local warnTitle=Text(command,"WARNINGS / NEXT STEP","GameFontNormalSmall",C.gold); warnTitle:SetPoint("TOPLEFT",16,-362)
+local warnRows={}; for i=1,3 do local t=Text(command,"","GameFontHighlightSmall",i==1 and C.gold or C.muted); t:SetPoint("TOPLEFT",16,-386-(i-1)*38); t:SetWidth(288); t:SetJustifyV("TOP"); warnRows[i]=t end
 local buildBtn=Button(command,"Build & Prepare",138,38,function() GC:FindRoster() end); buildBtn:SetPoint("BOTTOMLEFT",16,18); buildBtn:SetAccent(C.blue,true)
 local assembleBtn=Button(command,"Assemble",138,38,function() U:ShowAssembleConfirm() end); assembleBtn:SetPoint("BOTTOMRIGHT",-16,18); assembleBtn:SetAccent(C.gold,true)
 
-local content=Panel(body,C.card,C.line); content:SetPoint("TOPLEFT",0,-240); content:SetWidth(936); content:SetHeight(456); groupScroll:Hide()
+local content=Panel(body,C.card,C.line); content:SetPoint("TOPLEFT",0,-240); content:SetWidth(936); content:SetHeight(456)
 local contentTitle=Text(content,"PARTY COMPOSITION","GameFontNormal",C.text); contentTitle:SetPoint("TOPLEFT",14,-12)
 local contentHint=Text(content,"Auto slots require no work. Pick a class/spec only where you care.","GameFontHighlightSmall",C.muted); contentHint:SetPoint("TOPLEFT",contentTitle,"BOTTOMLEFT",0,-3)
 
@@ -337,7 +354,10 @@ for i=1,5 do
     local row=Panel(dungeonView,C.bg,C.line); row:SetHeight(70); row:SetPoint("TOPLEFT",0,-(i-1)*78); row:SetPoint("RIGHT",0,0)
     row.roleBox=Panel(row,C.card2,C.lineStrong); row.roleBox:SetWidth(108); row.roleBox:SetPoint("TOPLEFT",0,0); row.roleBox:SetPoint("BOTTOMLEFT",0,0)
     row.roleIcon=RoleIcon(row.roleBox,"DPS",30); row.roleIcon:SetPoint("TOPLEFT",10,-10); row.role=Text(row.roleBox,"DPS","GameFontNormal",C.red); row.role:SetPoint("LEFT",row.roleIcon,"RIGHT",8,4); row.slot=Text(row.roleBox,"Slot 1","GameFontHighlightSmall",C.muted); row.slot:SetPoint("LEFT",row.roleIcon,"RIGHT",8,-12)
-    row.memberIcon=ClassIcon(row,"WARRIOR",38); row.memberIcon:SetPoint("LEFT",126,0); row.name=Text(row,"Auto-fill bot","GameFontNormal",C.text); row.name:SetPoint("TOPLEFT",176,-13); row.name:SetWidth(180); row.sub=Text(row,"Composer chooses a suitable build","GameFontHighlightSmall",C.muted); row.sub:SetPoint("TOPLEFT",176,-35); row.sub:SetWidth(230)
+    row.memberIcon=ClassIcon(row,"WARRIOR",38); row.memberIcon:SetPoint("LEFT",126,0)
+    row.specIcon=Icon(row,"Interface\\Icons\\INV_Misc_QuestionMark",28); row.specIcon:SetPoint("LEFT",row.memberIcon,"RIGHT",7,0)
+    row.name=Text(row,"Auto-fill bot","GameFontNormal",C.text); row.name:SetPoint("TOPLEFT",207,-13); row.name:SetWidth(150)
+    row.sub=Text(row,"Composer chooses a suitable build","GameFontHighlightSmall",C.muted); row.sub:SetPoint("TOPLEFT",207,-35); row.sub:SetWidth(205)
     row.classDD=Selector(row,180,function() return ClassesForRole(row.model and row.model.role or "DPS",true) end,function() return row.model and row.model.pref and row.model.pref.class or "ANY" end,function(v) local m=row.model;if not m or m.human then return end; local specs=SpecsForRole(v,m.role,true); SetDungeonPref(m.role,m.botIndex,v,specs[1] and specs[1].value or "ANY") end,8); row.classDD:SetPoint("RIGHT",-210,0)
     row.specDD=Selector(row,195,function() local m=row.model; local cls=m and m.pref and m.pref.class or "ANY"; return SpecsForRole(cls,m and m.role or "DPS",true) end,function() return row.model and row.model.pref and row.model.pref.spec or "ANY" end,function(v) local m=row.model;if m and not m.human then SetDungeonPref(m.role,m.botIndex,m.pref and m.pref.class or "ANY",v) end end,6); row.specDD:SetPoint("RIGHT",-5,0)
     dungeonSlotRows[i]=row
@@ -345,8 +365,26 @@ end
 local function RefreshDungeonSlots()
     for i,m in ipairs(DungeonModel()) do
         local row=dungeonSlotRows[i]; row.model=m; row.role:SetText(D.ROLE_LABEL[m.role]); local rc=ROLE_COLOR[m.role]; row.role:SetTextColor(rc[1],rc[2],rc[3],1); row.roleIcon:SetTexture(D.ROLE_ICON[m.role]); SetBorder(row.roleBox,rc); row.slot:SetText(m.human and "Human" or "Bot slot")
-        if m.human then SetClassIcon(row.memberIcon,m.human.class); row.name:SetText((m.human.isPlayer and "YOU - " or "")..m.human.name); local cc=ClassColor(m.human.class); row.name:SetTextColor(cc[1],cc[2],cc[3],1); row.sub:SetText("Locked "..D.ROLE_LABEL[m.role].." - current build preserved"); row.classDD:Hide(); row.specDD:Hide()
-        else local p=m.pref; if p and p.class and p.class~="ANY" then SetClassIcon(row.memberIcon,p.class); local cc=ClassColor(p.class); row.name:SetTextColor(cc[1],cc[2],cc[3],1); local spec=D.GetSpec(p.class,p.spec); row.name:SetText((spec and spec.label or "Any").." "..D.CLASS_LABEL[p.class]); row.sub:SetText("Exact build - Composer will prepare if needed") else row.memberIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark"); row.memberIcon:SetTexCoord(0.08,0.92,0.08,0.92); row.name:SetText("Auto-fill bot"); row.name:SetTextColor(C.text[1],C.text[2],C.text[3],1); row.sub:SetText("Composer chooses the best available build") end; row.classDD:Show(); row.specDD:Show(); row.classDD:Refresh(); row.specDD:Refresh() end
+        if m.human then
+            SetClassIcon(row.memberIcon,m.human.class)
+            local humanSpec,humanSpecId=PlayerSpec()
+            local sip=m.human.isPlayer and SpecIconPath(m.human.class,humanSpecId) or nil
+            if sip then row.specIcon:SetTexture(sip); row.specIcon:SetTexCoord(0.08,0.92,0.08,0.92); row.specIcon:Show() else row.specIcon:Hide() end
+            row.name:SetText((m.human.isPlayer and "YOU - " or "")..m.human.name); local cc=ClassColor(m.human.class); row.name:SetTextColor(cc[1],cc[2],cc[3],1)
+            row.sub:SetText("Locked "..D.ROLE_LABEL[m.role].." - "..(m.human.isPlayer and humanSpec or "current build preserved")); row.classDD:Hide(); row.specDD:Hide()
+        else
+            local p=m.pref
+            if p and p.class and p.class~="ANY" then
+                SetClassIcon(row.memberIcon,p.class); local cc=ClassColor(p.class); row.name:SetTextColor(cc[1],cc[2],cc[3],1); local spec=D.GetSpec(p.class,p.spec)
+                local sip=SpecIconPath(p.class,p.spec); if sip then row.specIcon:SetTexture(sip); row.specIcon:SetTexCoord(0.08,0.92,0.08,0.92); row.specIcon:Show() else row.specIcon:Hide() end
+                row.name:SetText((spec and spec.label or "Any").." "..D.CLASS_LABEL[p.class]); row.sub:SetText("Exact build - Composer will prepare if needed")
+            else
+                row.memberIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark"); row.memberIcon:SetTexCoord(0.08,0.92,0.08,0.92)
+                row.specIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark"); row.specIcon:SetTexCoord(0.08,0.92,0.08,0.92); row.specIcon:Show()
+                row.name:SetText("Auto-fill bot"); row.name:SetTextColor(C.text[1],C.text[2],C.text[3],1); row.sub:SetText("Composer chooses the best available build")
+            end
+            row.classDD:Show(); row.specDD:Show(); row.classDD:Refresh(); row.specDD:Refresh()
+        end
     end
 end
 
@@ -452,9 +490,16 @@ local function RefreshExact()
             if i>5 then break end
             local r=col.rows[i]
             if not r then
-                r=Panel(col,C.card2,C.line); r:SetWidth(266); r:SetHeight(34); r.class=Text(r,"","GameFontNormal",C.text); r.class:SetPoint("TOPLEFT",8,-7); r.class:SetWidth(130); r.spec=Text(r,"","GameFontHighlightSmall",C.muted); r.spec:SetPoint("TOPLEFT",8,-23); r.spec:SetWidth(130); r.count=Text(r,"","GameFontNormal",C.text); r.count:SetPoint("RIGHT",-66,0); r.edit=Button(r,"Edit",50,24); r.edit:SetPoint("RIGHT",-8,0); col.rows[i]=r
+                r=Panel(col,C.card2,C.line); r:SetWidth(266); r:SetHeight(34)
+                r.classIcon=ClassIcon(r,"WARRIOR",24); r.classIcon:SetPoint("LEFT",6,0)
+                r.specIcon=Icon(r,"Interface\\Icons\\INV_Misc_QuestionMark",24); r.specIcon:SetPoint("LEFT",r.classIcon,"RIGHT",3,0)
+                r.class=Text(r,"","GameFontNormal",C.text); r.class:SetPoint("TOPLEFT",62,-5); r.class:SetWidth(86)
+                r.spec=Text(r,"","GameFontHighlightSmall",C.muted); r.spec:SetPoint("TOPLEFT",62,-20); r.spec:SetWidth(86)
+                r.count=Text(r,"","GameFontNormal",C.text); r.count:SetPoint("RIGHT",-66,0); r.edit=Button(r,"Edit",50,24); r.edit:SetPoint("RIGHT",-8,0); col.rows[i]=r
             end
-            r:ClearAllPoints(); r:SetPoint("TOPLEFT",10,-48-(i-1)*38); r.data=data; local spec=D.GetSpec(data.class,data.spec); r.class:SetText(D.CLASS_LABEL[data.class] or data.class); local cc=ClassColor(data.class); r.class:SetTextColor(cc[1],cc[2],cc[3],1); r.spec:SetText(spec and spec.label or "Any spec"); r.count:SetText("x"..tostring(data.count or 1)); r:Show()
+            r:ClearAllPoints(); r:SetPoint("TOPLEFT",10,-48-(i-1)*38); r.data=data; local spec=D.GetSpec(data.class,data.spec)
+            SetClassIcon(r.classIcon,data.class); local sip=SpecIconPath(data.class,data.spec); r.specIcon:SetTexture(sip or "Interface\\Icons\\INV_Misc_QuestionMark"); r.specIcon:SetTexCoord(0.08,0.92,0.08,0.92)
+            r.class:SetText(D.CLASS_LABEL[data.class] or data.class); local cc=ClassColor(data.class); r.class:SetTextColor(cc[1],cc[2],cc[3],1); r.spec:SetText(spec and spec.label or "Any spec"); r.count:SetText("x"..tostring(data.count or 1)); r:Show()
             local editIndex=i; r.edit:SetScript("OnMouseDown",function() U:OpenBuildEditor(roleKey,editIndex) end)
         end
         col.add:SetEnabledState(total<cap); col.add:SetScript("OnMouseDown",function() if total<cap then U:OpenBuildEditor(roleKey,nil) end end)
@@ -474,8 +519,9 @@ local function EnsureGroupCard(g)
         local r=Panel(card,C.bg,C.line); r:SetHeight(23); r:SetPoint("TOPLEFT",7,-28-(i-1)*25); r:SetPoint("RIGHT",-7,0)
         r.role=RoleIcon(r,"DPS",15); r.role:SetPoint("LEFT",3,0)
         r.class=ClassIcon(r,"WARRIOR",15); r.class:SetPoint("LEFT",r.role,"RIGHT",2,0)
-        r.name=Text(r,"Empty","GameFontHighlightSmall",C.dim); r.name:SetPoint("LEFT",39,0); r.name:SetWidth(72)
-        r.build=Text(r,"","GameFontHighlightSmall",C.dim); r.build:SetPoint("RIGHT",-3,0); r.build:SetWidth(55); r.build:SetJustifyH("RIGHT")
+        r.spec=Icon(r,"Interface\\Icons\\INV_Misc_QuestionMark",15); r.spec:SetPoint("LEFT",r.class,"RIGHT",2,0)
+        r.name=Text(r,"Empty","GameFontHighlightSmall",C.dim); r.name:SetPoint("LEFT",56,0); r.name:SetWidth(65)
+        r.build=Text(r,"","GameFontHighlightSmall",C.dim); r.build:SetPoint("RIGHT",-3,0); r.build:SetWidth(43); r.build:SetJustifyH("RIGHT")
         card.rows[i]=r
     end
     groupCards[g]=card; return card
@@ -495,8 +541,9 @@ local function RefreshGroups()
         local g=tonumber(m.subgroup) or 1; indexes[g]=(indexes[g] or 0)+1; local i=indexes[g]; local card=groupCards[g]; local r=card and card.rows[i]
         if r then
             r.role:SetTexture(D.ROLE_ICON[m.role] or D.ROLE_ICON.DPS); SetClassIcon(r.class,m.class)
-            r.name:SetText((m.human and "YOU " or "")..m.name); local cc=ClassColor(m.class); r.name:SetTextColor(cc[1],cc[2],cc[3],1)
-            local build=m.spec or "Any"; if m.needsPreparation then build="Prep" end; r.build:SetText(build); local bc=m.needsPreparation and C.gold or C.muted; r.build:SetTextColor(bc[1],bc[2],bc[3],1)
+            local sid=SpecIdByLabel(m.class,m.spec); r.spec:SetTexture(SpecIconPath(m.class,sid) or "Interface\\Icons\\INV_Misc_QuestionMark"); r.spec:SetTexCoord(0.08,0.92,0.08,0.92)
+            r.name:SetText((m.isPlayer and "YOU " or "")..m.name); local cc=ClassColor(m.class); r.name:SetTextColor(cc[1],cc[2],cc[3],1)
+            local build=m.needsPreparation and "Prep" or ""; r.build:SetText(build); local bc=m.needsPreparation and C.gold or C.muted; r.build:SetTextColor(bc[1],bc[2],bc[3],1)
         end
     end
     for g=1,groups do local card=groupCards[g]; card.count:SetText(tostring(indexes[g] or 0).."/5") end
@@ -573,6 +620,7 @@ local function RefreshCommand()
     local pc=C.blue; if phase=="READY" or phase=="DONE" then pc=C.green elseif phase=="ERROR" then pc=C.red elseif phase=="PREPARING" or phase=="ASSEMBLING" or phase=="TRAVEL" then pc=C.gold end
     phaseTitle:SetTextColor(pc[1],pc[2],pc[3],1); phaseDetail:SetText(p.detail or "")
     local humans=#Humans(); local total=GC.plan.ready and (tonumber(GC.plan.summary.total) or #GC.plan.members) or humans; local target=tonumber(GC:GetConfig().size) or 5; count:SetText(tostring(total).." / "..target); countSub:SetText(tostring(humans).." human"..(humans==1 and "" or "s").." - "..math.max(0,target-humans).." bot slots")
+    local c=GC:GetConfig(); summaryRoles.TANK.label:SetText(tostring(c.tanks or 0).." T"); summaryRoles.HEALER.label:SetText(tostring(c.healers or 0).." H"); summaryRoles.DPS.label:SetText(tostring(c.dps or 0).." D")
     local ratio=(p.total and p.total>0) and math.min(1,p.current/p.total) or (phase=="READY" or phase=="DONE") and 1 or 0; progFill:SetWidth(math.max(1,284*ratio)); local showProgress=phase=="PREPARING" or phase=="ASSEMBLING" or phase=="READY" or phase=="DONE"; progressText:SetText(showProgress and (tostring(p.current or 0).." / "..tostring(p.total or 0).." - "..(p.detail or "")) or "")
     coverageText:SetText(GC.plan.summary and ((GC.plan.summary.utility or "No utility snapshot yet").."\nRanged DPS: "..tostring(GC.plan.summary.ranged or 0).."   Melee DPS: "..tostring(GC.plan.summary.melee or 0)) or "Build a preview to inspect utility coverage.")
     local warnings=GC.plan.warnings or {}; for i=1,3 do warnRows[i]:SetText(warnings[i] or (i==1 and (phase=="READY" and "Prepared roster is ready for review." or phase=="PREPARING" and "Bots are being prepared in the background." or "Choose your role, then Build & Prepare.") or "")) end
