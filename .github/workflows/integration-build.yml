@@ -18,7 +18,7 @@ concurrency:
 jobs:
   compile:
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
+    timeout-minutes: 100
     steps:
       - name: Checkout server overlay
         uses: actions/checkout@v4
