@@ -321,9 +321,9 @@ void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, bool fu
     if (spec > 2) spec = Planner::InferSpec(bot);
     if (spec > 2) return;
 
-    // Reserve capacity may need full provisioning. Persistent companions may be
-    // retasked for combat, but their quests, professions and inventory history
-    // must never be broadly randomized by Group Composer.
+    // Disposable world/reserve bodies may be rebuilt for deterministic roster readiness.
+    // Persistent guild companions are different: Group Composer may retask their combat
+    // build, but must not replace their earned gear, inventory, quests or progression.
     PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_LEGENDARY, 0);
     if (fullRebuild) factory.Randomize(false);
 
@@ -336,16 +336,28 @@ void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, bool fu
         PlayerbotFactory::InitTalentsBySpecNo(bot, buildSpec, true);
     if (PlayerbotAI* ai = GET_PLAYERBOT_AI(bot)) ai->ResetStrategies(false);
     factory.InitGlyphs(false);
-    RaidRosterGear::EquipForSpec(bot, master, spec);
-    factory.ApplyEnchantAndGemsNew();
-    factory.InitAmmo();
 
-    if (bot->IsClass(CLASS_DEATH_KNIGHT))
+    if (fullRebuild)
     {
-        uint32 quest = bot->GetTeamId(true) == TEAM_ALLIANCE ? 13188 : 13189;
-        if (!bot->IsQuestRewarded(quest)) bot->SetRewardedQuest(quest);
+        RaidRosterGear::EquipForSpec(bot, master, spec);
+        factory.ApplyEnchantAndGemsNew();
+        factory.InitAmmo();
+
+        if (bot->IsClass(CLASS_DEATH_KNIGHT))
+        {
+            uint32 quest = bot->GetTeamId(true) == TEAM_ALLIANCE ? 13188 : 13189;
+            if (!bot->IsQuestRewarded(quest)) bot->SetRewardedQuest(quest);
+        }
+        RaidRosterEra::SyncBotToMaster(master, bot);
     }
-    RaidRosterEra::SyncBotToMaster(master, bot);
+}
+
+bool FullProvisionFor(Member const& member)
+{
+    // Persistent guild identities never receive synthetic Composer gear. Ordinary world
+    // bots and explicit reserve/legacy managed bodies are disposable capacity and can be
+    // fully provisioned when the requested role/spec requires preparation.
+    return member.reserve || (!member.guild && (member.managed || member.needsPreparation));
 }
 
 void ApplyGroupSettings(Player* master, Plan const& plan)
@@ -1075,7 +1087,7 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
         Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid);
         if (bot)
         {
-            SyncManagedBot(master, bot, member.role, member.spec, member.reserve);
+            SyncManagedBot(master, bot, member.role, member.spec, FullProvisionFor(member));
             continue;
         }
 
@@ -1083,7 +1095,7 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
         // RNDbot reserve characters. Only the legacy managed pool uses the per-player manager.
         if (!member.reserve)
             mgr->AddPlayerBot(member.guid, account);
-        s_pendingSync[member.guid.GetCounter()] = { owner, member.role, member.spec, member.reserve, 0 };
+        s_pendingSync[member.guid.GetCounter()] = { owner, member.role, member.spec, FullProvisionFor(member), 0 };
     }
 
     plan.assembling = true;
