@@ -265,7 +265,7 @@ end
 DecorateNav(navDungeon,"Interface\\Icons\\Achievement_Dungeon_GloryoftheHERO")
 DecorateNav(navRaid,"Interface\\Icons\\Achievement_General_StayClassy")
 DecorateNav(navTemplates,"Interface\\Icons\\INV_Misc_Book_09")
-DecorateNav(navPeople,"Interface\\Icons\\INV_Misc_GroupNeedMore")
+DecorateNav(navPeople,"Interface\\Icons\\Achievement_General_StayClassy")
 local helpIcon=Icon(side,"Interface\\Icons\\INV_Misc_QuestionMark",22); helpIcon:SetPoint("BOTTOMLEFT",18,20); AddTooltip(helpIcon,"How Composer works","Choose a legal role for every real player. Build & Prepare selects, reserves and prepares bots without changing your live group. Assemble commits the reviewed roster. Humans are never silently removed or respecced.")
 local helpText=Text(side,"How it works","GameFontHighlightSmall",C.muted); helpText:SetPoint("LEFT",helpIcon,"RIGHT",7,0)
 
@@ -346,6 +346,11 @@ local progressText=Text(command,"","GameFontHighlightSmall",C.muted); progressTe
 local divider=Solid(command,C.line,"ARTWORK"); divider:SetPoint("TOPLEFT",16,-242); divider:SetWidth(288); divider:SetHeight(1)
 local coverageTitle=Text(command,"COVERAGE","GameFontNormalSmall",C.muted); coverageTitle:SetPoint("TOPLEFT",16,-256)
 local coverageText=Text(command,"Build a preview to inspect utility coverage.","GameFontHighlightSmall",C.muted); coverageText:SetPoint("TOPLEFT",16,-280); coverageText:SetWidth(288); coverageText:SetJustifyV("TOP")
+local classCoverageIcons={}
+for i=1,10 do
+    local ci=ClassIcon(command,"WARRIOR",18); ci:SetPoint("TOPLEFT",16+(i-1)*22,-326); ci:Hide(); classCoverageIcons[i]=ci
+end
+local classCoverageText=Text(command,"","GameFontHighlightSmall",C.muted); classCoverageText:SetPoint("TOPRIGHT",-16,-329); classCoverageText:SetWidth(58); classCoverageText:SetJustifyH("RIGHT")
 local warnTitle=Text(command,"WARNINGS / NEXT STEP","GameFontNormalSmall",C.gold); warnTitle:SetPoint("TOPLEFT",16,-362)
 local warnRows={}; for i=1,3 do local t=Text(command,"","GameFontHighlightSmall",i==1 and C.gold or C.muted); t:SetPoint("TOPLEFT",16,-386-(i-1)*38); t:SetWidth(288); t:SetJustifyV("TOP"); warnRows[i]=t end
 local buildBtn=Button(command,"Build & Prepare",138,38,function() GC:FindRoster() end); buildBtn:SetPoint("BOTTOMLEFT",16,18); buildBtn:SetAccent(C.blue,true)
@@ -694,8 +699,21 @@ local function RefreshCommand()
     local titles={IDLE="Configure roster",BUILDING="Selecting roster",PREPARING="Preparing bots",READY="Ready to assemble",ASSEMBLING="Assembling group",TRAVEL="Entering activity",DONE="Group ready",ERROR="Needs attention"}; phaseTitle:SetText(titles[phase] or phase)
     local pc=C.blue; if phase=="READY" or phase=="DONE" then pc=C.green elseif phase=="ERROR" then pc=C.red elseif phase=="PREPARING" or phase=="ASSEMBLING" or phase=="TRAVEL" then pc=C.gold end
     phaseTitle:SetTextColor(pc[1],pc[2],pc[3],1); phaseDetail:SetText(p.detail or "")
-    local humans=#Humans(); local total=GC.plan.ready and (tonumber(GC.plan.summary.total) or #GC.plan.members) or humans; local target=tonumber(GC:GetConfig().size) or 5; count:SetText(tostring(total).." / "..target); countSub:SetText(tostring(humans).." human"..(humans==1 and "" or "s").." - "..math.max(0,target-humans).." bot slots")
+    local humans=#Humans(); local total=GC.plan.ready and (tonumber(GC.plan.summary.total) or #GC.plan.members) or humans; local target=tonumber(GC:GetConfig().size) or 5; count:SetText(tostring(total).." / "..target)
+    if GC.plan.ready then
+        local guild=tonumber(GC.plan.summary.guild) or 0; local world=tonumber(GC.plan.summary.world) or 0
+        countSub:SetText(tostring(humans).." human"..(humans==1 and "" or "s").."  |  "..tostring(guild).." guild  |  "..tostring(world).." fallback")
+    else
+        countSub:SetText(tostring(humans).." human"..(humans==1 and "" or "s").." - "..math.max(0,target-humans).." bot slots")
+    end
     local c=GC:GetConfig(); summaryRoles.TANK.label:SetText(tostring(c.tanks or 0).." T"); summaryRoles.HEALER.label:SetText(tostring(c.healers or 0).." H"); summaryRoles.DPS.label:SetText(tostring(c.dps or 0).." D")
+    local seenClasses={}; for _,m in ipairs(GC.plan.members or {}) do if m.class and m.class~="UNKNOWN" then seenClasses[m.class]=true end end
+    local classCount=0
+    for _,cls in ipairs(D.CLASS_ORDER) do
+        if seenClasses[cls] then classCount=classCount+1; local ci=classCoverageIcons[classCount]; if ci then SetClassIcon(ci,cls); ci:Show() end end
+    end
+    for i=classCount+1,#classCoverageIcons do classCoverageIcons[i]:Hide() end
+    classCoverageText:SetText(classCount>0 and tostring(classCount).." cls" or "")
     local ratio=(p.total and p.total>0) and math.min(1,p.current/p.total) or (phase=="READY" or phase=="DONE") and 1 or 0; progFill:SetWidth(math.max(1,284*ratio)); local showProgress=phase=="PREPARING" or phase=="ASSEMBLING" or phase=="READY" or phase=="DONE"; progressText:SetText(showProgress and (tostring(p.current or 0).." / "..tostring(p.total or 0).." - "..(p.detail or "")) or "")
     coverageText:SetText(GC.plan.summary and ((GC.plan.summary.utility or "No utility snapshot yet").."\nRanged DPS: "..tostring(GC.plan.summary.ranged or 0).."   Melee DPS: "..tostring(GC.plan.summary.melee or 0)) or "Build a preview to inspect utility coverage.")
     local warnings=GC.plan.warnings or {}; for i=1,3 do warnRows[i]:SetText(warnings[i] or (i==1 and (phase=="READY" and "Prepared roster is ready for review." or phase=="PREPARING" and "Bots are being prepared in the background." or "Choose your role, then Build & Prepare.") or "")) end
@@ -714,10 +732,14 @@ local function LayoutForMode()
         contentHint:SetText(U.raidExact and "Exact rows are hard class/spec requirements. Everything else remains Auto." or "Start simple. Composer fills around your humans and balances the unspecified slots.")
         if U.raidExact then quick:Hide(); exact:Show() else quick:Show(); exact:Hide() end
         modeQuick:SetAccent(C.blue,not U.raidExact); modeExact:SetAccent(C.gold,U.raidExact)
-        opts:ClearAllPoints(); opts:SetPoint("TOPLEFT",0,-740); opts:SetWidth(936); content:SetHeight(316); command:SetHeight(652); groupScroll:Show()
+        opts:ClearAllPoints(); opts:SetPoint("TOPLEFT",0,-732); opts:SetWidth(936); opts:SetHeight(38)
+        content:SetHeight(316); command:SetHeight(652)
+        groupScroll:ClearAllPoints(); groupScroll:SetPoint("TOPLEFT",0,-566); groupScroll:SetWidth(936); groupScroll:SetHeight(158); groupScroll:Show()
     else
-        raidView:Hide(); dungeonView:Show(); contentTitle:SetText("FIVE-PLAYER PARTY")
-        contentHint:SetText("Your human slot is locked. Auto-fill the rest or choose exact bot builds."); content:SetHeight(528)
+        raidView:Hide(); dungeonView:Show(); groupScroll:Hide(); contentTitle:SetText("FIVE-PLAYER PARTY")
+        contentHint:SetText("Your human slot is locked. Auto-fill the rest or choose exact bot builds.")
+        content:SetHeight(456)
+        opts:ClearAllPoints(); opts:SetPoint("TOPLEFT",0,-708); opts:SetWidth(936); opts:SetHeight(38)
     end
 end
 function U:Refresh()
