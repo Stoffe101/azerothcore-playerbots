@@ -1,0 +1,158 @@
+name: Finalize Group Composer persistent gear
+
+on:
+  push:
+    branches:
+      - test/runtime-hardening-group-composer
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.event.head_commit.message != 'fix(group-composer): preserve persistent companion gear'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/runtime-hardening-group-composer
+
+      - name: Guard persistent companion identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected exactly one match, found {count}\n--- needle ---\n{old}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          command = 'modules/mod-raid-roster/src/GroupComposerCommand.cpp'
+
+          replace_once(command,
+          '''void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, bool fullRebuild)
+          {
+              if (!master || !bot) return;
+              if (spec > 2) spec = Planner::InferSpec(bot);
+              if (spec > 2) return;
+
+              // Reserve capacity may need full provisioning. Persistent companions may be
+              // retasked for combat, but their quests, professions and inventory history
+              // must never be broadly randomized by Group Composer.
+              PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_LEGENDARY, 0);
+              if (fullRebuild) factory.Randomize(false);
+
+              // Playerbots / Era Talents use pseudo-spec 3 for Feral Cat PvE. Keep the
+              // public Composer spec as Feral (1) and use role only for build selection.
+              uint8 buildSpec = spec;
+              if (bot->IsClass(CLASS_DRUID) && spec == 1 && role == ROLE_DPS) buildSpec = 3;
+
+              if (!EraTalentBots::FactoryReconcile(bot, buildSpec))
+                  PlayerbotFactory::InitTalentsBySpecNo(bot, buildSpec, true);
+              if (PlayerbotAI* ai = GET_PLAYERBOT_AI(bot)) ai->ResetStrategies(false);
+              factory.InitGlyphs(false);
+              RaidRosterGear::EquipForSpec(bot, master, spec);
+              factory.ApplyEnchantAndGemsNew();
+              factory.InitAmmo();
+
+              if (bot->IsClass(CLASS_DEATH_KNIGHT))
+              {
+                  uint32 quest = bot->GetTeamId(true) == TEAM_ALLIANCE ? 13188 : 13189;
+                  if (!bot->IsQuestRewarded(quest)) bot->SetRewardedQuest(quest);
+              }
+              RaidRosterEra::SyncBotToMaster(master, bot);
+          }
+          ''',
+          '''void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, bool fullRebuild)
+          {
+              if (!master || !bot) return;
+              if (spec > 2) spec = Planner::InferSpec(bot);
+              if (spec > 2) return;
+
+              // Disposable world/reserve bodies may be rebuilt for deterministic roster readiness.
+              // Persistent guild companions are different: Group Composer may retask their combat
+              // build, but must not replace their earned gear, inventory, quests or progression.
+              PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_LEGENDARY, 0);
+              if (fullRebuild) factory.Randomize(false);
+
+              // Playerbots / Era Talents use pseudo-spec 3 for Feral Cat PvE. Keep the
+              // public Composer spec as Feral (1) and use role only for build selection.
+              uint8 buildSpec = spec;
+              if (bot->IsClass(CLASS_DRUID) && spec == 1 && role == ROLE_DPS) buildSpec = 3;
+
+              if (!EraTalentBots::FactoryReconcile(bot, buildSpec))
+                  PlayerbotFactory::InitTalentsBySpecNo(bot, buildSpec, true);
+              if (PlayerbotAI* ai = GET_PLAYERBOT_AI(bot)) ai->ResetStrategies(false);
+              factory.InitGlyphs(false);
+
+              if (fullRebuild)
+              {
+                  RaidRosterGear::EquipForSpec(bot, master, spec);
+                  factory.ApplyEnchantAndGemsNew();
+                  factory.InitAmmo();
+
+                  if (bot->IsClass(CLASS_DEATH_KNIGHT))
+                  {
+                      uint32 quest = bot->GetTeamId(true) == TEAM_ALLIANCE ? 13188 : 13189;
+                      if (!bot->IsQuestRewarded(quest)) bot->SetRewardedQuest(quest);
+                  }
+                  RaidRosterEra::SyncBotToMaster(master, bot);
+              }
+          }
+
+          bool FullProvisionFor(Member const& member)
+          {
+              // Persistent guild identities never receive synthetic Composer gear. Ordinary world
+              // bots and explicit reserve/legacy managed bodies are disposable capacity and can be
+              // fully provisioned when the requested role/spec requires preparation.
+              return member.reserve || (!member.guild && (member.managed || member.needsPreparation));
+          }
+          ''')
+
+          replace_once(command,
+              '            SyncManagedBot(master, bot, member.role, member.spec, member.reserve);\n',
+              '            SyncManagedBot(master, bot, member.role, member.spec, FullProvisionFor(member));\n')
+          replace_once(command,
+              '        s_pendingSync[member.guid.GetCounter()] = { owner, member.role, member.spec, member.reserve, 0 };\n',
+              '        s_pendingSync[member.guid.GetCounter()] = { owner, member.role, member.spec, FullProvisionFor(member), 0 };\n')
+
+          tests = 'client-addons-src/GroupComposer/tests/test_server_contract.py'
+          replace_once(tests,
+          '''assert "if (fullRebuild) factory.Randomize(false);" in sync
+          assert sync.count("factory.Randomize(false)") == 1, "Full randomization must have one guarded call site"
+          assert "CLASS_DRUID" in sync and "role == ROLE_DPS" in sync and "buildSpec = 3" in sync, (
+          ''',
+          '''assert "if (fullRebuild) factory.Randomize(false);" in sync
+          assert sync.count("factory.Randomize(false)") == 1, "Full randomization must have one guarded call site"
+          assert "if (fullRebuild)" in sync and "RaidRosterGear::EquipForSpec(bot, master, spec);" in sync
+          assert "bool FullProvisionFor(Member const& member)" in SERVER
+          provision = section(SERVER, "bool FullProvisionFor(Member const& member)", "void ApplyGroupSettings(")
+          assert "member.reserve" in provision and "!member.guild" in provision and "member.needsPreparation" in provision, (
+              "Persistent guild companions can no longer be distinguished from disposable full-provision bodies"
+          )
+          assert "SyncManagedBot(master, bot, member.role, member.spec, FullProvisionFor(member));" in SERVER
+          assert "{ owner, member.role, member.spec, FullProvisionFor(member), 0 }" in SERVER
+          assert "CLASS_DRUID" in sync and "role == ROLE_DPS" in sync and "buildSpec = 3" in sync, (
+          ''')
+          PY
+
+      - name: Verify focused contracts
+        run: |
+          python3 client-addons-src/GroupComposer/tests/test_server_contract.py
+          git diff --check
+
+      - name: Commit safeguard
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add modules/mod-raid-roster/src/GroupComposerCommand.cpp \
+                  client-addons-src/GroupComposer/tests/test_server_contract.py
+          git commit -m "fix(group-composer): preserve persistent companion gear"
+          git push origin HEAD:test/runtime-hardening-group-composer
