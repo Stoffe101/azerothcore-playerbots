@@ -1,5 +1,6 @@
 local GC = GroupComposer
 local D = GroupComposerData
+local P = GroupComposerProfiles
 
 GC.Policy = GC.Policy or {}
 local Policy = GC.Policy
@@ -23,6 +24,51 @@ local function HumanClass(name)
     return nil
 end
 
+local function HumanRoleCounts(config)
+    local counts = { TANK = 0, HEALER = 0, DPS = 0 }
+    local seen = {}
+    for _, human in ipairs(GC:ScanHumans() or {}) do
+        local key = human.name and string.lower(human.name) or nil
+        local role = human.name and config.humanRoles and config.humanRoles[human.name] or nil
+        if key and role and counts[role] ~= nil and not seen[key] then
+            seen[key] = true
+            counts[role] = counts[role] + 1
+        end
+    end
+    for _, human in ipairs(config.extraHumans or {}) do
+        local key = human.name and string.lower(human.name) or nil
+        local role = human.role
+        if key and role and counts[role] ~= nil and not seen[key] then
+            seen[key] = true
+            counts[role] = counts[role] + 1
+        end
+    end
+    return counts
+end
+
+-- Exact class/spec rows describe BOT slots. Human anchors already consume role slots, so trim any
+-- stale exact requirements that no longer fit when the player changes their own role. This keeps
+-- the UI from asking for a second tank in a 1-tank dungeon just because the human chose Tank.
+function Policy:TrimExactPreferences()
+    local config = GC:GetConfig()
+    local humans = HumanRoleCounts(config)
+    local targets = { TANK = tonumber(config.tanks) or 0, HEALER = tonumber(config.healers) or 0, DPS = tonumber(config.dps) or 0 }
+    for _, role in ipairs(D.ROLE_ORDER or {"TANK", "HEALER", "DPS"}) do
+        local remaining = math.max(0, (targets[role] or 0) - (humans[role] or 0))
+        local keptRequired = 0
+        local out = {}
+        for _, pref in ipairs(config.preferences[role] or {}) do
+            if not pref.required then
+                out[#out + 1] = pref
+            elseif keptRequired < remaining then
+                keptRequired = keptRequired + 1
+                out[#out + 1] = pref
+            end
+        end
+        config.preferences[role] = out
+    end
+end
+
 function Policy:HumanRoleProblems()
     local config = GC:GetConfig()
     local humans = GC:ScanHumans()
@@ -38,6 +84,12 @@ function Policy:HumanRoleProblems()
     return problems
 end
 
+local BaseTouch = GC.Touch
+function GC:Touch(reason)
+    Policy:TrimExactPreferences()
+    return BaseTouch(self, reason)
+end
+
 local BaseSetHumanRole = GC.SetHumanRole
 function GC:SetHumanRole(name, role)
     if role and role ~= "AUTO" then
@@ -47,11 +99,14 @@ function GC:SetHumanRole(name, role)
             return false
         end
     end
-    return BaseSetHumanRole(self, name, role)
+    local ok = BaseSetHumanRole(self, name, role)
+    if ok then Policy:TrimExactPreferences() end
+    return ok
 end
 
 local BaseValidateConfig = GC.ValidateConfig
 function GC:ValidateConfig()
+    Policy:TrimExactPreferences()
     local valid, problems = BaseValidateConfig(self)
     problems = problems or {}
     local humanProblems = Policy:HumanRoleProblems()
@@ -59,17 +114,20 @@ function GC:ValidateConfig()
     return valid and #humanProblems == 0, problems
 end
 
--- Human role is a player decision, not a profile side effect. Keep explicit choices when
--- switching between Dungeon and Raid so the UI never silently reassigns a real player.
-local BaseSetMode = GC.SetMode
-function GC:SetMode(mode)
-    local before = GC:GetConfig()
-    local savedRoles = {}
-    for name, role in pairs(before.humanRoles or {}) do savedRoles[name] = role end
-    BaseSetMode(self, mode)
-    local after = GC:GetConfig()
-    for name, role in pairs(savedRoles) do after.humanRoles[name] = role end
-    GC:Fire("CONFIG_CHANGED", after)
+-- A template may remember a raid composition, but it must never silently decide a live human's
+-- role. Preserve the roles explicitly chosen in this play session whenever a profile/reset/mode
+-- replaces the rest of the configuration.
+local BaseSetConfig = GC.SetConfig
+function GC:SetConfig(config, sourceName)
+    local current = GC.config
+    local liveRoles = {}
+    if current and current.humanRoles then
+        for name, role in pairs(current.humanRoles) do liveRoles[name] = role end
+    end
+    local incoming = P.DeepCopy(config or {})
+    incoming.humanRoles = liveRoles
+    BaseSetConfig(self, incoming, sourceName)
+    Policy:TrimExactPreferences()
 end
 
 -- Server assembly keeps joined members and releases only unjoined reserve leases on timeout.
@@ -108,6 +166,16 @@ function GC:FindRoster()
     Policy:ResetAssemblyRetry()
     return BaseFindRoster(self)
 end
+
+GC:RegisterCallback("PLAYER_READY", function()
+    -- Role selection belongs to the live character/session, not to a saved profile. Require an
+    -- explicit choice after login/reload so a DK can never unexpectedly inherit Tank from a
+    -- previous template simply because Blood was detected.
+    local config = GC:GetConfig()
+    config.humanRoles = {}
+    Policy:TrimExactPreferences()
+    GC:Fire("CONFIG_CHANGED", config)
+end)
 
 GC:RegisterCallback("STATUS", function(text)
     text = tostring(text or "")
