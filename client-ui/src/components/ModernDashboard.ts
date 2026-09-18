@@ -175,7 +175,7 @@ export function createModernDashboard(): Dashboard {
 
     const backendDot = Native.createSolid(header.frame, theme.colors.muted, "ARTWORK");
     backendDot.SetSize(8, 8);
-    backendDot.SetPoint("RIGHT", header.frame, "RIGHT", -150, 0);
+    backendDot.SetPoint("RIGHT", header.frame, "RIGHT", -250, 0);
     const backendText = Native.createText(header.frame, "Checking backend", "GameFontHighlightSmall", theme.colors.muted);
     backendText.SetPoint("LEFT", backendDot, "RIGHT", 8, 0);
 
@@ -300,12 +300,10 @@ export function createModernDashboard(): Dashboard {
         HEALER: ButtonUI.createButton(humanPanel.frame, { text: "Healer", width: 96, height: 36, accent: theme.colors.healer }),
         DPS: ButtonUI.createButton(humanPanel.frame, { text: "DPS", width: 96, height: 36, accent: theme.colors.dps }),
     };
-    humanRoleButtons.TANK.frame.SetPoint("RIGHT", humanPanel.frame, "RIGHT", -230, -14);
+    humanRoleButtons.TANK.frame.SetPoint("RIGHT", humanPanel.frame, "RIGHT", -224, -12);
     humanRoleButtons.HEALER.frame.SetPoint("LEFT", humanRoleButtons.TANK.frame, "RIGHT", 8, 0);
     humanRoleButtons.DPS.frame.SetPoint("LEFT", humanRoleButtons.HEALER.frame, "RIGHT", 8, 0);
 
-    const humanMore = ButtonUI.createButton(humanPanel.frame, { text: "Manage", width: 90, height: 30, onClick: () => showPeople() });
-    humanMore.frame.SetPoint("BOTTOMRIGHT", humanPanel.frame, "BOTTOMRIGHT", -16, 10);
 
     // Composition shell ------------------------------------------------------
     const composition = Native.createPanel(center, theme.colors.surface, theme.colors.border);
@@ -839,7 +837,7 @@ export function createModernDashboard(): Dashboard {
         pinToggle.refresh();
 
         clearDynamicRows(pinRows);
-        const pins = Model.config().pinned ?? [];
+        const pins = Model.pinnedMembers();
         for (let i = 0; i < pins.length; i += 1) {
             const pin = pins[i];
             let row = pinRows[i];
@@ -1013,7 +1011,6 @@ export function createModernDashboard(): Dashboard {
             humanSub.SetText("Composer is refreshing human anchors.");
             humanIcon.Hide();
             for (const role of roleOrder) humanRoleButtons[role].setEnabled(false);
-            humanMore.setText("Manage");
             return;
         }
 
@@ -1033,7 +1030,6 @@ export function createModernDashboard(): Dashboard {
                 if (allowed) Model.setHumanRole(nameCopy, roleCopy);
             });
         }
-        humanMore.setText(list.length > 1 ? "Manage " + String(list.length) : "Manage");
     }
 
     function refreshDungeon(): void {
@@ -1043,7 +1039,7 @@ export function createModernDashboard(): Dashboard {
             const slot = slots[i];
             const accent = Model.roleAccent(slot.role);
             Native.setTextureColor(widgets.accent, accent);
-            widgets.row.outline.setColor(accent);
+            widgets.row.outline.setColor(theme.colors.borderStrong);
             widgets.roleIcon.SetTexture(D.ROLE_ICON[slot.role]);
             widgets.roleIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
             widgets.roleText.SetText(Model.roleLabel(slot.role));
@@ -1324,7 +1320,7 @@ export function createModernDashboard(): Dashboard {
         }
         for (let i = iconIndex; i < classIcons.length; i += 1) classIcons[i].Hide();
 
-        const warnings = Model.plan().warnings ?? [];
+        const warnings = Model.planWarnings();
         for (let i = 0; i < warningRows.length; i += 1) {
             let text = warnings[i];
             if (text === undefined && i === 0) {
