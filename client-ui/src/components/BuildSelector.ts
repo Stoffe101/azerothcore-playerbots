@@ -247,7 +247,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     function refresh(): void {
         const accent = roleAccent(currentRole);
         modal.setTitle("Add " + roleLabel(currentRole) + " Build");
-        modal.setSubtitle("Choose only what matters. Every unreserved slot remains Auto-filled.");
+        modal.setSubtitle("Reserve only what matters. Unspecified slots remain Auto-filled.");
 
         classSection.outline.setColor(accent);
         specSection.outline.setColor(accent);
