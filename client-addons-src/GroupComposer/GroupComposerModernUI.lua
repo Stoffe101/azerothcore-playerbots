@@ -306,9 +306,12 @@ function ____exports.createFramedIcon(self, parent, path, size, borderColor)
     icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     return {frame = frame, icon = icon, outline = outline}
 end
-function ____exports.createChrome(self, frame, accent)
+function ____exports.createChrome(self, frame, accent, ornate)
     if accent == nil then
         accent = theme.colors.chrome
+    end
+    if ornate == nil then
+        ornate = false
     end
     local outer = ____exports.createOutline(nil, frame, accent)
     local innerTop = ____exports.createSolid(
@@ -429,51 +432,53 @@ function ____exports.createChrome(self, frame, accent)
             i = i + 1
         end
     end
-    local cornerPath = "Interface\\DialogFrame\\UI-DialogBox-Gold-Corner"
-    local topLeft = frame:CreateTexture(nil, "OVERLAY")
-    topLeft:SetTexture(cornerPath)
-    topLeft:SetSize(26, 26)
-    topLeft:SetPoint(
-        "TOPLEFT",
-        frame,
-        "TOPLEFT",
-        -3,
-        3
-    )
-    topLeft:SetTexCoord(0, 1, 0, 1)
-    local topRight = frame:CreateTexture(nil, "OVERLAY")
-    topRight:SetTexture(cornerPath)
-    topRight:SetSize(26, 26)
-    topRight:SetPoint(
-        "TOPRIGHT",
-        frame,
-        "TOPRIGHT",
-        3,
-        3
-    )
-    topRight:SetTexCoord(1, 0, 0, 1)
-    local bottomLeft = frame:CreateTexture(nil, "OVERLAY")
-    bottomLeft:SetTexture(cornerPath)
-    bottomLeft:SetSize(26, 26)
-    bottomLeft:SetPoint(
-        "BOTTOMLEFT",
-        frame,
-        "BOTTOMLEFT",
-        -3,
-        -3
-    )
-    bottomLeft:SetTexCoord(0, 1, 1, 0)
-    local bottomRight = frame:CreateTexture(nil, "OVERLAY")
-    bottomRight:SetTexture(cornerPath)
-    bottomRight:SetSize(26, 26)
-    bottomRight:SetPoint(
-        "BOTTOMRIGHT",
-        frame,
-        "BOTTOMRIGHT",
-        3,
-        -3
-    )
-    bottomRight:SetTexCoord(1, 0, 1, 0)
+    if ornate then
+        local cornerPath = "Interface\\DialogFrame\\UI-DialogBox-Gold-Corner"
+        local topLeft = frame:CreateTexture(nil, "OVERLAY")
+        topLeft:SetTexture(cornerPath)
+        topLeft:SetSize(26, 26)
+        topLeft:SetPoint(
+            "TOPLEFT",
+            frame,
+            "TOPLEFT",
+            -3,
+            3
+        )
+        topLeft:SetTexCoord(0, 1, 0, 1)
+        local topRight = frame:CreateTexture(nil, "OVERLAY")
+        topRight:SetTexture(cornerPath)
+        topRight:SetSize(26, 26)
+        topRight:SetPoint(
+            "TOPRIGHT",
+            frame,
+            "TOPRIGHT",
+            3,
+            3
+        )
+        topRight:SetTexCoord(1, 0, 0, 1)
+        local bottomLeft = frame:CreateTexture(nil, "OVERLAY")
+        bottomLeft:SetTexture(cornerPath)
+        bottomLeft:SetSize(26, 26)
+        bottomLeft:SetPoint(
+            "BOTTOMLEFT",
+            frame,
+            "BOTTOMLEFT",
+            -3,
+            -3
+        )
+        bottomLeft:SetTexCoord(0, 1, 1, 0)
+        local bottomRight = frame:CreateTexture(nil, "OVERLAY")
+        bottomRight:SetTexture(cornerPath)
+        bottomRight:SetSize(26, 26)
+        bottomRight:SetPoint(
+            "BOTTOMRIGHT",
+            frame,
+            "BOTTOMRIGHT",
+            3,
+            -3
+        )
+        bottomRight:SetTexCoord(1, 0, 1, 0)
+    end
     if #outer.textures == 0 then
         return
     end
@@ -2431,7 +2436,7 @@ function ____exports.createModal(self, parent, width, height)
     )
     panel.frame:SetFrameStrata("DIALOG")
     panel.frame:SetFrameLevel(scrim:GetFrameLevel() + 1)
-    createChrome(nil, panel.frame)
+    createChrome(nil, panel.frame, theme.colors.chrome, true)
     local function hideModal(self)
         panel.frame:Hide()
         scrim:Hide()
@@ -4857,7 +4862,7 @@ function ____exports.createModernDashboard(self)
     root:SetAllPoints(frame)
     local rootOutline = Native:createPanel(frame, theme.colors.background, theme.colors.borderStrong)
     rootOutline.frame:SetAllPoints(frame)
-    Native:createChrome(frame)
+    Native:createChrome(frame, theme.colors.chrome, true)
     local header = Native:createPanel(frame, theme.colors.surface, theme.colors.border)
     header.frame:SetPoint(
         "TOPLEFT",
