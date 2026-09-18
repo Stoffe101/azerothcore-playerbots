@@ -532,5 +532,16 @@ SlashCmdList.GROUPCOMPOSER = function(msg)
     elseif msg == "diag" or msg == "diagnostics" then GC:RequestDiagnostics()
     elseif msg == "anchors" then GC:RequestAnchors()
     elseif msg == "reset" then GC:SetConfig(P.New(GC:GetConfig().mode), nil)
-    elseif GC.Toggle then GC:Toggle() end
+    elseif msg == "debug" then
+        local shell = (_G.GroupComposerModernUI and _G.GroupComposerModernUI.version) or "NOT_LOADED"
+        local cfg = GC.config and "ready" or "nil"
+        local toggle = GC.Toggle and "ready" or "nil"
+        if DEFAULT_CHAT_FRAME then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff58a6ffGroup Composer|r debug: shell=" .. shell .. " config=" .. cfg .. " toggle=" .. toggle)
+        end
+    elseif GC.Toggle then
+        GC:Toggle()
+    elseif DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("|cffff5555Group Composer UI shell did not load.|r Run |cffffff00/gc debug|r.")
+    end
 end
