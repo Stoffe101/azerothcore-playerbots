@@ -2842,25 +2842,35 @@ function ____exports.createModernDashboard(self)
                 local row = builtinRows[i + 1]
                 if row == nil then
                     local panel = Native:createPanel(builtinScroll.content, theme.colors.surfaceRaised, theme.colors.border)
-                    panel.frame:SetSize(382, 40)
-                    local name = Native:createText(panel.frame, "", "GameFontHighlightSmall")
+                    panel.frame:SetSize(406, 62)
+                    local name = Native:createText(panel.frame, "", "GameFontHighlight")
                     name:SetPoint(
-                        "LEFT",
+                        "TOPLEFT",
                         panel.frame,
-                        "LEFT",
+                        "TOPLEFT",
                         10,
-                        0
+                        -10
                     )
-                    name:SetWidth(235)
-                    local load = ButtonUI:createButton(panel.frame, {text = "Load", width = 82, height = 28, accent = theme.colors.primary})
+                    name:SetWidth(285)
+                    local info = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
+                    info:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        10,
+                        -34
+                    )
+                    info:SetWidth(300)
+                    local load = ButtonUI:createButton(panel.frame, {text = "Load", width = 82, height = 32, accent = theme.colors.primary})
                     load.frame:SetPoint(
                         "RIGHT",
                         panel.frame,
                         "RIGHT",
-                        -6,
+                        -8,
                         0
                     )
                     panel.frame._name = name
+                    panel.frame._info = info
                     panel.frame._load = load
                     row = panel.frame
                     builtinRows[i + 1] = row
@@ -2871,9 +2881,10 @@ function ____exports.createModernDashboard(self)
                     builtinScroll.content,
                     "TOPLEFT",
                     0,
-                    -(i * 46)
+                    -(i * 68)
                 )
                 row._name:SetText(builtins[i + 1])
+                row._info:SetText(Model:profileDescription(builtins[i + 1]))
                 local profileName = builtins[i + 1]
                 row._load.frame:SetScript(
                     "OnMouseDown",
@@ -2886,7 +2897,7 @@ function ____exports.createModernDashboard(self)
                 i = i + 1
             end
         end
-        builtinScroll:setContentHeight(math.max(410, #builtins * 46))
+        builtinScroll:setContentHeight(math.max(430, #builtins * 68))
         local customs = Model:listCustomProfiles()
         do
             local i = 0
@@ -2894,33 +2905,43 @@ function ____exports.createModernDashboard(self)
                 local row = customRows[i + 1]
                 if row == nil then
                     local panel = Native:createPanel(customScroll.content, theme.colors.surfaceRaised, theme.colors.border)
-                    panel.frame:SetSize(382, 40)
-                    local name = Native:createText(panel.frame, "", "GameFontHighlightSmall")
+                    panel.frame:SetSize(406, 62)
+                    local name = Native:createText(panel.frame, "", "GameFontHighlight")
                     name:SetPoint(
-                        "LEFT",
+                        "TOPLEFT",
                         panel.frame,
-                        "LEFT",
+                        "TOPLEFT",
                         10,
-                        0
+                        -10
                     )
-                    name:SetWidth(190)
-                    local load = ButtonUI:createButton(panel.frame, {text = "Load", width = 68, height = 28, accent = theme.colors.primary})
+                    name:SetWidth(220)
+                    local info = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
+                    info:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        10,
+                        -34
+                    )
+                    info:SetWidth(230)
+                    local load = ButtonUI:createButton(panel.frame, {text = "Load", width = 68, height = 30, accent = theme.colors.primary})
                     load.frame:SetPoint(
                         "RIGHT",
                         panel.frame,
                         "RIGHT",
-                        -74,
+                        -78,
                         0
                     )
-                    local remove = ButtonUI:createButton(panel.frame, {text = "Delete", width = 62, height = 28, accent = theme.colors.error})
+                    local remove = ButtonUI:createButton(panel.frame, {text = "Delete", width = 66, height = 30, accent = theme.colors.error})
                     remove.frame:SetPoint(
                         "RIGHT",
                         panel.frame,
                         "RIGHT",
-                        -6,
+                        -8,
                         0
                     )
                     panel.frame._name = name
+                    panel.frame._info = info
                     panel.frame._load = load
                     panel.frame._remove = remove
                     row = panel.frame
@@ -2932,9 +2953,10 @@ function ____exports.createModernDashboard(self)
                     customScroll.content,
                     "TOPLEFT",
                     0,
-                    -(i * 46)
+                    -(i * 68)
                 )
                 row._name:SetText(customs[i + 1])
+                row._info:SetText(Model:profileDescription(customs[i + 1]))
                 local profileName = customs[i + 1]
                 row._load.frame:SetScript(
                     "OnMouseDown",
@@ -2954,7 +2976,7 @@ function ____exports.createModernDashboard(self)
                 i = i + 1
             end
         end
-        customScroll:setContentHeight(math.max(410, #customs * 46))
+        customScroll:setContentHeight(math.max(430, #customs * 68))
     end
     function refreshPeople(self)
         clearDynamicRows(nil, humanRowsModal)
@@ -4643,9 +4665,9 @@ function ____exports.createModernDashboard(self)
         8,
         0
     )
-    templatesModal = ModalUI:createModal(frame, 880, 620)
-    templatesModal:setTitle("Templates")
-    templatesModal:setSubtitle("Built-in starting points and your saved compositions.")
+    templatesModal = ModalUI:createModal(frame, 920, 650)
+    templatesModal:setTitle("Raid Templates")
+    templatesModal:setSubtitle("Coverage-first raid cores reserve key buffs; every unlisted slot stays Auto-filled.")
     local templateSaveLabel = Native:createText(templatesModal.content, "SAVE CURRENT", "GameFontNormalSmall", theme.colors.muted)
     templateSaveLabel:SetPoint(
         "TOPLEFT",
@@ -4686,7 +4708,7 @@ function ____exports.createModernDashboard(self)
         8,
         0
     )
-    local builtinTitle = Native:createText(templatesModal.content, "BUILT-IN", "GameFontNormalSmall", theme.colors.muted)
+    local builtinTitle = Native:createText(templatesModal.content, "BUILT-IN RAID COMPS", "GameFontNormalSmall", theme.colors.muted)
     builtinTitle:SetPoint(
         "TOPLEFT",
         templatesModal.content,
@@ -4699,29 +4721,95 @@ function ____exports.createModernDashboard(self)
         "TOPLEFT",
         templatesModal.content,
         "TOPLEFT",
-        420,
+        440,
         -82
     )
-    builtinScroll = ScrollUI:createScrollList(templatesModal.content, 390, 410)
+    builtinScroll = ScrollUI:createScrollList(templatesModal.content, 414, 430)
     builtinScroll.frame:SetPoint(
         "TOPLEFT",
         templatesModal.content,
         "TOPLEFT",
         0,
-        -108
+        -110
     )
-    customScroll = ScrollUI:createScrollList(templatesModal.content, 390, 410)
+    customScroll = ScrollUI:createScrollList(templatesModal.content, 414, 430)
     customScroll.frame:SetPoint(
         "TOPLEFT",
         templatesModal.content,
         "TOPLEFT",
-        420,
-        -108
+        440,
+        -110
+    )
+    local builtinUp = ButtonUI:createButton(
+        templatesModal.content,
+        {
+            text = "▲",
+            width = 34,
+            height = 26,
+            onClick = function() return builtinScroll:scrollBy(-220) end
+        }
+    )
+    builtinUp.frame:SetPoint(
+        "TOPRIGHT",
+        templatesModal.content,
+        "TOPLEFT",
+        374,
+        -78
+    )
+    local builtinDown = ButtonUI:createButton(
+        templatesModal.content,
+        {
+            text = "▼",
+            width = 34,
+            height = 26,
+            onClick = function() return builtinScroll:scrollBy(220) end
+        }
+    )
+    builtinDown.frame:SetPoint(
+        "LEFT",
+        builtinUp.frame,
+        "RIGHT",
+        4,
+        0
+    )
+    local customUp = ButtonUI:createButton(
+        templatesModal.content,
+        {
+            text = "▲",
+            width = 34,
+            height = 26,
+            onClick = function() return customScroll:scrollBy(-220) end
+        }
+    )
+    customUp.frame:SetPoint(
+        "TOPRIGHT",
+        templatesModal.content,
+        "TOPLEFT",
+        814,
+        -78
+    )
+    local customDown = ButtonUI:createButton(
+        templatesModal.content,
+        {
+            text = "▼",
+            width = 34,
+            height = 26,
+            onClick = function() return customScroll:scrollBy(220) end
+        }
+    )
+    customDown.frame:SetPoint(
+        "LEFT",
+        customUp.frame,
+        "RIGHT",
+        4,
+        0
     )
     builtinRows = {}
     customRows = {}
     showTemplates = function()
         ChoiceUI:closeChoicePopup()
+        builtinScroll:scrollToTop()
+        customScroll:scrollToTop()
         refreshTemplates(nil)
         templatesModal:show()
     end
@@ -5103,7 +5191,7 @@ function ____exports.createModernDashboard(self)
             local i = 0
             while i < #dungeonRows do
                 do
-                    local __continue156
+                    local __continue160
                     repeat
                         local widgets = dungeonRows[i + 1]
                         local slot = slots[i + 1]
@@ -5126,7 +5214,7 @@ function ____exports.createModernDashboard(self)
                             widgets.sub:SetText((Model:classLabel(tostring(slot.human.class)) .. "  ·  Locked ") .. Model:roleLabel(slot.role))
                             widgets.choose.frame:Hide()
                             widgets.auto.frame:Hide()
-                            __continue156 = true
+                            __continue160 = true
                             break
                         end
                         local exact = slot.exact
@@ -5203,9 +5291,9 @@ function ____exports.createModernDashboard(self)
                             end
                         )
                         widgets.auto.frame:Show()
-                        __continue156 = true
+                        __continue160 = true
                     until true
-                    if not __continue156 then
+                    if not __continue160 then
                         break
                     end
                 end
@@ -5380,12 +5468,12 @@ function ____exports.createModernDashboard(self)
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue185
+                    local __continue189
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue185 = true
+                            __continue189 = true
                             break
                         end
                         local column = g % columns
@@ -5444,9 +5532,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue185 = true
+                        __continue189 = true
                     until true
-                    if not __continue185 then
+                    if not __continue189 then
                         break
                     end
                 end
