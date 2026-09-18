@@ -1,13 +1,13 @@
 ## Interface: 30300
 ## Title: Group Composer
-## Notes: Build, prepare and assemble clear dungeon and raid rosters with Playerbots.
+## Notes: Clean dungeon and raid roster planning with prepared Playerbots.
 ## Author: Stoffe101
-## Version: 0.5.0
-## X-UI-Shell: DashboardV4
+## Version: 0.6.0
+## X-UI-Shell: ModernTypedV1
 ## SavedVariables: GroupComposerDB
 Data.lua
 Profiles.lua
 Core.lua
 RuntimeGuards.lua
 ComposerPolicy.lua
-DashboardV4.lua
+generated/GroupComposerModernUI.lua
