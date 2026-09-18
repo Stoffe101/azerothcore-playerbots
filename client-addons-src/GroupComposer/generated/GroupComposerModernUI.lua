@@ -545,6 +545,7 @@ return ____exports
 --[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
 local ____exports = {}
 local ____Native = require("core.Native")
+local classColor = ____Native.classColor
 local createIcon = ____Native.createIcon
 local createPanel = ____Native.createPanel
 local createText = ____Native.createText
@@ -771,6 +772,21 @@ function ____exports.createBuildSelector(self, parent, options)
         -4
     )
     currentRole = "DPS"
+    local countEnabled = options.allowCount == true
+    local countLabel = createText(
+        nil,
+        summary.frame,
+        "COUNT",
+        "GameFontNormalSmall",
+        theme.colors.muted
+    )
+    countLabel:SetPoint(
+        "RIGHT",
+        summary.frame,
+        "RIGHT",
+        -204,
+        13
+    )
     local countStepper = createNumberStepper(
         nil,
         summary.frame,
@@ -783,9 +799,10 @@ function ____exports.createBuildSelector(self, parent, options)
         summary.frame,
         "RIGHT",
         -170,
-        0
+        -8
     )
     if options.allowCount ~= true then
+        countLabel:Hide()
         countStepper.frame:Hide()
     end
     apply = createButton(
@@ -804,7 +821,7 @@ function ____exports.createBuildSelector(self, parent, options)
                     role = currentRole,
                     classId = currentClass,
                     specId = currentSpec,
-                    count = options.allowCount == true and countStepper:getValue() or 1
+                    count = countEnabled and countStepper:getValue() or 1
                 })
                 modal:hide()
             end
@@ -836,6 +853,7 @@ function ____exports.createBuildSelector(self, parent, options)
                 text = classDef.label,
                 width = 86,
                 height = 82,
+                accent = classColor(nil, classDef.id),
                 onClick = function() return selectClass(nil, classDef.id) end
             }
         )
@@ -869,6 +887,7 @@ function ____exports.createBuildSelector(self, parent, options)
                     text = spec.label,
                     width = 104,
                     height = 94,
+                    accent = classColor(nil, classDef.id),
                     onClick = function()
                         currentClass = classDef.id
                         selectSpec(nil, spec.id)
@@ -898,10 +917,21 @@ function ____exports.createBuildSelector(self, parent, options)
     end
     return {
         frame = modal.frame,
-        open = function(self, role, initial)
+        open = function(self, role, initial, showCount)
+            if showCount == nil then
+                showCount = true
+            end
             currentRole = role
             currentClass = initial and initial.classId
             currentSpec = initial and initial.specId
+            countEnabled = options.allowCount == true and showCount
+            if countEnabled then
+                countLabel:Show()
+                countStepper.frame:Show()
+            else
+                countLabel:Hide()
+                countStepper.frame:Hide()
+            end
             countStepper:setValue(initial and initial.count or 1)
             if currentClass ~= nil then
                 local validCurrent = false
