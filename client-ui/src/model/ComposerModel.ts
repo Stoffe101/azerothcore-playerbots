@@ -38,15 +38,15 @@ const P: any = _G.GroupComposerProfiles;
 export function composer(): any { return GC; }
 export function data(): any { return D; }
 export function profiles(): any { return P; }
-export function config(): any { return GC.GetConfig(GC); }
+export function config(): any { return GC.GetConfig(); }
 export function plan(): any { return GC.plan ?? { members: [], warnings: [], summary: {}, valid: false, ready: false }; }
 export function progress(): any { return GC.progress ?? { phase: "IDLE", current: 0, total: 0, detail: "" }; }
 
-export function touch(reason: string): void { GC.Touch(GC, reason); }
-export function fireStatus(text: string): void { GC.Fire(GC, "STATUS", text); }
+export function touch(reason: string): void { GC.Touch(reason); }
+export function fireStatus(text: string): void { GC.Fire("STATUS", text); }
 
 export function humans(): HumanAnchor[] {
-    return (GC.ScanHumans(GC) ?? []) as HumanAnchor[];
+    return (GC.ScanHumans() ?? []) as HumanAnchor[];
 }
 
 export function humanReady(): boolean {
@@ -264,6 +264,28 @@ export function roleLabel(role: Role): string {
     return "DPS";
 }
 
+function dungeonById(id: string): any {
+    const fn = D.GetDungeonById;
+    return fn(id);
+}
+
+function raidById(id: string): any {
+    const fn = D.GetRaidById;
+    return fn(id);
+}
+
+export function pinnedMembers(): any[] {
+    const result: any[] = [];
+    for (const pin of (config().pinned ?? []) as any[]) result.push(pin);
+    return result;
+}
+
+export function planWarnings(): string[] {
+    const result: string[] = [];
+    for (const warning of (plan().warnings ?? []) as any[]) result.push(String(warning));
+    return result;
+}
+
 export function dungeonItems(): ChoiceItem[] {
     const result: ChoiceItem[] = [];
     for (const dungeon of D.DUNGEONS ?? []) result.push({ value: dungeon.id, label: dungeon.label });
@@ -284,7 +306,7 @@ export function raidItems(): ChoiceItem[] {
 
 export function raidDifficultyItems(): ChoiceItem[] {
     const result: ChoiceItem[] = [{ value: "normal", label: "Normal" }];
-    const raid = D.GetRaidById(config().activity);
+    const raid = raidById(config().activity);
     if (raid?.heroic === true) result.push({ value: "heroic", label: "Heroic" });
     return result;
 }
@@ -292,41 +314,41 @@ export function raidDifficultyItems(): ChoiceItem[] {
 export function selectedActivityLabel(): string {
     const cfg = config();
     if (cfg.mode === "RAID") {
-        const raid = D.GetRaidById(cfg.activity);
+        const raid = raidById(cfg.activity);
         return raid?.label ?? "Raid";
     }
-    const dungeon = D.GetDungeonById(cfg.activity);
+    const dungeon = dungeonById(cfg.activity);
     return dungeon?.label ?? "Dungeon";
 }
 
 export function supportedRaidSizes(): number[] {
-    const raid = D.GetRaidById(config().activity);
+    const raid = raidById(config().activity);
     const result: number[] = [];
     for (const size of raid?.sizes ?? []) result.push(Number(size));
     return result;
 }
 
-export function setMode(mode: "DUNGEON" | "RAID"): void { GC.SetMode(GC, mode); }
-export function setDungeonActivity(id: string): void { GC.SetDungeonActivity(GC, id); }
-export function setRaidActivity(id: string): void { GC.SetRaidActivity(GC, id); }
-export function setRaidSize(size: number): void { GC.SetRaidSize(GC, size); }
+export function setMode(mode: "DUNGEON" | "RAID"): void { GC.SetMode(mode); }
+export function setDungeonActivity(id: string): void { GC.SetDungeonActivity(id); }
+export function setRaidActivity(id: string): void { GC.SetRaidActivity(id); }
+export function setRaidSize(size: number): void { GC.SetRaidSize(size); }
 export function setDifficulty(id: string): void {
     config().difficulty = id;
     touch("Difficulty changed");
 }
-export function setHumanRole(name: string, role: Role): void { GC.SetHumanRole(GC, name, role); }
-export function buildAndPrepare(): void { GC.FindRoster(GC); }
-export function assemble(): void { GC.Assemble(GC); }
-export function requestAnchors(): void { GC.RequestAnchors(GC); }
-export function requestStatus(): void { GC.RequestStatus(GC); }
-export function clearPlan(): void { GC.ClearServerPlan(GC); }
-export function loadProfile(name: string): void { GC.LoadProfile(GC, name); }
-export function saveProfile(name: string): void { GC.SaveProfile(GC, name); }
-export function deleteProfile(name: string): void { GC.DeleteProfile(GC, name); }
+export function setHumanRole(name: string, role: Role): void { GC.SetHumanRole(name, role); }
+export function buildAndPrepare(): void { GC.FindRoster(); }
+export function assemble(): void { GC.Assemble(); }
+export function requestAnchors(): void { GC.RequestAnchors(); }
+export function requestStatus(): void { GC.RequestStatus(); }
+export function clearPlan(): void { GC.ClearServerPlan(); }
+export function loadProfile(name: string): void { GC.LoadProfile(name); }
+export function saveProfile(name: string): void { GC.SaveProfile(name); }
+export function deleteProfile(name: string): void { GC.DeleteProfile(name); }
 export function listBuiltinProfiles(): string[] { return P.ListBuiltins() ?? []; }
 export function listCustomProfiles(): string[] { return P.ListCustom() ?? []; }
-export function addPin(name: string, role: Role, required: boolean): void { GC.AddPinnedMember(GC, name, role, required); }
-export function removePin(index: number): void { GC.RemovePinnedMember(GC, index); }
+export function addPin(name: string, role: Role, required: boolean): void { GC.AddPinnedMember(name, role, required); }
+export function removePin(index: number): void { GC.RemovePinnedMember(index); }
 
 export function planMembers(): PlanMember[] { return (plan().members ?? []) as PlanMember[]; }
 
