@@ -446,7 +446,7 @@ export function createModernDashboard(): Dashboard {
     for (let i = 0; i < roleOrder.length; i += 1) {
         const role = roleOrder[i];
         const card = Native.createPanel(quickView, theme.colors.surfaceRaised, theme.colors.border);
-        card.frame.SetSize(282, 178);
+        card.frame.SetSize(282, 170);
         const roleStrip = Native.createSolid(card.frame, Model.roleAccent(role), "ARTWORK");
         roleStrip.SetHeight(3);
         roleStrip.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 0, 0);
@@ -461,41 +461,48 @@ export function createModernDashboard(): Dashboard {
         note.SetPoint("LEFT", icon, "RIGHT", 10, -12);
 
         const count = Native.createText(card.frame, "0", "GameFontNormalHuge");
-        count.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 18, -70);
+        count.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 18, -68);
         const botSlots = Native.createText(card.frame, "0 bot slots after humans", "GameFontHighlightSmall", theme.colors.muted);
         botSlots.SetPoint("TOPLEFT", count, "BOTTOMLEFT", 0, -7);
 
-        let minus: UIButton | undefined;
-        let plus: UIButton | undefined;
-        if (role !== "DPS") {
-            minus = ButtonUI.createButton(card.frame, { text: "-", width: 38, height: 32 });
-            plus = ButtonUI.createButton(card.frame, { text: "+", width: 38, height: 32, accent: Model.roleAccent(role) });
-            minus.frame.SetPoint("BOTTOMRIGHT", card.frame, "BOTTOMRIGHT", -58, 12);
-            plus.frame.SetPoint("BOTTOMRIGHT", card.frame, "BOTTOMRIGHT", -12, 12);
-        } else {
-            const derived = Native.createText(card.frame, "Auto remainder", "GameFontHighlightSmall", theme.colors.muted);
-            derived.SetPoint("BOTTOMRIGHT", card.frame, "BOTTOMRIGHT", -14, 20);
-        }
+        const minus = ButtonUI.createButton(card.frame, { text: "-", width: 38, height: 34 });
+        const plus = ButtonUI.createButton(card.frame, { text: "+", width: 38, height: 34, accent: Model.roleAccent(role) });
+        minus.frame.SetPoint("BOTTOMRIGHT", card.frame, "BOTTOMRIGHT", -58, 12);
+        plus.frame.SetPoint("BOTTOMRIGHT", card.frame, "BOTTOMRIGHT", -12, 12);
+
+        const roleCopy = role;
+        minus.frame.SetScript("OnMouseDown", () => Model.setRoleTarget(roleCopy, Model.targetForRole(roleCopy) - 1));
+        plus.frame.SetScript("OnMouseDown", () => Model.setRoleTarget(roleCopy, Model.targetForRole(roleCopy) + 1));
 
         quickCards[role] = { card, count, botSlots, minus, plus };
     }
 
-    function adjustRole(role: Role, delta: number): void {
-        if (role === "DPS") return;
-        const cfg = Model.config();
-        const key = role === "TANK" ? "tanks" : "healers";
-        const next = Math.max(0, Number(cfg[key] ?? 0) + delta);
-        const nextDps = Number(cfg.dps ?? 0) - delta;
-        if (nextDps < 0) return;
-        cfg[key] = next;
-        cfg.dps = nextDps;
-        Model.touch("Role composition changed");
-    }
+    const quickSummary = Native.createPanel(quickView, theme.colors.background, theme.colors.border);
+    quickSummary.frame.SetPoint("TOPLEFT", quickView, "TOPLEFT", 0, -198);
+    quickSummary.frame.SetPoint("TOPRIGHT", quickView, "TOPRIGHT", 0, -198);
+    quickSummary.frame.SetHeight(84);
 
-    quickCards.TANK.minus.frame.SetScript("OnMouseDown", () => adjustRole("TANK", -1));
-    quickCards.TANK.plus.frame.SetScript("OnMouseDown", () => adjustRole("TANK", 1));
-    quickCards.HEALER.minus.frame.SetScript("OnMouseDown", () => adjustRole("HEALER", -1));
-    quickCards.HEALER.plus.frame.SetScript("OnMouseDown", () => adjustRole("HEALER", 1));
+    const quickTotalLabel = Native.createText(quickSummary.frame, "ROLE TOTAL", "GameFontNormalSmall", theme.colors.muted);
+    quickTotalLabel.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 14, -12);
+    const quickTotal = Native.createText(quickSummary.frame, "25 / 25", "GameFontNormalLarge");
+    quickTotal.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 14, -34);
+    const quickHelp = Native.createText(
+        quickSummary.frame,
+        "All three role counts are editable. Exact Builds can then reserve specific class/spec slots.",
+        "GameFontHighlightSmall",
+        theme.colors.muted,
+    );
+    quickHelp.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 122, -27);
+    quickHelp.SetWidth(570);
+    quickHelp.SetJustifyV("TOP");
+
+    const resetRoles = ButtonUI.createButton(quickSummary.frame, {
+        text: "Reset Standard",
+        width: 132,
+        height: 34,
+        onClick: () => Model.resetRoleTargets(),
+    });
+    resetRoles.frame.SetPoint("RIGHT", quickSummary.frame, "RIGHT", -14, 0);
 
     const exactColumns: Record<Role, any> = {} as Record<Role, any>;
     for (let i = 0; i < roleOrder.length; i += 1) {
@@ -1165,10 +1172,21 @@ export function createModernDashboard(): Dashboard {
     }
 
     function refreshQuickRaid(): void {
+        const size = Number(Model.config().size ?? 25);
+        const total = Model.roleTargetTotal();
         for (const role of roleOrder) {
-            quickCards[role].count.SetText(String(Model.targetForRole(role)));
+            const target = Model.targetForRole(role);
+            quickCards[role].count.SetText(String(target));
             quickCards[role].botSlots.SetText(String(Model.remainingBotSlots(role)) + " bot slots after humans");
+            quickCards[role].minus.setEnabled(target > 0);
+            quickCards[role].plus.setEnabled(target < size);
         }
+
+        quickTotal.SetText(String(total) + " / " + String(size));
+        const valid = total === size;
+        const color = valid ? theme.colors.success : theme.colors.warning;
+        quickTotal.SetTextColor(color[0], color[1], color[2], 1);
+        quickSummary.outline.setColor(valid ? theme.colors.border : theme.colors.warning);
     }
 
     function refreshExactRaid(): void {
@@ -1184,7 +1202,7 @@ export function createModernDashboard(): Dashboard {
                 buildSelector.open(roleCopy, { role: roleCopy, count: 1 }, true);
             });
 
-            for (const old of column.rows) old.frame.Hide();
+            for (const old of column.rows) old.panel.frame.Hide();
 
             for (let i = 0; i < rows.length; i += 1) {
                 const build = rows[i];
@@ -1359,7 +1377,7 @@ export function createModernDashboard(): Dashboard {
 
         coverageText.SetText(
             Model.plan().summary?.utility !== undefined
-                ? String(Model.plan().summary.utility) + "\nRanged DPS: " + String(Model.plan().summary.ranged ?? 0) + "   Melee DPS: " + String(Model.plan().summary.melee ?? 0)
+                ? Model.coverageDisplay()
                 : "Build a roster to inspect utility coverage."
         );
 
@@ -1383,12 +1401,14 @@ export function createModernDashboard(): Dashboard {
                 if (phase === "READY") text = Model.isTravelRetry() ? "Clear the travel blocker, then enter the activity." : "Prepared roster is ready for review.";
                 else if (phase === "PREPARING") text = "Bots are being prepared in the background.";
                 else if (!Model.humanReady()) text = "Choose a legal role for every real player.";
-                else text = "Build & Prepare when the composition looks right.";
+                else if (Model.config().mode === "RAID" && Model.roleTargetTotal() !== Number(Model.config().size ?? 25)) {
+                    text = "Role counts must total " + String(Model.config().size ?? 25) + " before preparing.";
+                } else text = "Build & Prepare when the composition looks right.";
             }
             warningRows[i].SetText(String(text ?? ""));
         }
 
-        buildButton.setEnabled(Model.humanReady() && !Model.isBusy());
+        buildButton.setEnabled(Model.humanReady() && !Model.isBusy() && (Model.config().mode !== "RAID" || Model.roleTargetTotal() === Number(Model.config().size ?? 25)));
         assembleButton.setEnabled(Model.plan().ready === true && Model.plan().valid === true && phase === "READY");
         assembleButton.setText(Model.isTravelRetry() ? "Enter Activity" : (Model.config().mode === "RAID" ? "Assemble Raid" : "Assemble Party"));
         assembleButton.setSelected(Model.plan().ready === true && Model.plan().valid === true && phase === "READY");
