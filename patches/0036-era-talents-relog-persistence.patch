@@ -59,7 +59,7 @@ diff --git a/modules/mod-era-talents/src/EraTransition.cpp b/modules/mod-era-tal
 diff --git a/modules/mod-era-talents/src/EraTalentPin.cpp b/modules/mod-era-talents/src/EraTalentPin.cpp
 --- a/modules/mod-era-talents/src/EraTalentPin.cpp
 +++ b/modules/mod-era-talents/src/EraTalentPin.cpp
-@@ -282,16 +282,21 @@ public:
+@@ -282,15 +282,20 @@ public:
      // exactly resetTalentsCost() — what the trainer's confirm dialog displayed (the core's
      // escalation counter is private and never advances for a character with 0 native talents,
      // so this is effectively a flat 1g — the dialog-truthful choice, user-approved).
