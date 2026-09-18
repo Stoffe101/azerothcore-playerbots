@@ -1,5 +1,3 @@
-/** @noSelfInFile */
-
 type WoWFramePoint =
     | "TOP" | "RIGHT" | "BOTTOM" | "LEFT"
     | "TOPRIGHT" | "TOPLEFT" | "BOTTOMLEFT" | "BOTTOMRIGHT" | "CENTER";
