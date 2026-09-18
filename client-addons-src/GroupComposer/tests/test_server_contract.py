@@ -505,7 +505,7 @@ assert "uint8 level = 1;" in TYPES, "Candidate/member level snapshots disappeare
 assert "uint8 RequiredActivityLevel(Player* master, Config const& config)" in SERVER
 assert "GetLFGDungeon(mapId, difficulty)" in SERVER, "Named dungeon levels must come from Blizzard LFGDungeons.dbc data"
 assert "config.requiredLevel = RequiredActivityLevel(master, config);" in SERVER
-assert "bool disposableWorld" in PLANNER and "underLevel" in PLANNER and "underGear" in PLANNER, (
+assert "bool disposableCapacity" in PLANNER and "underLevel" in PLANNER and "underGear" in PLANNER, (
     "Online RNDbot fallback lost elastic activity provisioning"
 )
 assert "SELECT guid, name, class, level FROM characters" in PLANNER, "Offline reserve selection lost persisted level metadata"
