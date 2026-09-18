@@ -70,8 +70,8 @@ end
 
 for _, raid in ipairs(D.RAIDS) do
     for _, size in ipairs(raid.sizes) do
-        truth(raidKeys[raid.id .. ":" .. tostring(size) .. ":normal], "missing normal coverage template: " .. raid.id .. " " .. size)
-        if raid.heroic then truth(raidKeys[raid.id .. ":" .. tostring(size) .. ":heroic], "missing heroic coverage template: " .. raid.id .. " " .. size) end
+        truth(raidKeys[raid.id .. ":" .. tostring(size) .. ":normal"], "missing normal coverage template: " .. raid.id .. " " .. size)
+        if raid.heroic then truth(raidKeys[raid.id .. ":" .. tostring(size) .. ":heroic"], "missing heroic coverage template: " .. raid.id .. " " .. size) end
     end
 end
 
