@@ -693,6 +693,10 @@ export function createModernDashboard(): Dashboard {
         height: 34,
         accent: theme.colors.primary,
         onClick: () => {
+            if (Model.config().mode !== "RAID") {
+                Model.fireStatus("Templates are raid-only. Configure dungeon bot slots directly.");
+                return;
+            }
             const name = templateName.getText();
             if (name !== "") {
                 Model.saveProfile(name);
@@ -713,14 +717,14 @@ export function createModernDashboard(): Dashboard {
     const customScroll = ScrollUI.createScrollList(templatesModal.content, 414, 430);
     customScroll.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 440, -110);
 
-    const builtinUp = ButtonUI.createButton(templatesModal.content, { text: "▲", width: 34, height: 26, onClick: () => builtinScroll.scrollBy(-220) });
-    builtinUp.frame.SetPoint("TOPRIGHT", templatesModal.content, "TOPLEFT", 374, -78);
-    const builtinDown = ButtonUI.createButton(templatesModal.content, { text: "▼", width: 34, height: 26, onClick: () => builtinScroll.scrollBy(220) });
+    const builtinUp = ButtonUI.createButton(templatesModal.content, { text: "Up", width: 54, height: 26, onClick: () => builtinScroll.scrollBy(-220) });
+    builtinUp.frame.SetPoint("TOPRIGHT", templatesModal.content, "TOPLEFT", 350, -78);
+    const builtinDown = ButtonUI.createButton(templatesModal.content, { text: "Down", width: 54, height: 26, onClick: () => builtinScroll.scrollBy(220) });
     builtinDown.frame.SetPoint("LEFT", builtinUp.frame, "RIGHT", 4, 0);
 
-    const customUp = ButtonUI.createButton(templatesModal.content, { text: "▲", width: 34, height: 26, onClick: () => customScroll.scrollBy(-220) });
-    customUp.frame.SetPoint("TOPRIGHT", templatesModal.content, "TOPLEFT", 814, -78);
-    const customDown = ButtonUI.createButton(templatesModal.content, { text: "▼", width: 34, height: 26, onClick: () => customScroll.scrollBy(220) });
+    const customUp = ButtonUI.createButton(templatesModal.content, { text: "▲", width: 54, height: 26, onClick: () => customScroll.scrollBy(-220) });
+    customUp.frame.SetPoint("TOPRIGHT", templatesModal.content, "TOPLEFT", 790, -78);
+    const customDown = ButtonUI.createButton(templatesModal.content, { text: "▼", width: 54, height: 26, onClick: () => customScroll.scrollBy(220) });
     customDown.frame.SetPoint("LEFT", customUp.frame, "RIGHT", 4, 0);
     const builtinRows: WoWFrame[] = [];
     const customRows: WoWFrame[] = [];
@@ -732,6 +736,7 @@ export function createModernDashboard(): Dashboard {
     function refreshTemplates(): void {
         clearDynamicRows(builtinRows);
         clearDynamicRows(customRows);
+        templateSave.setEnabled(Model.config().mode === "RAID");
 
         const builtins = Model.listBuiltinProfiles();
         for (let i = 0; i < builtins.length; i += 1) {
