@@ -312,31 +312,13 @@ local function RaidProfile(name, activity, difficulty, size)
     }
 end
 
-D.BUILTIN_PROFILES = {
-    RaidProfile("Naxxramas 10 - Coverage", "naxxramas", "normal", 10),
-    RaidProfile("Naxxramas 25 - Coverage", "naxxramas", "normal", 25),
-    RaidProfile("Ulduar 10 - Coverage", "ulduar", "normal", 10),
-    RaidProfile("Ulduar 25 - Coverage", "ulduar", "normal", 25),
-    RaidProfile("Trial of the Crusader 10 - Coverage", "trial_crusader", "normal", 10),
-    RaidProfile("Trial of the Crusader 10 Heroic - Coverage", "trial_crusader", "heroic", 10),
-    RaidProfile("Trial of the Crusader 25 - Coverage", "trial_crusader", "normal", 25),
-    RaidProfile("Trial of the Crusader 25 Heroic - Coverage", "trial_crusader", "heroic", 25),
-    RaidProfile("ICC 10 - Coverage", "icecrown", "normal", 10),
-    RaidProfile("ICC 10 Heroic - Coverage", "icecrown", "heroic", 10),
-    RaidProfile("ICC 25 - Coverage", "icecrown", "normal", 25),
-    RaidProfile("ICC 25 Heroic - Coverage", "icecrown", "heroic", 25),
-    RaidProfile("Ruby Sanctum 10 Heroic - Coverage", "ruby_sanctum", "heroic", 10),
-    RaidProfile("Ruby Sanctum 25 Heroic - Coverage", "ruby_sanctum", "heroic", 25),
-
-    RaidProfile("Karazhan 10 - Coverage", "karazhan", "normal", 10),
-    RaidProfile("Zul'Aman 10 - Coverage", "zulaman", "normal", 10),
-    RaidProfile("Serpentshrine 25 - Coverage", "serpentshrine", "normal", 25),
-    RaidProfile("Black Temple 25 - Coverage", "black_temple", "normal", 25),
-    RaidProfile("Sunwell 25 - Coverage", "sunwell", "normal", 25),
-
-    RaidProfile("Zul'Gurub 20 - Coverage", "zul_gurub", "normal", 20),
-    RaidProfile("Ruins of Ahn'Qiraj 20 - Coverage", "aq20", "normal", 20),
-    RaidProfile("Molten Core 40 - Coverage", "molten_core", "normal", 40),
-    RaidProfile("Blackwing Lair 40 - Coverage", "blackwing_lair", "normal", 40),
-    RaidProfile("Temple of Ahn'Qiraj 40 - Coverage", "aq40", "normal", 40),
-}
+D.BUILTIN_PROFILES = {}
+for _, raid in ipairs(D.RAIDS) do
+    for _, size in ipairs(raid.sizes or {}) do
+        local baseName = raid.label .. " " .. tostring(size)
+        D.BUILTIN_PROFILES[#D.BUILTIN_PROFILES + 1] = RaidProfile(baseName .. " - Coverage", raid.id, "normal", size)
+        if raid.heroic then
+            D.BUILTIN_PROFILES[#D.BUILTIN_PROFILES + 1] = RaidProfile(baseName .. " Heroic - Coverage", raid.id, "heroic", size)
+        end
+    end
+end
