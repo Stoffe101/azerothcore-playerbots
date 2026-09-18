@@ -42,6 +42,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RUNNER_STATUS_TOKEN }}
           REQUESTED_RUNNER: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'auto' }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -euo pipefail
 
@@ -58,6 +59,16 @@ jobs:
             echo 'parallel_jobs=8' >> "$GITHUB_OUTPUT"
             echo "Selected local stoffes-pc runner."
           }
+
+          if [[ "$REQUESTED_RUNNER" == "auto" ]]; then
+            if grep -Fq "[local-ci]" <<< "${COMMIT_MESSAGE:-}"; then
+              REQUESTED_RUNNER="local"
+              echo "Commit requested local CI override."
+            elif grep -Fq "[github-ci]" <<< "${COMMIT_MESSAGE:-}"; then
+              REQUESTED_RUNNER="github"
+              echo "Commit requested GitHub-hosted CI override."
+            fi
+          fi
 
           case "$REQUESTED_RUNNER" in
             github)
