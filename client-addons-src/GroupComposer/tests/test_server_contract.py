@@ -325,7 +325,7 @@ assert 'Profile("Dungeon' not in builtin_profile_tail, "Dungeon presets must not
 assert 'Templates are raid-only' in (ROOT / "client-addons-src/GroupComposer/Profiles.lua").read_text(encoding="utf-8")
 assert 'profileDescription' in MODEL and 'BUILT-IN RAID COMPS' in MODERN
 assert 'builtinScroll.scrollToTop()' in MODERN and 'createScrollList(templatesModal.content' in MODERN
-assert 'scrollBy(-92)' in SCROLL_LIST and 'scrollBy(92)' in SCROLL_LIST
+assert 'scrollBy(-72)' in SCROLL_LIST and 'scrollBy(72)' in SCROLL_LIST
 
 # Preparation is allowed to rebuild combat state, not a persistent companion's life history.
 sync = section(SERVER, "void SyncManagedBot(", "void ApplyGroupSettings(")
