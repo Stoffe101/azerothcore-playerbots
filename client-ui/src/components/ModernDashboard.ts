@@ -192,8 +192,14 @@ export function createModernDashboard(): Dashboard {
 
     const navDungeon = ButtonUI.createButton(sidebar.frame, { text: "Dungeon", width: 144, height: 42, accent: theme.colors.primary, onClick: () => Model.setMode("DUNGEON") });
     navDungeon.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 16, -48);
+    navDungeon.label.ClearAllPoints();
+    navDungeon.label.SetPoint("LEFT", navDungeon.frame, "LEFT", 14, 0);
+    navDungeon.label.SetJustifyH("LEFT");
     const navRaid = ButtonUI.createButton(sidebar.frame, { text: "Raid", width: 144, height: 42, accent: theme.colors.warning, onClick: () => Model.setMode("RAID") });
     navRaid.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 16, -98);
+    navRaid.label.ClearAllPoints();
+    navRaid.label.SetPoint("LEFT", navRaid.frame, "LEFT", 14, 0);
+    navRaid.label.SetJustifyH("LEFT");
 
     const manageTitle = Native.createText(sidebar.frame, "MANAGE", "GameFontNormalSmall", theme.colors.muted);
     manageTitle.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 16, -164);
@@ -204,10 +210,19 @@ export function createModernDashboard(): Dashboard {
 
     const navTemplates = ButtonUI.createButton(sidebar.frame, { text: "Templates", width: 144, height: 38, onClick: () => showTemplates() });
     navTemplates.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 16, -190);
+    navTemplates.label.ClearAllPoints();
+    navTemplates.label.SetPoint("LEFT", navTemplates.frame, "LEFT", 14, 0);
+    navTemplates.label.SetJustifyH("LEFT");
     const navPeople = ButtonUI.createButton(sidebar.frame, { text: "Humans & Pins", width: 144, height: 38, onClick: () => showPeople() });
     navPeople.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 16, -234);
+    navPeople.label.ClearAllPoints();
+    navPeople.label.SetPoint("LEFT", navPeople.frame, "LEFT", 14, 0);
+    navPeople.label.SetJustifyH("LEFT");
     const navOptions = ButtonUI.createButton(sidebar.frame, { text: "Options", width: 144, height: 38, onClick: () => showOptions() });
     navOptions.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 16, -278);
+    navOptions.label.ClearAllPoints();
+    navOptions.label.SetPoint("LEFT", navOptions.frame, "LEFT", 14, 0);
+    navOptions.label.SetJustifyH("LEFT");
 
     const sideHint = Native.createText(sidebar.frame, "Humans stay locked.\nExact builds only affect bot slots.", "GameFontHighlightSmall", theme.colors.muted);
     sideHint.SetPoint("BOTTOMLEFT", sidebar.frame, "BOTTOMLEFT", 16, 18);
@@ -311,6 +326,15 @@ export function createModernDashboard(): Dashboard {
     humanRoleButtons.TANK.frame.SetPoint("TOPRIGHT", humanPanel.frame, "TOPRIGHT", -224, -40);
     humanRoleButtons.HEALER.frame.SetPoint("LEFT", humanRoleButtons.TANK.frame, "RIGHT", 8, 0);
     humanRoleButtons.DPS.frame.SetPoint("LEFT", humanRoleButtons.HEALER.frame, "RIGHT", 8, 0);
+
+    for (const role of ["TANK", "HEALER", "DPS"] as Role[]) {
+        const button = humanRoleButtons[role];
+        const icon = Native.createIcon(button.frame, D.ROLE_ICON[role], 18);
+        icon.SetPoint("LEFT", button.frame, "LEFT", 10, 0);
+        button.label.ClearAllPoints();
+        button.label.SetPoint("LEFT", button.frame, "LEFT", 34, 0);
+        button.label.SetJustifyH("LEFT");
+    }
 
 
     // Composition shell ------------------------------------------------------
@@ -421,8 +445,12 @@ export function createModernDashboard(): Dashboard {
     const roleOrder: Role[] = ["TANK", "HEALER", "DPS"];
     for (let i = 0; i < roleOrder.length; i += 1) {
         const role = roleOrder[i];
-        const card = Native.createPanel(quickView, theme.colors.background, Model.roleAccent(role));
+        const card = Native.createPanel(quickView, theme.colors.surfaceRaised, theme.colors.border);
         card.frame.SetSize(282, 178);
+        const roleStrip = Native.createSolid(card.frame, Model.roleAccent(role), "ARTWORK");
+        roleStrip.SetHeight(3);
+        roleStrip.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 0, 0);
+        roleStrip.SetPoint("TOPRIGHT", card.frame, "TOPRIGHT", 0, 0);
         card.frame.SetPoint("TOPLEFT", quickView, "TOPLEFT", i * 294, -12);
 
         const icon = Native.createIcon(card.frame, D.ROLE_ICON[role], 34);
@@ -472,7 +500,11 @@ export function createModernDashboard(): Dashboard {
     const exactColumns: Record<Role, any> = {} as Record<Role, any>;
     for (let i = 0; i < roleOrder.length; i += 1) {
         const role = roleOrder[i];
-        const panel = Native.createPanel(exactView, theme.colors.background, Model.roleAccent(role));
+        const panel = Native.createPanel(exactView, theme.colors.surfaceRaised, theme.colors.border);
+        const roleStrip = Native.createSolid(panel.frame, Model.roleAccent(role), "ARTWORK");
+        roleStrip.SetHeight(3);
+        roleStrip.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 0, 0);
+        roleStrip.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", 0, 0);
         panel.frame.SetPoint("TOPLEFT", exactView, "TOPLEFT", i * 294, -8);
         panel.frame.SetSize(282, 410);
 
@@ -612,13 +644,13 @@ export function createModernDashboard(): Dashboard {
         warningRows.push(row);
     }
 
-    const buildButton = ButtonUI.createButton(status.frame, { text: "Build & Prepare", width: 286, height: 40, accent: theme.colors.primary, onClick: () => Model.buildAndPrepare() });
+    const buildButton = ButtonUI.createButton(status.frame, { text: "Build & Prepare", width: 286, height: 44, accent: theme.colors.primary, onClick: () => Model.buildAndPrepare() });
     buildButton.frame.SetPoint("BOTTOMLEFT", status.frame, "BOTTOMLEFT", 16, 66);
 
     let showAssembleConfirm = () => {};
-    const assembleButton = ButtonUI.createButton(status.frame, { text: "Assemble", width: 210, height: 38, accent: theme.colors.success, onClick: () => showAssembleConfirm() });
+    const assembleButton = ButtonUI.createButton(status.frame, { text: "Assemble", width: 210, height: 42, accent: theme.colors.success, onClick: () => showAssembleConfirm() });
     assembleButton.frame.SetPoint("BOTTOMLEFT", status.frame, "BOTTOMLEFT", 16, 18);
-    const resetButton = ButtonUI.createButton(status.frame, { text: "Reset", width: 68, height: 38, accent: theme.colors.error, onClick: () => Model.clearPlan() });
+    const resetButton = ButtonUI.createButton(status.frame, { text: "Reset", width: 68, height: 42, accent: theme.colors.error, onClick: () => Model.clearPlan() });
     resetButton.frame.SetPoint("LEFT", assembleButton.frame, "RIGHT", 8, 0);
 
     // Templates modal --------------------------------------------------------
