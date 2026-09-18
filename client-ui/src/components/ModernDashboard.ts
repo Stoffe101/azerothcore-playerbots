@@ -1458,8 +1458,9 @@ export function createModernDashboard(): Dashboard {
     function applyScale(): void {
         const width = UIParent.GetWidth() || 1920;
         const height = UIParent.GetHeight() || 1080;
-        const scale = Math.min((width - 24) / 1480, (height - 24) / 880);
-        frame.SetScale(Math.max(0.68, Math.min(1.10, scale)));
+        const available = Math.min((width - 24) / 1480, (height - 24) / 880);
+        const maxScale = width >= 3000 ? 1.22 : (width >= 2400 ? 1.16 : 1.10);
+        frame.SetScale(Math.max(0.68, Math.min(maxScale, available)));
     }
 
     const dashboard: Dashboard = {
