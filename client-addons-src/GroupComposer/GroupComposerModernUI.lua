@@ -350,754 +350,6 @@ function ____exports.createButton(self, parent, options)
 end
 return ____exports
  end,
-["widgets.Modal"] = function(...) 
---[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
-local ____exports = {}
-local ____Native = require("core.Native")
-local createPanel = ____Native.createPanel
-local createSolid = ____Native.createSolid
-local createText = ____Native.createText
-local ____Theme = require("theme.Theme")
-local theme = ____Theme.theme
-local ____Button = require("widgets.Button")
-local createButton = ____Button.createButton
-function ____exports.createModal(self, parent, width, height)
-    local scrim = CreateFrame("Frame", nil, parent)
-    scrim:SetAllPoints(parent)
-    scrim:SetFrameStrata("DIALOG")
-    scrim:SetFrameLevel(parent:GetFrameLevel() + 20)
-    scrim:EnableMouse(true)
-    local scrimTexture = createSolid(nil, scrim, theme.colors.scrim)
-    scrimTexture:SetAllPoints(scrim)
-    local panel = createPanel(nil, parent, theme.colors.background, theme.colors.borderStrong)
-    panel.frame:SetSize(width, height)
-    panel.frame:SetPoint(
-        "CENTER",
-        parent,
-        "CENTER",
-        0,
-        0
-    )
-    panel.frame:SetFrameStrata("DIALOG")
-    panel.frame:SetFrameLevel(scrim:GetFrameLevel() + 1)
-    local function hideModal(self)
-        panel.frame:Hide()
-        scrim:Hide()
-    end
-    local function showModal(self)
-        scrim:Show()
-        panel.frame:Show()
-    end
-    scrim:SetScript(
-        "OnMouseDown",
-        function() return hideModal(nil) end
-    )
-    local title = createText(nil, panel.frame, "Choose Build", "GameFontNormalLarge")
-    title:SetPoint(
-        "TOPLEFT",
-        panel.frame,
-        "TOPLEFT",
-        theme.spacing.lg,
-        -theme.spacing.lg
-    )
-    local subtitle = createText(
-        nil,
-        panel.frame,
-        "",
-        "GameFontHighlightSmall",
-        theme.colors.muted
-    )
-    subtitle:SetPoint(
-        "TOPLEFT",
-        title,
-        "BOTTOMLEFT",
-        0,
-        -theme.spacing.xs
-    )
-    subtitle:SetWidth(width - 100)
-    local close = createButton(
-        nil,
-        panel.frame,
-        {
-            text = "X",
-            width = 30,
-            height = 30,
-            accent = theme.colors.error,
-            onClick = function() return hideModal(nil) end
-        }
-    )
-    close.frame:SetPoint(
-        "TOPRIGHT",
-        panel.frame,
-        "TOPRIGHT",
-        -theme.spacing.md,
-        -theme.spacing.md
-    )
-    local content = CreateFrame("Frame", nil, panel.frame)
-    content:SetPoint(
-        "TOPLEFT",
-        panel.frame,
-        "TOPLEFT",
-        theme.spacing.lg,
-        -72
-    )
-    content:SetPoint(
-        "BOTTOMRIGHT",
-        panel.frame,
-        "BOTTOMRIGHT",
-        -theme.spacing.lg,
-        theme.spacing.lg
-    )
-    panel.frame:Hide()
-    scrim:Hide()
-    return {
-        frame = panel.frame,
-        content = content,
-        show = function(self)
-            showModal(nil)
-        end,
-        hide = function(self)
-            hideModal(nil)
-        end,
-        setTitle = function(self, value)
-            title:SetText(value)
-        end,
-        setSubtitle = function(self, value)
-            subtitle:SetText(value)
-        end
-    }
-end
-return ____exports
- end,
-["widgets.Stepper"] = function(...) 
---[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
-local ____exports = {}
-local ____Native = require("core.Native")
-local createText = ____Native.createText
-local ____Theme = require("theme.Theme")
-local theme = ____Theme.theme
-local ____Button = require("widgets.Button")
-local createButton = ____Button.createButton
-function ____exports.createNumberStepper(self, parent, initialMin, initialMax, initial, onChange)
-    local frame = CreateFrame("Frame", nil, parent)
-    frame:SetSize(126, theme.control.md)
-    local min = initialMin
-    local max = initialMax
-    local value = initial
-    local valueText = createText(
-        nil,
-        frame,
-        tostring(value),
-        "GameFontNormal"
-    )
-    valueText:SetPoint(
-        "CENTER",
-        frame,
-        "CENTER",
-        0,
-        0
-    )
-    valueText:SetJustifyH("CENTER")
-    local function update(self, next, notify)
-        if notify == nil then
-            notify = true
-        end
-        value = math.max(
-            min,
-            math.min(max, next)
-        )
-        valueText:SetText(tostring(value))
-        if notify and onChange ~= nil then
-            onChange(nil, value)
-        end
-    end
-    local minus = createButton(
-        nil,
-        frame,
-        {
-            text = "-",
-            width = theme.control.md,
-            height = theme.control.md,
-            onClick = function() return update(nil, value - 1) end
-        }
-    )
-    minus.frame:SetPoint(
-        "LEFT",
-        frame,
-        "LEFT",
-        0,
-        0
-    )
-    local plus = createButton(
-        nil,
-        frame,
-        {
-            text = "+",
-            width = theme.control.md,
-            height = theme.control.md,
-            onClick = function() return update(nil, value + 1) end
-        }
-    )
-    plus.frame:SetPoint(
-        "RIGHT",
-        frame,
-        "RIGHT",
-        0,
-        0
-    )
-    update(nil, initial, false)
-    return {
-        frame = frame,
-        getValue = function(self)
-            return value
-        end,
-        setValue = function(self, next, notify)
-            if notify == nil then
-                notify = false
-            end
-            update(nil, next, notify)
-        end,
-        setBounds = function(self, nextMin, nextMax)
-            min = nextMin
-            max = math.max(nextMin, nextMax)
-            update(nil, value, false)
-        end
-    }
-end
-return ____exports
- end,
-["components.BuildSelector"] = function(...) 
---[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
-local ____exports = {}
-local ____Native = require("core.Native")
-local classColor = ____Native.classColor
-local createIcon = ____Native.createIcon
-local createPanel = ____Native.createPanel
-local createText = ____Native.createText
-local setClassIcon = ____Native.setClassIcon
-local ____WotlkBuilds = require("data.WotlkBuilds")
-local getClass = ____WotlkBuilds.getClass
-local getClassesForRole = ____WotlkBuilds.getClassesForRole
-local getSpecsForRole = ____WotlkBuilds.getSpecsForRole
-local ____Theme = require("theme.Theme")
-local theme = ____Theme.theme
-local ____Button = require("widgets.Button")
-local createButton = ____Button.createButton
-local ____Modal = require("widgets.Modal")
-local createModal = ____Modal.createModal
-local ____Stepper = require("widgets.Stepper")
-local createNumberStepper = ____Stepper.createNumberStepper
-local function roleLabel(self, role)
-    if role == "TANK" then
-        return "Tank"
-    end
-    if role == "HEALER" then
-        return "Healer"
-    end
-    return "DPS"
-end
-local function roleAccent(self, role)
-    if role == "TANK" then
-        return theme.colors.tank
-    end
-    if role == "HEALER" then
-        return theme.colors.healer
-    end
-    return theme.colors.dps
-end
-function ____exports.createBuildSelector(self, parent, options)
-    local refresh, modal, leftPanel, rightPanel, specHint, emptySpec, summaryClassIcon, summarySpecIcon, summaryText, summarySub, currentRole, currentClass, currentSpec, apply, classTiles, specTiles
-    function refresh(self)
-        local accent = roleAccent(nil, currentRole)
-        modal:setTitle(("Choose " .. roleLabel(nil, currentRole)) .. " Build")
-        modal:setSubtitle("Class first, specialization second. Invalid choices for this role are hidden.")
-        leftPanel.outline:setColor(accent)
-        rightPanel.outline:setColor(accent)
-        local validClasses = getClassesForRole(currentRole)
-        local classIndex = 0
-        for ____, tile in ipairs(classTiles) do
-            local valid = false
-            for ____, classDef in ipairs(validClasses) do
-                if classDef.id == tile.classDef.id then
-                    valid = true
-                    break
-                end
-            end
-            if valid then
-                local column = classIndex % 2
-                local row = math.floor(classIndex / 2)
-                tile.button.frame:ClearAllPoints()
-                tile.button.frame:SetPoint(
-                    "TOPLEFT",
-                    leftPanel.frame,
-                    "TOPLEFT",
-                    14 + column * 204,
-                    -(64 + row * 58)
-                )
-                tile.button:setSelected(tile.classDef.id == currentClass)
-                tile.button.frame:Show()
-                classIndex = classIndex + 1
-            else
-                tile.button.frame:Hide()
-            end
-        end
-        local specIndex = 0
-        for ____, tile in ipairs(specTiles) do
-            local visible = false
-            if currentClass ~= nil and tile.classId == currentClass then
-                for ____, validSpec in ipairs(getSpecsForRole(currentClass, currentRole)) do
-                    if validSpec.id == tile.spec.id then
-                        visible = true
-                        break
-                    end
-                end
-            end
-            if visible then
-                tile.button.frame:ClearAllPoints()
-                tile.button.frame:SetPoint(
-                    "TOPLEFT",
-                    rightPanel.frame,
-                    "TOPLEFT",
-                    18,
-                    -(64 + specIndex * 66)
-                )
-                tile.sub:SetText((tile.classLabel .. "  ·  ") .. roleLabel(nil, currentRole))
-                tile.button:setSelected(tile.spec.id == currentSpec)
-                tile.button.frame:Show()
-                specIndex = specIndex + 1
-            else
-                tile.button.frame:Hide()
-            end
-        end
-        if currentClass == nil then
-            specHint:SetText("Select a class first.")
-            emptySpec:Show()
-        else
-            local selectedClass = getClass(currentClass)
-            specHint:SetText(selectedClass == nil and "Choose a specialization." or ((selectedClass.label .. " specializations valid for ") .. roleLabel(nil, currentRole)) .. ".")
-            emptySpec:Hide()
-        end
-        local ____temp_0
-        if currentClass == nil then
-            ____temp_0 = nil
-        else
-            ____temp_0 = getClass(currentClass)
-        end
-        local selectedClass = ____temp_0
-        local selectedSpec
-        if currentClass ~= nil and currentSpec ~= nil then
-            for ____, spec in ipairs(getSpecsForRole(currentClass, currentRole)) do
-                if spec.id == currentSpec then
-                    selectedSpec = spec
-                    break
-                end
-            end
-        end
-        if selectedClass ~= nil then
-            setClassIcon(nil, summaryClassIcon, selectedClass.id)
-        else
-            summaryClassIcon:SetTexture("InterfaceIconsINV_Misc_QuestionMark")
-            summaryClassIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        end
-        if selectedClass ~= nil and selectedSpec ~= nil then
-            summarySpecIcon:SetTexture(selectedSpec.icon)
-            summarySpecIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-            summaryText:SetText((selectedSpec.label .. " ") .. selectedClass.label)
-            summarySub:SetText(roleLabel(nil, currentRole) .. " build selected")
-            apply:setEnabled(true)
-        else
-            summarySpecIcon:SetTexture("InterfaceIconsINV_Misc_QuestionMark")
-            summarySpecIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-            summaryText:SetText(currentClass == nil and "Choose a class" or "Choose a specialization")
-            summarySub:SetText(("Only legal " .. string.lower(roleLabel(nil, currentRole))) .. " builds are shown.")
-            apply:setEnabled(false)
-        end
-    end
-    modal = createModal(nil, parent, 960, 590)
-    leftPanel = createPanel(nil, modal.content, theme.colors.surface, theme.colors.border)
-    leftPanel.frame:SetPoint(
-        "TOPLEFT",
-        modal.content,
-        "TOPLEFT",
-        0,
-        0
-    )
-    leftPanel.frame:SetSize(438, 382)
-    rightPanel = createPanel(nil, modal.content, theme.colors.surface, theme.colors.border)
-    rightPanel.frame:SetPoint(
-        "TOPRIGHT",
-        modal.content,
-        "TOPRIGHT",
-        0,
-        0
-    )
-    rightPanel.frame:SetSize(438, 382)
-    local classTitle = createText(
-        nil,
-        leftPanel.frame,
-        "CHOOSE CLASS",
-        "GameFontNormalSmall",
-        theme.colors.muted
-    )
-    classTitle:SetPoint(
-        "TOPLEFT",
-        leftPanel.frame,
-        "TOPLEFT",
-        14,
-        -14
-    )
-    local classHint = createText(
-        nil,
-        leftPanel.frame,
-        "Only classes that can fill this role are shown.",
-        "GameFontHighlightSmall",
-        theme.colors.muted
-    )
-    classHint:SetPoint(
-        "TOPLEFT",
-        classTitle,
-        "BOTTOMLEFT",
-        0,
-        -5
-    )
-    local specTitle = createText(
-        nil,
-        rightPanel.frame,
-        "CHOOSE SPECIALIZATION",
-        "GameFontNormalSmall",
-        theme.colors.muted
-    )
-    specTitle:SetPoint(
-        "TOPLEFT",
-        rightPanel.frame,
-        "TOPLEFT",
-        14,
-        -14
-    )
-    specHint = createText(
-        nil,
-        rightPanel.frame,
-        "Select a class first.",
-        "GameFontHighlightSmall",
-        theme.colors.muted
-    )
-    specHint:SetPoint(
-        "TOPLEFT",
-        specTitle,
-        "BOTTOMLEFT",
-        0,
-        -5
-    )
-    emptySpec = createText(
-        nil,
-        rightPanel.frame,
-        "Choose a class on the left. This panel will then show only specializations valid for the selected role.",
-        "GameFontHighlight",
-        theme.colors.muted
-    )
-    emptySpec:SetPoint(
-        "TOPLEFT",
-        rightPanel.frame,
-        "TOPLEFT",
-        18,
-        -78
-    )
-    emptySpec:SetWidth(390)
-    emptySpec:SetJustifyV("TOP")
-    local summary = createPanel(nil, modal.content, theme.colors.surfaceRaised, theme.colors.border)
-    summary.frame:SetPoint(
-        "BOTTOMLEFT",
-        modal.content,
-        "BOTTOMLEFT",
-        0,
-        0
-    )
-    summary.frame:SetPoint(
-        "BOTTOMRIGHT",
-        modal.content,
-        "BOTTOMRIGHT",
-        0,
-        0
-    )
-    summary.frame:SetHeight(94)
-    local selectedLabel = createText(
-        nil,
-        summary.frame,
-        "SELECTED BUILD",
-        "GameFontNormalSmall",
-        theme.colors.muted
-    )
-    selectedLabel:SetPoint(
-        "TOPLEFT",
-        summary.frame,
-        "TOPLEFT",
-        14,
-        -12
-    )
-    summaryClassIcon = summary.frame:CreateTexture(nil, "ARTWORK")
-    summaryClassIcon:SetSize(40, 40)
-    summaryClassIcon:SetPoint(
-        "BOTTOMLEFT",
-        summary.frame,
-        "BOTTOMLEFT",
-        14,
-        12
-    )
-    summaryClassIcon:SetTexture("InterfaceIconsINV_Misc_QuestionMark")
-    summaryClassIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    summarySpecIcon = summary.frame:CreateTexture(nil, "ARTWORK")
-    summarySpecIcon:SetSize(40, 40)
-    summarySpecIcon:SetPoint(
-        "LEFT",
-        summaryClassIcon,
-        "RIGHT",
-        6,
-        0
-    )
-    summarySpecIcon:SetTexture("InterfaceIconsINV_Misc_QuestionMark")
-    summarySpecIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    summaryText = createText(nil, summary.frame, "Choose a class and specialization", "GameFontNormal")
-    summaryText:SetPoint(
-        "LEFT",
-        summarySpecIcon,
-        "RIGHT",
-        12,
-        8
-    )
-    summaryText:SetWidth(330)
-    summarySub = createText(
-        nil,
-        summary.frame,
-        "Role-filtered choices only.",
-        "GameFontHighlightSmall",
-        theme.colors.muted
-    )
-    summarySub:SetPoint(
-        "TOPLEFT",
-        summaryText,
-        "BOTTOMLEFT",
-        0,
-        -5
-    )
-    summarySub:SetWidth(330)
-    currentRole = "DPS"
-    local countEnabled = options.allowCount == true
-    local countLabel = createText(
-        nil,
-        summary.frame,
-        "COUNT",
-        "GameFontNormalSmall",
-        theme.colors.muted
-    )
-    countLabel:SetPoint(
-        "TOPRIGHT",
-        summary.frame,
-        "TOPRIGHT",
-        -194,
-        -14
-    )
-    local countStepper = createNumberStepper(
-        nil,
-        summary.frame,
-        1,
-        options.maxCount or 40,
-        1
-    )
-    countStepper.frame:SetPoint(
-        "BOTTOMRIGHT",
-        summary.frame,
-        "BOTTOMRIGHT",
-        -154,
-        12
-    )
-    apply = createButton(
-        nil,
-        summary.frame,
-        {
-            text = "Apply Build",
-            width = 136,
-            height = 40,
-            accent = theme.colors.primary,
-            onClick = function()
-                if currentClass == nil or currentSpec == nil then
-                    return
-                end
-                options:onApply({
-                    role = currentRole,
-                    classId = currentClass,
-                    specId = currentSpec,
-                    count = countEnabled and countStepper:getValue() or 1
-                })
-                modal:hide()
-            end
-        }
-    )
-    apply.frame:SetPoint(
-        "BOTTOMRIGHT",
-        summary.frame,
-        "BOTTOMRIGHT",
-        -12,
-        12
-    )
-    classTiles = {}
-    specTiles = {}
-    local function selectClass(self, classId)
-        if currentClass ~= classId then
-            currentSpec = nil
-        end
-        currentClass = classId
-        refresh(nil)
-    end
-    local function selectSpec(self, specId)
-        currentSpec = specId
-        refresh(nil)
-    end
-    for ____, classDef in ipairs(getClassesForRole("DPS")) do
-        local button = createButton(
-            nil,
-            leftPanel.frame,
-            {
-                text = classDef.label,
-                width = 194,
-                height = 52,
-                accent = classColor(nil, classDef.id),
-                onClick = function() return selectClass(nil, classDef.id) end
-            }
-        )
-        local icon = button.frame:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(32, 32)
-        icon:SetPoint(
-            "LEFT",
-            button.frame,
-            "LEFT",
-            10,
-            0
-        )
-        setClassIcon(nil, icon, classDef.id)
-        button.label:ClearAllPoints()
-        button.label:SetPoint(
-            "LEFT",
-            button.frame,
-            "LEFT",
-            52,
-            0
-        )
-        button.label:SetPoint(
-            "RIGHT",
-            button.frame,
-            "RIGHT",
-            -10,
-            0
-        )
-        button.label:SetJustifyH("LEFT")
-        classTiles[#classTiles + 1] = {classDef = classDef, button = button, icon = icon}
-    end
-    for ____, classDef in ipairs(getClassesForRole("DPS")) do
-        for ____, spec in ipairs(classDef.specs) do
-            local button = createButton(
-                nil,
-                rightPanel.frame,
-                {
-                    text = spec.label,
-                    width = 398,
-                    height = 58,
-                    accent = classColor(nil, classDef.id),
-                    onClick = function()
-                        currentClass = classDef.id
-                        selectSpec(nil, spec.id)
-                    end
-                }
-            )
-            local icon = createIcon(nil, button.frame, spec.icon, 34)
-            icon:SetPoint(
-                "LEFT",
-                button.frame,
-                "LEFT",
-                12,
-                0
-            )
-            button.label:ClearAllPoints()
-            button.label:SetPoint(
-                "LEFT",
-                button.frame,
-                "LEFT",
-                58,
-                7
-            )
-            button.label:SetPoint(
-                "RIGHT",
-                button.frame,
-                "RIGHT",
-                -12,
-                7
-            )
-            button.label:SetJustifyH("LEFT")
-            local sub = createText(
-                nil,
-                button.frame,
-                classDef.label,
-                "GameFontHighlightSmall",
-                theme.colors.muted
-            )
-            sub:SetPoint(
-                "LEFT",
-                button.frame,
-                "LEFT",
-                58,
-                -11
-            )
-            sub:SetWidth(300)
-            button.frame:Hide()
-            specTiles[#specTiles + 1] = {
-                classId = classDef.id,
-                classLabel = classDef.label,
-                spec = spec,
-                button = button,
-                icon = icon,
-                sub = sub
-            }
-        end
-    end
-    return {
-        frame = modal.frame,
-        open = function(self, role, initial, showCount)
-            if showCount == nil then
-                showCount = true
-            end
-            currentRole = role
-            currentClass = initial and initial.classId
-            currentSpec = initial and initial.specId
-            countEnabled = options.allowCount == true and showCount
-            if countEnabled then
-                countLabel:Show()
-                countStepper.frame:Show()
-            else
-                countLabel:Hide()
-                countStepper.frame:Hide()
-            end
-            countStepper:setValue(initial and initial.count or 1)
-            if currentClass ~= nil then
-                local validCurrent = false
-                for ____, spec in ipairs(getSpecsForRole(currentClass, currentRole)) do
-                    if spec.id == currentSpec then
-                        validCurrent = true
-                        break
-                    end
-                end
-                if not validCurrent then
-                    currentSpec = nil
-                end
-            end
-            refresh(nil)
-            modal:show()
-        end,
-        close = function(self)
-            modal:hide()
-        end
-    }
-end
-return ____exports
- end,
 ["widgets.ChoiceSelect"] = function(...) 
 --[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
 -- Lua Library inline imports
@@ -2302,6 +1554,834 @@ function ____exports.isTravelRetry(self)
         ) or 0) - 1 >= 0
     end
     return ____temp_55
+end
+return ____exports
+ end,
+["widgets.Modal"] = function(...) 
+--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+local ____exports = {}
+local ____Native = require("core.Native")
+local createPanel = ____Native.createPanel
+local createSolid = ____Native.createSolid
+local createText = ____Native.createText
+local ____Theme = require("theme.Theme")
+local theme = ____Theme.theme
+local ____Button = require("widgets.Button")
+local createButton = ____Button.createButton
+function ____exports.createModal(self, parent, width, height)
+    local scrim = CreateFrame("Frame", nil, parent)
+    scrim:SetAllPoints(parent)
+    scrim:SetFrameStrata("DIALOG")
+    scrim:SetFrameLevel(parent:GetFrameLevel() + 20)
+    scrim:EnableMouse(true)
+    local scrimTexture = createSolid(nil, scrim, theme.colors.scrim)
+    scrimTexture:SetAllPoints(scrim)
+    local panel = createPanel(nil, parent, theme.colors.background, theme.colors.borderStrong)
+    panel.frame:SetSize(width, height)
+    panel.frame:SetPoint(
+        "CENTER",
+        parent,
+        "CENTER",
+        0,
+        0
+    )
+    panel.frame:SetFrameStrata("DIALOG")
+    panel.frame:SetFrameLevel(scrim:GetFrameLevel() + 1)
+    local function hideModal(self)
+        panel.frame:Hide()
+        scrim:Hide()
+    end
+    local function showModal(self)
+        scrim:Show()
+        panel.frame:Show()
+    end
+    scrim:SetScript(
+        "OnMouseDown",
+        function() return hideModal(nil) end
+    )
+    local title = createText(nil, panel.frame, "Choose Build", "GameFontNormalLarge")
+    title:SetPoint(
+        "TOPLEFT",
+        panel.frame,
+        "TOPLEFT",
+        theme.spacing.lg,
+        -theme.spacing.lg
+    )
+    local subtitle = createText(
+        nil,
+        panel.frame,
+        "",
+        "GameFontHighlightSmall",
+        theme.colors.muted
+    )
+    subtitle:SetPoint(
+        "TOPLEFT",
+        title,
+        "BOTTOMLEFT",
+        0,
+        -theme.spacing.xs
+    )
+    subtitle:SetWidth(width - 100)
+    local close = createButton(
+        nil,
+        panel.frame,
+        {
+            text = "X",
+            width = 30,
+            height = 30,
+            accent = theme.colors.error,
+            onClick = function() return hideModal(nil) end
+        }
+    )
+    close.frame:SetPoint(
+        "TOPRIGHT",
+        panel.frame,
+        "TOPRIGHT",
+        -theme.spacing.md,
+        -theme.spacing.md
+    )
+    local content = CreateFrame("Frame", nil, panel.frame)
+    content:SetPoint(
+        "TOPLEFT",
+        panel.frame,
+        "TOPLEFT",
+        theme.spacing.lg,
+        -72
+    )
+    content:SetPoint(
+        "BOTTOMRIGHT",
+        panel.frame,
+        "BOTTOMRIGHT",
+        -theme.spacing.lg,
+        theme.spacing.lg
+    )
+    panel.frame:Hide()
+    scrim:Hide()
+    return {
+        frame = panel.frame,
+        content = content,
+        show = function(self)
+            showModal(nil)
+        end,
+        hide = function(self)
+            hideModal(nil)
+        end,
+        setTitle = function(self, value)
+            title:SetText(value)
+        end,
+        setSubtitle = function(self, value)
+            subtitle:SetText(value)
+        end
+    }
+end
+return ____exports
+ end,
+["widgets.Stepper"] = function(...) 
+--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+local ____exports = {}
+local ____Native = require("core.Native")
+local createText = ____Native.createText
+local ____Theme = require("theme.Theme")
+local theme = ____Theme.theme
+local ____Button = require("widgets.Button")
+local createButton = ____Button.createButton
+function ____exports.createNumberStepper(self, parent, initialMin, initialMax, initial, onChange)
+    local frame = CreateFrame("Frame", nil, parent)
+    frame:SetSize(126, theme.control.md)
+    local min = initialMin
+    local max = initialMax
+    local value = initial
+    local valueText = createText(
+        nil,
+        frame,
+        tostring(value),
+        "GameFontNormal"
+    )
+    valueText:SetPoint(
+        "CENTER",
+        frame,
+        "CENTER",
+        0,
+        0
+    )
+    valueText:SetJustifyH("CENTER")
+    local function update(self, next, notify)
+        if notify == nil then
+            notify = true
+        end
+        value = math.max(
+            min,
+            math.min(max, next)
+        )
+        valueText:SetText(tostring(value))
+        if notify and onChange ~= nil then
+            onChange(nil, value)
+        end
+    end
+    local minus = createButton(
+        nil,
+        frame,
+        {
+            text = "-",
+            width = theme.control.md,
+            height = theme.control.md,
+            onClick = function() return update(nil, value - 1) end
+        }
+    )
+    minus.frame:SetPoint(
+        "LEFT",
+        frame,
+        "LEFT",
+        0,
+        0
+    )
+    local plus = createButton(
+        nil,
+        frame,
+        {
+            text = "+",
+            width = theme.control.md,
+            height = theme.control.md,
+            onClick = function() return update(nil, value + 1) end
+        }
+    )
+    plus.frame:SetPoint(
+        "RIGHT",
+        frame,
+        "RIGHT",
+        0,
+        0
+    )
+    update(nil, initial, false)
+    return {
+        frame = frame,
+        getValue = function(self)
+            return value
+        end,
+        setValue = function(self, next, notify)
+            if notify == nil then
+                notify = false
+            end
+            update(nil, next, notify)
+        end,
+        setBounds = function(self, nextMin, nextMax)
+            min = nextMin
+            max = math.max(nextMin, nextMax)
+            update(nil, value, false)
+        end
+    }
+end
+return ____exports
+ end,
+["components.BuildSelector"] = function(...) 
+--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+local ____exports = {}
+local ____Native = require("core.Native")
+local classColor = ____Native.classColor
+local createIcon = ____Native.createIcon
+local createPanel = ____Native.createPanel
+local createText = ____Native.createText
+local setClassIcon = ____Native.setClassIcon
+local ____WotlkBuilds = require("data.WotlkBuilds")
+local getClass = ____WotlkBuilds.getClass
+local getClassesForRole = ____WotlkBuilds.getClassesForRole
+local getSpecsForRole = ____WotlkBuilds.getSpecsForRole
+local ____ComposerModel = require("model.ComposerModel")
+local ANY_SPEC_ID = ____ComposerModel.ANY_SPEC_ID
+local ____Theme = require("theme.Theme")
+local theme = ____Theme.theme
+local ____Button = require("widgets.Button")
+local createButton = ____Button.createButton
+local ____Modal = require("widgets.Modal")
+local createModal = ____Modal.createModal
+local ____Stepper = require("widgets.Stepper")
+local createNumberStepper = ____Stepper.createNumberStepper
+local function roleLabel(self, role)
+    if role == "TANK" then
+        return "Tank"
+    end
+    if role == "HEALER" then
+        return "Healer"
+    end
+    return "DPS"
+end
+local function roleAccent(self, role)
+    if role == "TANK" then
+        return theme.colors.tank
+    end
+    if role == "HEALER" then
+        return theme.colors.healer
+    end
+    return theme.colors.dps
+end
+function ____exports.createBuildSelector(self, parent, options)
+    local refresh, modal, leftPanel, rightPanel, specHint, emptySpec, summaryClassIcon, summarySpecIcon, summaryText, summarySub, currentRole, currentClass, currentSpec, apply, classTiles, specTiles, anySpecButton
+    function refresh(self)
+        local accent = roleAccent(nil, currentRole)
+        modal:setTitle(("Choose " .. roleLabel(nil, currentRole)) .. " Build")
+        modal:setSubtitle("Reserve only what you care about. Unspecified slots remain Auto-filled.")
+        leftPanel.outline:setColor(accent)
+        rightPanel.outline:setColor(accent)
+        local validClasses = getClassesForRole(currentRole)
+        local classIndex = 0
+        for ____, tile in ipairs(classTiles) do
+            local valid = false
+            for ____, classDef in ipairs(validClasses) do
+                if classDef.id == tile.classDef.id then
+                    valid = true
+                    break
+                end
+            end
+            if valid then
+                local column = classIndex % 2
+                local row = math.floor(classIndex / 2)
+                tile.button.frame:ClearAllPoints()
+                tile.button.frame:SetPoint(
+                    "TOPLEFT",
+                    leftPanel.frame,
+                    "TOPLEFT",
+                    14 + column * 204,
+                    -(64 + row * 58)
+                )
+                tile.button:setSelected(tile.classDef.id == currentClass)
+                tile.button.frame:Show()
+                classIndex = classIndex + 1
+            else
+                tile.button.frame:Hide()
+            end
+        end
+        local specIndex = 0
+        if currentClass ~= nil then
+            anySpecButton.frame:ClearAllPoints()
+            anySpecButton.frame:SetPoint(
+                "TOPLEFT",
+                rightPanel.frame,
+                "TOPLEFT",
+                18,
+                -64
+            )
+            anySpecButton:setSelected(currentSpec == ANY_SPEC_ID)
+            anySpecButton.frame:Show()
+            specIndex = 1
+        else
+            anySpecButton.frame:Hide()
+        end
+        for ____, tile in ipairs(specTiles) do
+            local visible = false
+            if currentClass ~= nil and tile.classId == currentClass then
+                for ____, validSpec in ipairs(getSpecsForRole(currentClass, currentRole)) do
+                    if validSpec.id == tile.spec.id then
+                        visible = true
+                        break
+                    end
+                end
+            end
+            if visible then
+                tile.button.frame:ClearAllPoints()
+                tile.button.frame:SetPoint(
+                    "TOPLEFT",
+                    rightPanel.frame,
+                    "TOPLEFT",
+                    18,
+                    -(64 + specIndex * 66)
+                )
+                tile.sub:SetText((tile.classLabel .. "  ·  ") .. roleLabel(nil, currentRole))
+                tile.button:setSelected(tile.spec.id == currentSpec)
+                tile.button.frame:Show()
+                specIndex = specIndex + 1
+            else
+                tile.button.frame:Hide()
+            end
+        end
+        if currentClass == nil then
+            specHint:SetText("Select a class first.")
+            emptySpec:Show()
+        else
+            local selectedClass = getClass(currentClass)
+            specHint:SetText(selectedClass == nil and "Choose a specialization." or ((selectedClass.label .. " specializations valid for ") .. roleLabel(nil, currentRole)) .. ".")
+            emptySpec:Hide()
+        end
+        local ____temp_0
+        if currentClass == nil then
+            ____temp_0 = nil
+        else
+            ____temp_0 = getClass(currentClass)
+        end
+        local selectedClass = ____temp_0
+        local selectedSpec
+        if currentClass ~= nil and currentSpec ~= nil and currentSpec ~= ANY_SPEC_ID then
+            for ____, spec in ipairs(getSpecsForRole(currentClass, currentRole)) do
+                if spec.id == currentSpec then
+                    selectedSpec = spec
+                    break
+                end
+            end
+        end
+        if selectedClass ~= nil then
+            setClassIcon(nil, summaryClassIcon, selectedClass.id)
+        else
+            summaryClassIcon:SetTexture("InterfaceIconsINV_Misc_QuestionMark")
+            summaryClassIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        end
+        if selectedClass ~= nil and currentSpec == ANY_SPEC_ID then
+            summarySpecIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+            summarySpecIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            summaryText:SetText(selectedClass.label .. " · Any valid spec")
+            summarySub:SetText(("Class locked; Composer auto-selects the best " .. string.lower(roleLabel(nil, currentRole))) .. " spec.")
+            apply:setEnabled(true)
+        elseif selectedClass ~= nil and selectedSpec ~= nil then
+            summarySpecIcon:SetTexture(selectedSpec.icon)
+            summarySpecIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            summaryText:SetText((selectedSpec.label .. " ") .. selectedClass.label)
+            summarySub:SetText(roleLabel(nil, currentRole) .. " build selected")
+            apply:setEnabled(true)
+        else
+            summarySpecIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+            summarySpecIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            summaryText:SetText(currentClass == nil and "Choose a class" or "Choose a specialization")
+            summarySub:SetText("Pick an exact spec, or use Any valid specialization to lock only the class.")
+            apply:setEnabled(false)
+        end
+    end
+    modal = createModal(nil, parent, 960, 590)
+    leftPanel = createPanel(nil, modal.content, theme.colors.surface, theme.colors.border)
+    leftPanel.frame:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        0,
+        0
+    )
+    leftPanel.frame:SetSize(438, 382)
+    rightPanel = createPanel(nil, modal.content, theme.colors.surface, theme.colors.border)
+    rightPanel.frame:SetPoint(
+        "TOPRIGHT",
+        modal.content,
+        "TOPRIGHT",
+        0,
+        0
+    )
+    rightPanel.frame:SetSize(438, 382)
+    local classTitle = createText(
+        nil,
+        leftPanel.frame,
+        "CHOOSE CLASS",
+        "GameFontNormalSmall",
+        theme.colors.muted
+    )
+    classTitle:SetPoint(
+        "TOPLEFT",
+        leftPanel.frame,
+        "TOPLEFT",
+        14,
+        -14
+    )
+    local classHint = createText(
+        nil,
+        leftPanel.frame,
+        "Only classes that can fill this role are shown.",
+        "GameFontHighlightSmall",
+        theme.colors.muted
+    )
+    classHint:SetPoint(
+        "TOPLEFT",
+        classTitle,
+        "BOTTOMLEFT",
+        0,
+        -5
+    )
+    local specTitle = createText(
+        nil,
+        rightPanel.frame,
+        "CHOOSE SPECIALIZATION",
+        "GameFontNormalSmall",
+        theme.colors.muted
+    )
+    specTitle:SetPoint(
+        "TOPLEFT",
+        rightPanel.frame,
+        "TOPLEFT",
+        14,
+        -14
+    )
+    specHint = createText(
+        nil,
+        rightPanel.frame,
+        "Select a class first.",
+        "GameFontHighlightSmall",
+        theme.colors.muted
+    )
+    specHint:SetPoint(
+        "TOPLEFT",
+        specTitle,
+        "BOTTOMLEFT",
+        0,
+        -5
+    )
+    emptySpec = createText(
+        nil,
+        rightPanel.frame,
+        "Choose a class on the left. This panel will then show only specializations valid for the selected role.",
+        "GameFontHighlight",
+        theme.colors.muted
+    )
+    emptySpec:SetPoint(
+        "TOPLEFT",
+        rightPanel.frame,
+        "TOPLEFT",
+        18,
+        -78
+    )
+    emptySpec:SetWidth(390)
+    emptySpec:SetJustifyV("TOP")
+    local summary = createPanel(nil, modal.content, theme.colors.surfaceRaised, theme.colors.border)
+    summary.frame:SetPoint(
+        "BOTTOMLEFT",
+        modal.content,
+        "BOTTOMLEFT",
+        0,
+        0
+    )
+    summary.frame:SetPoint(
+        "BOTTOMRIGHT",
+        modal.content,
+        "BOTTOMRIGHT",
+        0,
+        0
+    )
+    summary.frame:SetHeight(94)
+    local selectedLabel = createText(
+        nil,
+        summary.frame,
+        "SELECTED BUILD",
+        "GameFontNormalSmall",
+        theme.colors.muted
+    )
+    selectedLabel:SetPoint(
+        "TOPLEFT",
+        summary.frame,
+        "TOPLEFT",
+        14,
+        -12
+    )
+    summaryClassIcon = summary.frame:CreateTexture(nil, "ARTWORK")
+    summaryClassIcon:SetSize(40, 40)
+    summaryClassIcon:SetPoint(
+        "BOTTOMLEFT",
+        summary.frame,
+        "BOTTOMLEFT",
+        14,
+        12
+    )
+    summaryClassIcon:SetTexture("InterfaceIconsINV_Misc_QuestionMark")
+    summaryClassIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    summarySpecIcon = summary.frame:CreateTexture(nil, "ARTWORK")
+    summarySpecIcon:SetSize(40, 40)
+    summarySpecIcon:SetPoint(
+        "LEFT",
+        summaryClassIcon,
+        "RIGHT",
+        6,
+        0
+    )
+    summarySpecIcon:SetTexture("InterfaceIconsINV_Misc_QuestionMark")
+    summarySpecIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    summaryText = createText(nil, summary.frame, "Choose a class and specialization", "GameFontNormal")
+    summaryText:SetPoint(
+        "LEFT",
+        summarySpecIcon,
+        "RIGHT",
+        12,
+        8
+    )
+    summaryText:SetWidth(330)
+    summarySub = createText(
+        nil,
+        summary.frame,
+        "Role-filtered choices only.",
+        "GameFontHighlightSmall",
+        theme.colors.muted
+    )
+    summarySub:SetPoint(
+        "TOPLEFT",
+        summaryText,
+        "BOTTOMLEFT",
+        0,
+        -5
+    )
+    summarySub:SetWidth(330)
+    currentRole = "DPS"
+    local countEnabled = options.allowCount == true
+    local countLabel = createText(
+        nil,
+        summary.frame,
+        "COUNT",
+        "GameFontNormalSmall",
+        theme.colors.muted
+    )
+    countLabel:SetPoint(
+        "TOPRIGHT",
+        summary.frame,
+        "TOPRIGHT",
+        -194,
+        -14
+    )
+    local countStepper = createNumberStepper(
+        nil,
+        summary.frame,
+        1,
+        options.maxCount or 40,
+        1
+    )
+    countStepper.frame:SetPoint(
+        "BOTTOMRIGHT",
+        summary.frame,
+        "BOTTOMRIGHT",
+        -154,
+        12
+    )
+    apply = createButton(
+        nil,
+        summary.frame,
+        {
+            text = "Apply Build",
+            width = 136,
+            height = 40,
+            accent = theme.colors.primary,
+            onClick = function()
+                if currentClass == nil or currentSpec == nil then
+                    return
+                end
+                options:onApply({
+                    role = currentRole,
+                    classId = currentClass,
+                    specId = currentSpec,
+                    count = countEnabled and countStepper:getValue() or 1
+                })
+                modal:hide()
+            end
+        }
+    )
+    apply.frame:SetPoint(
+        "BOTTOMRIGHT",
+        summary.frame,
+        "BOTTOMRIGHT",
+        -12,
+        12
+    )
+    classTiles = {}
+    specTiles = {}
+    anySpecButton = createButton(
+        nil,
+        rightPanel.frame,
+        {
+            text = "Any valid specialization",
+            width = 398,
+            height = 58,
+            accent = theme.colors.primary,
+            onClick = function()
+                if currentClass == nil then
+                    return
+                end
+                currentSpec = ANY_SPEC_ID
+                refresh(nil)
+            end
+        }
+    )
+    local anySpecIcon = createIcon(nil, anySpecButton.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 34)
+    anySpecIcon:SetPoint(
+        "LEFT",
+        anySpecButton.frame,
+        "LEFT",
+        12,
+        0
+    )
+    anySpecButton.label:ClearAllPoints()
+    anySpecButton.label:SetPoint(
+        "LEFT",
+        anySpecButton.frame,
+        "LEFT",
+        58,
+        7
+    )
+    anySpecButton.label:SetPoint(
+        "RIGHT",
+        anySpecButton.frame,
+        "RIGHT",
+        -12,
+        7
+    )
+    anySpecButton.label:SetJustifyH("LEFT")
+    local anySpecSub = createText(
+        nil,
+        anySpecButton.frame,
+        "Lock this class and let Composer choose its best valid spec.",
+        "GameFontHighlightSmall",
+        theme.colors.muted
+    )
+    anySpecSub:SetPoint(
+        "LEFT",
+        anySpecButton.frame,
+        "LEFT",
+        58,
+        -11
+    )
+    anySpecSub:SetWidth(320)
+    anySpecButton.frame:Hide()
+    local function selectClass(self, classId)
+        if currentClass ~= classId then
+            currentSpec = nil
+        end
+        currentClass = classId
+        refresh(nil)
+    end
+    local function selectSpec(self, specId)
+        currentSpec = specId
+        refresh(nil)
+    end
+    for ____, classDef in ipairs(getClassesForRole("DPS")) do
+        local button = createButton(
+            nil,
+            leftPanel.frame,
+            {
+                text = classDef.label,
+                width = 194,
+                height = 52,
+                accent = classColor(nil, classDef.id),
+                onClick = function() return selectClass(nil, classDef.id) end
+            }
+        )
+        local icon = button.frame:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(32, 32)
+        icon:SetPoint(
+            "LEFT",
+            button.frame,
+            "LEFT",
+            10,
+            0
+        )
+        setClassIcon(nil, icon, classDef.id)
+        button.label:ClearAllPoints()
+        button.label:SetPoint(
+            "LEFT",
+            button.frame,
+            "LEFT",
+            52,
+            0
+        )
+        button.label:SetPoint(
+            "RIGHT",
+            button.frame,
+            "RIGHT",
+            -10,
+            0
+        )
+        button.label:SetJustifyH("LEFT")
+        classTiles[#classTiles + 1] = {classDef = classDef, button = button, icon = icon}
+    end
+    for ____, classDef in ipairs(getClassesForRole("DPS")) do
+        for ____, spec in ipairs(classDef.specs) do
+            local button = createButton(
+                nil,
+                rightPanel.frame,
+                {
+                    text = spec.label,
+                    width = 398,
+                    height = 58,
+                    accent = classColor(nil, classDef.id),
+                    onClick = function()
+                        currentClass = classDef.id
+                        selectSpec(nil, spec.id)
+                    end
+                }
+            )
+            local icon = createIcon(nil, button.frame, spec.icon, 34)
+            icon:SetPoint(
+                "LEFT",
+                button.frame,
+                "LEFT",
+                12,
+                0
+            )
+            button.label:ClearAllPoints()
+            button.label:SetPoint(
+                "LEFT",
+                button.frame,
+                "LEFT",
+                58,
+                7
+            )
+            button.label:SetPoint(
+                "RIGHT",
+                button.frame,
+                "RIGHT",
+                -12,
+                7
+            )
+            button.label:SetJustifyH("LEFT")
+            local sub = createText(
+                nil,
+                button.frame,
+                classDef.label,
+                "GameFontHighlightSmall",
+                theme.colors.muted
+            )
+            sub:SetPoint(
+                "LEFT",
+                button.frame,
+                "LEFT",
+                58,
+                -11
+            )
+            sub:SetWidth(300)
+            button.frame:Hide()
+            specTiles[#specTiles + 1] = {
+                classId = classDef.id,
+                classLabel = classDef.label,
+                spec = spec,
+                button = button,
+                icon = icon,
+                sub = sub
+            }
+        end
+    end
+    return {
+        frame = modal.frame,
+        open = function(self, role, initial, showCount)
+            if showCount == nil then
+                showCount = true
+            end
+            currentRole = role
+            currentClass = initial and initial.classId
+            currentSpec = initial and initial.specId
+            countEnabled = options.allowCount == true and showCount
+            if countEnabled then
+                countLabel:Show()
+                countStepper.frame:Show()
+            else
+                countLabel:Hide()
+                countStepper.frame:Hide()
+            end
+            countStepper:setValue(initial and initial.count or 1)
+            if currentClass ~= nil then
+                local validCurrent = false
+                for ____, spec in ipairs(getSpecsForRole(currentClass, currentRole)) do
+                    if spec.id == currentSpec then
+                        validCurrent = true
+                        break
+                    end
+                end
+                if not validCurrent and currentSpec ~= ANY_SPEC_ID then
+                    currentSpec = nil
+                end
+            end
+            refresh(nil)
+            modal:show()
+        end,
+        close = function(self)
+            modal:hide()
+        end
+    }
 end
 return ____exports
  end,
