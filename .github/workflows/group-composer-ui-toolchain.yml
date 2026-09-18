@@ -63,7 +63,7 @@ jobs:
         if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
         run: |
           set -euo pipefail
-          if git diff --quiet -- client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua; then
+          if [[ -z "$(git status --porcelain -- client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua)" ]]; then
             echo 'Generated Group Composer UI is already current.'
           else
             git config user.name 'github-actions[bot]'
