@@ -535,3 +535,8 @@ assert 'column = classIndex % 5' in SELECTOR, "Build selector lost its class-car
 assert 'Any valid spec' in SELECTOR and 'Use this build' in SELECTOR
 assert 'activeEdge' in BUTTON, "Buttons lost the modern selected-state edge"
 assert 'headerAccent' in MODAL, "Modals lost the redesigned header treatment"
+assert 'const peopleModal = ModalUI.createModal(frame, 980, 700);' in MODERN
+assert 'const optionsModal = ModalUI.createModal(frame, 900, 650);' in MODERN
+assert 'column * 430' in MODERN and 'rowIndex * 84' in MODERN, "Options regressed to the old vertical settings list"
+assert 'const pinBuilder = Native.createPanel' in MODERN, "Humans & Pins lost the dedicated pin-composer card"
+assert 'panel.frame.SetSize(438, 76);' in MODERN, "Template cards regressed to the cramped legacy row height"
