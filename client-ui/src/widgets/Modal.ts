@@ -29,32 +29,20 @@ export function createModal(parent: WoWFrame, width: number, height: number): Mo
     panel.frame.SetFrameLevel(scrim.GetFrameLevel() + 1);
     createChrome(panel.frame, theme.colors.chrome, true);
 
-    function hideModal(): void {
-        panel.frame.Hide();
-        scrim.Hide();
-    }
-
-    function showModal(): void {
-        scrim.Show();
-        panel.frame.Show();
-    }
-
+    function hideModal(): void { panel.frame.Hide(); scrim.Hide(); }
+    function showModal(): void { scrim.Show(); panel.frame.Show(); }
     scrim.SetScript("OnMouseDown", () => hideModal());
 
     const headerBg = createSolid(panel.frame, theme.colors.surface, "BACKGROUND");
-    headerBg.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 3, -3);
-    headerBg.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -3, -3);
-    headerBg.SetHeight(66);
-    const headerTint = createSolid(panel.frame, [0.02, 0.09, 0.15, 0.72], "ARTWORK");
-    headerTint.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 4, -4);
-    headerTint.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -4, -4);
-    headerTint.SetHeight(34);
-    const headerAccent = createSolid(panel.frame, theme.colors.primary, "ARTWORK");
-    headerAccent.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 4, -4);
-    headerAccent.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -4, -4);
-    headerAccent.SetHeight(2);
+    headerBg.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 2, -2);
+    headerBg.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -2, -2);
+    headerBg.SetHeight(64);
+    const headerDivider = createSolid(panel.frame, theme.colors.borderStrong, "ARTWORK");
+    headerDivider.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 2, -66);
+    headerDivider.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -2, -66);
+    headerDivider.SetHeight(1);
 
-    const headerIcon = createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 46, theme.colors.chrome);
+    const headerIcon = createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 44, theme.colors.borderStrong);
     headerIcon.frame.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 16, -11);
     headerIcon.frame.Hide();
 
@@ -62,24 +50,22 @@ export function createModal(parent: WoWFrame, width: number, height: number): Mo
     title.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", theme.spacing.lg, -12);
     const subtitle = createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
     subtitle.SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3);
-    subtitle.SetWidth(width - 130);
+    subtitle.SetWidth(width - 150);
 
-    const close = createButton(panel.frame, {
-        text: "X",
-        width: 34,
-        height: 34,
-        accent: theme.colors.error,
-        emphasis: true,
-        onClick: () => hideModal(),
-    });
+    const close = createButton(panel.frame, { text: "X", width: 34, height: 34, accent: theme.colors.error, onClick: () => hideModal() });
     close.frame.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -theme.spacing.md, -theme.spacing.md);
 
     const content = CreateFrame("Frame", undefined, panel.frame);
-    content.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", theme.spacing.lg, -80);
+    content.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", theme.spacing.lg, -78);
     content.SetPoint("BOTTOMRIGHT", panel.frame, "BOTTOMRIGHT", -theme.spacing.lg, theme.spacing.lg);
 
     panel.frame.Hide();
     scrim.Hide();
+
+    function resetTitleAnchor(withIcon: boolean): void {
+        title.ClearAllPoints();
+        title.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", withIcon ? 72 : theme.spacing.lg, -12);
+    }
 
     return {
         frame: panel.frame,
@@ -91,27 +77,23 @@ export function createModal(parent: WoWFrame, width: number, height: number): Mo
         setHeaderIcon(path?: string): void {
             if (path === undefined || path === "") {
                 headerIcon.frame.Hide();
-                title.ClearAllPoints();
-                title.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", theme.spacing.lg, -12);
+                resetTitleAnchor(false);
                 return;
             }
             headerIcon.icon.SetTexture(path);
             headerIcon.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
             headerIcon.frame.Show();
-            title.ClearAllPoints();
-            title.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 74, -12);
+            resetTitleAnchor(true);
         },
         setHeaderRole(role?: string): void {
             if (role === undefined || role === "") {
                 headerIcon.frame.Hide();
-                title.ClearAllPoints();
-                title.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", theme.spacing.lg, -12);
+                resetTitleAnchor(false);
                 return;
             }
             setRoleIcon(headerIcon.icon, role);
             headerIcon.frame.Show();
-            title.ClearAllPoints();
-            title.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 74, -12);
+            resetTitleAnchor(true);
         },
     };
 }

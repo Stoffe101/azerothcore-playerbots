@@ -536,7 +536,7 @@ export function createModernDashboard(): Dashboard {
         roleTint.SetAllPoints(card.frame);
         card.frame.SetPoint("TOPLEFT", quickView, "TOPLEFT", i * 312, -12);
 
-        const roleBadge = Native.createFramedRoleIcon(card.frame, role, 54, Model.roleAccent(role));
+        const roleBadge = Native.createFramedRoleIcon(card.frame, role, 44, Model.roleAccent(role));
         roleBadge.frame.SetPoint("TOP", card.frame, "TOP", -46, -16);
         const label = Native.createText(card.frame, Model.roleLabel(role).toUpperCase(), "GameFontNormalLarge", Model.roleAccent(role));
         label.SetPoint("LEFT", roleBadge.frame, "RIGHT", 12, 0);
@@ -656,7 +656,7 @@ export function createModernDashboard(): Dashboard {
 
         exactScroll.bindWheel(panel.frame);
         exactScroll.bindWheel(add.frame);
-        exactSections[role] = { panel, count, add, empty, rows: [] as any[] };
+        exactSections[role] = { panel, count, add, empty, rowsByKey: {} as Record<string, any>, rowKeys: [] as string[] };
     }
 
     const groupCards: any[] = [];
@@ -1557,9 +1557,17 @@ export function createModernDashboard(): Dashboard {
                 buildSelector.open(roleCopy, { role: roleCopy, count: 1 }, true);
             });
 
-            for (const old of section.rows) old.panel.frame.Hide();
+            // WoW frames are not clipped to parent bounds. Reconcile every pooled row explicitly
+            // so deleting an aggregated exact build can never leave a ghost painted below the section.
+            for (const key of section.rowKeys as string[]) {
+                const pooled = section.rowsByKey[key];
+                if (pooled !== undefined) {
+                    pooled.panel.frame.Hide();
+                    pooled.panel.frame.ClearAllPoints();
+                }
+            }
 
-            const sectionHeight = rows.length === 0 ? 112 : 76 + rows.length * 64;
+            const sectionHeight = rows.length === 0 ? 86 : 62 + rows.length * 56;
             section.panel.frame.ClearAllPoints();
             section.panel.frame.SetPoint("TOPLEFT", exactScroll.content, "TOPLEFT", 0, -cursor);
             section.panel.frame.SetSize(906, sectionHeight);
@@ -1569,10 +1577,11 @@ export function createModernDashboard(): Dashboard {
 
             for (let i = 0; i < rows.length; i += 1) {
                 const build = rows[i];
-                let widgets = section.rows[i];
+                const rowKey = String(build.classId) + ":" + String(build.specId);
+                let widgets = section.rowsByKey[rowKey];
                 if (widgets === undefined) {
                     const panel = Native.createPanel(section.panel.frame, theme.colors.surfaceRaised, theme.colors.border);
-                    panel.frame.SetSize(870, 56);
+                    panel.frame.SetSize(870, 48);
 
                     const classBadge = Native.createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 38, theme.colors.borderStrong);
                     classBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
@@ -1599,11 +1608,12 @@ export function createModernDashboard(): Dashboard {
                     exactScroll.bindWheel(edit.frame);
                     exactScroll.bindWheel(remove.frame);
                     widgets = { panel, classBadge, classIcon, specBadge, specIcon, name, count, edit, remove };
-                    section.rows[i] = widgets;
+                    section.rowsByKey[rowKey] = widgets;
+                    section.rowKeys.push(rowKey);
                 }
 
                 widgets.panel.frame.ClearAllPoints();
-                widgets.panel.frame.SetPoint("TOPLEFT", section.panel.frame, "TOPLEFT", 18, -(66 + i * 64));
+                widgets.panel.frame.SetPoint("TOPLEFT", section.panel.frame, "TOPLEFT", 18, -(58 + i * 56));
                 Native.setClassIcon(widgets.classIcon, build.classId);
                 widgets.classBadge.outline.setColor(Native.classColor(build.classId));
                 widgets.specBadge.outline.setColor(theme.colors.primary);
@@ -1622,7 +1632,11 @@ export function createModernDashboard(): Dashboard {
                         count: build.count,
                     }, true);
                 });
-                widgets.remove.frame.SetScript("OnMouseDown", () => Model.removeRequiredBuild(roleCopy, indexCopy));
+                widgets.remove.frame.SetScript("OnMouseDown", () => {
+                    widgets.panel.frame.Hide();
+                    widgets.panel.frame.ClearAllPoints();
+                    Model.removeRequiredBuild(roleCopy, indexCopy);
+                });
                 widgets.panel.frame.Show();
             }
 

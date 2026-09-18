@@ -1,4 +1,4 @@
-import { createPanel, createSolid, withAlpha } from "../core/Native";
+import { createSolid, withAlpha } from "../core/Native";
 import { theme } from "../theme/Theme";
 import { createButton } from "./Button";
 
@@ -18,106 +18,78 @@ export function createScrollList(parent: WoWFrame, width: number, height: number
     frame.SetSize(width, height);
     frame.EnableMouseWheel(true);
 
+    const railWidth = 14;
     const scroll = CreateFrame("ScrollFrame", undefined, frame);
     scroll.SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0);
-    scroll.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -22, 0);
-    scroll.SetSize(Math.max(1, width - 22), height);
+    scroll.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -railWidth - 2, 0);
+    scroll.SetSize(Math.max(1, width - railWidth - 2), height);
     scroll.EnableMouseWheel(true);
 
     const content = CreateFrame("Frame", undefined, scroll);
-    content.SetWidth(Math.max(1, width - 22));
+    content.SetWidth(Math.max(1, width - railWidth - 2));
     content.SetHeight(height);
     content.EnableMouseWheel(true);
     scroll.SetScrollChild(content);
 
-    const rail = createPanel(frame, theme.colors.surfaceDeep, theme.colors.border);
-    rail.frame.SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0);
-    rail.frame.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0);
-    rail.frame.SetWidth(18);
-    rail.frame.EnableMouseWheel(true);
+    const rail = CreateFrame("Frame", undefined, frame);
+    rail.SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0);
+    rail.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0);
+    rail.SetWidth(railWidth);
+    rail.EnableMouseWheel(true);
+    const railBg = createSolid(rail, withAlpha(theme.colors.surfaceDeep, 0.72));
+    railBg.SetAllPoints(rail);
 
     let contentHeight = height;
     let offset = 0;
-
-    function maxOffset(): number {
-        return Math.max(0, contentHeight - height);
-    }
-
-    function clamp(value: number): number {
-        return Math.max(0, Math.min(maxOffset(), value));
-    }
-
+    function maxOffset(): number { return Math.max(0, contentHeight - height); }
+    function clamp(value: number): number { return Math.max(0, Math.min(maxOffset(), value)); }
     function scrollBy(delta: number): void {
         offset = clamp(offset + delta);
         scroll.SetVerticalScroll(offset);
         refreshRail();
     }
-
-    function wheel(this: void, _target: WoWFrame, delta: number): void {
-        scrollBy(Number(delta) > 0 ? -72 : 72);
-    }
-
+    function wheel(this: void, _target: WoWFrame, delta: number): void { scrollBy(Number(delta) > 0 ? -64 : 64); }
     function bindWheel(target: WoWFrame): void {
         target.EnableMouseWheel(true);
         target.SetScript("OnMouseWheel", wheel);
     }
 
-    const up = createButton(rail.frame, { text: "^", width: 18, height: 22, accent: theme.colors.primary, onClick: () => scrollBy(-72) });
-    up.frame.SetPoint("TOP", rail.frame, "TOP", 0, 0);
-    const down = createButton(rail.frame, { text: "v", width: 18, height: 22, accent: theme.colors.primary, onClick: () => scrollBy(72) });
-    down.frame.SetPoint("BOTTOM", rail.frame, "BOTTOM", 0, 0);
+    const up = createButton(rail, { text: "^", width: railWidth, height: 18, accent: theme.colors.primary, onClick: () => scrollBy(-64) });
+    up.frame.SetPoint("TOP", rail, "TOP", 0, 0);
+    const down = createButton(rail, { text: "v", width: railWidth, height: 18, accent: theme.colors.primary, onClick: () => scrollBy(64) });
+    down.frame.SetPoint("BOTTOM", rail, "BOTTOM", 0, 0);
 
-    const trackGlow = createSolid(rail.frame, withAlpha(theme.colors.primary, 0.11), "ARTWORK");
-    trackGlow.SetPoint("TOP", up.frame, "BOTTOM", 0, -4);
-    trackGlow.SetPoint("BOTTOM", down.frame, "TOP", 0, 4);
-    trackGlow.SetWidth(7);
-
-    const track = createSolid(rail.frame, theme.colors.borderStrong, "ARTWORK");
-    track.SetPoint("TOP", up.frame, "BOTTOM", 0, -4);
-    track.SetPoint("BOTTOM", down.frame, "TOP", 0, 4);
-    track.SetWidth(3);
-
-    const thumb = createSolid(rail.frame, theme.colors.primary, "OVERLAY");
-    thumb.SetWidth(8);
+    const track = createSolid(rail, theme.colors.borderStrong, "ARTWORK");
+    track.SetPoint("TOP", up.frame, "BOTTOM", 0, -3);
+    track.SetPoint("BOTTOM", down.frame, "TOP", 0, 3);
+    track.SetWidth(2);
+    const thumb = createSolid(rail, theme.colors.primary, "OVERLAY");
+    thumb.SetWidth(5);
     thumb.SetHeight(24);
-    const thumbCore = createSolid(rail.frame, theme.colors.highlight, "OVERLAY");
-    thumbCore.SetWidth(3);
-    thumbCore.SetHeight(20);
 
     function refreshRail(): void {
         const range = maxOffset();
         if (range <= 0) {
             offset = 0;
             scroll.SetVerticalScroll(0);
-            rail.frame.Hide();
+            rail.Hide();
             return;
         }
-
-        rail.frame.Show();
+        rail.Show();
         offset = clamp(offset);
         scroll.SetVerticalScroll(offset);
-
-        const trackHeight = Math.max(28, height - 52);
-        const thumbHeight = Math.max(24, Math.floor(trackHeight * Math.min(1, height / contentHeight)));
+        const trackHeight = Math.max(28, height - 42);
+        const thumbHeight = Math.max(22, Math.floor(trackHeight * Math.min(1, height / contentHeight)));
         const travel = Math.max(0, trackHeight - thumbHeight);
         const ratio = range > 0 ? offset / range : 0;
-
         thumb.SetHeight(thumbHeight);
         thumb.ClearAllPoints();
-        thumb.SetPoint("TOP", up.frame, "BOTTOM", 0, -(4 + travel * ratio));
-        thumbCore.SetHeight(Math.max(14, thumbHeight - 4));
-        thumbCore.ClearAllPoints();
-        thumbCore.SetPoint("CENTER", thumb, "CENTER", 0, 0);
+        thumb.SetPoint("TOP", up.frame, "BOTTOM", 0, -(3 + travel * ratio));
         up.setEnabled(offset > 0);
         down.setEnabled(offset < range);
     }
 
-    bindWheel(frame);
-    bindWheel(scroll);
-    bindWheel(content);
-    bindWheel(rail.frame);
-    bindWheel(up.frame);
-    bindWheel(down.frame);
+    bindWheel(frame); bindWheel(scroll); bindWheel(content); bindWheel(rail); bindWheel(up.frame); bindWheel(down.frame);
 
     return {
         frame,
@@ -130,21 +102,9 @@ export function createScrollList(parent: WoWFrame, width: number, height: number
             refreshRail();
         },
         scrollBy: (delta: number): void => scrollBy(delta),
-        scrollToTop(): void {
-            offset = 0;
-            scroll.SetVerticalScroll(0);
-            refreshRail();
-        },
-        scrollToBottom(): void {
-            offset = maxOffset();
-            scroll.SetVerticalScroll(offset);
-            refreshRail();
-        },
+        scrollToTop(): void { offset = 0; scroll.SetVerticalScroll(0); refreshRail(); },
+        scrollToBottom(): void { offset = maxOffset(); scroll.SetVerticalScroll(offset); refreshRail(); },
         bindWheel: (target: WoWFrame): void => bindWheel(target),
-        reset(): void {
-            offset = 0;
-            scroll.SetVerticalScroll(0);
-            refreshRail();
-        },
+        reset(): void { offset = 0; scroll.SetVerticalScroll(0); refreshRail(); },
     };
 }
