@@ -1386,7 +1386,7 @@ export function createModernDashboard(): Dashboard {
 
     const dashboard: Dashboard = {
         frame,
-        show(): void {
+        show: () => {
             ChoiceUI.closeChoicePopup();
             applyScale();
             frame.Show();
@@ -1394,11 +1394,11 @@ export function createModernDashboard(): Dashboard {
             Model.requestAnchors();
             Model.requestStatus();
         },
-        hide(): void {
+        hide: () => {
             ChoiceUI.closeChoicePopup();
             frame.Hide();
         },
-        toggle(): void {
+        toggle: () => {
             if (frame.IsShown()) dashboard.hide();
             else dashboard.show();
         },
