@@ -246,10 +246,10 @@ assert "sRandomPlayerbotMgr.addclassCache" in build_candidates, (
     "Composer no longer exposes dedicated AddClass quick capacity"
 )
 assert "c.managed = true;" in build_candidates and "c.needsPreparation = true;" in build_candidates
-assert "Reserve::AvailableTo(master->GetGUID().GetCounter(), candidate.guid)" in build, (
+assert "Reserve::AvailableTo(master->GetGUID().GetCounter(), candidate.guid)" in PLANNER, (
     "Planner can still select a bot leased to another Composer owner"
 )
-assert "candidate.alreadyGrouped" in build and "Group Composer will not remove existing party/raid bots automatically" in build, (
+assert "candidate.alreadyGrouped" in PLANNER and "Group Composer will not remove existing party/raid bots automatically" in PLANNER, (
     "Existing live-group bots are no longer sticky hard anchors"
 )
 
