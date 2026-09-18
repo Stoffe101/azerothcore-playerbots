@@ -7,6 +7,7 @@ assert(GroupComposerModernUI.version == "0.1.0", "unexpected modern UI API versi
 local tanks = GroupComposerModernUI.getClassesForRole("TANK")
 local healers = GroupComposerModernUI.getClassesForRole("HEALER")
 local dps = GroupComposerModernUI.getClassesForRole("DPS")
+print("selector counts", #tanks, #healers, #dps)
 assert(#tanks == 4, "tank class filter must expose exactly four project-supported tank classes")
 assert(#healers == 4, "healer class filter must expose exactly four healer classes")
 assert(#dps == 10, "DPS class filter must expose all ten project-supported classes")
