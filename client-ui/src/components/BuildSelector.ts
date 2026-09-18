@@ -1,4 +1,4 @@
-import { createIcon, createPanel, createText, setClassIcon } from "../core/Native";
+import { classColor, createIcon, createPanel, createText, setClassIcon } from "../core/Native";
 import { ClassDefinition, ClassId, getClass, getClassesForRole, getSpecsForRole, Role, SpecDefinition } from "../data/WotlkBuilds";
 import { theme } from "../theme/Theme";
 import { createButton, UIButton } from "../widgets/Button";
@@ -20,7 +20,7 @@ export interface BuildSelectorOptions {
 
 export interface BuildSelector {
     readonly frame: WoWFrame;
-    open(role: Role, initial?: Partial<BuildSelection>): void;
+    open(role: Role, initial?: Partial<BuildSelection>, showCount?: boolean): void;
     close(): void;
 }
 
@@ -74,10 +74,16 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     let currentRole: Role = "DPS";
     let currentClass: ClassId | undefined;
     let currentSpec: number | undefined;
+    let countEnabled = options.allowCount === true;
 
+    const countLabel = createText(summary.frame, "COUNT", "GameFontNormalSmall", theme.colors.muted);
+    countLabel.SetPoint("RIGHT", summary.frame, "RIGHT", -204, 13);
     const countStepper = createNumberStepper(summary.frame, 1, options.maxCount ?? 40, 1);
-    countStepper.frame.SetPoint("RIGHT", summary.frame, "RIGHT", -170, 0);
-    if (options.allowCount !== true) countStepper.frame.Hide();
+    countStepper.frame.SetPoint("RIGHT", summary.frame, "RIGHT", -170, -8);
+    if (options.allowCount !== true) {
+        countLabel.Hide();
+        countStepper.frame.Hide();
+    }
 
     const apply = createButton(summary.frame, {
         text: "Apply Build", width: 136, height: 38, accent: theme.colors.primary,
@@ -87,7 +93,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
                 role: currentRole,
                 classId: currentClass,
                 specId: currentSpec,
-                count: options.allowCount === true ? countStepper.getValue() : 1,
+                count: countEnabled ? countStepper.getValue() : 1,
             });
             modal.hide();
         },
@@ -111,6 +117,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     for (const classDef of getClassesForRole("DPS")) {
         const button = createButton(leftPanel.frame, {
             text: classDef.label, width: 86, height: 82,
+            accent: classColor(classDef.id),
             onClick: () => selectClass(classDef.id),
         });
         const icon = button.frame.CreateTexture(undefined, "ARTWORK");
@@ -127,6 +134,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         for (const spec of classDef.specs) {
             const button = createButton(rightPanel.frame, {
                 text: spec.label, width: 104, height: 94,
+                accent: classColor(classDef.id),
                 onClick: () => { currentClass = classDef.id; selectSpec(spec.id); },
             });
             const icon = createIcon(button.frame, spec.icon, 44);
@@ -207,10 +215,18 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
 
     return {
         frame: modal.frame,
-        open(role: Role, initial?: Partial<BuildSelection>): void {
+        open(role: Role, initial?: Partial<BuildSelection>, showCount = true): void {
             currentRole = role;
             currentClass = initial?.classId;
             currentSpec = initial?.specId;
+            countEnabled = options.allowCount === true && showCount;
+            if (countEnabled) {
+                countLabel.Show();
+                countStepper.frame.Show();
+            } else {
+                countLabel.Hide();
+                countStepper.frame.Hide();
+            }
             countStepper.setValue(initial?.count ?? 1);
 
             if (currentClass !== undefined) {
