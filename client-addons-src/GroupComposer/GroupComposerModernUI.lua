@@ -1147,11 +1147,17 @@ function ____exports.closeChoicePopup(self)
     closeActive(nil)
 end
 function ____exports.createChoiceSelect(self, parent, options)
-    local refreshRows, refresh, trigger, popup, maxVisible, offset, rows
+    local refreshRows, refresh, trigger, popup, maxVisible, offset, rows, scrollHint
     function refreshRows(self)
         local items = options:getItems()
         local visible = math.min(maxVisible, #items)
-        popup.frame:SetHeight(math.max(12, visible * 32 + 8))
+        local hasMore = #items > maxVisible
+        popup.frame:SetHeight(math.max(12, visible * 32 + 8 + (hasMore and 22 or 0)))
+        if hasMore then
+            scrollHint:Show()
+        else
+            scrollHint:Hide()
+        end
         do
             local i = 0
             while i < maxVisible do
@@ -1255,6 +1261,21 @@ function ____exports.createChoiceSelect(self, parent, options)
     maxVisible = options.maxVisible or 9
     offset = 0
     rows = {}
+    scrollHint = createText(
+        nil,
+        popup.frame,
+        "Mouse wheel for more",
+        "GameFontHighlightSmall",
+        theme.colors.muted
+    )
+    scrollHint:SetPoint(
+        "BOTTOMLEFT",
+        popup.frame,
+        "BOTTOMLEFT",
+        10,
+        6
+    )
+    scrollHint:Hide()
     local function open(self)
         closeActive(nil)
         offset = 0
@@ -2352,6 +2373,8 @@ function ____exports.createTextInput(self, parent, width, height)
     local edit = CreateFrame("EditBox", nil, panel.frame)
     edit:SetAllPoints(panel.frame)
     edit:SetAutoFocus(false)
+    edit:SetFontObject(GameFontHighlightSmall)
+    edit:SetTextColor(theme.colors.text[1], theme.colors.text[2], theme.colors.text[3], 1)
     edit:SetTextInsets(10, 10, 0, 0)
     return {
         frame = panel.frame,
@@ -2702,7 +2725,7 @@ function ____exports.createModernDashboard(self)
             while i < #builtins do
                 local row = builtinRows[i + 1]
                 if row == nil then
-                    local panel = Native:createPanel(builtinScroll.content, theme.colors.background, theme.colors.border)
+                    local panel = Native:createPanel(builtinScroll.content, theme.colors.surfaceRaised, theme.colors.border)
                     panel.frame:SetSize(382, 40)
                     local name = Native:createText(panel.frame, "", "GameFontHighlightSmall")
                     name:SetPoint(
@@ -2754,7 +2777,7 @@ function ____exports.createModernDashboard(self)
             while i < #customs do
                 local row = customRows[i + 1]
                 if row == nil then
-                    local panel = Native:createPanel(customScroll.content, theme.colors.background, theme.colors.border)
+                    local panel = Native:createPanel(customScroll.content, theme.colors.surfaceRaised, theme.colors.border)
                     panel.frame:SetSize(382, 40)
                     local name = Native:createText(panel.frame, "", "GameFontHighlightSmall")
                     name:SetPoint(
@@ -2826,7 +2849,7 @@ function ____exports.createModernDashboard(self)
                 local human = list[i + 1]
                 local row = humanRowsModal[i + 1]
                 if row == nil then
-                    local panel = Native:createPanel(humanScroll.content, theme.colors.background, theme.colors.border)
+                    local panel = Native:createPanel(humanScroll.content, theme.colors.surfaceRaised, theme.colors.border)
                     panel.frame:SetSize(812, 42)
                     local icon = panel.frame:CreateTexture(nil, "ARTWORK")
                     icon:SetSize(26, 26)
@@ -2934,7 +2957,7 @@ function ____exports.createModernDashboard(self)
                 local pin = pins[i + 1]
                 local row = pinRows[i + 1]
                 if row == nil then
-                    local panel = Native:createPanel(pinScroll.content, theme.colors.background, theme.colors.border)
+                    local panel = Native:createPanel(pinScroll.content, theme.colors.surfaceRaised, theme.colors.border)
                     panel.frame:SetSize(812, 40)
                     local name = Native:createText(panel.frame, "", "GameFontHighlightSmall")
                     name:SetPoint(
@@ -3364,6 +3387,7 @@ function ____exports.createModernDashboard(self)
         0,
         -6
     )
+    activityName:SetWidth(320)
     local activitySub = Native:createText(activity.frame, "", "GameFontHighlightSmall", theme.colors.muted)
     activitySub:SetPoint(
         "TOPLEFT",
@@ -3372,6 +3396,7 @@ function ____exports.createModernDashboard(self)
         0,
         -4
     )
+    activitySub:SetWidth(320)
     local activityFieldLabel = Native:createText(activity.frame, "DUNGEON", "GameFontNormalSmall", theme.colors.muted)
     activityFieldLabel:SetPoint(
         "TOPLEFT",
@@ -3493,6 +3518,7 @@ function ____exports.createModernDashboard(self)
         10,
         0
     )
+    humanName:SetWidth(360)
     local humanSub = Native:createText(humanPanel.frame, "Real players are locked anchors.", "GameFontHighlightSmall", theme.colors.muted)
     humanSub:SetPoint(
         "TOPLEFT",
@@ -3501,6 +3527,7 @@ function ____exports.createModernDashboard(self)
         0,
         -5
     )
+    humanSub:SetWidth(430)
     local yourRoleLabel = Native:createText(humanPanel.frame, "YOUR ROLE", "GameFontNormalSmall", theme.colors.muted)
     yourRoleLabel:SetPoint(
         "TOPRIGHT",
@@ -4735,7 +4762,7 @@ function ____exports.createModernDashboard(self)
         local i = 0
         while i < #optionDefs do
             local def = optionDefs[i + 1]
-            local row = Native:createPanel(optionsModal.content, theme.colors.background, theme.colors.border)
+            local row = Native:createPanel(optionsModal.content, theme.colors.surfaceRaised, theme.colors.border)
             row.frame:SetPoint(
                 "TOPLEFT",
                 optionsModal.content,
