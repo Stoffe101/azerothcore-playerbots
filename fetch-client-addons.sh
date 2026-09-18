@@ -81,7 +81,7 @@ if [[ ! -f "$GC_MODERN" ]]; then
   echo "Pull the latest test/group-composer-v4 branch or run ./build-client-ui.sh --sync." >&2
   exit 1
 fi
-if ! grep -q '^generated/GroupComposerModernUI.lua$' "$GC_TOC"; then
+if ! grep -Fxq 'generated\\GroupComposerModernUI.lua' "$GC_TOC"; then
   echo "ERROR: Group Composer TOC is not pointing at the modern generated UI." >&2
   exit 1
 fi
