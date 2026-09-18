@@ -672,3 +672,9 @@ assert '"CHOOSE A CLASS"' in SELECTOR and '"CHOOSE A SPECIALIZATION"' in SELECTO
 assert "UI-ActionButton-Border" in SELECTOR and "classStepGlow" in SELECTOR and "specStepGlow" in SELECTOR
 assert '"Let Composer choose for me"' in SELECTOR
 assert '"Select a specialization for your " + (selectedClass?.label ?? "selected class") + " build."' in SELECTOR
+
+
+# Count/item-level steppers use the compact target-style stacked arrows.
+assert 'frame.SetSize(110, 42)' in STEPPER
+assert 'plus.frame.SetPoint("TOPRIGHT"' in STEPPER and 'minus.frame.SetPoint("BOTTOMRIGHT"' in STEPPER
+assert 'text: "^"' in STEPPER and 'text: "v"' in STEPPER
