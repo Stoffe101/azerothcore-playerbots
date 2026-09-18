@@ -727,7 +727,7 @@ export function createModernDashboard(): Dashboard {
         for (let i = 0; i < builtins.length; i += 1) {
             let row = builtinRows[i];
             if (row === undefined) {
-                const panel = Native.createPanel(builtinScroll.content, theme.colors.background, theme.colors.border);
+                const panel = Native.createPanel(builtinScroll.content, theme.colors.surfaceRaised, theme.colors.border);
                 panel.frame.SetSize(382, 40);
                 const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
                 name.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
@@ -755,7 +755,7 @@ export function createModernDashboard(): Dashboard {
         for (let i = 0; i < customs.length; i += 1) {
             let row = customRows[i];
             if (row === undefined) {
-                const panel = Native.createPanel(customScroll.content, theme.colors.background, theme.colors.border);
+                const panel = Native.createPanel(customScroll.content, theme.colors.surfaceRaised, theme.colors.border);
                 panel.frame.SetSize(382, 40);
                 const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
                 name.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
@@ -866,7 +866,7 @@ export function createModernDashboard(): Dashboard {
             const human = list[i];
             let row = humanRowsModal[i];
             if (row === undefined) {
-                const panel = Native.createPanel(humanScroll.content, theme.colors.background, theme.colors.border);
+                const panel = Native.createPanel(humanScroll.content, theme.colors.surfaceRaised, theme.colors.border);
                 panel.frame.SetSize(812, 42);
                 const icon = panel.frame.CreateTexture(undefined, "ARTWORK");
                 icon.SetSize(26, 26);
@@ -922,7 +922,7 @@ export function createModernDashboard(): Dashboard {
             const pin = pins[i];
             let row = pinRows[i];
             if (row === undefined) {
-                const panel = Native.createPanel(pinScroll.content, theme.colors.background, theme.colors.border);
+                const panel = Native.createPanel(pinScroll.content, theme.colors.surfaceRaised, theme.colors.border);
                 panel.frame.SetSize(812, 40);
                 const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
                 name.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
@@ -975,7 +975,7 @@ export function createModernDashboard(): Dashboard {
 
     for (let i = 0; i < optionDefs.length; i += 1) {
         const def = optionDefs[i];
-        const row = Native.createPanel(optionsModal.content, theme.colors.background, theme.colors.border);
+        const row = Native.createPanel(optionsModal.content, theme.colors.surfaceRaised, theme.colors.border);
         row.frame.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", 0, -(i * 62));
         row.frame.SetPoint("RIGHT", optionsModal.content, "RIGHT", 0, 0);
         row.frame.SetHeight(52);
