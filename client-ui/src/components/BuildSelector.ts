@@ -24,8 +24,18 @@ export interface BuildSelector {
     close(): void;
 }
 
-interface ClassTile { readonly classDef: ClassDefinition; readonly button: UIButton; }
-interface SpecTile { readonly classId: ClassId; readonly spec: SpecDefinition; readonly button: UIButton; }
+interface ClassTile {
+    readonly classDef: ClassDefinition;
+    readonly button: UIButton;
+    readonly icon: WoWTexture;
+}
+
+interface SpecTile {
+    readonly classId: ClassId;
+    readonly spec: SpecDefinition;
+    readonly button: UIButton;
+    readonly icon: WoWTexture;
+}
 
 function roleLabel(role: Role): string {
     if (role === "TANK") return "Tank";
@@ -40,51 +50,62 @@ function roleAccent(role: Role) {
 }
 
 export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOptions): BuildSelector {
-    const modal = createModal(parent, 820, 500);
+    const modal = createModal(parent, 960, 590);
 
     const leftPanel = createPanel(modal.content, theme.colors.surface, theme.colors.border);
     leftPanel.frame.SetPoint("TOPLEFT", modal.content, "TOPLEFT", 0, 0);
-    leftPanel.frame.SetSize(390, 330);
+    leftPanel.frame.SetSize(438, 382);
 
     const rightPanel = createPanel(modal.content, theme.colors.surface, theme.colors.border);
     rightPanel.frame.SetPoint("TOPRIGHT", modal.content, "TOPRIGHT", 0, 0);
-    rightPanel.frame.SetSize(374, 330);
+    rightPanel.frame.SetSize(438, 382);
 
-    const classTitle = createText(leftPanel.frame, "CLASS", "GameFontNormalSmall", theme.colors.muted);
-    classTitle.SetPoint("TOPLEFT", leftPanel.frame, "TOPLEFT", theme.spacing.md, -theme.spacing.md);
-    const specTitle = createText(rightPanel.frame, "SPECIALIZATION", "GameFontNormalSmall", theme.colors.muted);
-    specTitle.SetPoint("TOPLEFT", rightPanel.frame, "TOPLEFT", theme.spacing.md, -theme.spacing.md);
-    const specEmpty = createText(
+    const classTitle = createText(leftPanel.frame, "CHOOSE CLASS", "GameFontNormalSmall", theme.colors.muted);
+    classTitle.SetPoint("TOPLEFT", leftPanel.frame, "TOPLEFT", 14, -14);
+    const classHint = createText(leftPanel.frame, "Only classes that can fill this role are shown.", "GameFontHighlightSmall", theme.colors.muted);
+    classHint.SetPoint("TOPLEFT", classTitle, "BOTTOMLEFT", 0, -5);
+
+    const specTitle = createText(rightPanel.frame, "CHOOSE SPECIALIZATION", "GameFontNormalSmall", theme.colors.muted);
+    specTitle.SetPoint("TOPLEFT", rightPanel.frame, "TOPLEFT", 14, -14);
+    const specHint = createText(rightPanel.frame, "Select a class first.", "GameFontHighlightSmall", theme.colors.muted);
+    specHint.SetPoint("TOPLEFT", specTitle, "BOTTOMLEFT", 0, -5);
+
+    const emptySpec = createText(
         rightPanel.frame,
-        "Choose a class to see only the specs that can fill this role.",
-        "GameFontHighlightSmall",
+        "Choose a class on the left. This panel will then show only specializations valid for the selected role.",
+        "GameFontHighlight",
         theme.colors.muted,
     );
-    specEmpty.SetPoint("TOPLEFT", rightPanel.frame, "TOPLEFT", theme.spacing.md, -54);
-    specEmpty.SetWidth(330);
-    specEmpty.SetJustifyV("TOP");
+    emptySpec.SetPoint("TOPLEFT", rightPanel.frame, "TOPLEFT", 18, -78);
+    emptySpec.SetWidth(390);
+    emptySpec.SetJustifyV("TOP");
 
-    const summary = createPanel(modal.content, theme.colors.surfaceRaised, theme.colors.borderStrong);
+    const summary = createPanel(modal.content, theme.colors.surfaceRaised, theme.colors.border);
     summary.frame.SetPoint("BOTTOMLEFT", modal.content, "BOTTOMLEFT", 0, 0);
     summary.frame.SetPoint("BOTTOMRIGHT", modal.content, "BOTTOMRIGHT", 0, 0);
-    summary.frame.SetHeight(78);
+    summary.frame.SetHeight(94);
+
+    const selectedLabel = createText(summary.frame, "SELECTED BUILD", "GameFontNormalSmall", theme.colors.muted);
+    selectedLabel.SetPoint("TOPLEFT", summary.frame, "TOPLEFT", 14, -12);
 
     const summaryClassIcon = summary.frame.CreateTexture(undefined, "ARTWORK");
-    summaryClassIcon.SetSize(38, 38);
-    summaryClassIcon.SetPoint("LEFT", summary.frame, "LEFT", theme.spacing.md, 0);
-    summaryClassIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
+    summaryClassIcon.SetSize(40, 40);
+    summaryClassIcon.SetPoint("BOTTOMLEFT", summary.frame, "BOTTOMLEFT", 14, 12);
+    summaryClassIcon.SetTexture("Interface\Icons\INV_Misc_QuestionMark");
     summaryClassIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
 
-    const summaryIcon = summary.frame.CreateTexture(undefined, "ARTWORK");
-    summaryIcon.SetSize(38, 38);
-    summaryIcon.SetPoint("LEFT", summaryClassIcon, "RIGHT", 6, 0);
-    summaryIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
-    summaryIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+    const summarySpecIcon = summary.frame.CreateTexture(undefined, "ARTWORK");
+    summarySpecIcon.SetSize(40, 40);
+    summarySpecIcon.SetPoint("LEFT", summaryClassIcon, "RIGHT", 6, 0);
+    summarySpecIcon.SetTexture("Interface\Icons\INV_Misc_QuestionMark");
+    summarySpecIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
 
     const summaryText = createText(summary.frame, "Choose a class and specialization", "GameFontNormal");
-    summaryText.SetPoint("LEFT", summaryIcon, "RIGHT", theme.spacing.md, 8);
-    const summarySub = createText(summary.frame, "Only legal choices for the selected role are shown.", "GameFontHighlightSmall", theme.colors.muted);
-    summarySub.SetPoint("TOPLEFT", summaryText, "BOTTOMLEFT", 0, -4);
+    summaryText.SetPoint("LEFT", summarySpecIcon, "RIGHT", 12, 8);
+    summaryText.SetWidth(330);
+    const summarySub = createText(summary.frame, "Role-filtered choices only.", "GameFontHighlightSmall", theme.colors.muted);
+    summarySub.SetPoint("TOPLEFT", summaryText, "BOTTOMLEFT", 0, -5);
+    summarySub.SetWidth(330);
 
     let currentRole: Role = "DPS";
     let currentClass: ClassId | undefined;
@@ -92,16 +113,15 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     let countEnabled = options.allowCount === true;
 
     const countLabel = createText(summary.frame, "COUNT", "GameFontNormalSmall", theme.colors.muted);
-    countLabel.SetPoint("RIGHT", summary.frame, "RIGHT", -204, 13);
+    countLabel.SetPoint("TOPRIGHT", summary.frame, "TOPRIGHT", -194, -14);
     const countStepper = createNumberStepper(summary.frame, 1, options.maxCount ?? 40, 1);
-    countStepper.frame.SetPoint("RIGHT", summary.frame, "RIGHT", -170, -8);
-    if (options.allowCount !== true) {
-        countLabel.Hide();
-        countStepper.frame.Hide();
-    }
+    countStepper.frame.SetPoint("BOTTOMRIGHT", summary.frame, "BOTTOMRIGHT", -154, 12);
 
     const apply = createButton(summary.frame, {
-        text: "Apply Build", width: 136, height: 38, accent: theme.colors.primary,
+        text: "Apply Build",
+        width: 136,
+        height: 40,
+        accent: theme.colors.primary,
         onClick: () => {
             if (currentClass === undefined || currentSpec === undefined) return;
             options.onApply({
@@ -113,14 +133,14 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             modal.hide();
         },
     });
-    apply.frame.SetPoint("RIGHT", summary.frame, "RIGHT", -theme.spacing.md, 0);
+    apply.frame.SetPoint("BOTTOMRIGHT", summary.frame, "BOTTOMRIGHT", -12, 12);
 
     const classTiles: ClassTile[] = [];
     const specTiles: SpecTile[] = [];
 
     function selectClass(classId: ClassId): void {
+        if (currentClass !== classId) currentSpec = undefined;
         currentClass = classId;
-        currentSpec = undefined;
         refresh();
     }
 
@@ -129,57 +149,89 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         refresh();
     }
 
+    // DPS contains every WotLK class that can ever appear in Composer, so this produces one reusable pool.
     for (const classDef of getClassesForRole("DPS")) {
         const button = createButton(leftPanel.frame, {
-            text: classDef.label, width: 86, height: 82,
+            text: classDef.label,
+            width: 194,
+            height: 52,
             accent: classColor(classDef.id),
             onClick: () => selectClass(classDef.id),
         });
+
         const icon = button.frame.CreateTexture(undefined, "ARTWORK");
-        icon.SetSize(38, 38);
-        icon.SetPoint("TOP", button.frame, "TOP", 0, -8);
+        icon.SetSize(32, 32);
+        icon.SetPoint("LEFT", button.frame, "LEFT", 10, 0);
         setClassIcon(icon, classDef.id);
+
         button.label.ClearAllPoints();
-        button.label.SetPoint("BOTTOM", button.frame, "BOTTOM", 0, 8);
-        button.label.SetJustifyH("CENTER");
-        classTiles.push({ classDef, button });
+        button.label.SetPoint("LEFT", button.frame, "LEFT", 52, 0);
+        button.label.SetPoint("RIGHT", button.frame, "RIGHT", -10, 0);
+        button.label.SetJustifyH("LEFT");
+
+        classTiles.push({ classDef, button, icon });
     }
 
     for (const classDef of getClassesForRole("DPS")) {
         for (const spec of classDef.specs) {
             const button = createButton(rightPanel.frame, {
-                text: spec.label, width: 104, height: 94,
+                text: spec.label,
+                width: 398,
+                height: 58,
                 accent: classColor(classDef.id),
-                onClick: () => { currentClass = classDef.id; selectSpec(spec.id); },
+                onClick: () => {
+                    currentClass = classDef.id;
+                    selectSpec(spec.id);
+                },
             });
-            const icon = createIcon(button.frame, spec.icon, 44);
-            icon.SetPoint("TOP", button.frame, "TOP", 0, -10);
+
+            const icon = createIcon(button.frame, spec.icon, 34);
+            icon.SetPoint("LEFT", button.frame, "LEFT", 12, 0);
+
             button.label.ClearAllPoints();
-            button.label.SetPoint("BOTTOM", button.frame, "BOTTOM", 0, 10);
-            button.label.SetJustifyH("CENTER");
+            button.label.SetPoint("LEFT", button.frame, "LEFT", 58, 7);
+            button.label.SetPoint("RIGHT", button.frame, "RIGHT", -12, 7);
+            button.label.SetJustifyH("LEFT");
+
+            const sub = createText(button.frame, classDef.label + "  ·  " + roleLabel(spec.role), "GameFontHighlightSmall", theme.colors.muted);
+            sub.SetPoint("LEFT", button.frame, "LEFT", 58, -11);
+            sub.SetWidth(300);
+
             button.frame.Hide();
-            specTiles.push({ classId: classDef.id, spec, button });
+            specTiles.push({ classId: classDef.id, spec, button, icon });
         }
     }
 
     function refresh(): void {
+        const accent = roleAccent(currentRole);
         modal.setTitle("Choose " + roleLabel(currentRole) + " Build");
-        modal.setSubtitle("Pick a class on the left, then a valid " + roleLabel(currentRole).toLowerCase() + " spec on the right.");
+        modal.setSubtitle("Class first, specialization second. Invalid choices for this role are hidden.");
+
+        leftPanel.outline.setColor(accent);
+        rightPanel.outline.setColor(accent);
 
         const validClasses = getClassesForRole(currentRole);
         let classIndex = 0;
         for (const tile of classTiles) {
             let valid = false;
-            for (const classDef of validClasses) if (classDef.id === tile.classDef.id) { valid = true; break; }
+            for (const classDef of validClasses) {
+                if (classDef.id === tile.classDef.id) {
+                    valid = true;
+                    break;
+                }
+            }
+
             if (valid) {
-                const column = classIndex % 4;
-                const row = Math.floor(classIndex / 4);
+                const column = classIndex % 2;
+                const row = Math.floor(classIndex / 2);
                 tile.button.frame.ClearAllPoints();
-                tile.button.frame.SetPoint("TOPLEFT", leftPanel.frame, "TOPLEFT", theme.spacing.md + column * 92, -(42 + row * 90));
+                tile.button.frame.SetPoint("TOPLEFT", leftPanel.frame, "TOPLEFT", 14 + column * 204, -(64 + row * 58));
                 tile.button.setSelected(tile.classDef.id === currentClass);
                 tile.button.frame.Show();
                 classIndex += 1;
-            } else tile.button.frame.Hide();
+            } else {
+                tile.button.frame.Hide();
+            }
         }
 
         let specIndex = 0;
@@ -187,57 +239,64 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             let visible = false;
             if (currentClass !== undefined && tile.classId === currentClass) {
                 for (const validSpec of getSpecsForRole(currentClass, currentRole)) {
-                    if (validSpec.id === tile.spec.id) { visible = true; break; }
+                    if (validSpec.id === tile.spec.id) {
+                        visible = true;
+                        break;
+                    }
                 }
             }
+
             if (visible) {
-                const column = specIndex % 3;
-                const row = Math.floor(specIndex / 3);
                 tile.button.frame.ClearAllPoints();
-                tile.button.frame.SetPoint("TOPLEFT", rightPanel.frame, "TOPLEFT", theme.spacing.md + column * 116, -(48 + row * 104));
+                tile.button.frame.SetPoint("TOPLEFT", rightPanel.frame, "TOPLEFT", 18, -(64 + specIndex * 66));
                 tile.button.setSelected(tile.spec.id === currentSpec);
                 tile.button.frame.Show();
                 specIndex += 1;
-            } else tile.button.frame.Hide();
+            } else {
+                tile.button.frame.Hide();
+            }
         }
 
-        if (currentClass === undefined) specEmpty.Show();
-        else specEmpty.Hide();
+        if (currentClass === undefined) {
+            specHint.SetText("Select a class first.");
+            emptySpec.Show();
+        } else {
+            const selectedClass = getClass(currentClass);
+            specHint.SetText(selectedClass === undefined ? "Choose a specialization." : selectedClass.label + " specializations valid for " + roleLabel(currentRole) + ".");
+            emptySpec.Hide();
+        }
 
         const selectedClass = currentClass === undefined ? undefined : getClass(currentClass);
         let selectedSpec: SpecDefinition | undefined;
         if (currentClass !== undefined && currentSpec !== undefined) {
             for (const spec of getSpecsForRole(currentClass, currentRole)) {
-                if (spec.id === currentSpec) { selectedSpec = spec; break; }
+                if (spec.id === currentSpec) {
+                    selectedSpec = spec;
+                    break;
+                }
             }
         }
 
         if (selectedClass !== undefined) {
             setClassIcon(summaryClassIcon, selectedClass.id);
         } else {
-            summaryClassIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
+            summaryClassIcon.SetTexture("Interface\Icons\INV_Misc_QuestionMark");
             summaryClassIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
         }
 
         if (selectedClass !== undefined && selectedSpec !== undefined) {
-            summaryIcon.SetTexture(selectedSpec.icon);
-            summaryIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+            summarySpecIcon.SetTexture(selectedSpec.icon);
+            summarySpecIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
             summaryText.SetText(selectedSpec.label + " " + selectedClass.label);
             summarySub.SetText(roleLabel(currentRole) + " build selected");
             apply.setEnabled(true);
         } else {
-            summaryIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
-            summaryIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
-            summaryIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
-            summaryIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+            summarySpecIcon.SetTexture("Interface\Icons\INV_Misc_QuestionMark");
+            summarySpecIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
             summaryText.SetText(currentClass === undefined ? "Choose a class" : "Choose a specialization");
-            summarySub.SetText("Only legal " + roleLabel(currentRole) + " choices are shown.");
+            summarySub.SetText("Only legal " + roleLabel(currentRole).toLowerCase() + " builds are shown.");
             apply.setEnabled(false);
         }
-
-        const accent = roleAccent(currentRole);
-        leftPanel.outline.setColor(accent);
-        rightPanel.outline.setColor(accent);
     }
 
     return {
@@ -247,6 +306,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             currentClass = initial?.classId;
             currentSpec = initial?.specId;
             countEnabled = options.allowCount === true && showCount;
+
             if (countEnabled) {
                 countLabel.Show();
                 countStepper.frame.Show();
@@ -259,7 +319,10 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             if (currentClass !== undefined) {
                 let validCurrent = false;
                 for (const spec of getSpecsForRole(currentClass, currentRole)) {
-                    if (spec.id === currentSpec) { validCurrent = true; break; }
+                    if (spec.id === currentSpec) {
+                        validCurrent = true;
+                        break;
+                    }
                 }
                 if (!validCurrent) currentSpec = undefined;
             }
@@ -267,6 +330,8 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             refresh();
             modal.show();
         },
-        close(): void { modal.hide(); },
+        close(): void {
+            modal.hide();
+        },
     };
 }
