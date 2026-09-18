@@ -2427,17 +2427,26 @@ function ____exports.createScrollList(self, parent, width, height)
     content:SetWidth(width)
     content:SetHeight(height)
     scroll:SetScrollChild(content)
+    local function clamp(self, value)
+        return math.max(
+            0,
+            math.min(
+                scroll:GetVerticalScrollRange(),
+                value
+            )
+        )
+    end
+    local function scrollBy(self, delta)
+        scroll:SetVerticalScroll(clamp(
+            nil,
+            scroll:GetVerticalScroll() + delta
+        ))
+    end
     scroll:SetScript(
         "OnMouseWheel",
         function(____, _frame, delta)
-            local next = scroll:GetVerticalScroll() - __TS__Number(delta) * 38
-            scroll:SetVerticalScroll(math.max(
-                0,
-                math.min(
-                    scroll:GetVerticalScrollRange(),
-                    next
-                )
-            ))
+            local direction = __TS__Number(delta) > 0 and -1 or 1
+            scrollBy(nil, direction * 76)
         end
     )
     return {
@@ -2445,10 +2454,17 @@ function ____exports.createScrollList(self, parent, width, height)
         content = content,
         setContentHeight = function(self, value)
             content:SetHeight(math.max(height, value))
-            scroll:SetVerticalScroll(math.min(
-                scroll:GetVerticalScroll(),
-                scroll:GetVerticalScrollRange()
+            scroll:SetVerticalScroll(clamp(
+                nil,
+                scroll:GetVerticalScroll()
             ))
+        end,
+        scrollBy = function(____, delta) return scrollBy(nil, delta) end,
+        scrollToTop = function(self)
+            scroll:SetVerticalScroll(0)
+        end,
+        scrollToBottom = function(self)
+            scroll:SetVerticalScroll(scroll:GetVerticalScrollRange())
         end,
         reset = function(self)
             scroll:SetVerticalScroll(0)
