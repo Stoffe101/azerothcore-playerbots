@@ -161,6 +161,10 @@ export function createModernDashboard(): Dashboard {
     header.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1);
     header.frame.SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -1);
     header.frame.SetHeight(64);
+    const headerAccent = Native.createSolid(header.frame, theme.colors.primary, "OVERLAY");
+    headerAccent.SetPoint("TOPLEFT", header.frame, "TOPLEFT", 0, 0);
+    headerAccent.SetPoint("TOPRIGHT", header.frame, "TOPRIGHT", 0, 0);
+    headerAccent.SetHeight(2);
 
     const mark = Native.createPanel(header.frame, theme.colors.surfaceRaised, theme.colors.primary);
     mark.frame.SetSize(38, 38);
@@ -188,7 +192,7 @@ export function createModernDashboard(): Dashboard {
     sidebar.frame.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 34);
     sidebar.frame.SetWidth(168);
 
-    const navTitle = Native.createText(sidebar.frame, "PLAN", "GameFontNormalSmall", theme.colors.muted);
+    const navTitle = Native.createText(sidebar.frame, "COMPOSE", "GameFontNormalSmall", theme.colors.muted);
     navTitle.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -20);
 
     const navDungeon = ButtonUI.createButton(sidebar.frame, { text: "Dungeon", width: 136, height: 42, accent: theme.colors.primary, onClick: () => Model.setMode("DUNGEON") });
@@ -202,7 +206,7 @@ export function createModernDashboard(): Dashboard {
     navRaid.label.SetPoint("LEFT", navRaid.frame, "LEFT", 14, 0);
     navRaid.label.SetJustifyH("LEFT");
 
-    const manageTitle = Native.createText(sidebar.frame, "MANAGE", "GameFontNormalSmall", theme.colors.muted);
+    const manageTitle = Native.createText(sidebar.frame, "TOOLS", "GameFontNormalSmall", theme.colors.muted);
     manageTitle.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -164);
 
     let showTemplates = () => {};
@@ -225,7 +229,7 @@ export function createModernDashboard(): Dashboard {
     navOptions.label.SetPoint("LEFT", navOptions.frame, "LEFT", 14, 0);
     navOptions.label.SetJustifyH("LEFT");
 
-    const sideHint = Native.createText(sidebar.frame, "Humans stay locked.\nExact builds only affect bot slots.", "GameFontHighlightSmall", theme.colors.muted);
+    const sideHint = Native.createText(sidebar.frame, "Humans stay locked.\nSpecific builds reserve bot slots; everything else stays Auto.", "GameFontHighlightSmall", theme.colors.muted);
     sideHint.SetPoint("BOTTOMLEFT", sidebar.frame, "BOTTOMLEFT", 16, 18);
     sideHint.SetWidth(136);
     sideHint.SetJustifyV("TOP");
@@ -597,7 +601,7 @@ export function createModernDashboard(): Dashboard {
     }
 
     // Status ----------------------------------------------------------------
-    const statusTitle = Native.createText(status.frame, "STATUS", "GameFontNormalSmall", theme.colors.muted);
+    const statusTitle = Native.createText(status.frame, "ROSTER STATUS", "GameFontNormalSmall", theme.colors.muted);
     statusTitle.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -16);
 
     const phaseCard = Native.createPanel(status.frame, theme.colors.surfaceRaised, theme.colors.border);
@@ -747,6 +751,10 @@ export function createModernDashboard(): Dashboard {
             if (row === undefined) {
                 const panel = Native.createPanel(builtinScroll.content, theme.colors.surfaceRaised, theme.colors.border);
                 panel.frame.SetSize(438, 76);
+                const accent = Native.createSolid(panel.frame, theme.colors.primary, "ARTWORK");
+                accent.SetWidth(3);
+                accent.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 0, 0);
+                accent.SetPoint("BOTTOMLEFT", panel.frame, "BOTTOMLEFT", 0, 0);
                 const name = Native.createText(panel.frame, "", "GameFontHighlight");
                 name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 10, -10);
                 name.SetWidth(310);
@@ -782,6 +790,10 @@ export function createModernDashboard(): Dashboard {
             if (row === undefined) {
                 const panel = Native.createPanel(customScroll.content, theme.colors.surfaceRaised, theme.colors.border);
                 panel.frame.SetSize(438, 76);
+                const accent = Native.createSolid(panel.frame, theme.colors.warning, "ARTWORK");
+                accent.SetWidth(3);
+                accent.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 0, 0);
+                accent.SetPoint("BOTTOMLEFT", panel.frame, "BOTTOMLEFT", 0, 0);
                 const name = Native.createText(panel.frame, "", "GameFontHighlight");
                 name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 10, -10);
                 name.SetWidth(250);
