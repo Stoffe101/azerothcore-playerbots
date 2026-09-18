@@ -41,7 +41,7 @@ local function DefaultsFor(mode, size)
             balanceRange = true,
             avoidDuplicateClasses = false,
             minimumItemLevel = 0,
-            queueAfterAssemble = false,
+            queueAfterAssemble = true,
         },
         preferences = { TANK = {}, HEALER = {}, DPS = {} },
         humanRoles = {},
