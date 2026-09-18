@@ -74,8 +74,8 @@ const SELECTOR_CLASS_ORDER: readonly ClassId[] = [
     "SHAMAN", "MAGE", "WARLOCK", "DRUID", "PRIEST",
 ];
 
-function selectorClassesForRole(role: Role): ClassDefinition[] {
-    const valid = getClassesForRole(role);
+function selectorClassesForRole(role: Role, compatible?: ClassDefinition[]): ClassDefinition[] {
+    const valid = compatible ?? getClassesForRole(role);
     const result: ClassDefinition[] = [];
     for (const classId of SELECTOR_CLASS_ORDER) {
         for (const classDef of valid) {
@@ -348,7 +348,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         summaryRoleText.SetText(roleLabel(currentRole));
         summaryRoleText.SetTextColor(accent[0], accent[1], accent[2], 1);
 
-        const validClasses = selectorClassesForRole(currentRole);
+        const validClasses = selectorClassesForRole(currentRole, getClassesForRole(currentRole));
         let classIndex = 0;
         for (const tile of classTiles) {
             let valid = false;
