@@ -4286,8 +4286,9 @@ function ____exports.createModernDashboard(self)
         {
             text = "Close",
             width = 100,
-            height = 32,
+            height = 34,
             accent = theme.colors.error,
+            emphasis = true,
             onClick = function() return frame:Hide() end
         }
     )
@@ -5400,16 +5401,16 @@ function ____exports.createModernDashboard(self)
                         0,
                         0
                     )
-                    local icon = row:CreateTexture(nil, "ARTWORK")
-                    icon:SetSize(22, 22)
-                    icon:SetPoint(
+                    local iconBadge = Native:createFramedIcon(row, "Interface\\Icons\\INV_Misc_QuestionMark", 26, theme.colors.border)
+                    iconBadge.frame:SetPoint(
                         "LEFT",
                         row,
                         "LEFT",
-                        8,
+                        6,
                         0
                     )
-                    icon:Hide()
+                    local icon = iconBadge.icon
+                    iconBadge.frame:Hide()
                     local name = Native:createText(row, "Empty", "GameFontHighlightSmall", theme.colors.muted)
                     name:SetPoint(
                         "LEFT",
@@ -5431,6 +5432,7 @@ function ____exports.createModernDashboard(self)
                     rows[#rows + 1] = {
                         row = row,
                         roleBar = roleBar,
+                        iconBadge = iconBadge,
                         icon = icon,
                         name = name,
                         spec = spec
@@ -5520,12 +5522,12 @@ function ____exports.createModernDashboard(self)
                 theme.colors.background,
                 Model:roleAccent(role)
             )
-            chip.frame:SetSize(84, 32)
+            chip.frame:SetSize(86, 34)
             chip.frame:SetPoint(
                 "TOPLEFT",
                 status.frame,
                 "TOPLEFT",
-                16 + i * 92,
+                16 + i * 90,
                 -198
             )
             local icon = Native:createIcon(chip.frame, D.ROLE_ICON[role], 17)
@@ -5533,7 +5535,7 @@ function ____exports.createModernDashboard(self)
                 "LEFT",
                 chip.frame,
                 "LEFT",
-                7,
+                6,
                 0
             )
             local label = Native:createText(
@@ -5546,7 +5548,7 @@ function ____exports.createModernDashboard(self)
                 "LEFT",
                 icon,
                 "RIGHT",
-                6,
+                5,
                 0
             )
             statusRoleChips[role] = {chip = chip, label = label}
@@ -6578,7 +6580,7 @@ function ____exports.createModernDashboard(self)
                     widgets.specIcon:SetTexture(Model:getSpecIcon(build.classId, build.specId))
                     widgets.specIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
                     widgets.name:SetText((Model:getSpecLabel(build.classId, build.specId) .. " ") .. Model:classLabel(build.classId))
-                    widgets.count:SetText(("Reserved ×" .. tostring(build.count)) .. " · remaining role slots stay Auto")
+                    widgets.count:SetText("× " .. tostring(build.count))
                     local indexCopy = i
                     widgets.edit.frame:SetScript(
                         "OnMouseDown",
@@ -6648,7 +6650,7 @@ function ____exports.createModernDashboard(self)
                                 local rowWidgets = widgets.rows[r + 1]
                                 local member = members[r + 1]
                                 if member == nil then
-                                    rowWidgets.icon:Hide()
+                                    rowWidgets.iconBadge.frame:Hide()
                                     rowWidgets.name:SetText("Empty")
                                     rowWidgets.name:SetTextColor(theme.colors.muted[1], theme.colors.muted[2], theme.colors.muted[3], 1)
                                     rowWidgets.spec:SetText("")
@@ -6658,7 +6660,7 @@ function ____exports.createModernDashboard(self)
                                         rowWidgets.icon,
                                         tostring(member.class)
                                     )
-                                    rowWidgets.icon:Show()
+                                    rowWidgets.iconBadge.frame:Show()
                                     rowWidgets.name:SetText((member.isPlayer and "YOU  ·  " or "") .. tostring(member.name))
                                     rowWidgets.name:SetTextColor(theme.colors.text[1], theme.colors.text[2], theme.colors.text[3], 1)
                                     local ____self_37 = rowWidgets.spec
@@ -6818,7 +6820,7 @@ function ____exports.createModernDashboard(self)
         end
         ____self_57_SetText_58(
             ____self_57,
-            tostring(____table_tanks_56) .. " T"
+            tostring(____table_tanks_56) .. " TANK"
         )
         local ____self_60 = statusRoleChips.HEALER.label
         local ____self_60_SetText_61 = ____self_60.SetText
@@ -6828,7 +6830,7 @@ function ____exports.createModernDashboard(self)
         end
         ____self_60_SetText_61(
             ____self_60,
-            tostring(____table_healers_59) .. " H"
+            tostring(____table_healers_59) .. " HEALER"
         )
         local ____self_63 = statusRoleChips.DPS.label
         local ____self_63_SetText_64 = ____self_63.SetText
@@ -6838,7 +6840,7 @@ function ____exports.createModernDashboard(self)
         end
         ____self_63_SetText_64(
             ____self_63,
-            tostring(____table_dps_62) .. " D"
+            tostring(____table_dps_62) .. " DPS"
         )
         local ratio = 0
         local ____p_total_65 = p.total
@@ -6857,7 +6859,7 @@ function ____exports.createModernDashboard(self)
         elseif phase == "READY" or phase == "DONE" then
             ratio = 1
         end
-        progressFill:SetWidth(math.max(1, 282 * ratio))
+        progressFill:SetWidth(math.max(1, 266 * ratio))
         Native:setTextureColor(progressFill, phaseColor)
         local ____progressText_SetText_73 = progressText.SetText
         local ____temp_72
