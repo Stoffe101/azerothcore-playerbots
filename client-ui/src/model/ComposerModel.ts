@@ -54,6 +54,55 @@ const DataFns: DataFunctions = _G.GroupComposerData as DataFunctions;
 const P: any = _G.GroupComposerProfiles;
 const ProfileFns: ProfileFunctions = _G.GroupComposerProfiles as ProfileFunctions;
 
+const ACTIVITY_ICONS: Record<string, string> = {
+    random: "Interface\\Icons\\INV_Misc_Dice_02",
+    utgarde_keep: "Interface\\Icons\\INV_Misc_Bone_10",
+    nexus: "Interface\\Icons\\Spell_Arcane_PortalDalaran",
+    azjol_nerub: "Interface\\Icons\\Ability_Hunter_Pet_Spider",
+    ahnkahet: "Interface\\Icons\\Spell_Shadow_Twilight",
+    drak_tharon: "Interface\\Icons\\INV_Misc_Head_Troll_01",
+    violet_hold: "Interface\\Icons\\Spell_Arcane_PortalDalaran",
+    gundrak: "Interface\\Icons\\INV_Misc_Head_Troll_01",
+    halls_of_stone: "Interface\\Icons\\INV_Stone_14",
+    halls_of_lightning: "Interface\\Icons\\Spell_Nature_Lightning",
+    oculus: "Interface\\Icons\\INV_Misc_Head_Dragon_Blue",
+    culling: "Interface\\Icons\\Spell_Holy_Excorcism_02",
+    utgarde_pinnacle: "Interface\\Icons\\INV_Misc_Bone_10",
+    trial_champion: "Interface\\Icons\\INV_Sword_04",
+    forge_souls: "Interface\\Icons\\Spell_Shadow_SoulLeech_3",
+    pit_saron: "Interface\\Icons\\INV_Pick_02",
+    halls_reflection: "Interface\\Icons\\Spell_Deathknight_FrostPresence",
+
+    naxxramas: "Interface\\Icons\\Spell_Shadow_AnimateDead",
+    obsidian_sanctum: "Interface\\Icons\\INV_Misc_Head_Dragon_Black",
+    eye_of_eternity: "Interface\\Icons\\INV_Misc_Head_Dragon_Blue",
+    ulduar: "Interface\\Icons\\INV_Gizmo_02",
+    trial_crusader: "Interface\\Icons\\INV_Misc_Head_Nerubian_01",
+    onyxia: "Interface\\Icons\\INV_Misc_Head_Dragon_Black",
+    vault_archavon: "Interface\\Icons\\INV_Elemental_Primal_Earth",
+    icecrown: "Interface\\Icons\\Spell_Deathknight_FrostPresence",
+    ruby_sanctum: "Interface\\Icons\\INV_Misc_Head_Dragon_Red",
+
+    karazhan: "Interface\\Icons\\Spell_Arcane_PortalDalaran",
+    zulaman: "Interface\\Icons\\INV_Misc_Head_Troll_01",
+    gruul: "Interface\\Icons\\Ability_Warrior_Charge",
+    magtheridon: "Interface\\Icons\\Spell_Shadow_SummonFelGuard",
+    serpentshrine: "Interface\\Icons\\Spell_Frost_SummonWaterElemental_2",
+    tempest_keep: "Interface\\Icons\\Spell_Arcane_PortalDalaran",
+    hyjal: "Interface\\Icons\\Spell_Nature_NatureGuardian",
+    black_temple: "Interface\\Icons\\Spell_Shadow_Metamorphosis",
+    sunwell: "Interface\\Icons\\Spell_Holy_SummonLightwell",
+
+    zul_gurub: "Interface\\Icons\\INV_Misc_Head_Troll_01",
+    aq20: "Interface\\Icons\\INV_Misc_Head_Qiraji_01",
+    molten_core: "Interface\\Icons\\Spell_Fire_FlameBolt",
+    blackwing_lair: "Interface\\Icons\\INV_Misc_Head_Dragon_Black",
+    aq40: "Interface\\Icons\\INV_Misc_Head_Qiraji_01",
+};
+
+const DEFAULT_DUNGEON_ICON = "Interface\\Icons\\Spell_Arcane_PortalDalaran";
+const DEFAULT_RAID_ICON = "Interface\\Icons\\Achievement_Boss_LichKing";
+
 export function composer(): any { return GC; }
 export function data(): any { return D; }
 export function profiles(): any { return P; }
@@ -373,6 +422,7 @@ export function dungeonItems(): ChoiceItem[] {
             detail: dungeon.id === "random"
                 ? "WotLK random · Normal Lv " + String(min) + "+ · Heroic Lv 80"
                 : "Normal Lv " + String(min) + "+ · Heroic Lv 80",
+            icon: ACTIVITY_ICONS[String(dungeon.id)] ?? DEFAULT_DUNGEON_ICON,
         });
     }
     return result;
@@ -398,6 +448,7 @@ export function raidItems(): ChoiceItem[] {
             value: raid.id,
             label: raid.era + "  ·  " + raid.label,
             detail: sizes + " player · Level " + String(raid.requiredLevel ?? 80) + "+",
+            icon: ACTIVITY_ICONS[String(raid.id)] ?? DEFAULT_RAID_ICON,
         });
     }
     return result;
@@ -418,6 +469,12 @@ export function selectedActivityLabel(): string {
     }
     const dungeon = dungeonById(cfg.activity);
     return dungeon?.label ?? "Dungeon";
+}
+
+export function selectedActivityIcon(): string {
+    const cfg = config();
+    const key = String(cfg.activity ?? "");
+    return ACTIVITY_ICONS[key] ?? (cfg.mode === "RAID" ? DEFAULT_RAID_ICON : DEFAULT_DUNGEON_ICON);
 }
 
 export function requiredActivityLevel(): number {

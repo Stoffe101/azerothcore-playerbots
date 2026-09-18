@@ -1,4 +1,4 @@
-import { createPanel, createText } from "../core/Native";
+import { createPanel, createSolid, createText, withAlpha } from "../core/Native";
 import { theme } from "../theme/Theme";
 
 export interface ToggleControl {
@@ -13,27 +13,41 @@ export function createToggle(
     setValue: (value: boolean) => void,
 ): ToggleControl {
     const frame = CreateFrame("Frame", undefined, parent);
-    frame.SetHeight(30);
+    frame.SetHeight(32);
     frame.EnableMouse(true);
 
-    const box = createPanel(frame, theme.colors.background, theme.colors.borderStrong);
-    box.frame.SetSize(20, 20);
-    box.frame.SetPoint("LEFT", frame, "LEFT", 0, 0);
+    const track = createPanel(frame, theme.colors.surfaceDeep, theme.colors.borderStrong);
+    track.frame.SetSize(42, 22);
+    track.frame.SetPoint("LEFT", frame, "LEFT", 0, 0);
 
-    const check = box.frame.CreateTexture(undefined, "ARTWORK");
-    check.SetTexture("Interface\\Buttons\\UI-CheckBox-Check");
-    check.SetAllPoints(box.frame);
+    const trackGlow = createSolid(track.frame, withAlpha(theme.colors.success, 0.12), "ARTWORK");
+    trackGlow.SetAllPoints(track.frame);
+    trackGlow.Hide();
+
+    const knob = createPanel(track.frame, theme.colors.muted, theme.colors.borderStrong);
+    knob.frame.SetSize(16, 16);
+    knob.frame.SetPoint("LEFT", track.frame, "LEFT", 3, 0);
 
     const text = createText(frame, label, "GameFontHighlightSmall");
-    text.SetPoint("LEFT", box.frame, "RIGHT", 9, 0);
+    text.SetPoint("LEFT", track.frame, "RIGHT", 10, 0);
 
     function refresh(): void {
-        if (getValue()) {
-            check.Show();
-            box.outline.setColor(theme.colors.success);
+        const enabled = getValue();
+        knob.frame.ClearAllPoints();
+        if (enabled) {
+            knob.frame.SetPoint("RIGHT", track.frame, "RIGHT", -3, 0);
+            knob.setBackground(theme.colors.success);
+            knob.outline.setColor(theme.colors.success);
+            track.outline.setColor(theme.colors.success);
+            trackGlow.Show();
+            text.SetTextColor(theme.colors.text[0], theme.colors.text[1], theme.colors.text[2], 1);
         } else {
-            check.Hide();
-            box.outline.setColor(theme.colors.borderStrong);
+            knob.frame.SetPoint("LEFT", track.frame, "LEFT", 3, 0);
+            knob.setBackground(theme.colors.muted);
+            knob.outline.setColor(theme.colors.borderStrong);
+            track.outline.setColor(theme.colors.borderStrong);
+            trackGlow.Hide();
+            text.SetTextColor(theme.colors.muted[0], theme.colors.muted[1], theme.colors.muted[2], 1);
         }
     }
 

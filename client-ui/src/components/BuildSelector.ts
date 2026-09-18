@@ -31,6 +31,7 @@ interface ClassTile {
     readonly icon: WoWTexture;
     readonly sub: WoWFontString;
     readonly specs: WoWFontString;
+    readonly marker: WoWFrame;
 }
 
 interface SpecTile {
@@ -40,6 +41,7 @@ interface SpecTile {
     readonly button: UIButton;
     readonly icon: WoWTexture;
     readonly sub: WoWFontString;
+    readonly marker: WoWFrame;
 }
 
 function roleLabel(role: Role): string {
@@ -127,13 +129,21 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         specs.SetWidth(174);
         specs.SetJustifyH("CENTER");
 
+        const marker = createPanel(button.frame, theme.colors.surfaceBlue, theme.colors.primary);
+        marker.frame.SetSize(22, 22);
+        marker.frame.SetPoint("TOPRIGHT", button.frame, "TOPRIGHT", -6, -6);
+        const markerCheck = marker.frame.CreateTexture(undefined, "ARTWORK");
+        markerCheck.SetTexture("Interface\\Buttons\\UI-CheckBox-Check");
+        markerCheck.SetAllPoints(marker.frame);
+        marker.frame.Hide();
+
         button.frame.SetScript("OnMouseDown", () => {
             if (currentClass !== classDef.id) currentSpec = undefined;
             currentClass = classDef.id;
             refresh();
         });
 
-        classTiles.push({ classDef, button, icon, sub, specs });
+        classTiles.push({ classDef, button, icon, sub, specs, marker: marker.frame });
     }
 
     // Step 2: specialization -------------------------------------------------
@@ -184,6 +194,13 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     anySpecSub.SetPoint("TOPLEFT", anySpecButton.frame, "TOPLEFT", 70, -49);
     anySpecSub.SetWidth(136);
     anySpecSub.SetJustifyV("TOP");
+    const anySpecMarker = createPanel(anySpecButton.frame, theme.colors.surfaceBlue, theme.colors.primary);
+    anySpecMarker.frame.SetSize(22, 22);
+    anySpecMarker.frame.SetPoint("TOPRIGHT", anySpecButton.frame, "TOPRIGHT", -7, -7);
+    const anySpecCheck = anySpecMarker.frame.CreateTexture(undefined, "ARTWORK");
+    anySpecCheck.SetTexture("Interface\\Buttons\\UI-CheckBox-Check");
+    anySpecCheck.SetAllPoints(anySpecMarker.frame);
+    anySpecMarker.frame.Hide();
     anySpecButton.frame.Hide();
 
     const specTiles: SpecTile[] = [];
@@ -205,13 +222,21 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             sub.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 70, -49);
             sub.SetWidth(136);
 
+            const marker = createPanel(button.frame, theme.colors.surfaceBlue, theme.colors.primary);
+            marker.frame.SetSize(22, 22);
+            marker.frame.SetPoint("TOPRIGHT", button.frame, "TOPRIGHT", -7, -7);
+            const markerCheck = marker.frame.CreateTexture(undefined, "ARTWORK");
+            markerCheck.SetTexture("Interface\\Buttons\\UI-CheckBox-Check");
+            markerCheck.SetAllPoints(marker.frame);
+            marker.frame.Hide();
+
             button.frame.SetScript("OnMouseDown", () => {
                 currentClass = classDef.id;
                 currentSpec = spec.id;
                 refresh();
             });
             button.frame.Hide();
-            specTiles.push({ classId: classDef.id, classLabel: classDef.label, spec, button, icon, sub });
+            specTiles.push({ classId: classDef.id, classLabel: classDef.label, spec, button, icon, sub, marker: marker.frame });
         }
     }
 
@@ -302,14 +327,21 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             const validSpecs = getSpecsForRole(tile.classDef.id, currentRole);
             tile.sub.SetText(String(validSpecs.length) + " " + roleLabel(currentRole) + (validSpecs.length === 1 ? " spec" : " specs"));
             tile.specs.SetText(specSummary(tile.classDef.id, currentRole));
-            tile.button.setSelected(tile.classDef.id === currentClass);
+            const selected = tile.classDef.id === currentClass;
+            tile.button.setSelected(selected);
+            if (selected) tile.marker.Show();
+            else tile.marker.Hide();
             tile.button.frame.Show();
             classIndex += 1;
         }
 
         if (currentClass === undefined) {
             anySpecButton.frame.Hide();
-            for (const tile of specTiles) tile.button.frame.Hide();
+            anySpecMarker.frame.Hide();
+            for (const tile of specTiles) {
+                tile.marker.Hide();
+                tile.button.frame.Hide();
+            }
             specHint.SetText("Pick a class first.");
             emptySpec.Show();
         } else {
@@ -333,15 +365,24 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
                     tile.button.frame.ClearAllPoints();
                     tile.button.frame.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 14 + specIndex * 248, -78);
                     tile.sub.SetText(tile.classLabel + " · " + roleLabel(currentRole));
-                    tile.button.setSelected(tile.spec.id === currentSpec);
+                    const selected = tile.spec.id === currentSpec;
+                    tile.button.setSelected(selected);
+                    if (selected) tile.marker.Show();
+                    else tile.marker.Hide();
                     tile.button.frame.Show();
                     specIndex += 1;
-                } else tile.button.frame.Hide();
+                } else {
+                    tile.marker.Hide();
+                    tile.button.frame.Hide();
+                }
             }
 
             anySpecButton.frame.ClearAllPoints();
             anySpecButton.frame.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 14 + specIndex * 248, -78);
-            anySpecButton.setSelected(currentSpec === ANY_SPEC_ID);
+            const anySelected = currentSpec === ANY_SPEC_ID;
+            anySpecButton.setSelected(anySelected);
+            if (anySelected) anySpecMarker.frame.Show();
+            else anySpecMarker.frame.Hide();
             anySpecButton.frame.Show();
         }
 

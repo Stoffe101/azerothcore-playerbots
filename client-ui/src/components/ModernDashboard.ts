@@ -331,13 +331,13 @@ export function createModernDashboard(): Dashboard {
     const humanTitle = Native.createText(humanPanel.frame, "YOUR PARTY", "GameFontNormalSmall", theme.colors.muted);
     humanTitle.SetPoint("TOPLEFT", humanPanel.frame, "TOPLEFT", 16, -12);
 
-    const humanIcon = humanPanel.frame.CreateTexture(undefined, "ARTWORK");
-    humanIcon.SetSize(34, 34);
-    humanIcon.SetPoint("BOTTOMLEFT", humanPanel.frame, "BOTTOMLEFT", 16, 9);
+    const humanBadge = Native.createFramedIcon(humanPanel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 42, theme.colors.borderStrong);
+    humanBadge.frame.SetPoint("BOTTOMLEFT", humanPanel.frame, "BOTTOMLEFT", 14, 8);
+    const humanIcon = humanBadge.icon;
     Native.setClassIcon(humanIcon, "WARRIOR");
 
     const humanName = Native.createText(humanPanel.frame, "Choose your role", "GameFontNormal");
-    humanName.SetPoint("TOPLEFT", humanIcon, "TOPRIGHT", 10, 0);
+    humanName.SetPoint("TOPLEFT", humanBadge.frame, "TOPRIGHT", 10, -1);
     humanName.SetWidth(360);
     const humanSub = Native.createText(humanPanel.frame, "Real players are locked anchors.", "GameFontHighlightSmall", theme.colors.muted);
     humanSub.SetPoint("TOPLEFT", humanName, "BOTTOMLEFT", 0, -5);
@@ -418,18 +418,18 @@ export function createModernDashboard(): Dashboard {
         const slotText = Native.createText(row.frame, "Slot", "GameFontHighlightSmall", theme.colors.muted);
         slotText.SetPoint("LEFT", roleBadge.frame, "RIGHT", 10, -10);
 
-        const classIcon = row.frame.CreateTexture(undefined, "ARTWORK");
-        classIcon.SetSize(36, 36);
-        classIcon.SetPoint("LEFT", row.frame, "LEFT", 174, 0);
-        classIcon.Hide();
+        const classBadge = Native.createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 42, theme.colors.borderStrong);
+        classBadge.frame.SetPoint("LEFT", row.frame, "LEFT", 170, 0);
+        classBadge.frame.Hide();
+        const classIcon = classBadge.icon;
 
-        const specIcon = row.frame.CreateTexture(undefined, "ARTWORK");
-        specIcon.SetSize(28, 28);
-        specIcon.SetPoint("LEFT", classIcon, "RIGHT", 8, 0);
-        specIcon.Hide();
+        const specBadge = Native.createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 36, theme.colors.borderStrong);
+        specBadge.frame.SetPoint("LEFT", classBadge.frame, "RIGHT", 7, 0);
+        specBadge.frame.Hide();
+        const specIcon = specBadge.icon;
 
         const name = Native.createText(row.frame, "Auto-fill bot", "GameFontNormal");
-        name.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 252, -15);
+        name.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 262, -15);
         name.SetWidth(350);
         const sub = Native.createText(row.frame, "Composer chooses a suitable build", "GameFontHighlightSmall", theme.colors.muted);
         sub.SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -4);
@@ -440,7 +440,7 @@ export function createModernDashboard(): Dashboard {
         const auto = ButtonUI.createButton(row.frame, { text: "Auto", width: 66, height: 34 });
         auto.frame.SetPoint("RIGHT", row.frame, "RIGHT", -12, 0);
 
-        dungeonRows.push({ row, accent, roleIcon, roleText, slotText, classIcon, specIcon, name, sub, choose, auto });
+        dungeonRows.push({ row, accent, roleIcon, roleText, slotText, classBadge, classIcon, specBadge, specIcon, name, sub, choose, auto });
     }
 
     // Raid views -------------------------------------------------------------
@@ -744,9 +744,10 @@ export function createModernDashboard(): Dashboard {
     templateName.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -24);
     const templateSave = ButtonUI.createButton(templatesModal.content, {
         text: "Save Current",
-        width: 120,
-        height: 34,
+        width: 124,
+        height: 36,
         accent: theme.colors.primary,
+        emphasis: true,
         onClick: () => {
             if (Model.config().mode !== "RAID") {
                 Model.fireStatus("Templates are raid-only. Configure dungeon bot slots directly.");
@@ -794,14 +795,20 @@ export function createModernDashboard(): Dashboard {
                 accent.SetWidth(3);
                 accent.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 0, 0);
                 accent.SetPoint("BOTTOMLEFT", panel.frame, "BOTTOMLEFT", 0, 0);
+                const iconBadge = Native.createFramedIcon(panel.frame, ICON_RAID, 42, theme.colors.primary);
+                iconBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
                 const name = Native.createText(panel.frame, "", "GameFontHighlight");
-                name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 10, -10);
-                name.SetWidth(310);
+                name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 62, -10);
+                name.SetWidth(258);
+                const builtinTag = Native.createText(panel.frame, "BUILT-IN", "GameFontNormalSmall", theme.colors.primary);
+                builtinTag.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 62, -31);
                 const info = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-                info.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 10, -38);
-                info.SetWidth(318);
+                info.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 122, -31);
+                info.SetWidth(200);
                 const load = ButtonUI.createButton(panel.frame, { text: "Load", width: 82, height: 32, accent: theme.colors.primary });
                 load.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
+                (panel.frame as any)._roleBadge = roleBadge;
+                (panel.frame as any)._roleIcon = roleBadge.icon;
                 (panel.frame as any)._name = name;
                 (panel.frame as any)._info = info;
                 (panel.frame as any)._load = load;
@@ -833,12 +840,16 @@ export function createModernDashboard(): Dashboard {
                 accent.SetWidth(3);
                 accent.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 0, 0);
                 accent.SetPoint("BOTTOMLEFT", panel.frame, "BOTTOMLEFT", 0, 0);
+                const iconBadge = Native.createFramedIcon(panel.frame, ICON_TEMPLATES, 42, theme.colors.warning);
+                iconBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
                 const name = Native.createText(panel.frame, "", "GameFontHighlight");
-                name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 10, -10);
-                name.SetWidth(250);
+                name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 62, -10);
+                name.SetWidth(190);
+                const customTag = Native.createText(panel.frame, "CUSTOM", "GameFontNormalSmall", theme.colors.warning);
+                customTag.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 62, -31);
                 const info = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-                info.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 10, -34);
-                info.SetWidth(270);
+                info.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 115, -31);
+                info.SetWidth(142);
                 const load = ButtonUI.createButton(panel.frame, { text: "Load", width: 68, height: 30, accent: theme.colors.primary });
                 load.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -78, 0);
                 const remove = ButtonUI.createButton(panel.frame, { text: "Delete", width: 66, height: 30, accent: theme.colors.error });
@@ -930,9 +941,10 @@ export function createModernDashboard(): Dashboard {
 
     const addPinButton = ButtonUI.createButton(peopleModal.content, {
         text: "Pin Member",
-        width: 110,
-        height: 34,
+        width: 116,
+        height: 36,
         accent: theme.colors.primary,
+        emphasis: true,
         onClick: () => {
             const name = pinInput.getText();
             if (name !== "") {
@@ -959,13 +971,15 @@ export function createModernDashboard(): Dashboard {
             let row = humanRowsModal[i];
             if (row === undefined) {
                 const panel = Native.createPanel(humanScroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                panel.frame.SetSize(892, 46);
-                const icon = panel.frame.CreateTexture(undefined, "ARTWORK");
-                icon.SetSize(26, 26);
-                icon.SetPoint("LEFT", panel.frame, "LEFT", 8, 0);
+                panel.frame.SetSize(892, 50);
+                const classBadge = Native.createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 34, theme.colors.borderStrong);
+                classBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 8, 0);
+                const icon = classBadge.icon;
                 const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
-                name.SetPoint("LEFT", panel.frame, "LEFT", 44, 0);
+                name.SetPoint("LEFT", panel.frame, "LEFT", 52, 7);
                 name.SetWidth(250);
+                const identity = Native.createText(panel.frame, "REAL PLAYER", "GameFontNormalSmall", theme.colors.primary);
+                identity.SetPoint("LEFT", panel.frame, "LEFT", 52, -10);
                 const buttons: Record<Role, UIButton> = {
                     TANK: ButtonUI.createButton(panel.frame, { text: "Tank", width: 78, height: 28, accent: theme.colors.tank }),
                     HEALER: ButtonUI.createButton(panel.frame, { text: "Healer", width: 78, height: 28, accent: theme.colors.healer }),
@@ -974,6 +988,7 @@ export function createModernDashboard(): Dashboard {
                 buttons.DPS.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
                 buttons.HEALER.frame.SetPoint("RIGHT", buttons.DPS.frame, "LEFT", -6, 0);
                 buttons.TANK.frame.SetPoint("RIGHT", buttons.HEALER.frame, "LEFT", -6, 0);
+                (panel.frame as any)._classBadge = classBadge;
                 (panel.frame as any)._icon = icon;
                 (panel.frame as any)._name = name;
                 (panel.frame as any)._buttons = buttons;
@@ -984,8 +999,9 @@ export function createModernDashboard(): Dashboard {
             }
 
             row.ClearAllPoints();
-            row.SetPoint("TOPLEFT", humanScroll.content, "TOPLEFT", 0, -(i * 52));
+            row.SetPoint("TOPLEFT", humanScroll.content, "TOPLEFT", 0, -(i * 56));
             Native.setClassIcon((row as any)._icon, String(human.class));
+            (row as any)._classBadge.outline.setColor(Native.classColor(String(human.class)));
             (row as any)._name.SetText((human.isPlayer ? "YOU  ·  " : "") + human.name + "  ·  " + Model.classLabel(String(human.class)));
             const selected = Model.config().humanRoles?.[human.name] as Role | undefined;
 
@@ -1005,7 +1021,7 @@ export function createModernDashboard(): Dashboard {
             }
             row.Show();
         }
-        humanScroll.setContentHeight(Math.max(210, list.length * 52));
+        humanScroll.setContentHeight(Math.max(210, list.length * 56));
 
         for (const role of roleOrder) pinRoleButtons[role].setSelected(pinRole === role);
         pinToggle.refresh();
@@ -1017,12 +1033,15 @@ export function createModernDashboard(): Dashboard {
             let row = pinRows[i];
             if (row === undefined) {
                 const panel = Native.createPanel(pinScroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                panel.frame.SetSize(892, 44);
+                panel.frame.SetSize(892, 48);
+                const roleBadge = Native.createFramedIcon(panel.frame, D.ROLE_ICON.DPS, 34, theme.colors.dps);
+                roleBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 8, 0);
                 const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
-                name.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
-                name.SetWidth(260);
+                name.SetPoint("LEFT", panel.frame, "LEFT", 52, 7);
+                name.SetWidth(250);
                 const info = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-                info.SetPoint("LEFT", panel.frame, "LEFT", 280, 0);
+                info.SetPoint("LEFT", panel.frame, "LEFT", 52, -10);
+                info.SetWidth(330);
                 const remove = ButtonUI.createButton(panel.frame, { text: "Remove", width: 78, height: 28, accent: theme.colors.error });
                 remove.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -6, 0);
                 (panel.frame as any)._name = name;
@@ -1034,9 +1053,19 @@ export function createModernDashboard(): Dashboard {
                 pinRows[i] = row;
             }
             row.ClearAllPoints();
-            row.SetPoint("TOPLEFT", pinScroll.content, "TOPLEFT", 0, -(i * 50));
+            row.SetPoint("TOPLEFT", pinScroll.content, "TOPLEFT", 0, -(i * 54));
+            const pinAccent = Model.roleAccent(pin.role as Role);
+            (row as any)._roleIcon.SetTexture(D.ROLE_ICON[pin.role]);
+            (row as any)._roleIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+            (row as any)._roleBadge.outline.setColor(pinAccent);
             (row as any)._name.SetText(String(pin.name));
-            (row as any)._info.SetText(Model.roleLabel(pin.role as Role) + "  ·  " + (pin.required ? "Required" : "Preferred"));
+            (row as any)._info.SetText(Model.roleLabel(pin.role as Role) + "  ·  " + (pin.required ? "REQUIRED" : "Preferred companion"));
+            (row as any)._info.SetTextColor(
+                pin.required ? theme.colors.warning[0] : theme.colors.muted[0],
+                pin.required ? theme.colors.warning[1] : theme.colors.muted[1],
+                pin.required ? theme.colors.warning[2] : theme.colors.muted[2],
+                1
+            );
             const indexCopy = i + 1;
             (row as any)._remove.frame.SetScript("OnMouseDown", () => {
                 Model.removePin(indexCopy);
@@ -1044,7 +1073,7 @@ export function createModernDashboard(): Dashboard {
             });
             row.Show();
         }
-        pinScroll.setContentHeight(Math.max(190, pins.length * 50));
+        pinScroll.setContentHeight(Math.max(190, pins.length * 54));
     }
 
     showPeople = () => {
@@ -1077,6 +1106,10 @@ export function createModernDashboard(): Dashboard {
         const row = Native.createPanel(optionsModal.content, theme.colors.surfaceRaised, theme.colors.border);
         row.frame.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", column * 430, -(rowIndex * 84));
         row.frame.SetSize(414, 72);
+        const optionAccent = Native.createSolid(row.frame, Native.withAlpha(theme.colors.primary, 0.42), "ARTWORK");
+        optionAccent.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 0, 0);
+        optionAccent.SetPoint("TOPRIGHT", row.frame, "TOPRIGHT", 0, 0);
+        optionAccent.SetHeight(2);
 
         const toggle = ToggleUI.createToggle(
             row.frame,
@@ -1102,11 +1135,13 @@ export function createModernDashboard(): Dashboard {
     gearRow.frame.SetPoint("TOPRIGHT", optionsModal.content, "TOPRIGHT", 0, -348);
     gearRow.frame.SetHeight(72);
 
+    const gearIcon = Native.createFramedIcon(gearRow.frame, "Interface\\Icons\\INV_Chest_Plate04", 40, theme.colors.primary);
+    gearIcon.frame.SetPoint("LEFT", gearRow.frame, "LEFT", 12, 0);
     const gearTitle = Native.createText(gearRow.frame, "Minimum item level", "GameFontNormal");
-    gearTitle.SetPoint("TOPLEFT", gearRow.frame, "TOPLEFT", 14, -12);
+    gearTitle.SetPoint("TOPLEFT", gearRow.frame, "TOPLEFT", 64, -12);
     const gearHint = Native.createText(gearRow.frame, "0 disables the floor. Guild/world bots below the configured value are rejected.", "GameFontHighlightSmall", theme.colors.muted);
-    gearHint.SetPoint("TOPLEFT", gearRow.frame, "TOPLEFT", 14, -39);
-    gearHint.SetWidth(620);
+    gearHint.SetPoint("TOPLEFT", gearRow.frame, "TOPLEFT", 64, -39);
+    gearHint.SetWidth(560);
 
     const gearStepper = StepperUI.createNumberStepper(
         gearRow.frame,
@@ -1137,8 +1172,9 @@ export function createModernDashboard(): Dashboard {
     const confirmGo = ButtonUI.createButton(confirmModal.content, {
         text: "Assemble",
         width: 120,
-        height: 36,
+        height: 38,
         accent: theme.colors.success,
+        emphasis: true,
         onClick: () => {
             confirmModal.hide();
             Model.assemble();
@@ -1155,6 +1191,8 @@ export function createModernDashboard(): Dashboard {
         const retry = Model.isTravelRetry();
         const cfg = Model.config();
         const activity = Model.selectedActivityLabel();
+
+        confirmModal.setHeaderIcon(Model.selectedActivityIcon());
 
         if (retry) {
             confirmModal.setTitle("Enter selected activity?");
@@ -1181,7 +1219,7 @@ export function createModernDashboard(): Dashboard {
         activityName.SetText(Model.selectedActivityLabel());
         activitySub.SetText(activitySubtitle());
         activityEligibility.SetText("ELIGIBILITY  ·  " + Model.activityEligibilityText());
-        activityBadge.icon.SetTexture(Model.config().mode === "RAID" ? ICON_RAID : ICON_DUNGEON);
+        activityBadge.icon.SetTexture(Model.selectedActivityIcon());
         activityBadge.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
         activityFieldLabel.SetText(Model.config().mode === "RAID" ? "RAID" : "DUNGEON");
         activitySelect.refresh();
@@ -1216,13 +1254,14 @@ export function createModernDashboard(): Dashboard {
         if (primary === undefined) {
             humanName.SetText("Waiting for player...");
             humanSub.SetText("Composer is refreshing human anchors.");
-            humanIcon.Hide();
+            humanBadge.frame.Hide();
             for (const role of roleOrder) humanRoleButtons[role].setEnabled(false);
             return;
         }
 
-        humanIcon.Show();
+        humanBadge.frame.Show();
         Native.setClassIcon(humanIcon, String(primary.class));
+        humanBadge.outline.setColor(Native.classColor(String(primary.class)));
         humanName.SetText((primary.isPlayer ? "YOU  ·  " : "") + primary.name);
         humanSub.SetText(Model.classLabel(String(primary.class)) + (list.length > 1 ? "  ·  +" + String(list.length - 1) + " more human anchor" + (list.length > 2 ? "s" : "") : ""));
 
@@ -1255,8 +1294,9 @@ export function createModernDashboard(): Dashboard {
 
             if (slot.human !== undefined) {
                 Native.setClassIcon(widgets.classIcon, String(slot.human.class));
-                widgets.classIcon.Show();
-                widgets.specIcon.Hide();
+                widgets.classBadge.frame.Show();
+                widgets.classBadge.outline.setColor(Native.classColor(String(slot.human.class)));
+                widgets.specBadge.frame.Hide();
                 widgets.name.SetText((slot.human.isPlayer ? "YOU  ·  " : "") + slot.human.name);
                 widgets.sub.SetText(Model.classLabel(String(slot.human.class)) + "  ·  Locked " + Model.roleLabel(slot.role));
                 widgets.choose.frame.Hide();
@@ -1268,13 +1308,14 @@ export function createModernDashboard(): Dashboard {
             const prepared = slot.prepared;
             if (prepared !== undefined && Model.plan().ready === true) {
                 Native.setClassIcon(widgets.classIcon, String(prepared.class));
-                widgets.classIcon.Show();
+                widgets.classBadge.frame.Show();
+                widgets.classBadge.outline.setColor(Native.classColor(String(prepared.class)));
                 const specId = specIdFromLabel(String(prepared.class), String(prepared.spec));
                 if (specId !== undefined) {
                     widgets.specIcon.SetTexture(Model.getSpecIcon(prepared.class as ClassId, specId));
                     widgets.specIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
-                    widgets.specIcon.Show();
-                } else widgets.specIcon.Hide();
+                    widgets.specBadge.frame.Show();
+                } else widgets.specBadge.frame.Hide();
 
                 widgets.name.SetText(String(prepared.name));
                 widgets.sub.SetText(
@@ -1283,15 +1324,16 @@ export function createModernDashboard(): Dashboard {
                 );
             } else if (exact !== undefined) {
                 Native.setClassIcon(widgets.classIcon, exact.classId);
-                widgets.classIcon.Show();
+                widgets.classBadge.frame.Show();
+                widgets.classBadge.outline.setColor(Native.classColor(exact.classId));
                 widgets.specIcon.SetTexture(Model.getSpecIcon(exact.classId, exact.specId));
                 widgets.specIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
-                widgets.specIcon.Show();
+                widgets.specBadge.frame.Show();
                 widgets.name.SetText(Model.getSpecLabel(exact.classId, exact.specId) + " " + Model.classLabel(exact.classId));
                 widgets.sub.SetText("Exact build  ·  Composer will preserve this requirement");
             } else {
-                widgets.classIcon.Hide();
-                widgets.specIcon.Hide();
+                widgets.classBadge.frame.Hide();
+                widgets.specBadge.frame.Hide();
                 widgets.name.SetText("Auto-fill bot");
                 widgets.sub.SetText("Composer chooses a suitable " + Model.roleLabel(slot.role).toLowerCase() + " build");
             }

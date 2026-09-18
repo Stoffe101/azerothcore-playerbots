@@ -21,6 +21,8 @@ SELECTOR = (ROOT / "client-ui/src/components/BuildSelector.ts").read_text(encodi
 CHOICE_SELECT = (ROOT / "client-ui/src/widgets/ChoiceSelect.ts").read_text(encoding="utf-8")
 SCROLL_LIST = (ROOT / "client-ui/src/widgets/ScrollList.ts").read_text(encoding="utf-8")
 TOGGLE = (ROOT / "client-ui/src/widgets/Toggle.ts").read_text(encoding="utf-8")
+STEPPER = (ROOT / "client-ui/src/widgets/Stepper.ts").read_text(encoding="utf-8")
+TEXT_INPUT = (ROOT / "client-ui/src/widgets/TextInput.ts").read_text(encoding="utf-8")
 BUTTON = (ROOT / "client-ui/src/widgets/Button.ts").read_text(encoding="utf-8")
 MODAL = (ROOT / "client-ui/src/widgets/Modal.ts").read_text(encoding="utf-8")
 NATIVE = (ROOT / "client-ui/src/core/Native.ts").read_text(encoding="utf-8")
@@ -102,7 +104,7 @@ for command in (
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
 assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
-assert '## Version: 0.9.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
+assert '## Version: 0.10.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
@@ -567,3 +569,22 @@ assert "iconBadge = Native.createFramedIcon" in MODERN, "Prepared roster lost fr
 assert 'widgets.count.SetText("× " + String(build.count))' in MODERN, (
     "Specific Builds count presentation regressed from the compact mockup treatment"
 )
+
+
+# Final mockup-fidelity widget and surface contracts.
+assert "ACTIVITY_ICONS" in MODEL and "selectedActivityIcon" in MODEL
+assert 'icon: ACTIVITY_ICONS[String(dungeon.id)]' in MODEL
+assert 'icon: ACTIVITY_ICONS[String(raid.id)]' in MODEL
+assert "triggerIcon = createFramedIcon" in CHOICE_SELECT and "item.icon" in CHOICE_SELECT
+assert "createChrome(popup.frame" in CHOICE_SELECT, "Choice dropdown lost premium chrome"
+assert "trackGlow" in SCROLL_LIST and "thumbCore" in SCROLL_LIST
+assert "GetVerticalScrollRange" not in SCROLL_LIST, "Scroll behavior must remain deterministic"
+assert "OnEditFocusGained" in TEXT_INPUT and "focusGlow" in TEXT_INPUT
+assert "const track = createPanel" in TOGGLE and "const knob = createPanel" in TOGGLE
+assert "const center = createPanel" in STEPPER and "minus.setEnabled" in STEPPER and "plus.setEnabled" in STEPPER
+assert "markerCheck" in SELECTOR and "anySpecMarker" in SELECTOR, "Class/spec cards lost explicit selection markers"
+assert "humanBadge = Native.createFramedIcon" in MODERN
+assert "classBadge = Native.createFramedIcon" in MODERN and "specBadge = Native.createFramedIcon" in MODERN
+assert "BUILT-IN" in MODERN and "CUSTOM" in MODERN, "Template cards lost their visual category tags"
+assert "_roleBadge" in MODERN and "Preferred companion" in MODERN
+assert "gearIcon = Native.createFramedIcon" in MODERN

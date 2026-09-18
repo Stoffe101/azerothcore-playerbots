@@ -1,4 +1,4 @@
-import { createPanel, createSolid } from "../core/Native";
+import { createPanel, createSolid, withAlpha } from "../core/Native";
 import { theme } from "../theme/Theme";
 import { createButton } from "./Button";
 
@@ -20,20 +20,20 @@ export function createScrollList(parent: WoWFrame, width: number, height: number
 
     const scroll = CreateFrame("ScrollFrame", undefined, frame);
     scroll.SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0);
-    scroll.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -20, 0);
-    scroll.SetSize(Math.max(1, width - 20), height);
+    scroll.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -22, 0);
+    scroll.SetSize(Math.max(1, width - 22), height);
     scroll.EnableMouseWheel(true);
 
     const content = CreateFrame("Frame", undefined, scroll);
-    content.SetWidth(Math.max(1, width - 20));
+    content.SetWidth(Math.max(1, width - 22));
     content.SetHeight(height);
     content.EnableMouseWheel(true);
     scroll.SetScrollChild(content);
 
-    const rail = createPanel(frame, theme.colors.background, theme.colors.border);
+    const rail = createPanel(frame, theme.colors.surfaceDeep, theme.colors.border);
     rail.frame.SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0);
     rail.frame.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0);
-    rail.frame.SetWidth(16);
+    rail.frame.SetWidth(18);
     rail.frame.EnableMouseWheel(true);
 
     let contentHeight = height;
@@ -62,10 +62,15 @@ export function createScrollList(parent: WoWFrame, width: number, height: number
         target.SetScript("OnMouseWheel", wheel);
     }
 
-    const up = createButton(rail.frame, { text: "^", width: 16, height: 20, onClick: () => scrollBy(-72) });
+    const up = createButton(rail.frame, { text: "^", width: 18, height: 22, accent: theme.colors.primary, onClick: () => scrollBy(-72) });
     up.frame.SetPoint("TOP", rail.frame, "TOP", 0, 0);
-    const down = createButton(rail.frame, { text: "v", width: 16, height: 20, onClick: () => scrollBy(72) });
+    const down = createButton(rail.frame, { text: "v", width: 18, height: 22, accent: theme.colors.primary, onClick: () => scrollBy(72) });
     down.frame.SetPoint("BOTTOM", rail.frame, "BOTTOM", 0, 0);
+
+    const trackGlow = createSolid(rail.frame, withAlpha(theme.colors.primary, 0.11), "ARTWORK");
+    trackGlow.SetPoint("TOP", up.frame, "BOTTOM", 0, -4);
+    trackGlow.SetPoint("BOTTOM", down.frame, "TOP", 0, 4);
+    trackGlow.SetWidth(7);
 
     const track = createSolid(rail.frame, theme.colors.borderStrong, "ARTWORK");
     track.SetPoint("TOP", up.frame, "BOTTOM", 0, -4);
@@ -73,8 +78,11 @@ export function createScrollList(parent: WoWFrame, width: number, height: number
     track.SetWidth(3);
 
     const thumb = createSolid(rail.frame, theme.colors.primary, "OVERLAY");
-    thumb.SetWidth(7);
+    thumb.SetWidth(8);
     thumb.SetHeight(24);
+    const thumbCore = createSolid(rail.frame, theme.colors.highlight, "OVERLAY");
+    thumbCore.SetWidth(3);
+    thumbCore.SetHeight(20);
 
     function refreshRail(): void {
         const range = maxOffset();
@@ -89,7 +97,7 @@ export function createScrollList(parent: WoWFrame, width: number, height: number
         offset = clamp(offset);
         scroll.SetVerticalScroll(offset);
 
-        const trackHeight = Math.max(28, height - 48);
+        const trackHeight = Math.max(28, height - 52);
         const thumbHeight = Math.max(24, Math.floor(trackHeight * Math.min(1, height / contentHeight)));
         const travel = Math.max(0, trackHeight - thumbHeight);
         const ratio = range > 0 ? offset / range : 0;
@@ -97,6 +105,9 @@ export function createScrollList(parent: WoWFrame, width: number, height: number
         thumb.SetHeight(thumbHeight);
         thumb.ClearAllPoints();
         thumb.SetPoint("TOP", up.frame, "BOTTOM", 0, -(4 + travel * ratio));
+        thumbCore.SetHeight(Math.max(14, thumbHeight - 4));
+        thumbCore.ClearAllPoints();
+        thumbCore.SetPoint("CENTER", thumb, "CENTER", 0, 0);
         up.setEnabled(offset > 0);
         down.setEnabled(offset < range);
     }

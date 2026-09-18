@@ -1,4 +1,4 @@
-import { createPanel, createSolid, createText } from "../core/Native";
+import { createChrome, createFramedIcon, createPanel, createSolid, createText, withAlpha } from "../core/Native";
 import { theme } from "../theme/Theme";
 import { createButton, UIButton } from "./Button";
 
@@ -26,6 +26,8 @@ export interface ChoiceSelectOptions {
 interface ChoiceRow {
     button: UIButton;
     detail: WoWFontString;
+    iconFrame: WoWFrame;
+    icon: WoWTexture;
 }
 
 let activePopup: WoWFrame | undefined;
@@ -42,28 +44,32 @@ export function closeChoicePopup(): void {
 }
 
 export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOptions): ChoiceSelect {
-    const trigger = createButton(parent, { text: "Select", width: options.width, height: 36 });
-    trigger.label.ClearAllPoints();
-    trigger.label.SetPoint("LEFT", trigger.frame, "LEFT", 12, 0);
-    trigger.label.SetPoint("RIGHT", trigger.frame, "RIGHT", -32, 0);
-    trigger.label.SetJustifyH("LEFT");
+    const trigger = createButton(parent, { text: "Select", width: options.width, height: 40, accent: theme.colors.primary });
+    const triggerIcon = createFramedIcon(trigger.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 28, theme.colors.borderStrong);
+    triggerIcon.frame.SetPoint("LEFT", trigger.frame, "LEFT", 8, 0);
+    triggerIcon.frame.Hide();
 
-    const arrow = createText(trigger.frame, "v", "GameFontHighlightSmall", theme.colors.muted);
-    arrow.SetPoint("RIGHT", trigger.frame, "RIGHT", -11, 0);
+    const arrowBox = createPanel(trigger.frame, theme.colors.surfaceDeep, theme.colors.border);
+    arrowBox.frame.SetSize(28, 28);
+    arrowBox.frame.SetPoint("RIGHT", trigger.frame, "RIGHT", -6, 0);
+    const arrow = createText(arrowBox.frame, "v", "GameFontHighlightSmall", theme.colors.primary);
+    arrow.SetPoint("CENTER", arrowBox.frame, "CENTER", 0, 0);
+    arrow.SetJustifyH("CENTER");
 
     const popup = createPanel(trigger.frame, theme.colors.background, theme.colors.borderStrong);
     popup.frame.SetFrameStrata("TOOLTIP");
     popup.frame.SetWidth(options.width);
     popup.frame.EnableMouseWheel(true);
+    createChrome(popup.frame, theme.colors.borderStrong);
     popup.frame.Hide();
 
     const maxVisible = options.maxVisible ?? 8;
-    const rowHeight = 48;
-    const railWidth = 24;
+    const rowHeight = 54;
+    const railWidth = 26;
     let offset = 0;
     const rows: ChoiceRow[] = [];
 
-    const rail = createPanel(popup.frame, theme.colors.surface, theme.colors.border);
+    const rail = createPanel(popup.frame, theme.colors.surfaceDeep, theme.colors.border);
     rail.frame.SetPoint("TOPRIGHT", popup.frame, "TOPRIGHT", -4, -4);
     rail.frame.SetPoint("BOTTOMRIGHT", popup.frame, "BOTTOMRIGHT", -4, 4);
     rail.frame.SetWidth(railWidth);
@@ -84,19 +90,27 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
         target.SetScript("OnMouseWheel", wheel);
     }
 
-    const up = createButton(rail.frame, { text: "^", width: 20, height: 22, onClick: () => move(-1) });
+    const up = createButton(rail.frame, { text: "^", width: 20, height: 22, accent: theme.colors.primary, onClick: () => move(-1) });
     up.frame.SetPoint("TOP", rail.frame, "TOP", 0, -2);
-    const down = createButton(rail.frame, { text: "v", width: 20, height: 22, onClick: () => move(1) });
+    const down = createButton(rail.frame, { text: "v", width: 20, height: 22, accent: theme.colors.primary, onClick: () => move(1) });
     down.frame.SetPoint("BOTTOM", rail.frame, "BOTTOM", 0, 2);
 
     const track = createSolid(rail.frame, theme.colors.borderStrong, "ARTWORK");
     track.SetPoint("TOP", up.frame, "BOTTOM", 0, -4);
     track.SetPoint("BOTTOM", down.frame, "TOP", 0, 4);
-    track.SetWidth(4);
+    track.SetWidth(3);
+
+    const trackGlow = createSolid(rail.frame, withAlpha(theme.colors.primary, 0.12), "ARTWORK");
+    trackGlow.SetPoint("TOP", up.frame, "BOTTOM", 0, -4);
+    trackGlow.SetPoint("BOTTOM", down.frame, "TOP", 0, 4);
+    trackGlow.SetWidth(7);
 
     const thumb = createSolid(rail.frame, theme.colors.primary, "OVERLAY");
-    thumb.SetWidth(6);
+    thumb.SetWidth(7);
     thumb.SetHeight(22);
+    const thumbCore = createSolid(rail.frame, theme.colors.highlight, "OVERLAY");
+    thumbCore.SetWidth(3);
+    thumbCore.SetHeight(18);
 
     function refreshRail(): void {
         const items = options.getItems();
@@ -119,7 +133,22 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
         thumb.SetHeight(thumbHeight);
         thumb.ClearAllPoints();
         thumb.SetPoint("TOP", up.frame, "BOTTOM", 0, -(4 + travel * ratio));
+        thumbCore.SetHeight(Math.max(12, thumbHeight - 4));
+        thumbCore.ClearAllPoints();
+        thumbCore.SetPoint("CENTER", thumb, "CENTER", 0, 0);
         thumb.Show();
+        thumbCore.Show();
+    }
+
+    function positionRowLabel(row: ChoiceRow, hasIcon: boolean): void {
+        row.button.label.ClearAllPoints();
+        row.button.label.SetPoint("TOPLEFT", row.button.frame, "TOPLEFT", hasIcon ? 50 : 10, -8);
+        row.button.label.SetPoint("RIGHT", row.button.frame, "RIGHT", -8, 7);
+        row.button.label.SetJustifyH("LEFT");
+        row.detail.ClearAllPoints();
+        row.detail.SetPoint("TOPLEFT", row.button.frame, "TOPLEFT", hasIcon ? 50 : 10, -29);
+        row.detail.SetPoint("RIGHT", row.button.frame, "RIGHT", -8, 0);
+        row.detail.SetJustifyH("LEFT");
     }
 
     function refreshRows(): void {
@@ -134,27 +163,33 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
                     text: "",
                     width: options.width - railWidth - 12,
                     height: rowHeight - 4,
+                    accent: theme.colors.primary,
                 });
                 button.frame.SetPoint("TOPLEFT", popup.frame, "TOPLEFT", 4, -(4 + i * rowHeight));
-                button.label.ClearAllPoints();
-                button.label.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 10, -7);
-                button.label.SetPoint("RIGHT", button.frame, "RIGHT", -8, 7);
-                button.label.SetJustifyH("LEFT");
+
+                const iconFrame = createFramedIcon(button.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 34, theme.colors.borderStrong);
+                iconFrame.frame.SetPoint("LEFT", button.frame, "LEFT", 8, 0);
+                iconFrame.frame.Hide();
 
                 const detail = createText(button.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-                detail.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 10, -25);
-                detail.SetPoint("RIGHT", button.frame, "RIGHT", -8, 0);
-                detail.SetJustifyH("LEFT");
                 bindWheel(button.frame);
-                row = { button, detail };
+                row = { button, detail, iconFrame: iconFrame.frame, icon: iconFrame.icon };
                 rows[i] = row;
             }
 
             const item = items[offset + i];
             if (item !== undefined) {
+                const hasIcon = item.icon !== undefined && item.icon !== "";
                 row.button.setText(item.label);
                 row.detail.SetText(item.detail ?? "");
                 row.button.setSelected(item.value === options.getValue());
+                positionRowLabel(row, hasIcon);
+                if (hasIcon) {
+                    row.icon.SetTexture(String(item.icon));
+                    row.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+                    row.iconFrame.Show();
+                } else row.iconFrame.Hide();
+
                 const value = item.value;
                 row.button.frame.SetScript("OnMouseDown", () => {
                     options.onChange(value);
@@ -171,14 +206,26 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
 
     function refresh(): void {
         const value = options.getValue();
-        let label = "Select";
+        let selectedItem: ChoiceItem | undefined;
         for (const item of options.getItems()) {
             if (item.value === value) {
-                label = item.label;
+                selectedItem = item;
                 break;
             }
         }
-        trigger.setText(label);
+
+        trigger.setText(selectedItem?.label ?? "Select");
+        const hasIcon = selectedItem?.icon !== undefined && selectedItem.icon !== "";
+        trigger.label.ClearAllPoints();
+        trigger.label.SetPoint("LEFT", trigger.frame, "LEFT", hasIcon ? 44 : 12, 0);
+        trigger.label.SetPoint("RIGHT", trigger.frame, "RIGHT", -42, 0);
+        trigger.label.SetJustifyH("LEFT");
+        if (hasIcon) {
+            triggerIcon.icon.SetTexture(String(selectedItem?.icon));
+            triggerIcon.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+            triggerIcon.frame.Show();
+        } else triggerIcon.frame.Hide();
+
         refreshRows();
     }
 
@@ -197,7 +244,7 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
         offset = Math.max(0, Math.min(maxOffset, selectedIndex - Math.floor(maxVisible / 2)));
         refreshRows();
         popup.frame.ClearAllPoints();
-        popup.frame.SetPoint("TOPLEFT", trigger.frame, "BOTTOMLEFT", 0, -4);
+        popup.frame.SetPoint("TOPLEFT", trigger.frame, "BOTTOMLEFT", 0, -5);
         popup.frame.Show();
         activePopup = popup.frame;
     }

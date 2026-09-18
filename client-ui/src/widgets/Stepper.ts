@@ -1,4 +1,4 @@
-import { createText } from "../core/Native";
+import { createPanel, createText } from "../core/Native";
 import { theme } from "../theme/Theme";
 import { createButton } from "./Button";
 
@@ -17,36 +17,45 @@ export function createNumberStepper(
     onChange?: (value: number) => void,
 ): NumberStepper {
     const frame = CreateFrame("Frame", undefined, parent);
-    frame.SetSize(126, theme.control.md);
+    frame.SetSize(136, 40);
     let min = initialMin;
     let max = initialMax;
     let value = initial;
 
-    const valueText = createText(frame, String(value), "GameFontNormal");
-    valueText.SetPoint("CENTER", frame, "CENTER", 0, 0);
-    valueText.SetJustifyH("CENTER");
+    const center = createPanel(frame, theme.colors.surfaceDeep, theme.colors.borderStrong);
+    center.frame.SetPoint("LEFT", frame, "LEFT", 42, 0);
+    center.frame.SetPoint("RIGHT", frame, "RIGHT", -42, 0);
+    center.frame.SetHeight(40);
 
-    function update(next: number, notify = true): void {
-        value = Math.max(min, Math.min(max, next));
-        valueText.SetText(String(value));
-        if (notify && onChange !== undefined) onChange(value);
-    }
+    const valueText = createText(center.frame, String(value), "GameFontNormalLarge", theme.colors.primary);
+    valueText.SetPoint("CENTER", center.frame, "CENTER", 0, 0);
+    valueText.SetJustifyH("CENTER");
 
     const minus = createButton(frame, {
         text: "-",
-        width: theme.control.md,
-        height: theme.control.md,
+        width: 36,
+        height: 40,
+        accent: theme.colors.primary,
         onClick: () => update(value - 1),
     });
     minus.frame.SetPoint("LEFT", frame, "LEFT", 0, 0);
 
     const plus = createButton(frame, {
         text: "+",
-        width: theme.control.md,
-        height: theme.control.md,
+        width: 36,
+        height: 40,
+        accent: theme.colors.primary,
         onClick: () => update(value + 1),
     });
     plus.frame.SetPoint("RIGHT", frame, "RIGHT", 0, 0);
+
+    function update(next: number, notify = true): void {
+        value = Math.max(min, Math.min(max, next));
+        valueText.SetText(String(value));
+        minus.setEnabled(value > min);
+        plus.setEnabled(value < max);
+        if (notify && onChange !== undefined) onChange(value);
+    }
 
     update(initial, false);
 
