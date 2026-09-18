@@ -290,7 +290,7 @@ function ____exports.createButton(self, parent, options)
     frame:EnableMouse(true)
     local background = createSolid(nil, frame, theme.colors.surfaceRaised)
     background:SetAllPoints(frame)
-    local outline = createOutline(nil, frame, theme.colors.borderStrong)
+    local outline = createOutline(nil, frame, theme.colors.border)
     local label = createText(nil, frame, options.text, "GameFontHighlightSmall")
     label:SetPoint(
         "CENTER",
@@ -305,7 +305,7 @@ function ____exports.createButton(self, parent, options)
     local accent = options.accent or theme.colors.primary
     local function render(self)
         frame:SetAlpha(enabled and 1 or 0.35)
-        outline:setColor(selected and accent or theme.colors.borderStrong)
+        outline:setColor(selected and accent or theme.colors.border)
         setTextureColor(nil, background, selected and theme.colors.surfaceHover or theme.colors.surfaceRaised)
         local color = selected and accent or theme.colors.text
         label:SetTextColor(color[1], color[2], color[3], 1)
@@ -315,6 +315,7 @@ function ____exports.createButton(self, parent, options)
         function()
             if enabled and not selected then
                 setTextureColor(nil, background, theme.colors.surfaceHover)
+                outline:setColor(theme.colors.borderStrong)
             end
         end
     )
