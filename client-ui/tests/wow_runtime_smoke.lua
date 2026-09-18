@@ -146,6 +146,12 @@ end
 function GroupComposerData.GetRaidById(id)
     for _, r in ipairs(GroupComposerData.RAIDS) do if r.id == id then return r end end
 end
+function GroupComposerData.DefaultRolesForActivity(mode, activity, size)
+    if size == 10 then return 2, 2, 6 end
+    if size == 20 then return 3, 5, 12 end
+    if size == 40 then return 5, 10, 25 end
+    return 2, 6, 17
+end
 
 GroupComposerProfiles = {}
 function GroupComposerProfiles.ListBuiltins() return {"Dungeon - Standard", "ICC 25 - Standard"} end
@@ -220,6 +226,15 @@ cfg.mode = "RAID"
 cfg.activity = "icecrown"
 cfg.size = 25
 cfg.tanks, cfg.healers, cfg.dps = 2, 6, 17
+
+-- Exact-build rows are pooled and refreshed repeatedly in the real addon. Reproduce the path that
+-- previously crashed on old.frame instead of old.panel.frame.
+cfg.preferences.TANK = {
+    { class = "WARRIOR", spec = 2, required = true },
+}
+GroupComposer:Fire("CONFIG_CHANGED", cfg)
+GroupComposer:Fire("CONFIG_CHANGED", cfg)
+
 GroupComposer.plan = {
     valid = true,
     ready = true,
