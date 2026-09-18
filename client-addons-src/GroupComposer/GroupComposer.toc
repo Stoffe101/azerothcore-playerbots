@@ -10,4 +10,4 @@ Profiles.lua
 Core.lua
 RuntimeGuards.lua
 ComposerPolicy.lua
-generated/GroupComposerModernUI.lua
+generated\\GroupComposerModernUI.lua
