@@ -1363,7 +1363,10 @@ bool GroupComposerCommand::HandlePreference(ChatHandler* handler, std::string ro
         spec = static_cast<uint8>(specText[0] - '0');
         if (!cls) { SendError(handler, "A specific spec requires a specific class."); return true; }
     }
-    if (cls && !SpecCanFillRole(cls, spec, role)) { SendError(handler, "That class/spec cannot fill the selected role."); return true; }
+    if (cls && spec == ANY_SPEC && !Planner::CanClassFillRole(cls, role))
+    { SendError(handler, "That class cannot fill the selected role."); return true; }
+    if (cls && spec != ANY_SPEC && !SpecCanFillRole(cls, spec, role))
+    { SendError(handler, "That class/spec cannot fill the selected role."); return true; }
 
     strength = Lower(strength);
     if (strength != "r" && strength != "p") { SendError(handler, "Preference strength must be R or P."); return true; }
