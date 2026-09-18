@@ -207,8 +207,8 @@ end
 
 function P.ListBuiltins()
     local out = {}
+    -- D.RAIDS is ordered WotLK -> TBC -> Classic; preserve that useful browsing order.
     for _, profile in ipairs(D.BUILTIN_PROFILES) do out[#out + 1] = profile.name end
-    table.sort(out)
     return out
 end
 
