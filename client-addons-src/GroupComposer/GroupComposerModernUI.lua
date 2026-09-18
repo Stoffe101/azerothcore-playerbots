@@ -400,7 +400,26 @@ function ____exports.closeChoicePopup(self)
     closeActive(nil)
 end
 function ____exports.createChoiceSelect(self, parent, options)
-    local refreshRail, refreshRows, refresh, trigger, popup, maxVisible, rowHeight, railWidth, offset, rows, rail, up, down, thumb
+    local move, wheel, bindWheel, refreshRail, refreshRows, refresh, trigger, popup, maxVisible, rowHeight, railWidth, offset, rows, rail, up, down, thumb
+    function move(self, delta)
+        local items = options:getItems()
+        local maxOffset = math.max(0, #items - maxVisible)
+        offset = math.max(
+            0,
+            math.min(maxOffset, offset + delta)
+        )
+        refreshRows(nil)
+    end
+    function wheel(self, _frame, delta)
+        move(
+            nil,
+            __TS__Number(delta) > 0 and -1 or 1
+        )
+    end
+    function bindWheel(self, target)
+        target:EnableMouseWheel(true)
+        target:SetScript("OnMouseWheel", wheel)
+    end
     function refreshRail(self)
         local items = options:getItems()
         local maxOffset = math.max(0, #items - maxVisible)
@@ -486,6 +505,7 @@ function ____exports.createChoiceSelect(self, parent, options)
                         0
                     )
                     detail:SetJustifyH("LEFT")
+                    bindWheel(nil, button.frame)
                     row = {button = button, detail = detail}
                     rows[i + 1] = row
                 end
@@ -581,15 +601,6 @@ function ____exports.createChoiceSelect(self, parent, options)
         4
     )
     rail.frame:SetWidth(railWidth)
-    local function move(self, delta)
-        local items = options:getItems()
-        local maxOffset = math.max(0, #items - maxVisible)
-        offset = math.max(
-            0,
-            math.min(maxOffset, offset + delta)
-        )
-        refreshRows(nil)
-    end
     up = createButton(
         nil,
         rail.frame,
@@ -688,15 +699,10 @@ function ____exports.createChoiceSelect(self, parent, options)
             end
         end
     )
-    popup.frame:SetScript(
-        "OnMouseWheel",
-        function(____, _frame, delta)
-            move(
-                nil,
-                __TS__Number(delta) > 0 and -1 or 1
-            )
-        end
-    )
+    bindWheel(nil, popup.frame)
+    bindWheel(nil, rail.frame)
+    bindWheel(nil, up.frame)
+    bindWheel(nil, down.frame)
     refresh(nil)
     return {
         frame = trigger.frame,
@@ -2638,11 +2644,53 @@ local theme = ____Theme.theme
 local ____Button = require("widgets.Button")
 local createButton = ____Button.createButton
 function ____exports.createScrollList(self, parent, width, height)
-    local up, down, thumb
+    local maxOffset, clamp, refreshRail, scroll, rail, contentHeight, offset, up, down, thumb
+    function maxOffset(self)
+        return math.max(0, contentHeight - height)
+    end
+    function clamp(self, value)
+        return math.max(
+            0,
+            math.min(
+                maxOffset(nil),
+                value
+            )
+        )
+    end
+    function refreshRail(self)
+        local range = maxOffset(nil)
+        if range <= 0 then
+            offset = 0
+            scroll:SetVerticalScroll(0)
+            rail.frame:Hide()
+            return
+        end
+        rail.frame:Show()
+        offset = clamp(nil, offset)
+        scroll:SetVerticalScroll(offset)
+        local trackHeight = math.max(28, height - 48)
+        local thumbHeight = math.max(
+            24,
+            math.floor(trackHeight * math.min(1, height / contentHeight))
+        )
+        local travel = math.max(0, trackHeight - thumbHeight)
+        local ratio = range > 0 and offset / range or 0
+        thumb:SetHeight(thumbHeight)
+        thumb:ClearAllPoints()
+        thumb:SetPoint(
+            "TOP",
+            up.frame,
+            "BOTTOM",
+            0,
+            -(4 + travel * ratio)
+        )
+        up:setEnabled(offset > 0)
+        down:setEnabled(offset < range)
+    end
     local frame = CreateFrame("Frame", nil, parent)
     frame:SetSize(width, height)
     frame:EnableMouseWheel(true)
-    local scroll = CreateFrame("ScrollFrame", nil, frame)
+    scroll = CreateFrame("ScrollFrame", nil, frame)
     scroll:SetPoint(
         "TOPLEFT",
         frame,
@@ -2657,12 +2705,17 @@ function ____exports.createScrollList(self, parent, width, height)
         -20,
         0
     )
+    scroll:SetSize(
+        math.max(1, width - 20),
+        height
+    )
     scroll:EnableMouseWheel(true)
     local content = CreateFrame("Frame", nil, scroll)
     content:SetWidth(math.max(1, width - 20))
     content:SetHeight(height)
+    content:EnableMouseWheel(true)
     scroll:SetScrollChild(content)
-    local rail = createPanel(nil, frame, theme.colors.background, theme.colors.border)
+    rail = createPanel(nil, frame, theme.colors.background, theme.colors.border)
     rail.frame:SetPoint(
         "TOPRIGHT",
         frame,
@@ -2678,52 +2731,23 @@ function ____exports.createScrollList(self, parent, width, height)
         0
     )
     rail.frame:SetWidth(16)
-    local function clamp(self, value)
-        return math.max(
-            0,
-            math.min(
-                scroll:GetVerticalScrollRange(),
-                value
-            )
-        )
-    end
-    local function refreshRail(self)
-        local range = scroll:GetVerticalScrollRange()
-        if range <= 0 then
-            rail.frame:Hide()
-            return
-        end
-        rail.frame:Show()
-        local current = clamp(
-            nil,
-            scroll:GetVerticalScroll()
-        )
-        local trackHeight = math.max(28, height - 48)
-        local contentHeight = height + range
-        local thumbHeight = math.max(
-            24,
-            math.floor(trackHeight * math.min(1, height / contentHeight))
-        )
-        local travel = math.max(0, trackHeight - thumbHeight)
-        local ratio = range > 0 and current / range or 0
-        thumb:SetHeight(thumbHeight)
-        thumb:ClearAllPoints()
-        thumb:SetPoint(
-            "TOP",
-            up.frame,
-            "BOTTOM",
-            0,
-            -(4 + travel * ratio)
-        )
-        up:setEnabled(current > 0)
-        down:setEnabled(current < range)
-    end
+    rail.frame:EnableMouseWheel(true)
+    contentHeight = height
+    offset = 0
     local function scrollBy(self, delta)
-        scroll:SetVerticalScroll(clamp(
-            nil,
-            scroll:GetVerticalScroll() + delta
-        ))
+        offset = clamp(nil, offset + delta)
+        scroll:SetVerticalScroll(offset)
         refreshRail(nil)
+    end
+    local function wheel(self, _target, delta)
+        scrollBy(
+            nil,
+            __TS__Number(delta) > 0 and -72 or 72
+        )
+    end
+    local function bindWheel(self, target)
+        target:EnableMouseWheel(true)
+        target:SetScript("OnMouseWheel", wheel)
     end
     up = createButton(
         nil,
@@ -2732,7 +2756,7 @@ function ____exports.createScrollList(self, parent, width, height)
             text = "^",
             width = 16,
             height = 20,
-            onClick = function() return scrollBy(nil, -92) end
+            onClick = function() return scrollBy(nil, -72) end
         }
     )
     up.frame:SetPoint(
@@ -2749,7 +2773,7 @@ function ____exports.createScrollList(self, parent, width, height)
             text = "v",
             width = 16,
             height = 20,
-            onClick = function() return scrollBy(nil, 92) end
+            onClick = function() return scrollBy(nil, 72) end
         }
     )
     down.frame:SetPoint(
@@ -2778,35 +2802,36 @@ function ____exports.createScrollList(self, parent, width, height)
     thumb = createSolid(nil, rail.frame, theme.colors.primary, "OVERLAY")
     thumb:SetWidth(7)
     thumb:SetHeight(24)
-    local function wheel(self, _frame, delta)
-        scrollBy(
-            nil,
-            __TS__Number(delta) > 0 and -92 or 92
-        )
-    end
-    frame:SetScript("OnMouseWheel", wheel)
-    scroll:SetScript("OnMouseWheel", wheel)
+    bindWheel(nil, frame)
+    bindWheel(nil, scroll)
+    bindWheel(nil, content)
+    bindWheel(nil, rail.frame)
+    bindWheel(nil, up.frame)
+    bindWheel(nil, down.frame)
     return {
         frame = frame,
         content = content,
         setContentHeight = function(self, value)
-            content:SetHeight(math.max(height, value))
-            scroll:SetVerticalScroll(clamp(
-                nil,
-                scroll:GetVerticalScroll()
-            ))
+            contentHeight = math.max(height, value)
+            content:SetHeight(contentHeight)
+            offset = clamp(nil, offset)
+            scroll:SetVerticalScroll(offset)
             refreshRail(nil)
         end,
         scrollBy = function(____, delta) return scrollBy(nil, delta) end,
         scrollToTop = function(self)
+            offset = 0
             scroll:SetVerticalScroll(0)
             refreshRail(nil)
         end,
         scrollToBottom = function(self)
-            scroll:SetVerticalScroll(scroll:GetVerticalScrollRange())
+            offset = maxOffset(nil)
+            scroll:SetVerticalScroll(offset)
             refreshRail(nil)
         end,
+        bindWheel = function(____, target) return bindWheel(nil, target) end,
         reset = function(self)
+            offset = 0
             scroll:SetVerticalScroll(0)
             refreshRail(nil)
         end
@@ -3215,6 +3240,8 @@ function ____exports.createModernDashboard(self)
                     panel.frame._name = name
                     panel.frame._info = info
                     panel.frame._load = load
+                    builtinScroll:bindWheel(panel.frame)
+                    builtinScroll:bindWheel(load.frame)
                     row = panel.frame
                     builtinRows[i + 1] = row
                 end
@@ -3287,6 +3314,9 @@ function ____exports.createModernDashboard(self)
                     panel.frame._info = info
                     panel.frame._load = load
                     panel.frame._remove = remove
+                    customScroll:bindWheel(panel.frame)
+                    customScroll:bindWheel(load.frame)
+                    customScroll:bindWheel(remove.frame)
                     row = panel.frame
                     customRows[i + 1] = row
                 end
@@ -3379,6 +3409,10 @@ function ____exports.createModernDashboard(self)
                     panel.frame._icon = icon
                     panel.frame._name = name
                     panel.frame._buttons = buttons
+                    humanScroll:bindWheel(panel.frame)
+                    for ____, wheelRole in ipairs(roleOrder) do
+                        humanScroll:bindWheel(buttons[wheelRole].frame)
+                    end
                     row = panel.frame
                     humanRowsModal[i + 1] = row
                 end
@@ -3468,6 +3502,8 @@ function ____exports.createModernDashboard(self)
                     panel.frame._name = name
                     panel.frame._info = info
                     panel.frame._remove = remove
+                    pinScroll:bindWheel(panel.frame)
+                    pinScroll:bindWheel(remove.frame)
                     row = panel.frame
                     pinRows[i + 1] = row
                 end
@@ -4614,6 +4650,8 @@ function ____exports.createModernDashboard(self)
         )
         empty:SetWidth(760)
         empty:SetJustifyV("TOP")
+        exactScroll:bindWheel(panel.frame)
+        exactScroll:bindWheel(add.frame)
         exactSections[role] = {
             panel = panel,
             count = count,
@@ -5550,7 +5588,7 @@ function ____exports.createModernDashboard(self)
             local i = 0
             while i < #dungeonRows do
                 do
-                    local __continue158
+                    local __continue160
                     repeat
                         local widgets = dungeonRows[i + 1]
                         local slot = slots[i + 1]
@@ -5573,7 +5611,7 @@ function ____exports.createModernDashboard(self)
                             widgets.sub:SetText((Model:classLabel(tostring(slot.human.class)) .. "  ·  Locked ") .. Model:roleLabel(slot.role))
                             widgets.choose.frame:Hide()
                             widgets.auto.frame:Hide()
-                            __continue158 = true
+                            __continue160 = true
                             break
                         end
                         local exact = slot.exact
@@ -5654,9 +5692,9 @@ function ____exports.createModernDashboard(self)
                             end
                         )
                         widgets.auto.frame:Show()
-                        __continue158 = true
+                        __continue160 = true
                     until true
-                    if not __continue158 then
+                    if not __continue160 then
                         break
                     end
                 end
@@ -5784,6 +5822,9 @@ function ____exports.createModernDashboard(self)
                             -8,
                             0
                         )
+                        exactScroll:bindWheel(panel.frame)
+                        exactScroll:bindWheel(edit.frame)
+                        exactScroll:bindWheel(remove.frame)
                         widgets = {
                             panel = panel,
                             classIcon = classIcon,
@@ -5845,12 +5886,12 @@ function ____exports.createModernDashboard(self)
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue187
+                    local __continue189
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue187 = true
+                            __continue189 = true
                             break
                         end
                         local column = g % columns
@@ -5914,9 +5955,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue187 = true
+                        __continue189 = true
                     until true
-                    if not __continue187 then
+                    if not __continue189 then
                         break
                     end
                 end
