@@ -193,7 +193,10 @@ export function createModernDashboard(): Dashboard {
     const backendText = Native.createText(header.frame, "Checking backend", "GameFontHighlightSmall", theme.colors.muted);
     backendText.SetPoint("LEFT", backendDot, "RIGHT", 8, 0);
 
-    const close = ButtonUI.createButton(header.frame, { text: "Close", width: 100, height: 32, accent: theme.colors.error, onClick: () => frame.Hide() });
+    const close = ButtonUI.createButton(header.frame, {
+        text: "Close", width: 100, height: 34, accent: theme.colors.error, emphasis: true,
+        onClick: () => frame.Hide(),
+    });
     close.frame.SetPoint("RIGHT", header.frame, "RIGHT", -16, 0);
 
     const sidebar = Native.createPanel(frame, theme.colors.surface, theme.colors.border);
@@ -606,10 +609,10 @@ export function createModernDashboard(): Dashboard {
             roleBar.SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0);
             roleBar.SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0);
 
-            const icon = row.CreateTexture(undefined, "ARTWORK");
-            icon.SetSize(22, 22);
-            icon.SetPoint("LEFT", row, "LEFT", 8, 0);
-            icon.Hide();
+            const iconBadge = Native.createFramedIcon(row, "Interface\\Icons\\INV_Misc_QuestionMark", 26, theme.colors.border);
+            iconBadge.frame.SetPoint("LEFT", row, "LEFT", 6, 0);
+            const icon = iconBadge.icon;
+            iconBadge.frame.Hide();
 
             const name = Native.createText(row, "Empty", "GameFontHighlightSmall", theme.colors.muted);
             name.SetPoint("LEFT", row, "LEFT", 38, 7);
@@ -618,7 +621,7 @@ export function createModernDashboard(): Dashboard {
             spec.SetPoint("LEFT", row, "LEFT", 38, -8);
             spec.SetWidth(168);
 
-            rows.push({ row, roleBar, icon, name, spec });
+            rows.push({ row, roleBar, iconBadge, icon, name, spec });
         }
         card.frame.Hide();
         groupCards.push({ card, groupTitle, rows });
@@ -652,12 +655,12 @@ export function createModernDashboard(): Dashboard {
     for (let i = 0; i < roleOrder.length; i += 1) {
         const role = roleOrder[i];
         const chip = Native.createPanel(status.frame, theme.colors.background, Model.roleAccent(role));
-        chip.frame.SetSize(84, 32);
-        chip.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16 + i * 92, -198);
+        chip.frame.SetSize(86, 34);
+        chip.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16 + i * 90, -198);
         const icon = Native.createIcon(chip.frame, D.ROLE_ICON[role], 17);
-        icon.SetPoint("LEFT", chip.frame, "LEFT", 7, 0);
+        icon.SetPoint("LEFT", chip.frame, "LEFT", 6, 0);
         const label = Native.createText(chip.frame, "", "GameFontHighlightSmall", Model.roleAccent(role));
-        label.SetPoint("LEFT", icon, "RIGHT", 6, 0);
+        label.SetPoint("LEFT", icon, "RIGHT", 5, 0);
         statusRoleChips[role] = { chip, label };
     }
 
@@ -1403,7 +1406,7 @@ export function createModernDashboard(): Dashboard {
                 widgets.specIcon.SetTexture(Model.getSpecIcon(build.classId, build.specId));
                 widgets.specIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
                 widgets.name.SetText(Model.getSpecLabel(build.classId, build.specId) + " " + Model.classLabel(build.classId));
-                widgets.count.SetText("Reserved ×" + String(build.count) + " · remaining role slots stay Auto");
+                widgets.count.SetText("× " + String(build.count));
 
                 const indexCopy = i;
                 widgets.edit.frame.SetScript("OnMouseDown", () => {
@@ -1453,14 +1456,14 @@ export function createModernDashboard(): Dashboard {
                 const rowWidgets = widgets.rows[r + 1];
                 const member = members[r];
                 if (member === undefined) {
-                    rowWidgets.icon.Hide();
+                    rowWidgets.iconBadge.frame.Hide();
                     rowWidgets.name.SetText("Empty");
                     rowWidgets.name.SetTextColor(theme.colors.muted[0], theme.colors.muted[1], theme.colors.muted[2], 1);
                     rowWidgets.spec.SetText("");
                     Native.setTextureColor(rowWidgets.roleBar, theme.colors.borderStrong);
                 } else {
                     Native.setClassIcon(rowWidgets.icon, String(member.class));
-                    rowWidgets.icon.Show();
+                    rowWidgets.iconBadge.frame.Show();
                     rowWidgets.name.SetText((member.isPlayer ? "YOU  ·  " : "") + String(member.name));
                     rowWidgets.name.SetTextColor(theme.colors.text[0], theme.colors.text[1], theme.colors.text[2], 1);
                     rowWidgets.spec.SetText("Lv " + String(member.level ?? "?") + " · " + String(member.spec ?? Model.classLabel(String(member.class))));
@@ -1529,14 +1532,14 @@ export function createModernDashboard(): Dashboard {
             sourceText.SetText(String(humanCount) + " human" + (humanCount === 1 ? "" : "s") + "  ·  " + String(Math.max(0, target - humanCount)) + " bot slots");
         }
 
-        statusRoleChips.TANK.label.SetText(String(Model.config().tanks ?? 0) + " T");
-        statusRoleChips.HEALER.label.SetText(String(Model.config().healers ?? 0) + " H");
-        statusRoleChips.DPS.label.SetText(String(Model.config().dps ?? 0) + " D");
+        statusRoleChips.TANK.label.SetText(String(Model.config().tanks ?? 0) + " TANK");
+        statusRoleChips.HEALER.label.SetText(String(Model.config().healers ?? 0) + " HEALER");
+        statusRoleChips.DPS.label.SetText(String(Model.config().dps ?? 0) + " DPS");
 
         let ratio = 0;
         if (Number(p.total ?? 0) > 0) ratio = Math.min(1, Number(p.current ?? 0) / Number(p.total));
         else if (phase === "READY" || phase === "DONE") ratio = 1;
-        progressFill.SetWidth(Math.max(1, 282 * ratio));
+        progressFill.SetWidth(Math.max(1, 266 * ratio));
         Native.setTextureColor(progressFill, phaseColor);
         progressText.SetText(
             phase === "PREPARING" || phase === "ASSEMBLING" || phase === "READY" || phase === "DONE"
