@@ -807,8 +807,6 @@ export function createModernDashboard(): Dashboard {
                 info.SetWidth(200);
                 const load = ButtonUI.createButton(panel.frame, { text: "Load", width: 82, height: 32, accent: theme.colors.primary });
                 load.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
-                (panel.frame as any)._roleBadge = roleBadge;
-                (panel.frame as any)._roleIcon = roleBadge.icon;
                 (panel.frame as any)._name = name;
                 (panel.frame as any)._info = info;
                 (panel.frame as any)._load = load;
@@ -1044,6 +1042,8 @@ export function createModernDashboard(): Dashboard {
                 info.SetWidth(330);
                 const remove = ButtonUI.createButton(panel.frame, { text: "Remove", width: 78, height: 28, accent: theme.colors.error });
                 remove.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -6, 0);
+                (panel.frame as any)._roleBadge = roleBadge;
+                (panel.frame as any)._roleIcon = roleBadge.icon;
                 (panel.frame as any)._name = name;
                 (panel.frame as any)._info = info;
                 (panel.frame as any)._remove = remove;

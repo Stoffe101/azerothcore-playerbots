@@ -115,7 +115,9 @@ assert 'showAssembleConfirm' in MODERN and 'Model.assemble()' in MODERN, (
     "Modern dashboard lost its in-window assembly confirmation boundary"
 )
 assert 'SetShown(' not in MODERN, "Modern dashboard uses a post-Wrath frame API"
-assert 'UI-CheckBox-Check' in TOGGLE, "Modern toggles should use real textures instead of Unicode glyphs"
+assert 'const track = createPanel' in TOGGLE and 'const knob = createPanel' in TOGGLE, (
+    "Modern toggles must use the premium native switch control"
+)
 assert 'maxVisible' in CHOICE_SELECT and 'EnableMouseWheel(true)' in CHOICE_SELECT, (
     "Modern selectors must remain bounded and scrollable"
 )
