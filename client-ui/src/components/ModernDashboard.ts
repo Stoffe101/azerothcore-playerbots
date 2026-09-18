@@ -532,7 +532,17 @@ export function createModernDashboard(): Dashboard {
         const scroll = ScrollUI.createScrollList(panel.frame, 258, 330);
         scroll.frame.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 12, -66);
 
-        exactColumns[role] = { panel, count, add, scroll, rows: [] as any[] };
+        const empty = Native.createText(
+            scroll.content,
+            "No exact builds yet.\nUnspecified slots stay on Auto.",
+            "GameFontHighlightSmall",
+            theme.colors.muted,
+        );
+        empty.SetPoint("TOPLEFT", scroll.content, "TOPLEFT", 8, -12);
+        empty.SetWidth(226);
+        empty.SetJustifyV("TOP");
+
+        exactColumns[role] = { panel, count, add, scroll, empty, rows: [] as any[] };
     }
 
     const groupCards: any[] = [];
@@ -1202,6 +1212,8 @@ export function createModernDashboard(): Dashboard {
             const rows = Model.requiredBuilds(role);
             column.count.SetText(String(Model.exactCount(role)) + " exact  ·  " + String(Math.max(0, Model.remainingBotSlots(role) - Model.exactCount(role))) + " Auto");
             column.add.setEnabled(Model.exactCount(role) < Model.remainingBotSlots(role));
+            if (rows.length === 0) column.empty.Show();
+            else column.empty.Hide();
             const roleCopy = role;
             column.add.frame.SetScript("OnMouseDown", () => {
                 if (Model.exactCount(roleCopy) >= Model.remainingBotSlots(roleCopy)) return;
