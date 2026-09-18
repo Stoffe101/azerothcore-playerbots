@@ -632,70 +632,58 @@ assert 'level?: number;' in MODEL
 assert '"Level " + String(primary.level ?? "?")' in MODERN
 
 
-# Wrath-native ornament parity with the visual target.
-assert "UI-DialogBox-Gold-Corner" in NATIVE, "Premium chrome lost Blizzard's native gold corner ornament"
-assert "topLeft.SetTexCoord(0, 1, 0, 1)" in NATIVE and "bottomRight.SetTexCoord(1, 0, 1, 0)" in NATIVE
-assert '"Close   X"' in MODERN
-
-
-# Wrath LFG role-art parity.
-assert "UI-LFG-ICON-PORTRAITROLES" in NATIVE
+# Refined shell / role-art parity.
+# Role badges use full-size icon textures because the Wrath LFG portrait-role atlas looked visibly
+# pixelated at the dimensions used by the redesigned cards.
+assert "ROLE_ICON_TEXTURES" in NATIVE
+assert "UI-LFG-ICON-PORTRAITROLES" not in NATIVE
 assert "setRoleIcon" in NATIVE and "createFramedRoleIcon" in NATIVE
-assert "0.296875" in NATIVE and "0.609375" in NATIVE, "Wrath role atlas coordinates disappeared"
 assert "setHeaderRole(role?: string)" in MODAL
 assert "modal.setHeaderRole(currentRole)" in SELECTOR and "summaryRoleBadge = createFramedRoleIcon" in SELECTOR
 assert MODERN.count("createFramedRoleIcon") >= 4
 assert "Native.setRoleIcon(widgets.roleIcon, slot.role)" in MODERN
 
-
-# Ornate chrome is reserved for major windows, not tiny controls.
-assert "ornate = false" in NATIVE and "if (ornate)" in NATIVE
+# Chrome is reserved for major shells and uses restrained line/corner geometry. Child controls,
+# dropdowns and buttons must not get nested ornament textures.
+assert "ornate = false" in NATIVE and "if (!ornate) return" in NATIVE
 assert "createChrome(panel.frame, theme.colors.chrome, true)" in MODAL
 assert "Native.createChrome(frame, theme.colors.chrome, true)" in MODERN
-assert "Native.createChrome(mark.frame, theme.colors.primary)" in MODERN
+assert "UI-DialogBox-Gold-Corner" not in NATIVE
 
-
-# Status rail semantics match the premium target without claiming assembly.
+# Status rail semantics match the target without claiming assembly.
 assert 'return "Ready to configure";' in MODEL
 assert 'const composed = Model.config().mode === "RAID" ? Model.roleTargetTotal() : humanCount;' in MODERN
 assert 'phase === "IDLE" && target > 0' in MODERN
 assert 'Add specific builds or keep Auto to prepare your raid.' in MODERN
 assert '"Level " + String(slot.human.level ?? "?")' in MODERN
 
-
-# Build selector visual order and radio affordance match the premium target.
+# Build selector keeps the desired class order while using a responsive centered layout.
 assert '"DEATHKNIGHT", "WARRIOR", "PALADIN", "HUNTER", "ROGUE"' in SELECTOR
 assert '"SHAMAN", "MAGE", "WARLOCK", "DRUID", "PRIEST"' in SELECTOR
 assert "selectorClassesForRole" in SELECTOR
-assert 'marker.SetTexture("Interface\\\\Buttons\\\\UI-RadioButton")' in SELECTOR
-assert "selected ? 0.25 : 0" in SELECTOR
+assert "createRadioMarker" in SELECTOR and "setRadioSelected" in SELECTOR
+assert 'marker.SetTexture("Interface\\\\Buttons\\\\UI-CheckBox-Check")' in SELECTOR
+assert '"Choose a class"' in SELECTOR and '"Choose a specialization"' in SELECTOR
+assert "columns = Math.min(5" in SELECTOR
+assert "cardsWidth = totalCards * cardWidth" in SELECTOR
+assert '"Any valid spec"' in SELECTOR
+assert '"Reserve only the class/spec you care about. Every unreserved slot stays Auto."' in SELECTOR
 
+# Compact target-style count/item-level steppers are horizontal and bounded.
+assert 'frame.SetSize(118, 36)' in STEPPER
+assert 'minus.frame.SetPoint("LEFT"' in STEPPER and 'plus.frame.SetPoint("LEFT", center.frame, "RIGHT"' in STEPPER
+assert 'text: "-"' in STEPPER and 'text: "+"' in STEPPER
 
-# Final target proportions and selector copy.
-assert 'header.frame.SetHeight(72)' in MODERN and 'mark.frame.SetSize(48, 48)' in MODERN
-assert 'sidebar.frame.SetWidth(184)' in MODERN and 'center.SetSize(970, 768)' in MODERN
-assert 'center.SetPoint("TOPLEFT", frame, "TOPLEFT", 200, -88)' in MODERN
-assert '"CHOOSE A CLASS"' in SELECTOR and '"CHOOSE A SPECIALIZATION"' in SELECTOR
-assert "UI-ActionButton-Border" in SELECTOR and "classStepGlow" in SELECTOR and "specStepGlow" in SELECTOR
-assert '"Let Composer choose for me"' in SELECTOR
-assert '"Select a specialization for your " + (selectedClass?.label ?? "selected class") + " build."' in SELECTOR
-
-
-# Count/item-level steppers use the compact target-style stacked arrows.
-assert 'frame.SetSize(110, 42)' in STEPPER
-assert 'plus.frame.SetPoint("TOPRIGHT"' in STEPPER and 'minus.frame.SetPoint("BOTTOMRIGHT"' in STEPPER
-assert 'text: "^"' in STEPPER and 'text: "v"' in STEPPER
-
-
-# Premium density targets retain roomier party/specific-build/status cards.
+# Main workspace keeps useful density while Specific Builds uses content-height keyed sections.
 assert 'row.frame.SetHeight(76)' in MODERN and 'i * 82' in MODERN
 assert 'createFramedRoleIcon(row.frame, "DPS", 44' in MODERN
-assert 'panel.frame.SetSize(870, 56)' in MODERN and 'i * 64' in MODERN
+assert 'panel.frame.SetSize(870, 48)' in MODERN and '58 + i * 56' in MODERN
+assert 'rows.length === 0 ? 86 : 62 + rows.length * 56' in MODERN
 assert 'phaseCard.frame.SetHeight(96)' in MODERN
 assert 'text: "Build & Prepare", width: 270, height: 52' in MODERN
 
-
-# Raid tabs use the target amber composition accent and taller proportions.
+# Raid tabs retain semantic composition accents while the common button primitive supplies the
+# quieter one-border selected/hover treatment.
 assert 'Quick Composition", width: 164, height: 38, accent: theme.colors.warning' in MODERN
 assert 'Specific Builds", width: 150, height: 38, accent: theme.colors.warning' in MODERN
 
@@ -711,4 +699,4 @@ assert "function wheel(this: void" in CHOICE_SELECT
 assert "function wheel(this: void" in SCROLL_LIST
 assert "sync-group-composer-client.sh" in UPDATE_SH
 assert "GroupComposerModernUI.lua" in SYNC_CLIENT and "Interface/AddOns/GroupComposer" in SYNC_CLIENT
-assert "0.10.1" in TOC and "0.10.1" in DATA
+assert "0.11.0" in TOC and "0.11.0" in DATA
