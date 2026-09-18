@@ -2936,6 +2936,15 @@ function ____exports.createModernDashboard(self)
         16,
         -48
     )
+    navDungeon.label:ClearAllPoints()
+    navDungeon.label:SetPoint(
+        "LEFT",
+        navDungeon.frame,
+        "LEFT",
+        14,
+        0
+    )
+    navDungeon.label:SetJustifyH("LEFT")
     local navRaid = ButtonUI:createButton(
         sidebar.frame,
         {
@@ -2953,6 +2962,15 @@ function ____exports.createModernDashboard(self)
         16,
         -98
     )
+    navRaid.label:ClearAllPoints()
+    navRaid.label:SetPoint(
+        "LEFT",
+        navRaid.frame,
+        "LEFT",
+        14,
+        0
+    )
+    navRaid.label:SetJustifyH("LEFT")
     local manageTitle = Native:createText(sidebar.frame, "MANAGE", "GameFontNormalSmall", theme.colors.muted)
     manageTitle:SetPoint(
         "TOPLEFT",
@@ -2983,6 +3001,15 @@ function ____exports.createModernDashboard(self)
         16,
         -190
     )
+    navTemplates.label:ClearAllPoints()
+    navTemplates.label:SetPoint(
+        "LEFT",
+        navTemplates.frame,
+        "LEFT",
+        14,
+        0
+    )
+    navTemplates.label:SetJustifyH("LEFT")
     local navPeople = ButtonUI:createButton(
         sidebar.frame,
         {
@@ -2999,6 +3026,15 @@ function ____exports.createModernDashboard(self)
         16,
         -234
     )
+    navPeople.label:ClearAllPoints()
+    navPeople.label:SetPoint(
+        "LEFT",
+        navPeople.frame,
+        "LEFT",
+        14,
+        0
+    )
+    navPeople.label:SetJustifyH("LEFT")
     local navOptions = ButtonUI:createButton(
         sidebar.frame,
         {
@@ -3015,6 +3051,15 @@ function ____exports.createModernDashboard(self)
         16,
         -278
     )
+    navOptions.label:ClearAllPoints()
+    navOptions.label:SetPoint(
+        "LEFT",
+        navOptions.frame,
+        "LEFT",
+        14,
+        0
+    )
+    navOptions.label:SetJustifyH("LEFT")
     local sideHint = Native:createText(sidebar.frame, "Humans stay locked.\nExact builds only affect bot slots.", "GameFontHighlightSmall", theme.colors.muted)
     sideHint:SetPoint(
         "BOTTOMLEFT",
@@ -3274,6 +3319,26 @@ function ____exports.createModernDashboard(self)
         8,
         0
     )
+    for ____, role in ipairs({"TANK", "HEALER", "DPS"}) do
+        local button = humanRoleButtons[role]
+        local icon = Native:createIcon(button.frame, D.ROLE_ICON[role], 18)
+        icon:SetPoint(
+            "LEFT",
+            button.frame,
+            "LEFT",
+            10,
+            0
+        )
+        button.label:ClearAllPoints()
+        button.label:SetPoint(
+            "LEFT",
+            button.frame,
+            "LEFT",
+            34,
+            0
+        )
+        button.label:SetJustifyH("LEFT")
+    end
     local composition = Native:createPanel(center, theme.colors.surface, theme.colors.border)
     composition.frame:SetPoint(
         "TOPLEFT",
@@ -3542,12 +3607,28 @@ function ____exports.createModernDashboard(self)
         local i = 0
         while i < #roleOrder do
             local role = roleOrder[i + 1]
-            local card = Native:createPanel(
-                quickView,
-                theme.colors.background,
-                Model:roleAccent(role)
-            )
+            local card = Native:createPanel(quickView, theme.colors.surfaceRaised, theme.colors.border)
             card.frame:SetSize(282, 178)
+            local roleStrip = Native:createSolid(
+                card.frame,
+                Model:roleAccent(role),
+                "ARTWORK"
+            )
+            roleStrip:SetHeight(3)
+            roleStrip:SetPoint(
+                "TOPLEFT",
+                card.frame,
+                "TOPLEFT",
+                0,
+                0
+            )
+            roleStrip:SetPoint(
+                "TOPRIGHT",
+                card.frame,
+                "TOPRIGHT",
+                0,
+                0
+            )
             card.frame:SetPoint(
                 "TOPLEFT",
                 quickView,
@@ -3694,10 +3775,26 @@ function ____exports.createModernDashboard(self)
         local i = 0
         while i < #roleOrder do
             local role = roleOrder[i + 1]
-            local panel = Native:createPanel(
-                exactView,
-                theme.colors.background,
-                Model:roleAccent(role)
+            local panel = Native:createPanel(exactView, theme.colors.surfaceRaised, theme.colors.border)
+            local roleStrip = Native:createSolid(
+                panel.frame,
+                Model:roleAccent(role),
+                "ARTWORK"
+            )
+            roleStrip:SetHeight(3)
+            roleStrip:SetPoint(
+                "TOPLEFT",
+                panel.frame,
+                "TOPLEFT",
+                0,
+                0
+            )
+            roleStrip:SetPoint(
+                "TOPRIGHT",
+                panel.frame,
+                "TOPRIGHT",
+                0,
+                0
             )
             panel.frame:SetPoint(
                 "TOPLEFT",
@@ -4110,7 +4207,7 @@ function ____exports.createModernDashboard(self)
         {
             text = "Build & Prepare",
             width = 286,
-            height = 40,
+            height = 44,
             accent = theme.colors.primary,
             onClick = function() return Model:buildAndPrepare() end
         }
@@ -4129,7 +4226,7 @@ function ____exports.createModernDashboard(self)
         {
             text = "Assemble",
             width = 210,
-            height = 38,
+            height = 42,
             accent = theme.colors.success,
             onClick = function() return showAssembleConfirm(nil) end
         }
@@ -4146,7 +4243,7 @@ function ____exports.createModernDashboard(self)
         {
             text = "Reset",
             width = 68,
-            height = 38,
+            height = 42,
             accent = theme.colors.error,
             onClick = function() return Model:clearPlan() end
         }
@@ -4613,7 +4710,7 @@ function ____exports.createModernDashboard(self)
             local i = 0
             while i < #dungeonRows do
                 do
-                    local __continue158
+                    local __continue160
                     repeat
                         local widgets = dungeonRows[i + 1]
                         local slot = slots[i + 1]
@@ -4636,7 +4733,7 @@ function ____exports.createModernDashboard(self)
                             widgets.sub:SetText((Model:classLabel(tostring(slot.human.class)) .. "  ·  Locked ") .. Model:roleLabel(slot.role))
                             widgets.choose.frame:Hide()
                             widgets.auto.frame:Hide()
-                            __continue158 = true
+                            __continue160 = true
                             break
                         end
                         local exact = slot.exact
@@ -4713,9 +4810,9 @@ function ____exports.createModernDashboard(self)
                             end
                         )
                         widgets.auto.frame:Show()
-                        __continue158 = true
+                        __continue160 = true
                     until true
-                    if not __continue158 then
+                    if not __continue160 then
                         break
                     end
                 end
@@ -4872,12 +4969,12 @@ function ____exports.createModernDashboard(self)
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue185
+                    local __continue187
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue185 = true
+                            __continue187 = true
                             break
                         end
                         local column = g % columns
@@ -4936,9 +5033,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue185 = true
+                        __continue187 = true
                     until true
-                    if not __continue185 then
+                    if not __continue187 then
                         break
                     end
                 end
