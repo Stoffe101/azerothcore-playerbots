@@ -584,7 +584,7 @@ assert "GetVerticalScrollRange" not in SCROLL_LIST, "Scroll behavior must remain
 assert "OnEditFocusGained" in TEXT_INPUT and "focusGlow" in TEXT_INPUT
 assert "const track = createPanel" in TOGGLE and "const knob = createPanel" in TOGGLE
 assert "const center = createPanel" in STEPPER and "minus.setEnabled" in STEPPER and "plus.setEnabled" in STEPPER
-assert "markerCheck" in SELECTOR and "anySpecMarker" in SELECTOR, "Class/spec cards lost explicit selection markers"
+assert "UI-RadioButton" in SELECTOR and "setRadioSelected" in SELECTOR, "Spec cards lost native radio selection markers"
 assert "humanBadge = Native.createFramedIcon" in MODERN
 assert "classBadge = Native.createFramedIcon" in MODERN and "specBadge = Native.createFramedIcon" in MODERN
 assert "BUILT-IN" in MODERN and "CUSTOM" in MODERN, "Template cards lost their visual category tags"
@@ -654,3 +654,11 @@ assert 'const composed = Model.config().mode === "RAID" ? Model.roleTargetTotal(
 assert 'phase === "IDLE" && target > 0' in MODERN
 assert 'Add specific builds or keep Auto to prepare your raid.' in MODERN
 assert '"Level " + String(slot.human.level ?? "?")' in MODERN
+
+
+# Build selector visual order and radio affordance match the premium target.
+assert '"DEATHKNIGHT", "WARRIOR", "PALADIN", "HUNTER", "ROGUE"' in SELECTOR
+assert '"SHAMAN", "MAGE", "WARLOCK", "DRUID", "PRIEST"' in SELECTOR
+assert "selectorClassesForRole" in SELECTOR
+assert 'marker.SetTexture("Interface\\\\Buttons\\\\UI-RadioButton")' in SELECTOR
+assert "selected ? 0.25 : 0" in SELECTOR
