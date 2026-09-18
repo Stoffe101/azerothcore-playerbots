@@ -1,0 +1,61 @@
+name: Group Composer typed UI
+
+on:
+  push:
+    branches:
+      - test/group-composer-v4
+    paths:
+      - "client-ui/**"
+      - "build-client-ui.sh"
+      - ".github/workflows/group-composer-ui-toolchain.yml"
+  workflow_dispatch:
+
+jobs:
+  compile-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Lua 5.1 parser
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1
+
+      - name: Install pinned toolchain
+        working-directory: client-ui
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Compile TypeScript to Lua 5.1
+        working-directory: client-ui
+        run: npm run build
+
+      - name: Parse generated Lua with Lua 5.1
+        run: luac5.1 -p client-ui/dist/GroupComposerModernUI.lua
+
+      - name: Validate selector contracts
+        run: |
+          grep -q 'getClassesForRole(currentRole)' client-ui/src/components/BuildSelector.ts
+          grep -q 'getSpecsForRole(currentClass, currentRole)' client-ui/src/components/BuildSelector.ts
+          grep -q 'GroupComposerModernUI' client-ui/src/main.ts
+          grep -q '"luaTarget": "5.1"' client-ui/tsconfig.json
+          ! grep -R -E 'from "react"|from '\''react'\''|virtual.?dom|reconciler' client-ui/src
+
+      - name: Validate sync path
+        run: |
+          bash client-ui/scripts/sync-generated.sh
+          luac5.1 -p client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua
+
+      - name: Upload generated prototype
+        uses: actions/upload-artifact@v4
+        with:
+          name: group-composer-modern-ui-prototype
+          path: client-ui/dist/GroupComposerModernUI.lua
+          if-no-files-found: error
