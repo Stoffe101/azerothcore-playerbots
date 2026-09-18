@@ -97,3 +97,9 @@ export function setClassIcon(texture: WoWTexture, classToken: string): void {
     if (coords !== undefined && coords.length >= 4) texture.SetTexCoord(coords[0], coords[1], coords[2], coords[3]);
     else texture.SetTexCoord(0, 1, 0, 1);
 }
+
+export function classColor(classToken: string): Color {
+    const color = RAID_CLASS_COLORS[classToken];
+    if (color !== undefined) return [color.r, color.g, color.b, 1] as Color;
+    return theme.colors.primary;
+}
