@@ -531,27 +531,32 @@ export function createModernDashboard(): Dashboard {
     const statusTitle = Native.createText(status.frame, "STATUS", "GameFontNormalSmall", theme.colors.muted);
     statusTitle.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -16);
 
-    const phaseDot = Native.createSolid(status.frame, theme.colors.primary, "ARTWORK");
-    phaseDot.SetSize(10, 10);
-    phaseDot.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 18, -48);
-    const phaseText = Native.createText(status.frame, "Configure roster", "GameFontNormalLarge");
-    phaseText.SetPoint("LEFT", phaseDot, "RIGHT", 10, 4);
-    const phaseDetail = Native.createText(status.frame, "", "GameFontHighlightSmall", theme.colors.muted);
+    const phaseCard = Native.createPanel(status.frame, theme.colors.surfaceRaised, theme.colors.border);
+    phaseCard.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -40);
+    phaseCard.frame.SetPoint("TOPRIGHT", status.frame, "TOPRIGHT", -16, -40);
+    phaseCard.frame.SetHeight(72);
+
+    const phaseDot = Native.createSolid(phaseCard.frame, theme.colors.primary, "ARTWORK");
+    phaseDot.SetSize(9, 9);
+    phaseDot.SetPoint("TOPLEFT", phaseCard.frame, "TOPLEFT", 12, -16);
+    const phaseText = Native.createText(phaseCard.frame, "Configure roster", "GameFontNormal");
+    phaseText.SetPoint("LEFT", phaseDot, "RIGHT", 10, 3);
+    const phaseDetail = Native.createText(phaseCard.frame, "", "GameFontHighlightSmall", theme.colors.muted);
     phaseDetail.SetPoint("TOPLEFT", phaseText, "BOTTOMLEFT", 0, -4);
-    phaseDetail.SetWidth(266);
+    phaseDetail.SetWidth(246);
     phaseDetail.SetJustifyV("TOP");
 
     const rosterCount = Native.createText(status.frame, "1 / 5", "GameFontNormalHuge");
-    rosterCount.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -112);
+    rosterCount.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -126);
     const sourceText = Native.createText(status.frame, "1 human  ·  4 bot slots", "GameFontHighlightSmall", theme.colors.muted);
-    sourceText.SetPoint("TOPLEFT", rosterCount, "BOTTOMLEFT", 0, -6);
+    sourceText.SetPoint("TOPLEFT", rosterCount, "BOTTOMLEFT", 0, -5);
 
     const statusRoleChips: Record<Role, any> = {} as Record<Role, any>;
     for (let i = 0; i < roleOrder.length; i += 1) {
         const role = roleOrder[i];
         const chip = Native.createPanel(status.frame, theme.colors.background, Model.roleAccent(role));
         chip.frame.SetSize(88, 32);
-        chip.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16 + i * 96, -174);
+        chip.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16 + i * 96, -184);
         const icon = Native.createIcon(chip.frame, D.ROLE_ICON[role], 17);
         icon.SetPoint("LEFT", chip.frame, "LEFT", 7, 0);
         const label = Native.createText(chip.frame, "", "GameFontHighlightSmall", Model.roleAccent(role));
@@ -560,39 +565,49 @@ export function createModernDashboard(): Dashboard {
     }
 
     const progressBg = Native.createPanel(status.frame, theme.colors.background, theme.colors.border);
-    progressBg.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -222);
+    progressBg.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -228);
     progressBg.frame.SetSize(286, 12);
     const progressFill = Native.createSolid(progressBg.frame, theme.colors.primary, "ARTWORK");
     progressFill.SetPoint("TOPLEFT", progressBg.frame, "TOPLEFT", 2, -2);
     progressFill.SetPoint("BOTTOMLEFT", progressBg.frame, "BOTTOMLEFT", 2, 2);
     progressFill.SetWidth(1);
     const progressText = Native.createText(status.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-    progressText.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -244);
+    progressText.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -247);
     progressText.SetWidth(286);
 
-    const coverageTitle = Native.createText(status.frame, "COVERAGE", "GameFontNormalSmall", theme.colors.muted);
-    coverageTitle.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -286);
-    const coverageText = Native.createText(status.frame, "Build a roster to inspect coverage.", "GameFontHighlightSmall", theme.colors.muted);
-    coverageText.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -308);
-    coverageText.SetWidth(286);
+    const coverageCard = Native.createPanel(status.frame, theme.colors.background, theme.colors.border);
+    coverageCard.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -286);
+    coverageCard.frame.SetPoint("TOPRIGHT", status.frame, "TOPRIGHT", -16, -286);
+    coverageCard.frame.SetHeight(112);
+
+    const coverageTitle = Native.createText(coverageCard.frame, "COVERAGE", "GameFontNormalSmall", theme.colors.muted);
+    coverageTitle.SetPoint("TOPLEFT", coverageCard.frame, "TOPLEFT", 12, -12);
+    const coverageText = Native.createText(coverageCard.frame, "Build a roster to inspect coverage.", "GameFontHighlightSmall", theme.colors.muted);
+    coverageText.SetPoint("TOPLEFT", coverageCard.frame, "TOPLEFT", 12, -34);
+    coverageText.SetWidth(262);
     coverageText.SetJustifyV("TOP");
 
     const classIcons: WoWTexture[] = [];
     for (let i = 0; i < 10; i += 1) {
-        const icon = status.frame.CreateTexture(undefined, "ARTWORK");
+        const icon = coverageCard.frame.CreateTexture(undefined, "ARTWORK");
         icon.SetSize(20, 20);
-        icon.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16 + i * 25, -356);
+        icon.SetPoint("BOTTOMLEFT", coverageCard.frame, "BOTTOMLEFT", 12 + i * 25, 10);
         icon.Hide();
         classIcons.push(icon);
     }
 
-    const warningsTitle = Native.createText(status.frame, "NEXT STEP", "GameFontNormalSmall", theme.colors.warning);
-    warningsTitle.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -396);
+    const nextCard = Native.createPanel(status.frame, theme.colors.background, theme.colors.border);
+    nextCard.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -414);
+    nextCard.frame.SetPoint("TOPRIGHT", status.frame, "TOPRIGHT", -16, -414);
+    nextCard.frame.SetHeight(146);
+
+    const warningsTitle = Native.createText(nextCard.frame, "NEXT STEP", "GameFontNormalSmall", theme.colors.warning);
+    warningsTitle.SetPoint("TOPLEFT", nextCard.frame, "TOPLEFT", 12, -12);
     const warningRows: WoWFontString[] = [];
     for (let i = 0; i < 3; i += 1) {
-        const row = Native.createText(status.frame, "", "GameFontHighlightSmall", i === 0 ? theme.colors.warning : theme.colors.muted);
-        row.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -(420 + i * 42));
-        row.SetWidth(286);
+        const row = Native.createText(nextCard.frame, "", "GameFontHighlightSmall", i === 0 ? theme.colors.warning : theme.colors.muted);
+        row.SetPoint("TOPLEFT", nextCard.frame, "TOPLEFT", 12, -(36 + i * 34));
+        row.SetWidth(258);
         row.SetJustifyV("TOP");
         warningRows.push(row);
     }
