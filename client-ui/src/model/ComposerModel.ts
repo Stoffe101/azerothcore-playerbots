@@ -388,9 +388,11 @@ export function raidItems(): ChoiceItem[] {
     const result: ChoiceItem[] = [];
     for (const raid of D.RAIDS ?? []) {
         let sizes = "";
-        for (let i = 0; i < (raid.sizes ?? []).length; i += 1) {
-            if (i > 0) sizes += "/";
-            sizes += String(raid.sizes[i]);
+        let firstSize = true;
+        for (const size of raid.sizes ?? []) {
+            if (!firstSize) sizes += "/";
+            sizes += String(size);
+            firstSize = false;
         }
         result.push({
             value: raid.id,
