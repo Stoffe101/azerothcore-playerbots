@@ -60,18 +60,18 @@ jobs:
       - name: Validate sync path
         run: |
           bash client-ui/scripts/sync-generated.sh
-          luac5.1 -p client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua
+          luac5.1 -p client-addons-src/GroupComposer/GroupComposerModernUI.lua
 
       - name: Publish generated addon bundle
         if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
         run: |
           set -euo pipefail
-          if [[ -z "$(git status --porcelain -- client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua)" ]]; then
+          if [[ -z "$(git status --porcelain -- client-addons-src/GroupComposer/GroupComposerModernUI.lua)" ]]; then
             echo 'Generated Group Composer UI is already current.'
           else
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua
+            git add client-addons-src/GroupComposer/GroupComposerModernUI.lua
             git commit -m 'build(group-composer): refresh modern UI bundle'
             git fetch origin test/group-composer-v4
             git rebase origin/test/group-composer-v4
