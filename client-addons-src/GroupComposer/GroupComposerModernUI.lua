@@ -2826,7 +2826,7 @@ local function activitySubtitle(self)
     return (mode .. "  ·  5 player  ·  ") .. (cfg.activity == "random" and "Dungeon Finder chooses destination" or "Auto-enter after assembly")
 end
 function ____exports.createModernDashboard(self)
-    local clearDynamicRows, refreshTemplates, refreshPeople, roleOrder, templatesModal, builtinScroll, customScroll, builtinRows, customRows, humanScroll, humanRowsModal, pinRole, pinRoleButtons, pinToggle, pinScroll, pinRows
+    local clearDynamicRows, refreshTemplates, refreshPeople, roleOrder, templatesModal, templateSave, builtinScroll, customScroll, builtinRows, customRows, humanScroll, humanRowsModal, pinRole, pinRoleButtons, pinToggle, pinScroll, pinRows
     function clearDynamicRows(self, rows)
         for ____, row in ipairs(rows) do
             row:Hide()
@@ -2835,6 +2835,7 @@ function ____exports.createModernDashboard(self)
     function refreshTemplates(self)
         clearDynamicRows(nil, builtinRows)
         clearDynamicRows(nil, customRows)
+        templateSave:setEnabled(Model:config().mode == "RAID")
         local builtins = Model:listBuiltinProfiles()
         do
             local i = 0
@@ -4684,7 +4685,7 @@ function ____exports.createModernDashboard(self)
         0,
         -24
     )
-    local templateSave = ButtonUI:createButton(
+    templateSave = ButtonUI:createButton(
         templatesModal.content,
         {
             text = "Save Current",
@@ -4692,6 +4693,10 @@ function ____exports.createModernDashboard(self)
             height = 34,
             accent = theme.colors.primary,
             onClick = function()
+                if Model:config().mode ~= "RAID" then
+                    Model:fireStatus("Templates are raid-only. Configure dungeon bot slots directly.")
+                    return
+                end
                 local name = templateName:getText()
                 if name ~= "" then
                     Model:saveProfile(name)
@@ -4743,8 +4748,8 @@ function ____exports.createModernDashboard(self)
     local builtinUp = ButtonUI:createButton(
         templatesModal.content,
         {
-            text = "▲",
-            width = 34,
+            text = "Up",
+            width = 54,
             height = 26,
             onClick = function() return builtinScroll:scrollBy(-220) end
         }
@@ -4753,14 +4758,14 @@ function ____exports.createModernDashboard(self)
         "TOPRIGHT",
         templatesModal.content,
         "TOPLEFT",
-        374,
+        350,
         -78
     )
     local builtinDown = ButtonUI:createButton(
         templatesModal.content,
         {
-            text = "▼",
-            width = 34,
+            text = "Down",
+            width = 54,
             height = 26,
             onClick = function() return builtinScroll:scrollBy(220) end
         }
@@ -4776,7 +4781,7 @@ function ____exports.createModernDashboard(self)
         templatesModal.content,
         {
             text = "▲",
-            width = 34,
+            width = 54,
             height = 26,
             onClick = function() return customScroll:scrollBy(-220) end
         }
@@ -4785,14 +4790,14 @@ function ____exports.createModernDashboard(self)
         "TOPRIGHT",
         templatesModal.content,
         "TOPLEFT",
-        814,
+        790,
         -78
     )
     local customDown = ButtonUI:createButton(
         templatesModal.content,
         {
             text = "▼",
-            width = 34,
+            width = 54,
             height = 26,
             onClick = function() return customScroll:scrollBy(220) end
         }
@@ -5191,7 +5196,7 @@ function ____exports.createModernDashboard(self)
             local i = 0
             while i < #dungeonRows do
                 do
-                    local __continue160
+                    local __continue161
                     repeat
                         local widgets = dungeonRows[i + 1]
                         local slot = slots[i + 1]
@@ -5214,7 +5219,7 @@ function ____exports.createModernDashboard(self)
                             widgets.sub:SetText((Model:classLabel(tostring(slot.human.class)) .. "  ·  Locked ") .. Model:roleLabel(slot.role))
                             widgets.choose.frame:Hide()
                             widgets.auto.frame:Hide()
-                            __continue160 = true
+                            __continue161 = true
                             break
                         end
                         local exact = slot.exact
@@ -5291,9 +5296,9 @@ function ____exports.createModernDashboard(self)
                             end
                         )
                         widgets.auto.frame:Show()
-                        __continue160 = true
+                        __continue161 = true
                     until true
-                    if not __continue160 then
+                    if not __continue161 then
                         break
                     end
                 end
@@ -5468,12 +5473,12 @@ function ____exports.createModernDashboard(self)
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue189
+                    local __continue190
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue189 = true
+                            __continue190 = true
                             break
                         end
                         local column = g % columns
@@ -5532,9 +5537,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue189 = true
+                        __continue190 = true
                     until true
-                    if not __continue189 then
+                    if not __continue190 then
                         break
                     end
                 end
