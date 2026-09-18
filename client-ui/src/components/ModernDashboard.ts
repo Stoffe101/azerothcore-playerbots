@@ -539,8 +539,8 @@ export function createModernDashboard(): Dashboard {
         const rows: any[] = [];
         for (let r = 0; r < 5; r += 1) {
             const row = CreateFrame("Frame", undefined, card.frame);
-            row.SetHeight(32);
-            row.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 8, -(36 + r * 35));
+            row.SetHeight(28);
+            row.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 8, -(34 + r * 30));
             row.SetPoint("RIGHT", card.frame, "RIGHT", -8, 0);
 
             const roleBar = Native.createSolid(row, theme.colors.dps, "ARTWORK");
@@ -555,10 +555,10 @@ export function createModernDashboard(): Dashboard {
 
             const name = Native.createText(row, "Empty", "GameFontHighlightSmall", theme.colors.muted);
             name.SetPoint("LEFT", row, "LEFT", 38, 7);
-            name.SetWidth(112);
+            name.SetWidth(154);
             const spec = Native.createText(row, "", "GameFontHighlightSmall", theme.colors.muted);
             spec.SetPoint("LEFT", row, "LEFT", 38, -8);
-            spec.SetWidth(125);
+            spec.SetWidth(168);
 
             rows.push({ row, roleBar, icon, name, spec });
         }
@@ -1258,10 +1258,9 @@ export function createModernDashboard(): Dashboard {
     function refreshRoster(): void {
         const cfg = Model.config();
         const totalGroups = Math.max(1, Math.ceil(Number(cfg.size ?? 5) / 5));
-        const wideFive = totalGroups === 5;
-        const columns = wideFive ? 5 : totalGroups >= 8 ? 4 : Math.min(4, totalGroups);
-        const cardWidth = wideFive ? 168 : Math.floor((880 - (columns - 1) * 10) / columns);
-        const cardHeight = totalGroups >= 8 ? 202 : 220;
+        const columns = totalGroups <= 3 ? totalGroups : (totalGroups <= 5 ? 3 : 4);
+        const cardWidth = Math.floor((880 - (columns - 1) * 10) / columns);
+        const cardHeight = 190;
 
         for (let g = 0; g < groupCards.length; g += 1) {
             const widgets = groupCards[g];
