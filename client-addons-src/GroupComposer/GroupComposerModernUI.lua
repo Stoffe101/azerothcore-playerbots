@@ -2826,14 +2826,14 @@ function ____exports.createModernDashboard(self)
         -1,
         -1
     )
-    header.frame:SetHeight(68)
+    header.frame:SetHeight(72)
     local mark = Native:createPanel(header.frame, theme.colors.surfaceRaised, theme.colors.primary)
-    mark.frame:SetSize(40, 40)
+    mark.frame:SetSize(42, 42)
     mark.frame:SetPoint(
         "LEFT",
         header.frame,
         "LEFT",
-        18,
+        20,
         0
     )
     local markText = Native:createText(mark.frame, "GC", "GameFontNormalLarge", theme.colors.primary)
@@ -2850,8 +2850,8 @@ function ____exports.createModernDashboard(self)
         "TOPLEFT",
         header.frame,
         "TOPLEFT",
-        72,
-        -14
+        78,
+        -15
     )
     local subtitle = Native:createText(header.frame, "Build the team you want, then let Composer prepare it.", "GameFontHighlightSmall", theme.colors.muted)
     subtitle:SetPoint(
@@ -2901,7 +2901,7 @@ function ____exports.createModernDashboard(self)
         frame,
         "TOPLEFT",
         1,
-        -69
+        -73
     )
     sidebar.frame:SetPoint(
         "BOTTOMLEFT",
@@ -3031,7 +3031,7 @@ function ____exports.createModernDashboard(self)
         frame,
         "TOPLEFT",
         194,
-        -84
+        -88
     )
     center:SetSize(928, 744)
     local status = Native:createPanel(frame, theme.colors.surface, theme.colors.borderStrong)
@@ -3040,7 +3040,7 @@ function ____exports.createModernDashboard(self)
         frame,
         "TOPLEFT",
         1138,
-        -84
+        -88
     )
     status.frame:SetPoint(
         "BOTTOMRIGHT",
@@ -3095,7 +3095,7 @@ function ____exports.createModernDashboard(self)
         0,
         0
     )
-    activity.frame:SetHeight(96)
+    activity.frame:SetHeight(108)
     local activityEyebrow = Native:createText(activity.frame, "ACTIVITY", "GameFontNormalSmall", theme.colors.muted)
     activityEyebrow:SetPoint(
         "TOPLEFT",
@@ -3110,7 +3110,7 @@ function ____exports.createModernDashboard(self)
         activityEyebrow,
         "BOTTOMLEFT",
         0,
-        -5
+        -6
     )
     local activitySub = Native:createText(activity.frame, "", "GameFontHighlightSmall", theme.colors.muted)
     activitySub:SetPoint(
@@ -3119,6 +3119,22 @@ function ____exports.createModernDashboard(self)
         "BOTTOMLEFT",
         0,
         -4
+    )
+    local activityFieldLabel = Native:createText(activity.frame, "DUNGEON", "GameFontNormalSmall", theme.colors.muted)
+    activityFieldLabel:SetPoint(
+        "TOPLEFT",
+        activity.frame,
+        "TOPLEFT",
+        380,
+        -12
+    )
+    local difficultyFieldLabel = Native:createText(activity.frame, "DIFFICULTY", "GameFontNormalSmall", theme.colors.muted)
+    difficultyFieldLabel:SetPoint(
+        "TOPLEFT",
+        activity.frame,
+        "TOPLEFT",
+        700,
+        -12
     )
     local activitySelect = ChoiceUI:createChoiceSelect(
         activity.frame,
@@ -3141,7 +3157,7 @@ function ____exports.createModernDashboard(self)
         activity.frame,
         "TOPLEFT",
         380,
-        -18
+        -36
     )
     local difficultySelect = ChoiceUI:createChoiceSelect(
         activity.frame,
@@ -3154,11 +3170,11 @@ function ____exports.createModernDashboard(self)
         }
     )
     difficultySelect.frame:SetPoint(
-        "LEFT",
-        activitySelect.frame,
-        "RIGHT",
-        10,
-        0
+        "TOPLEFT",
+        activity.frame,
+        "TOPLEFT",
+        700,
+        -36
     )
     local raidSizeButtons = {}
     for ____, size in ipairs({10, 20, 25, 40}) do
@@ -3180,16 +3196,16 @@ function ____exports.createModernDashboard(self)
         center,
         "TOPLEFT",
         0,
-        -108
+        -120
     )
     humanPanel.frame:SetPoint(
         "TOPRIGHT",
         center,
         "TOPRIGHT",
         0,
-        -108
+        -120
     )
-    humanPanel.frame:SetHeight(104)
+    humanPanel.frame:SetHeight(92)
     local humanTitle = Native:createText(humanPanel.frame, "YOUR PARTY", "GameFontNormalSmall", theme.colors.muted)
     humanTitle:SetPoint(
         "TOPLEFT",
@@ -3205,7 +3221,7 @@ function ____exports.createModernDashboard(self)
         humanPanel.frame,
         "BOTTOMLEFT",
         16,
-        12
+        10
     )
     Native:setClassIcon(humanIcon, "WARRIOR")
     local humanName = Native:createText(humanPanel.frame, "Choose your role", "GameFontNormal")
@@ -3224,17 +3240,25 @@ function ____exports.createModernDashboard(self)
         0,
         -5
     )
+    local yourRoleLabel = Native:createText(humanPanel.frame, "YOUR ROLE", "GameFontNormalSmall", theme.colors.muted)
+    yourRoleLabel:SetPoint(
+        "TOPRIGHT",
+        humanPanel.frame,
+        "TOPRIGHT",
+        -16,
+        -12
+    )
     local humanRoleButtons = {
         TANK = ButtonUI:createButton(humanPanel.frame, {text = "Tank", width = 96, height = 36, accent = theme.colors.tank}),
         HEALER = ButtonUI:createButton(humanPanel.frame, {text = "Healer", width = 96, height = 36, accent = theme.colors.healer}),
         DPS = ButtonUI:createButton(humanPanel.frame, {text = "DPS", width = 96, height = 36, accent = theme.colors.dps})
     }
     humanRoleButtons.TANK.frame:SetPoint(
-        "RIGHT",
+        "TOPRIGHT",
         humanPanel.frame,
-        "RIGHT",
+        "TOPRIGHT",
         -224,
-        -12
+        -40
     )
     humanRoleButtons.HEALER.frame:SetPoint(
         "LEFT",
@@ -3323,14 +3347,14 @@ function ____exports.createModernDashboard(self)
     do
         local i = 0
         while i < 5 do
-            local row = Native:createPanel(dungeonView, theme.colors.background, theme.colors.border)
-            row.frame:SetHeight(78)
+            local row = Native:createPanel(dungeonView, theme.colors.surfaceRaised, theme.colors.border)
+            row.frame:SetHeight(76)
             row.frame:SetPoint(
                 "TOPLEFT",
                 dungeonView,
                 "TOPLEFT",
                 0,
-                -(i * 84)
+                -(i * 82)
             )
             row.frame:SetPoint(
                 "RIGHT",
@@ -3356,7 +3380,7 @@ function ____exports.createModernDashboard(self)
                 0
             )
             local roleIcon = row.frame:CreateTexture(nil, "ARTWORK")
-            roleIcon:SetSize(28, 28)
+            roleIcon:SetSize(30, 30)
             roleIcon:SetPoint(
                 "LEFT",
                 row.frame,
@@ -3381,7 +3405,7 @@ function ____exports.createModernDashboard(self)
                 -10
             )
             local classIcon = row.frame:CreateTexture(nil, "ARTWORK")
-            classIcon:SetSize(38, 38)
+            classIcon:SetSize(40, 40)
             classIcon:SetPoint(
                 "LEFT",
                 row.frame,
@@ -3843,7 +3867,7 @@ function ____exports.createModernDashboard(self)
             g = g + 1
         end
     end
-    local statusTitle = Native:createText(status.frame, "COMPOSITION & STATUS", "GameFontNormal")
+    local statusTitle = Native:createText(status.frame, "STATUS", "GameFontNormalSmall", theme.colors.muted)
     statusTitle:SetPoint(
         "TOPLEFT",
         status.frame,
@@ -3858,7 +3882,7 @@ function ____exports.createModernDashboard(self)
         status.frame,
         "TOPLEFT",
         18,
-        -54
+        -48
     )
     local phaseText = Native:createText(status.frame, "Configure roster", "GameFontNormalLarge")
     phaseText:SetPoint(
@@ -3884,7 +3908,7 @@ function ____exports.createModernDashboard(self)
         status.frame,
         "TOPLEFT",
         16,
-        -116
+        -112
     )
     local sourceText = Native:createText(status.frame, "1 human  ·  4 bot slots", "GameFontHighlightSmall", theme.colors.muted)
     sourceText:SetPoint(
@@ -4459,6 +4483,7 @@ function ____exports.createModernDashboard(self)
         local cfg = Model:config()
         activityName:SetText(Model:selectedActivityLabel())
         activitySub:SetText(activitySubtitle(nil))
+        activityFieldLabel:SetText(Model:config().mode == "RAID" and "RAID" or "DUNGEON")
         activitySelect:refresh()
         difficultySelect:refresh()
         local sizes = Model:supportedRaidSizes()
