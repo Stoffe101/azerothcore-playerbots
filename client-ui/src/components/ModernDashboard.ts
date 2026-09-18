@@ -494,11 +494,11 @@ export function createModernDashboard(): Dashboard {
     raidView.Hide();
 
     let raidTab: RaidTab = "QUICK";
-    const tabQuick = ButtonUI.createButton(raidView, { text: "Quick Composition", width: 164, height: 34, accent: theme.colors.primary });
+    const tabQuick = ButtonUI.createButton(raidView, { text: "Quick Composition", width: 164, height: 38, accent: theme.colors.warning });
     tabQuick.frame.SetPoint("TOPLEFT", raidView, "TOPLEFT", 0, 0);
-    const tabExact = ButtonUI.createButton(raidView, { text: "Specific Builds", width: 150, height: 34, accent: theme.colors.warning });
+    const tabExact = ButtonUI.createButton(raidView, { text: "Specific Builds", width: 150, height: 38, accent: theme.colors.warning });
     tabExact.frame.SetPoint("LEFT", tabQuick.frame, "RIGHT", 8, 0);
-    const tabRoster = ButtonUI.createButton(raidView, { text: "Prepared Roster", width: 150, height: 34, accent: theme.colors.success });
+    const tabRoster = ButtonUI.createButton(raidView, { text: "Prepared Roster", width: 150, height: 38, accent: theme.colors.success });
     tabRoster.frame.SetPoint("LEFT", tabExact.frame, "RIGHT", 8, 0);
     const resetRoles = ButtonUI.createButton(raidView, {
         text: "Reset roles",

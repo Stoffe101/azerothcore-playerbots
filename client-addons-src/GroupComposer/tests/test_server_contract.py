@@ -686,3 +686,8 @@ assert 'createFramedRoleIcon(row.frame, "DPS", 44' in MODERN
 assert 'panel.frame.SetSize(870, 56)' in MODERN and 'i * 64' in MODERN
 assert 'phaseCard.frame.SetHeight(96)' in MODERN
 assert 'text: "Build & Prepare", width: 270, height: 52' in MODERN
+
+
+# Raid tabs use the target amber composition accent and taller proportions.
+assert 'Quick Composition", width: 164, height: 38, accent: theme.colors.warning' in MODERN
+assert 'Specific Builds", width: 150, height: 38, accent: theme.colors.warning' in MODERN
