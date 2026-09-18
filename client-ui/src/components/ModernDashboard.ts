@@ -255,8 +255,10 @@ export function createModernDashboard(): Dashboard {
     activityEyebrow.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 16, -12);
     const activityName = Native.createText(activity.frame, "Dungeon", "GameFontNormalLarge");
     activityName.SetPoint("TOPLEFT", activityEyebrow, "BOTTOMLEFT", 0, -6);
+    activityName.SetWidth(320);
     const activitySub = Native.createText(activity.frame, "", "GameFontHighlightSmall", theme.colors.muted);
     activitySub.SetPoint("TOPLEFT", activityName, "BOTTOMLEFT", 0, -4);
+    activitySub.SetWidth(320);
 
     const activityFieldLabel = Native.createText(activity.frame, "DUNGEON", "GameFontNormalSmall", theme.colors.muted);
     activityFieldLabel.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 360, -12);
@@ -316,8 +318,10 @@ export function createModernDashboard(): Dashboard {
 
     const humanName = Native.createText(humanPanel.frame, "Choose your role", "GameFontNormal");
     humanName.SetPoint("TOPLEFT", humanIcon, "TOPRIGHT", 10, 0);
+    humanName.SetWidth(360);
     const humanSub = Native.createText(humanPanel.frame, "Real players are locked anchors.", "GameFontHighlightSmall", theme.colors.muted);
     humanSub.SetPoint("TOPLEFT", humanName, "BOTTOMLEFT", 0, -5);
+    humanSub.SetWidth(430);
 
     const yourRoleLabel = Native.createText(humanPanel.frame, "YOUR ROLE", "GameFontNormalSmall", theme.colors.muted);
     yourRoleLabel.SetPoint("TOPRIGHT", humanPanel.frame, "TOPRIGHT", -16, -12);
