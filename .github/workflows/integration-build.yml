@@ -93,33 +93,48 @@ jobs:
             exit 0
           fi
 
-          DATA="$(
-            curl -fsSL --retry 2 --retry-delay 1 \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners" \
-              || true
-          )"
+          # GitHub can briefly report a self-hosted runner as busy/offline after a job
+          # finishes. Poll for a short grace window before falling back to hosted CI.
+          # This avoids false fallbacks while still keeping cloud as the safety net.
+          for attempt in 1 2 3 4 5 6; do
+            DATA="$(
+              curl -fsSL \
+                --connect-timeout 5 \
+                --max-time 10 \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners" \
+                || true
+            )"
 
-          AVAILABLE="$(
-            jq -r '
-              [.runners[]?
-                | select(
-                    .name == "stoffes-pc"
-                    and .status == "online"
-                    and .busy == false
-                  )
-              ] | length
-            ' <<< "$DATA" 2>/dev/null || echo 0
-          )"
+            RUNNER="$(
+              jq -c '
+                .runners[]?
+                | select(.name == "stoffes-pc")
+              ' <<< "$DATA" 2>/dev/null | head -n 1 || true
+            )"
 
-          if [[ "$AVAILABLE" =~ ^[0-9]+$ ]] && (( AVAILABLE > 0 )); then
-            use_local
-          else
-            echo "stoffes-pc is offline, busy, or runner status could not be read."
-            use_github
-          fi
+            if [[ -n "$RUNNER" ]]; then
+              STATUS="$(jq -r '.status // "unknown"' <<< "$RUNNER")"
+              BUSY="$(jq -r '.busy // true' <<< "$RUNNER")"
+              echo "Runner probe $attempt/6: stoffes-pc status=$STATUS busy=$BUSY"
+
+              if [[ "$STATUS" == "online" && "$BUSY" == "false" ]]; then
+                use_local
+                exit 0
+              fi
+            else
+              echo "Runner probe $attempt/6: no readable stoffes-pc runner record."
+            fi
+
+            if (( attempt < 6 )); then
+              sleep 5
+            fi
+          done
+
+          echo "stoffes-pc did not become online+idle during the 25-second grace window."
+          use_github
 
   compile:
     name: Compile complete server stack
