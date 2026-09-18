@@ -679,9 +679,9 @@ export function createModernDashboard(): Dashboard {
     resetButton.frame.SetPoint("LEFT", assembleButton.frame, "RIGHT", 8, 0);
 
     // Templates modal --------------------------------------------------------
-    const templatesModal = ModalUI.createModal(frame, 880, 620);
-    templatesModal.setTitle("Templates");
-    templatesModal.setSubtitle("Built-in starting points and your saved compositions.");
+    const templatesModal = ModalUI.createModal(frame, 920, 650);
+    templatesModal.setTitle("Raid Templates");
+    templatesModal.setSubtitle("Coverage-first raid cores reserve key buffs; every unlisted slot stays Auto-filled.");
 
     const templateSaveLabel = Native.createText(templatesModal.content, "SAVE CURRENT", "GameFontNormalSmall", theme.colors.muted);
     templateSaveLabel.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, 0);
@@ -703,15 +703,25 @@ export function createModernDashboard(): Dashboard {
     });
     templateSave.frame.SetPoint("LEFT", templateName.frame, "RIGHT", 8, 0);
 
-    const builtinTitle = Native.createText(templatesModal.content, "BUILT-IN", "GameFontNormalSmall", theme.colors.muted);
+    const builtinTitle = Native.createText(templatesModal.content, "BUILT-IN RAID COMPS", "GameFontNormalSmall", theme.colors.muted);
     builtinTitle.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -82);
     const customTitle = Native.createText(templatesModal.content, "MY TEMPLATES", "GameFontNormalSmall", theme.colors.muted);
-    customTitle.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 420, -82);
+    customTitle.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 440, -82);
 
-    const builtinScroll = ScrollUI.createScrollList(templatesModal.content, 390, 410);
-    builtinScroll.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -108);
-    const customScroll = ScrollUI.createScrollList(templatesModal.content, 390, 410);
-    customScroll.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 420, -108);
+    const builtinScroll = ScrollUI.createScrollList(templatesModal.content, 414, 430);
+    builtinScroll.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -110);
+    const customScroll = ScrollUI.createScrollList(templatesModal.content, 414, 430);
+    customScroll.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 440, -110);
+
+    const builtinUp = ButtonUI.createButton(templatesModal.content, { text: "▲", width: 34, height: 26, onClick: () => builtinScroll.scrollBy(-220) });
+    builtinUp.frame.SetPoint("TOPRIGHT", templatesModal.content, "TOPLEFT", 374, -78);
+    const builtinDown = ButtonUI.createButton(templatesModal.content, { text: "▼", width: 34, height: 26, onClick: () => builtinScroll.scrollBy(220) });
+    builtinDown.frame.SetPoint("LEFT", builtinUp.frame, "RIGHT", 4, 0);
+
+    const customUp = ButtonUI.createButton(templatesModal.content, { text: "▲", width: 34, height: 26, onClick: () => customScroll.scrollBy(-220) });
+    customUp.frame.SetPoint("TOPRIGHT", templatesModal.content, "TOPLEFT", 814, -78);
+    const customDown = ButtonUI.createButton(templatesModal.content, { text: "▼", width: 34, height: 26, onClick: () => customScroll.scrollBy(220) });
+    customDown.frame.SetPoint("LEFT", customUp.frame, "RIGHT", 4, 0);
     const builtinRows: WoWFrame[] = [];
     const customRows: WoWFrame[] = [];
 
@@ -728,20 +738,25 @@ export function createModernDashboard(): Dashboard {
             let row = builtinRows[i];
             if (row === undefined) {
                 const panel = Native.createPanel(builtinScroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                panel.frame.SetSize(382, 40);
-                const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
-                name.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
-                name.SetWidth(235);
-                const load = ButtonUI.createButton(panel.frame, { text: "Load", width: 82, height: 28, accent: theme.colors.primary });
-                load.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -6, 0);
+                panel.frame.SetSize(406, 62);
+                const name = Native.createText(panel.frame, "", "GameFontHighlight");
+                name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 10, -10);
+                name.SetWidth(285);
+                const info = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
+                info.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 10, -34);
+                info.SetWidth(300);
+                const load = ButtonUI.createButton(panel.frame, { text: "Load", width: 82, height: 32, accent: theme.colors.primary });
+                load.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
                 (panel.frame as any)._name = name;
+                (panel.frame as any)._info = info;
                 (panel.frame as any)._load = load;
                 row = panel.frame;
                 builtinRows[i] = row;
             }
             row.ClearAllPoints();
-            row.SetPoint("TOPLEFT", builtinScroll.content, "TOPLEFT", 0, -(i * 46));
+            row.SetPoint("TOPLEFT", builtinScroll.content, "TOPLEFT", 0, -(i * 68));
             (row as any)._name.SetText(builtins[i]);
+            (row as any)._info.SetText(Model.profileDescription(builtins[i]));
             const profileName = builtins[i];
             (row as any)._load.frame.SetScript("OnMouseDown", () => {
                 Model.loadProfile(profileName);
@@ -749,30 +764,35 @@ export function createModernDashboard(): Dashboard {
             });
             row.Show();
         }
-        builtinScroll.setContentHeight(Math.max(410, builtins.length * 46));
+        builtinScroll.setContentHeight(Math.max(430, builtins.length * 68));
 
         const customs = Model.listCustomProfiles();
         for (let i = 0; i < customs.length; i += 1) {
             let row = customRows[i];
             if (row === undefined) {
                 const panel = Native.createPanel(customScroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                panel.frame.SetSize(382, 40);
-                const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
-                name.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
-                name.SetWidth(190);
-                const load = ButtonUI.createButton(panel.frame, { text: "Load", width: 68, height: 28, accent: theme.colors.primary });
-                load.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -74, 0);
-                const remove = ButtonUI.createButton(panel.frame, { text: "Delete", width: 62, height: 28, accent: theme.colors.error });
-                remove.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -6, 0);
+                panel.frame.SetSize(406, 62);
+                const name = Native.createText(panel.frame, "", "GameFontHighlight");
+                name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 10, -10);
+                name.SetWidth(220);
+                const info = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
+                info.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 10, -34);
+                info.SetWidth(230);
+                const load = ButtonUI.createButton(panel.frame, { text: "Load", width: 68, height: 30, accent: theme.colors.primary });
+                load.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -78, 0);
+                const remove = ButtonUI.createButton(panel.frame, { text: "Delete", width: 66, height: 30, accent: theme.colors.error });
+                remove.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
                 (panel.frame as any)._name = name;
+                (panel.frame as any)._info = info;
                 (panel.frame as any)._load = load;
                 (panel.frame as any)._remove = remove;
                 row = panel.frame;
                 customRows[i] = row;
             }
             row.ClearAllPoints();
-            row.SetPoint("TOPLEFT", customScroll.content, "TOPLEFT", 0, -(i * 46));
+            row.SetPoint("TOPLEFT", customScroll.content, "TOPLEFT", 0, -(i * 68));
             (row as any)._name.SetText(customs[i]);
+            (row as any)._info.SetText(Model.profileDescription(customs[i]));
             const profileName = customs[i];
             (row as any)._load.frame.SetScript("OnMouseDown", () => {
                 Model.loadProfile(profileName);
@@ -784,11 +804,13 @@ export function createModernDashboard(): Dashboard {
             });
             row.Show();
         }
-        customScroll.setContentHeight(Math.max(410, customs.length * 46));
+        customScroll.setContentHeight(Math.max(430, customs.length * 68));
     }
 
     showTemplates = () => {
         ChoiceUI.closeChoicePopup();
+        builtinScroll.scrollToTop();
+        customScroll.scrollToTop();
         refreshTemplates();
         templatesModal.show();
     };
