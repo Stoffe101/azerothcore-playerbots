@@ -556,7 +556,7 @@ assert "roleTint = Native.createSolid" in MODERN, "Role cards lost their role-ti
 assert "classBadge = Native.createFramedIcon" in MODERN and "specBadge = Native.createFramedIcon" in MODERN, (
     "Specific Builds rows lost the framed real class/spec icon treatment"
 )
-assert "const modal = createModal(parent, 1080, 760);" in SELECTOR
+assert "const modal = createModal(parent, 1080, 790);" in SELECTOR
 assert "classIndex % 5" in SELECTOR and "row * 104" in SELECTOR, "Class picker lost the 5x2 card-grid layout"
 assert "specSummary" in SELECTOR and 'labels.join("  ·  ")' in SELECTOR
 assert "Any valid spec" in SELECTOR and "emphasis: true" in SELECTOR
