@@ -6408,7 +6408,7 @@ function ____exports.createModernDashboard(self)
                 end
                 if text == nil and i == 0 then
                     if phase == "READY" then
-                        text = Model:isTravelRetry() and "Clear the travel blocker, then enter the activity." or "Review the prepared roster, then assemble."
+                        text = Model:isTravelRetry() and "Clear the travel blocker, then enter the activity." or "Prepared roster is ready for review. Assemble when it looks right."
                     elseif phase == "PREPARING" then
                         text = "Composer is provisioning and validating the selected bots."
                     elseif not Model:humanReady() then
