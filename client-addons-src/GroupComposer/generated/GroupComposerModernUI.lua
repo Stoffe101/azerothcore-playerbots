@@ -5254,15 +5254,36 @@ local createModernDashboard = ____ModernDashboard.createModernDashboard
 local ____WotlkBuilds = require("data.WotlkBuilds")
 local getClassesForRole = ____WotlkBuilds.getClassesForRole
 local getSpecsForRole = ____WotlkBuilds.getSpecsForRole
-local dashboard = _G.CreateFrame ~= nil and createModernDashboard(nil) or nil
+local GC = _G.GroupComposer
+local dashboard = nil
+local function ensureDashboard()
+    if dashboard ~= nil then
+        return dashboard
+    end
+    if _G.CreateFrame == nil or GC == nil or GC.config == nil then
+        return nil
+    end
+    dashboard = createModernDashboard(nil)
+    _G.GroupComposerModernUI.dashboard = dashboard
+    return dashboard
+end
 _G.GroupComposerModernUI = {
-    version = "0.2.0",
-    dashboard = dashboard,
+    version = "0.2.1",
+    dashboard = nil,
+    ensureDashboard = function() return ensureDashboard() end,
     createBuildSelector = function(...) return createBuildSelector(nil, ...) end,
     createModernDashboard = function() return createModernDashboard(nil) end,
     getClassesForRole = function(role) return getClassesForRole(role) end,
     getSpecsForRole = function(classId, role) return getSpecsForRole(classId, role) end
 }
+if GC ~= nil then
+    GC.Toggle = function()
+        local ui = ensureDashboard()
+        if ui ~= nil then
+            ui:toggle()
+        end
+    end
+end
 return ____exports
  end,
 ["layout.Stack"] = function(...) 
