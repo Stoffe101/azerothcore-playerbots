@@ -1,6 +1,6 @@
 # Group Composer typed UI layer
 
-This directory is the source-of-truth foundation for the next Group Composer client UI.
+This directory is the TypeScript source of truth for the active Group Composer client UI.
 
 ```text
 TypeScript
@@ -11,19 +11,29 @@ TypeScript
 
 There is no browser, React runtime, virtual DOM, Chromium, client injection, or Warden-delivered UI.
 
-## Current scope
+## Active shell
 
-The first implementation deliberately stays small:
+`GroupComposerModernUI.lua` is generated from this directory and is the shell loaded by the addon TOC.
+The old Lua dashboards remain only as migration/history files and are not part of the active load path.
 
-- central theme tokens,
-- native frame helpers,
-- Stack layout primitive,
-- custom Button and Modal widgets,
-- NumberStepper,
-- canonical WotLK role/class/spec data,
-- a reusable role -> class -> spec BuildSelector.
+The typed UI currently owns:
 
-The existing `DashboardV4.lua` remains active while this foundation is proven. The TypeScript layer is not yet the visible Group Composer shell.
+- the Dungeon and Raid dashboard,
+- activity and difficulty selectors,
+- live activity eligibility hints,
+- human role anchors,
+- per-slot dungeon Auto/exact builds,
+- raid Quick Composition, Specific Builds and Prepared Roster views,
+- reusable role-aware class/spec selection,
+- partial exact requirements with Auto remainder,
+- raid templates and custom profiles,
+- Humans & Pins,
+- composition options including minimum item-level floor,
+- progress, warnings, coverage and assembly/travel actions,
+- reusable visible scroll rails for long selectors, templates and build lists.
+
+Server-side Group Composer remains authoritative for candidate eligibility, activity level requirements,
+roster selection, preparation, assembly, instance entry and Titan Rune handoff.
 
 ## Build
 
