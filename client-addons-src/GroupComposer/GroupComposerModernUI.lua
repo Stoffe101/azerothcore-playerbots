@@ -2650,7 +2650,7 @@ local theme = ____Theme.theme
 local ____Button = require("widgets.Button")
 local createButton = ____Button.createButton
 function ____exports.createNumberStepper(self, parent, initialMin, initialMax, initial, onChange)
-    local update, min, max, value, valueText, minus, plus
+    local update, min, max, value, valueText, plus, minus
     function update(self, next, notify)
         if notify == nil then
             notify = true
@@ -2667,32 +2667,31 @@ function ____exports.createNumberStepper(self, parent, initialMin, initialMax, i
         end
     end
     local frame = CreateFrame("Frame", nil, parent)
-    frame:SetSize(136, 40)
+    frame:SetSize(110, 42)
     min = initialMin
     max = initialMax
     value = initial
     local center = createPanel(nil, frame, theme.colors.surfaceDeep, theme.colors.borderStrong)
     center.frame:SetPoint(
-        "LEFT",
+        "TOPLEFT",
         frame,
-        "LEFT",
-        42,
+        "TOPLEFT",
+        0,
         0
     )
     center.frame:SetPoint(
-        "RIGHT",
+        "BOTTOMRIGHT",
         frame,
-        "RIGHT",
-        -42,
+        "BOTTOMRIGHT",
+        -30,
         0
     )
-    center.frame:SetHeight(40)
     valueText = createText(
         nil,
         center.frame,
         tostring(value),
         "GameFontNormalLarge",
-        theme.colors.primary
+        theme.colors.text
     )
     valueText:SetPoint(
         "CENTER",
@@ -2702,39 +2701,39 @@ function ____exports.createNumberStepper(self, parent, initialMin, initialMax, i
         0
     )
     valueText:SetJustifyH("CENTER")
-    minus = createButton(
-        nil,
-        frame,
-        {
-            text = "-",
-            width = 36,
-            height = 40,
-            accent = theme.colors.primary,
-            onClick = function() return update(nil, value - 1) end
-        }
-    )
-    minus.frame:SetPoint(
-        "LEFT",
-        frame,
-        "LEFT",
-        0,
-        0
-    )
     plus = createButton(
         nil,
         frame,
         {
-            text = "+",
-            width = 36,
-            height = 40,
+            text = "^",
+            width = 26,
+            height = 19,
             accent = theme.colors.primary,
             onClick = function() return update(nil, value + 1) end
         }
     )
     plus.frame:SetPoint(
-        "RIGHT",
+        "TOPRIGHT",
         frame,
-        "RIGHT",
+        "TOPRIGHT",
+        0,
+        0
+    )
+    minus = createButton(
+        nil,
+        frame,
+        {
+            text = "v",
+            width = 26,
+            height = 19,
+            accent = theme.colors.primary,
+            onClick = function() return update(nil, value - 1) end
+        }
+    )
+    minus.frame:SetPoint(
+        "BOTTOMRIGHT",
+        frame,
+        "BOTTOMRIGHT",
         0,
         0
     )
@@ -2804,15 +2803,6 @@ local function roleAccent(self, role)
     end
     return theme.colors.dps
 end
-local function roleIcon(self, role)
-    if role == "TANK" then
-        return "Interface\\Icons\\Ability_Warrior_DefensiveStance"
-    end
-    if role == "HEALER" then
-        return "Interface\\Icons\\Spell_Holy_FlashHeal"
-    end
-    return "Interface\\Icons\\INV_Sword_04"
-end
 local function specSummary(self, classId, role)
     local labels = {}
     for ____, spec in ipairs(getSpecsForRole(classId, role)) do
@@ -2835,8 +2825,54 @@ local function classRoleSummary(self, classId, role)
     end
     return "Melee DPS"
 end
+local SELECTOR_CLASS_ORDER = {
+    "DEATHKNIGHT",
+    "WARRIOR",
+    "PALADIN",
+    "HUNTER",
+    "ROGUE",
+    "SHAMAN",
+    "MAGE",
+    "WARLOCK",
+    "DRUID",
+    "PRIEST"
+}
+local function selectorClassesForRole(self, role, compatible)
+    local valid = compatible or getClassesForRole(role)
+    local result = {}
+    for ____, classId in ipairs(SELECTOR_CLASS_ORDER) do
+        for ____, classDef in ipairs(valid) do
+            if classDef.id == classId then
+                result[#result + 1] = classDef
+                break
+            end
+        end
+    end
+    return result
+end
+local function createRadioMarker(self, parent)
+    local marker = parent:CreateTexture(nil, "OVERLAY")
+    marker:SetTexture("Interface\\Buttons\\UI-RadioButton")
+    marker:SetSize(22, 22)
+    marker:SetPoint(
+        "BOTTOM",
+        parent,
+        "BOTTOM",
+        0,
+        8
+    )
+    return marker
+end
+local function setRadioSelected(self, marker, selected)
+    marker:SetTexCoord(selected and 0.25 or 0, selected and 0.5 or 0.25, 0, 1)
+    if selected then
+        marker:SetVertexColor(theme.colors.primary[1], theme.colors.primary[2], theme.colors.primary[3], 1)
+    else
+        marker:SetVertexColor(theme.colors.muted[1], theme.colors.muted[2], theme.colors.muted[3], 0.9)
+    end
+end
 function ____exports.createBuildSelector(self, parent, options)
-    local refresh, modal, currentRole, currentClass, currentSpec, classSection, classStep, classStepText, classTiles, specSection, specStep, specStepText, specHint, emptySpec, anySpecButton, anySpecMarker, specTiles, summaryClassBadge, summaryClassText, summarySpecBadge, summarySpecText, summaryRoleBadge, summaryRoleText, apply
+    local refresh, modal, currentRole, currentClass, currentSpec, classSection, classStep, classStepGlow, classStepText, classHint, classTiles, specSection, specStep, specStepGlow, specStepText, specHint, emptySpec, anySpecButton, anySpecMarker, specTiles, summaryClassBadge, summaryClassText, summarySpecBadge, summarySpecText, summaryRoleBadge, summaryRoleText, apply
     function refresh(self)
         local accent = roleAccent(nil, currentRole)
         modal:setTitle(("Add " .. roleLabel(nil, currentRole)) .. " Build")
@@ -2848,15 +2884,22 @@ function ____exports.createBuildSelector(self, parent, options)
         specStep.outline:setColor(accent)
         classStepText:SetTextColor(accent[1], accent[2], accent[3], 1)
         specStepText:SetTextColor(accent[1], accent[2], accent[3], 1)
+        classStepGlow:SetVertexColor(accent[1], accent[2], accent[3], 0.65)
+        specStepGlow:SetVertexColor(accent[1], accent[2], accent[3], 0.65)
+        classHint:SetText(("Select a class that can fulfill the " .. roleLabel(nil, currentRole)) .. " role.")
         setRoleIcon(nil, summaryRoleBadge.icon, currentRole)
         summaryRoleBadge.outline:setColor(accent)
         summaryRoleText:SetText(roleLabel(nil, currentRole))
         summaryRoleText:SetTextColor(accent[1], accent[2], accent[3], 1)
-        local validClasses = getClassesForRole(currentRole)
+        local validClasses = selectorClassesForRole(
+            nil,
+            currentRole,
+            getClassesForRole(currentRole)
+        )
         local classIndex = 0
         for ____, tile in ipairs(classTiles) do
             do
-                local __continue34
+                local __continue41
                 repeat
                     local valid = false
                     for ____, classDef in ipairs(validClasses) do
@@ -2867,7 +2910,7 @@ function ____exports.createBuildSelector(self, parent, options)
                     end
                     if not valid then
                         tile.button.frame:Hide()
-                        __continue34 = true
+                        __continue41 = true
                         break
                     end
                     local column = classIndex % 5
@@ -2884,32 +2927,25 @@ function ____exports.createBuildSelector(self, parent, options)
                     tile.specs:SetText(specSummary(nil, tile.classDef.id, currentRole))
                     local selected = tile.classDef.id == currentClass
                     tile.button:setSelected(selected)
-                    if selected then
-                        tile.marker:Show()
-                    else
-                        tile.marker:Hide()
-                    end
                     tile.button.frame:Show()
                     classIndex = classIndex + 1
-                    __continue34 = true
+                    __continue41 = true
                 until true
-                if not __continue34 then
+                if not __continue41 then
                     break
                 end
             end
         end
         if currentClass == nil then
             anySpecButton.frame:Hide()
-            anySpecMarker.frame:Hide()
             for ____, tile in ipairs(specTiles) do
-                tile.marker:Hide()
                 tile.button.frame:Hide()
             end
             specHint:SetText("Pick a class first.")
             emptySpec:Show()
         else
             local selectedClass = getClass(currentClass)
-            specHint:SetText((((selectedClass and selectedClass.label or "Selected class") .. " options for ") .. roleLabel(nil, currentRole)) .. ".")
+            specHint:SetText(("Select a specialization for your " .. (selectedClass and selectedClass.label or "selected class")) .. " build.")
             emptySpec:Hide()
             local specIndex = 0
             for ____, tile in ipairs(specTiles) do
@@ -2931,18 +2967,13 @@ function ____exports.createBuildSelector(self, parent, options)
                         14 + specIndex * 248,
                         -78
                     )
-                    tile.sub:SetText((tile.classLabel .. " · ") .. roleLabel(nil, currentRole))
+                    tile.sub:SetText(classRoleSummary(nil, tile.classId, currentRole))
                     local selected = tile.spec.id == currentSpec
                     tile.button:setSelected(selected)
-                    if selected then
-                        tile.marker:Show()
-                    else
-                        tile.marker:Hide()
-                    end
+                    setRadioSelected(nil, tile.marker, selected)
                     tile.button.frame:Show()
                     specIndex = specIndex + 1
                 else
-                    tile.marker:Hide()
                     tile.button.frame:Hide()
                 end
             end
@@ -2956,11 +2987,7 @@ function ____exports.createBuildSelector(self, parent, options)
             )
             local anySelected = currentSpec == ANY_SPEC_ID
             anySpecButton:setSelected(anySelected)
-            if anySelected then
-                anySpecMarker.frame:Show()
-            else
-                anySpecMarker.frame:Hide()
-            end
+            setRadioSelected(nil, anySpecMarker, anySelected)
             anySpecButton.frame:Show()
         end
         local ____temp_2
@@ -3037,6 +3064,17 @@ function ____exports.createBuildSelector(self, parent, options)
         14,
         -14
     )
+    classStepGlow = classStep.frame:CreateTexture(nil, "OVERLAY")
+    classStepGlow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+    classStepGlow:SetSize(54, 54)
+    classStepGlow:SetPoint(
+        "CENTER",
+        classStep.frame,
+        "CENTER",
+        0,
+        0
+    )
+    classStepGlow:SetVertexColor(theme.colors.primary[1], theme.colors.primary[2], theme.colors.primary[3], 0.65)
     classStepText = createText(
         nil,
         classStep.frame,
@@ -3051,7 +3089,7 @@ function ____exports.createBuildSelector(self, parent, options)
         0,
         0
     )
-    local classTitle = createText(nil, classSection.frame, "Choose a class", "GameFontNormalLarge")
+    local classTitle = createText(nil, classSection.frame, "CHOOSE A CLASS", "GameFontNormalLarge")
     classTitle:SetPoint(
         "TOPLEFT",
         classSection.frame,
@@ -3059,10 +3097,10 @@ function ____exports.createBuildSelector(self, parent, options)
         60,
         -13
     )
-    local classHint = createText(
+    classHint = createText(
         nil,
         classSection.frame,
-        "Only classes that can perform the selected role are shown.",
+        "Select a class that can fulfill this role.",
         "GameFontHighlightSmall",
         theme.colors.muted
     )
@@ -3074,7 +3112,7 @@ function ____exports.createBuildSelector(self, parent, options)
         -4
     )
     classTiles = {}
-    for ____, classDef in ipairs(getClassesForRole("DPS")) do
+    for ____, classDef in ipairs(selectorClassesForRole(nil, "DPS")) do
         local button = createButton(nil, classSection.frame, {text = classDef.label, width = 190, height = 116, accent = theme.colors.primary})
         local accent = createSolid(
             nil,
@@ -3169,19 +3207,6 @@ function ____exports.createBuildSelector(self, parent, options)
         )
         specs:SetWidth(174)
         specs:SetJustifyH("CENTER")
-        local marker = createPanel(nil, button.frame, theme.colors.surfaceBlue, theme.colors.primary)
-        marker.frame:SetSize(22, 22)
-        marker.frame:SetPoint(
-            "TOPRIGHT",
-            button.frame,
-            "TOPRIGHT",
-            -6,
-            -6
-        )
-        local markerCheck = marker.frame:CreateTexture(nil, "ARTWORK")
-        markerCheck:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
-        markerCheck:SetAllPoints(marker.frame)
-        marker.frame:Hide()
         button.frame:SetScript(
             "OnMouseDown",
             function()
@@ -3197,8 +3222,7 @@ function ____exports.createBuildSelector(self, parent, options)
             button = button,
             icon = icon,
             sub = sub,
-            specs = specs,
-            marker = marker.frame
+            specs = specs
         }
     end
     specSection = createPanel(nil, modal.content, theme.colors.surface, theme.colors.border)
@@ -3226,6 +3250,17 @@ function ____exports.createBuildSelector(self, parent, options)
         14,
         -14
     )
+    specStepGlow = specStep.frame:CreateTexture(nil, "OVERLAY")
+    specStepGlow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+    specStepGlow:SetSize(54, 54)
+    specStepGlow:SetPoint(
+        "CENTER",
+        specStep.frame,
+        "CENTER",
+        0,
+        0
+    )
+    specStepGlow:SetVertexColor(theme.colors.primary[1], theme.colors.primary[2], theme.colors.primary[3], 0.65)
     specStepText = createText(
         nil,
         specStep.frame,
@@ -3240,7 +3275,7 @@ function ____exports.createBuildSelector(self, parent, options)
         0,
         0
     )
-    local specTitle = createText(nil, specSection.frame, "Choose a specialization", "GameFontNormalLarge")
+    local specTitle = createText(nil, specSection.frame, "CHOOSE A SPECIALIZATION", "GameFontNormalLarge")
     specTitle:SetPoint(
         "TOPLEFT",
         specSection.frame,
@@ -3322,7 +3357,7 @@ function ____exports.createBuildSelector(self, parent, options)
     local anySpecSub = createText(
         nil,
         anySpecButton.frame,
-        "Lock class, let Composer pick spec",
+        "Let Composer choose for me",
         "GameFontHighlightSmall",
         theme.colors.muted
     )
@@ -3335,22 +3370,11 @@ function ____exports.createBuildSelector(self, parent, options)
     )
     anySpecSub:SetWidth(136)
     anySpecSub:SetJustifyV("TOP")
-    anySpecMarker = createPanel(nil, anySpecButton.frame, theme.colors.surfaceBlue, theme.colors.primary)
-    anySpecMarker.frame:SetSize(22, 22)
-    anySpecMarker.frame:SetPoint(
-        "BOTTOM",
-        anySpecButton.frame,
-        "BOTTOM",
-        0,
-        8
-    )
-    local anySpecCheck = anySpecMarker.frame:CreateTexture(nil, "ARTWORK")
-    anySpecCheck:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
-    anySpecCheck:SetAllPoints(anySpecMarker.frame)
-    anySpecMarker.frame:Hide()
+    anySpecMarker = createRadioMarker(nil, anySpecButton.frame)
+    setRadioSelected(nil, anySpecMarker, false)
     anySpecButton.frame:Hide()
     specTiles = {}
-    for ____, classDef in ipairs(getClassesForRole("DPS")) do
+    for ____, classDef in ipairs(selectorClassesForRole(nil, "DPS")) do
         for ____, spec in ipairs(classDef.specs) do
             local button = createButton(nil, specSection.frame, {text = spec.label, width = 236, height = 104, accent = theme.colors.primary})
             local icon = createIcon(nil, button.frame, spec.icon, 46)
@@ -3392,19 +3416,8 @@ function ____exports.createBuildSelector(self, parent, options)
                 -49
             )
             sub:SetWidth(136)
-            local marker = createPanel(nil, button.frame, theme.colors.surfaceBlue, theme.colors.primary)
-            marker.frame:SetSize(22, 22)
-            marker.frame:SetPoint(
-                "BOTTOM",
-                button.frame,
-                "BOTTOM",
-                0,
-                8
-            )
-            local markerCheck = marker.frame:CreateTexture(nil, "ARTWORK")
-            markerCheck:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
-            markerCheck:SetAllPoints(marker.frame)
-            marker.frame:Hide()
+            local marker = createRadioMarker(nil, button.frame)
+            setRadioSelected(nil, marker, false)
             button.frame:SetScript(
                 "OnMouseDown",
                 function()
@@ -3421,7 +3434,7 @@ function ____exports.createBuildSelector(self, parent, options)
                 button = button,
                 icon = icon,
                 sub = sub,
-                marker = marker.frame
+                marker = marker
             }
         end
     end
@@ -4878,7 +4891,7 @@ function ____exports.createModernDashboard(self)
         -1,
         -1
     )
-    header.frame:SetHeight(64)
+    header.frame:SetHeight(72)
     local headerAccent = Native:createSolid(header.frame, theme.colors.primary, "OVERLAY")
     headerAccent:SetPoint(
         "TOPLEFT",
@@ -4896,7 +4909,7 @@ function ____exports.createModernDashboard(self)
     )
     headerAccent:SetHeight(2)
     local mark = Native:createPanel(header.frame, theme.colors.surfaceBlue, theme.colors.primary)
-    mark.frame:SetSize(40, 40)
+    mark.frame:SetSize(48, 48)
     Native:createChrome(mark.frame, theme.colors.primary)
     mark.frame:SetPoint(
         "LEFT",
@@ -4919,8 +4932,8 @@ function ____exports.createModernDashboard(self)
         "TOPLEFT",
         header.frame,
         "TOPLEFT",
-        70,
-        -12
+        82,
+        -14
     )
     local subtitle = Native:createText(header.frame, "Build the team you want, then let Composer prepare it.", "GameFontHighlightSmall", theme.colors.muted)
     subtitle:SetPoint(
@@ -4985,7 +4998,7 @@ function ____exports.createModernDashboard(self)
         frame,
         "TOPLEFT",
         1,
-        -65
+        -73
     )
     sidebar.frame:SetPoint(
         "BOTTOMLEFT",
@@ -4994,7 +5007,7 @@ function ____exports.createModernDashboard(self)
         1,
         34
     )
-    sidebar.frame:SetWidth(168)
+    sidebar.frame:SetWidth(184)
     local navTitle = Native:createText(sidebar.frame, "COMPOSE", "GameFontNormalSmall", theme.colors.muted)
     navTitle:SetPoint(
         "TOPLEFT",
@@ -5007,7 +5020,7 @@ function ____exports.createModernDashboard(self)
         sidebar.frame,
         {
             text = "Dungeon",
-            width = 136,
+            width = 152,
             height = 46,
             accent = theme.colors.primary,
             icon = ICON_DUNGEON,
@@ -5027,7 +5040,7 @@ function ____exports.createModernDashboard(self)
         sidebar.frame,
         {
             text = "Raid",
-            width = 136,
+            width = 152,
             height = 46,
             accent = theme.colors.warning,
             icon = ICON_RAID,
@@ -5077,7 +5090,7 @@ function ____exports.createModernDashboard(self)
         sidebar.frame,
         {
             text = "Templates",
-            width = 136,
+            width = 152,
             height = 42,
             icon = ICON_TEMPLATES,
             iconSize = 22,
@@ -5096,7 +5109,7 @@ function ____exports.createModernDashboard(self)
         sidebar.frame,
         {
             text = "Humans & Pins",
-            width = 136,
+            width = 152,
             height = 42,
             icon = ICON_PEOPLE,
             iconSize = 22,
@@ -5115,7 +5128,7 @@ function ____exports.createModernDashboard(self)
         sidebar.frame,
         {
             text = "Options",
-            width = 136,
+            width = 152,
             height = 42,
             icon = ICON_OPTIONS,
             iconSize = 22,
@@ -5138,7 +5151,7 @@ function ____exports.createModernDashboard(self)
         16,
         42
     )
-    sideHint:SetWidth(136)
+    sideHint:SetWidth(152)
     sideHint:SetJustifyV("TOP")
     local ____Native_11 = Native
     local ____Native_createText_12 = Native.createText
@@ -5166,17 +5179,17 @@ function ____exports.createModernDashboard(self)
         "TOPLEFT",
         frame,
         "TOPLEFT",
-        184,
-        -80
+        200,
+        -88
     )
-    center:SetSize(986, 776)
+    center:SetSize(970, 768)
     local status = Native:createPanel(frame, theme.colors.surface, theme.colors.borderStrong)
     status.frame:SetPoint(
         "TOPLEFT",
         frame,
         "TOPLEFT",
         1186,
-        -80
+        -88
     )
     status.frame:SetPoint(
         "BOTTOMRIGHT",
@@ -5190,7 +5203,7 @@ function ____exports.createModernDashboard(self)
         "BOTTOMLEFT",
         frame,
         "BOTTOMLEFT",
-        184,
+        200,
         10
     )
     footer.frame:SetPoint(
@@ -5596,13 +5609,13 @@ function ____exports.createModernDashboard(self)
         local i = 0
         while i < 5 do
             local row = Native:createPanel(dungeonView, theme.colors.surfaceRaised, theme.colors.border)
-            row.frame:SetHeight(66)
+            row.frame:SetHeight(76)
             row.frame:SetPoint(
                 "TOPLEFT",
                 dungeonView,
                 "TOPLEFT",
                 0,
-                -(i * 72)
+                -(i * 82)
             )
             row.frame:SetPoint(
                 "RIGHT",
@@ -5627,7 +5640,7 @@ function ____exports.createModernDashboard(self)
                 0,
                 0
             )
-            local roleBadge = Native:createFramedRoleIcon(row.frame, "DPS", 38, theme.colors.borderStrong)
+            local roleBadge = Native:createFramedRoleIcon(row.frame, "DPS", 44, theme.colors.borderStrong)
             roleBadge.frame:SetPoint(
                 "LEFT",
                 row.frame,
@@ -5652,7 +5665,7 @@ function ____exports.createModernDashboard(self)
                 10,
                 -10
             )
-            local classBadge = Native:createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 42, theme.colors.borderStrong)
+            local classBadge = Native:createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 46, theme.colors.borderStrong)
             classBadge.frame:SetPoint(
                 "LEFT",
                 row.frame,
@@ -5662,7 +5675,7 @@ function ____exports.createModernDashboard(self)
             )
             classBadge.frame:Hide()
             local classIcon = classBadge.icon
-            local specBadge = Native:createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 36, theme.colors.borderStrong)
+            local specBadge = Native:createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 40, theme.colors.borderStrong)
             specBadge.frame:SetPoint(
                 "LEFT",
                 classBadge.frame,
@@ -5677,8 +5690,8 @@ function ____exports.createModernDashboard(self)
                 "TOPLEFT",
                 row.frame,
                 "TOPLEFT",
-                262,
-                -15
+                270,
+                -18
             )
             name:SetWidth(350)
             local sub = Native:createText(row.frame, "Composer chooses a suitable build", "GameFontHighlightSmall", theme.colors.muted)
@@ -5687,10 +5700,10 @@ function ____exports.createModernDashboard(self)
                 name,
                 "BOTTOMLEFT",
                 0,
-                -4
+                -5
             )
             sub:SetWidth(390)
-            local choose = ButtonUI:createButton(row.frame, {text = "Choose build", width = 130, height = 34, accent = theme.colors.primary})
+            local choose = ButtonUI:createButton(row.frame, {text = "Choose build", width = 136, height = 38, accent = theme.colors.primary})
             choose.frame:SetPoint(
                 "RIGHT",
                 row.frame,
@@ -5698,7 +5711,7 @@ function ____exports.createModernDashboard(self)
                 -82,
                 0
             )
-            local auto = ButtonUI:createButton(row.frame, {text = "Auto", width = 66, height = 34})
+            local auto = ButtonUI:createButton(row.frame, {text = "Auto", width = 68, height = 38})
             auto.frame:SetPoint(
                 "RIGHT",
                 row.frame,
@@ -5706,7 +5719,7 @@ function ____exports.createModernDashboard(self)
                 -12,
                 0
             )
-            local humanAnchor = ButtonUI:createButton(row.frame, {text = "Human anchor", width = 132, height = 34, accent = theme.colors.borderStrong})
+            local humanAnchor = ButtonUI:createButton(row.frame, {text = "Human anchor", width = 136, height = 38, accent = theme.colors.borderStrong})
             humanAnchor.frame:SetPoint(
                 "RIGHT",
                 row.frame,
@@ -5752,7 +5765,7 @@ function ____exports.createModernDashboard(self)
     )
     raidView:Hide()
     local raidTab = "QUICK"
-    local tabQuick = ButtonUI:createButton(raidView, {text = "Quick Composition", width = 164, height = 34, accent = theme.colors.primary})
+    local tabQuick = ButtonUI:createButton(raidView, {text = "Quick Composition", width = 164, height = 38, accent = theme.colors.warning})
     tabQuick.frame:SetPoint(
         "TOPLEFT",
         raidView,
@@ -5760,7 +5773,7 @@ function ____exports.createModernDashboard(self)
         0,
         0
     )
-    local tabExact = ButtonUI:createButton(raidView, {text = "Specific Builds", width = 150, height = 34, accent = theme.colors.warning})
+    local tabExact = ButtonUI:createButton(raidView, {text = "Specific Builds", width = 150, height = 38, accent = theme.colors.warning})
     tabExact.frame:SetPoint(
         "LEFT",
         tabQuick.frame,
@@ -5768,7 +5781,7 @@ function ____exports.createModernDashboard(self)
         8,
         0
     )
-    local tabRoster = ButtonUI:createButton(raidView, {text = "Prepared Roster", width = 150, height = 34, accent = theme.colors.success})
+    local tabRoster = ButtonUI:createButton(raidView, {text = "Prepared Roster", width = 150, height = 38, accent = theme.colors.success})
     tabRoster.frame:SetPoint(
         "LEFT",
         tabExact.frame,
@@ -6112,7 +6125,7 @@ function ____exports.createModernDashboard(self)
         local roleBadge = Native:createFramedRoleIcon(
             panel.frame,
             role,
-            38,
+            42,
             Model:roleAccent(role)
         )
         roleBadge.frame:SetPoint(
@@ -6308,7 +6321,7 @@ function ____exports.createModernDashboard(self)
         -16,
         -40
     )
-    phaseCard.frame:SetHeight(84)
+    phaseCard.frame:SetHeight(96)
     local phaseAccent = Native:createSolid(phaseCard.frame, theme.colors.primary, "ARTWORK")
     phaseAccent:SetWidth(3)
     phaseAccent:SetPoint(
@@ -6371,7 +6384,7 @@ function ____exports.createModernDashboard(self)
         status.frame,
         "TOPLEFT",
         16,
-        -140
+        -152
     )
     local sourceText = Native:createText(status.frame, "1 human  ·  4 bot slots", "GameFontHighlightSmall", theme.colors.muted)
     sourceText:SetPoint(
@@ -6397,7 +6410,7 @@ function ____exports.createModernDashboard(self)
                 status.frame,
                 "TOPLEFT",
                 16 + i * 90,
-                -198
+                -210
             )
             local icon = chip.frame:CreateTexture(nil, "ARTWORK")
             icon:SetSize(17, 17)
@@ -6432,7 +6445,7 @@ function ____exports.createModernDashboard(self)
         status.frame,
         "TOPLEFT",
         16,
-        -242
+        -254
     )
     progressBg.frame:SetSize(270, 14)
     local progressFill = Native:createSolid(progressBg.frame, theme.colors.primary, "ARTWORK")
@@ -6457,7 +6470,7 @@ function ____exports.createModernDashboard(self)
         status.frame,
         "TOPLEFT",
         16,
-        -260
+        -274
     )
     progressText:SetWidth(270)
     local coverageCard = Native:createPanel(status.frame, theme.colors.background, theme.colors.border)
@@ -6466,14 +6479,14 @@ function ____exports.createModernDashboard(self)
         status.frame,
         "TOPLEFT",
         16,
-        -298
+        -312
     )
     coverageCard.frame:SetPoint(
         "TOPRIGHT",
         status.frame,
         "TOPRIGHT",
         -16,
-        -286
+        -312
     )
     coverageCard.frame:SetHeight(120)
     local coverageGlyph = Native:createPanel(coverageCard.frame, theme.colors.surfaceDeep, theme.colors.borderStrong)
@@ -6543,14 +6556,14 @@ function ____exports.createModernDashboard(self)
         status.frame,
         "TOPLEFT",
         16,
-        -434
+        -448
     )
     nextCard.frame:SetPoint(
         "TOPRIGHT",
         status.frame,
         "TOPRIGHT",
         -16,
-        -414
+        -448
     )
     nextCard.frame:SetHeight(126)
     local nextBadge = Native:createPanel(nextCard.frame, theme.colors.surfaceDeep, theme.colors.warning)
@@ -6602,7 +6615,7 @@ function ____exports.createModernDashboard(self)
         {
             text = "Build & Prepare",
             width = 270,
-            height = 46,
+            height = 52,
             accent = theme.colors.primary,
             emphasis = true,
             onClick = function() return Model:buildAndPrepare() end
@@ -6622,7 +6635,7 @@ function ____exports.createModernDashboard(self)
         {
             text = "Assemble",
             width = 194,
-            height = 42,
+            height = 46,
             accent = theme.colors.success,
             onClick = function() return showAssembleConfirm(nil) end
         }
@@ -6639,7 +6652,7 @@ function ____exports.createModernDashboard(self)
         {
             text = "Reset",
             width = 68,
-            height = 42,
+            height = 46,
             accent = theme.colors.error,
             onClick = function() return Model:clearPlan() end
         }
@@ -7473,7 +7486,7 @@ function ____exports.createModernDashboard(self)
             for ____, old in __TS__Iterator(section.rows) do
                 old.panel.frame:Hide()
             end
-            local sectionHeight = #rows == 0 and 106 or 70 + #rows * 60
+            local sectionHeight = #rows == 0 and 112 or 76 + #rows * 64
             section.panel.frame:ClearAllPoints()
             section.panel.frame:SetPoint(
                 "TOPLEFT",
@@ -7495,7 +7508,7 @@ function ____exports.createModernDashboard(self)
                     local widgets = section.rows[i]
                     if widgets == nil then
                         local panel = Native:createPanel(section.panel.frame, theme.colors.surfaceRaised, theme.colors.border)
-                        panel.frame:SetSize(870, 52)
+                        panel.frame:SetSize(870, 56)
                         local classBadge = Native:createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 38, theme.colors.borderStrong)
                         classBadge.frame:SetPoint(
                             "LEFT",
@@ -7569,7 +7582,7 @@ function ____exports.createModernDashboard(self)
                         section.panel.frame,
                         "TOPLEFT",
                         18,
-                        -(62 + i * 60)
+                        -(66 + i * 64)
                     )
                     Native:setClassIcon(widgets.classIcon, build.classId)
                     widgets.classBadge.outline:setColor(Native:classColor(build.classId))
