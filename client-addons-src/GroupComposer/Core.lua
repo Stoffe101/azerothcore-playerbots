@@ -374,12 +374,14 @@ function GC:HandleProtocolMessage(message)
         GC.plan.summary.mode = fields[2]; GC.plan.summary.activity = fields[3]; GC.plan.summary.difficulty = fields[4]
         GC.plan.summary.size = ParseNumber(fields[5], 0); GC.plan.summary.tanks = ParseNumber(fields[6], 0)
         GC.plan.summary.healers = ParseNumber(fields[7], 0); GC.plan.summary.dps = ParseNumber(fields[8], 0)
+        GC.plan.summary.requiredLevel = ParseNumber(fields[9], 0)
     elseif kind == "MEMBER" then
         GC.plan.members[#GC.plan.members + 1] = {
             subgroup = ParseNumber(fields[2], 0), name = fields[3] or "?", role = fields[4] or "DPS",
             class = fields[5] or "UNKNOWN", spec = fields[6] or "", source = fields[7] or "WORLD",
             human = fields[8] == "1", locked = fields[9] == "1", pinned = fields[10] == "1",
             needsPreparation = fields[11] == "1", reserve = fields[12] == "1", isPlayer = fields[13] == "1",
+            level = ParseNumber(fields[14], 0),
         }
     elseif kind == "COVERAGE" then
         GC.plan.summary.ranged = ParseNumber(fields[2], 0); GC.plan.summary.melee = ParseNumber(fields[3], 0); GC.plan.summary.utility = fields[4] or ""

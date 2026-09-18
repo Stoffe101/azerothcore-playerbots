@@ -121,6 +121,7 @@ void AddSelectedMember(Plan& plan, Candidate const& candidate, bool pinned,
     member.cls = candidate.cls;
     member.role = candidate.role;
     member.spec = candidate.spec;
+    member.level = candidate.level;
     member.guild = candidate.guild;
     member.managed = candidate.managed;
     member.reserve = candidate.reserve;
@@ -164,6 +165,13 @@ bool AddHumanMembers(Player* master, Config const& config, Plan& plan,
         uint32 low = player->GetGUID().GetCounter();
         if (!added.insert(low).second) return true;
 
+        if (player->GetLevel() < config.requiredLevel)
+        {
+            error = player->GetName() + " is level " + std::to_string(unsigned(player->GetLevel())) +
+                ", but the selected activity requires level " + std::to_string(unsigned(config.requiredLevel)) + ".";
+            return false;
+        }
+
         uint8 role = Planner::InferRole(player);
         if (forcedRole)
             role = *forcedRole;
@@ -182,6 +190,7 @@ bool AddHumanMembers(Player* master, Config const& config, Plan& plan,
         member.cls = player->getClass();
         member.role = role;
         member.spec = Planner::InferSpec(player);
+        member.level = player->GetLevel();
         member.human = true;
         member.locked = true;
         member.online = true;
@@ -206,6 +215,13 @@ bool AddHumanMembers(Player* master, Config const& config, Plan& plan,
         }
         if (!added.insert(slot.guid.GetCounter()).second) return true;
 
+        if (cache->Level < config.requiredLevel)
+        {
+            error = "Offline human '" + cache->Name + "' is level " + std::to_string(unsigned(cache->Level)) +
+                ", but the selected activity requires level " + std::to_string(unsigned(config.requiredLevel)) + ".";
+            return false;
+        }
+
         auto overrideItr = config.humanRoles.find(Lower(cache->Name));
         if (overrideItr == config.humanRoles.end())
         {
@@ -225,6 +241,7 @@ bool AddHumanMembers(Player* master, Config const& config, Plan& plan,
         member.cls = cache->Class;
         member.role = role;
         member.spec = ANY_SPEC;
+        member.level = cache->Level;
         member.human = true;
         member.locked = true;
         member.online = false;
@@ -344,7 +361,9 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         if (!alreadyGrouped && bot->GetGroupInvite()) return;
         if (!alreadyGrouped && bot->IsBeingTeleported()) return;
         if (!alreadyGrouped && bot->GetInstanceId() != 0) return;
-        if (!alreadyGrouped && std::abs(int(bot->GetLevel()) - int(master->GetLevel())) > 3) return;
+        // Activity eligibility beats guild preference. A low-level guild bot must never win a
+        // roster slot simply because Prefer Guild is enabled.
+        if (bot->GetLevel() < config.requiredLevel) return;
         if (CrossFactionBlocked(master, bot)) return;
 
         Candidate c;
@@ -353,6 +372,7 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         c.cls = bot->getClass();
         c.role = Planner::InferRole(bot);
         c.spec = Planner::InferSpec(bot);
+        c.level = bot->GetLevel();
         c.guild = guildId && bot->GetGuildId() == guildId;
         c.online = true;
         c.alreadyGrouped = alreadyGrouped;
@@ -417,7 +437,7 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         if (!accountList.empty())
         {
             QueryResult reserveRows = CharacterDatabase.Query(
-                "SELECT guid, name, class FROM characters WHERE account IN ({}) ORDER BY guid", accountList);
+                "SELECT guid, name, class, level FROM characters WHERE account IN ({}) ORDER BY guid", accountList);
             if (reserveRows)
             {
                 do
@@ -437,6 +457,8 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
                     c.guid = guid;
                     c.name = fields[1].Get<std::string>();
                     c.cls = fields[2].Get<uint8>();
+                    c.level = fields[3].Get<uint8>();
+                    if (c.level < config.requiredLevel) continue;
                     c.role = ROLE_DPS;
                     c.spec = ANY_SPEC;
                     c.online = false;
@@ -486,11 +508,15 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         if (online && !alreadyGrouped && (online->GetGroupInvite() || online->IsBeingTeleported() || online->GetInstanceId() != 0)) continue;
         if (!online && config.minimumItemLevel) continue; // unknown gear may not satisfy an explicit floor
 
+        uint8 candidateLevel = online ? online->GetLevel() : sCharacterCache->GetCharacterLevelByGuid(guid);
+        if (candidateLevel < config.requiredLevel) continue;
+
         Candidate c;
         c.guid = guid;
         c.cls = row.cls;
         c.role = row.role;
         c.spec = row.specTab;
+        c.level = candidateLevel;
         c.guild = guildId && sCharacterCache->GetCharacterGuildIdByGuid(guid) == guildId;
         c.online = online != nullptr;
         c.managed = true;

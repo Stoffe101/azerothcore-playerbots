@@ -223,9 +223,10 @@ void SendPlan(ChatHandler* handler, Plan const& plan)
 {
     if (!handler) return;
     handler->SendSysMessage("[GC]|RESET");
-    handler->PSendSysMessage("[GC]|META|{}|{}|{}|{}|{}|{}|{}",
+    handler->PSendSysMessage("[GC]|META|{}|{}|{}|{}|{}|{}|{}|{}",
         plan.config.mode, plan.config.activity, plan.config.difficulty,
-        uint32(plan.config.size), uint32(plan.config.tanks), uint32(plan.config.healers), uint32(plan.config.dps));
+        uint32(plan.config.size), uint32(plan.config.tanks), uint32(plan.config.healers), uint32(plan.config.dps),
+        uint32(plan.config.requiredLevel));
 
     Player* viewer = handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
     uint32 guild = 0, world = 0, humans = 0;
@@ -234,11 +235,11 @@ void SendPlan(ChatHandler* handler, Plan const& plan)
         if (member.human) ++humans;
         else if (member.guild) ++guild;
         else ++world;
-        handler->PSendSysMessage("[GC]|MEMBER|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+        handler->PSendSysMessage("[GC]|MEMBER|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             uint32(member.subgroup), Sanitize(member.name), RoleToken(member.role), ClassToken(member.cls),
             SpecName(member.cls, member.spec), SourceToken(member), member.human ? 1 : 0,
             member.locked ? 1 : 0, member.pinned ? 1 : 0, member.needsPreparation ? 1 : 0,
-            member.reserve ? 1 : 0, viewer && member.guid == viewer->GetGUID() ? 1 : 0);
+            member.reserve ? 1 : 0, viewer && member.guid == viewer->GetGUID() ? 1 : 0, uint32(member.level));
     }
 
     handler->PSendSysMessage("[GC]|COVERAGE|{}|{}|{}", uint32(plan.coverage.rangedDps),
@@ -314,6 +315,32 @@ uint32 ActivityMapId(Plan const& plan)
     if (plan.config.mode == "dungeon") return DungeonMapId(plan.config.activity);
     if (plan.config.mode == "raid") return RaidMapId(plan.config.activity);
     return 0;
+}
+
+uint8 RequiredActivityLevel(Player* master, Config const& config)
+{
+    if (config.mode == "raid")
+    {
+        if (UsesWrathRaidDifficulty(config.activity)) return 80;
+
+        static std::unordered_set<std::string> const tbcRaids = {
+            "karazhan", "zulaman", "gruul", "magtheridon", "serpentshrine",
+            "tempest_keep", "hyjal", "black_temple", "sunwell"
+        };
+        if (tbcRaids.count(config.activity)) return 70;
+        return 60;
+    }
+
+    // Random WotLK Normal begins with Utgarde Keep. Heroic and Titan Rune modes are level 80.
+    if (config.activity == "random")
+        return config.difficulty == "normal" ? 68 : 80;
+
+    uint32 mapId = DungeonMapId(config.activity);
+    Difficulty difficulty = config.difficulty == "normal" ? DUNGEON_DIFFICULTY_NORMAL : DUNGEON_DIFFICULTY_HEROIC;
+    if (LFGDungeonEntry const* dungeon = GetLFGDungeon(mapId, difficulty))
+        return std::max<uint8>(1, static_cast<uint8>(dungeon->MinLevel));
+
+    return difficulty == DUNGEON_DIFFICULTY_HEROIC ? 80 : (master ? std::min<uint8>(master->GetLevel(), 80) : 80);
 }
 
 bool IsBotGuid(ObjectGuid guid)
@@ -733,6 +760,11 @@ bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& err
                     error = "Your character is no longer available as the live human roster anchor.";
                     return false;
                 }
+                if (live->GetLevel() < plan.config.requiredLevel)
+                {
+                    error = "Your character fell below the selected activity's required level.";
+                    return false;
+                }
                 continue;
             }
 
@@ -742,6 +774,12 @@ bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& err
             if (!live || GET_PLAYERBOT_AI(live))
             {
                 error = "Human player '" + member.name + "' is offline. They remain a locked roster anchor, but the group cannot be assembled until they return or you explicitly reform the party and Find Roster again.";
+                return false;
+            }
+            if (live->GetLevel() < plan.config.requiredLevel)
+            {
+                error = "Human player '" + member.name + "' is below the selected activity's required level " +
+                    std::to_string(unsigned(plan.config.requiredLevel)) + ".";
                 return false;
             }
             if (alreadyWithMaster) continue;
@@ -780,6 +818,12 @@ bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& err
         if (!GET_PLAYERBOT_AI(live))
         {
             error = "Selected bot identity '" + member.name + "' is no longer controlled by Playerbots.";
+            return false;
+        }
+        if (live->GetLevel() < plan.config.requiredLevel)
+        {
+            error = "Selected bot '" + member.name + "' is level " + std::to_string(unsigned(live->GetLevel())) +
+                ", below the selected activity's required level " + std::to_string(unsigned(plan.config.requiredLevel)) + ".";
             return false;
         }
         if (BotHasOtherGameClientMaster(master, live))
@@ -1380,6 +1424,14 @@ bool GroupComposerCommand::HandleBegin(ChatHandler* handler, std::string mode, s
     config.balanceClasses = balanceClasses != 0; config.balanceUtility = balanceUtility != 0; config.balanceRange = balanceRange != 0;
     config.avoidDuplicates = avoidDuplicates != 0;
     config.minimumItemLevel = static_cast<uint16>(std::min<uint32>(1000, minimumItemLevel));
+    config.requiredLevel = RequiredActivityLevel(master, config);
+
+    if (master->GetLevel() < config.requiredLevel)
+    {
+        SendError(handler, "The selected activity requires level " + std::to_string(unsigned(config.requiredLevel)) +
+            ", but your character is only level " + std::to_string(unsigned(master->GetLevel())) + ".");
+        return true;
+    }
 
     ClearPendingForOwner(owner);
     s_drafts[owner] = std::move(config);

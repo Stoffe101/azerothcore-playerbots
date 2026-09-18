@@ -31,6 +31,7 @@ export interface PlanMember {
     needsPreparation: boolean;
     reserve: boolean;
     isPlayer: boolean;
+    level?: number;
 }
 
 const GC: any = _G.GroupComposer;
@@ -364,7 +365,16 @@ export function coverageDisplay(): string {
 
 export function dungeonItems(): ChoiceItem[] {
     const result: ChoiceItem[] = [];
-    for (const dungeon of D.DUNGEONS ?? []) result.push({ value: dungeon.id, label: dungeon.label });
+    for (const dungeon of D.DUNGEONS ?? []) {
+        const min = Number(dungeon.minLevel ?? 68);
+        result.push({
+            value: dungeon.id,
+            label: dungeon.label,
+            detail: dungeon.id === "random"
+                ? "WotLK random · Normal Lv " + String(min) + "+ · Heroic Lv 80"
+                : "Normal Lv " + String(min) + "+ · Heroic Lv 80",
+        });
+    }
     return result;
 }
 
@@ -376,7 +386,18 @@ export function difficultyItems(): ChoiceItem[] {
 
 export function raidItems(): ChoiceItem[] {
     const result: ChoiceItem[] = [];
-    for (const raid of D.RAIDS ?? []) result.push({ value: raid.id, label: raid.era + "  ·  " + raid.label });
+    for (const raid of D.RAIDS ?? []) {
+        let sizes = "";
+        for (let i = 0; i < (raid.sizes ?? []).length; i += 1) {
+            if (i > 0) sizes += "/";
+            sizes += String(raid.sizes[i]);
+        }
+        result.push({
+            value: raid.id,
+            label: raid.era + "  ·  " + raid.label,
+            detail: sizes + " player · Level " + String(raid.requiredLevel ?? 80) + "+",
+        });
+    }
     return result;
 }
 
@@ -395,6 +416,29 @@ export function selectedActivityLabel(): string {
     }
     const dungeon = dungeonById(cfg.activity);
     return dungeon?.label ?? "Dungeon";
+}
+
+export function requiredActivityLevel(): number {
+    const cfg = config();
+    if (cfg.mode === "RAID") {
+        const raid = raidById(cfg.activity);
+        return Number(raid?.requiredLevel ?? 80);
+    }
+    if (cfg.difficulty !== "normal") return 80;
+    const dungeon = dungeonById(cfg.activity);
+    return Number(dungeon?.minLevel ?? 68);
+}
+
+export function activityEligibilityText(): string {
+    const level = requiredActivityLevel();
+    const floor = Number(config().options?.minimumItemLevel ?? 0);
+    return "Level " + String(level) + "+ required · Item level floor " + (floor > 0 ? String(floor) : "Off");
+}
+
+export function setMinimumItemLevel(value: number): void {
+    const next = Math.max(0, Math.min(1000, Math.floor(value)));
+    config().options.minimumItemLevel = next;
+    touch("Minimum item level changed");
 }
 
 export function supportedRaidSizes(): number[] {

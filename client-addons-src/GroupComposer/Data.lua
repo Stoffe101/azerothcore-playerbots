@@ -1,7 +1,7 @@
 GroupComposerData = GroupComposerData or {}
 local D = GroupComposerData
 
-D.VERSION = "0.6.2"
+D.VERSION = "0.7.0"
 
 D.ROLE = {
     TANK = "TANK",
@@ -129,23 +129,23 @@ D.UTILITY_LABELS = {
 }
 
 D.DUNGEONS = {
-    { id = "random", label = "Random Dungeon", rdf = true },
-    { id = "utgarde_keep", label = "Utgarde Keep", map = 574, rdf = true },
-    { id = "nexus", label = "The Nexus", map = 576, rdf = true },
-    { id = "azjol_nerub", label = "Azjol-Nerub", map = 601, rdf = true },
-    { id = "ahnkahet", label = "Ahn'kahet: The Old Kingdom", map = 619, rdf = true },
-    { id = "drak_tharon", label = "Drak'Tharon Keep", map = 600, rdf = true },
-    { id = "violet_hold", label = "The Violet Hold", map = 608, rdf = true },
-    { id = "gundrak", label = "Gundrak", map = 604, rdf = true },
-    { id = "halls_of_stone", label = "Halls of Stone", map = 599, rdf = true },
-    { id = "halls_of_lightning", label = "Halls of Lightning", map = 602, rdf = true },
-    { id = "oculus", label = "The Oculus", map = 578, rdf = true },
-    { id = "culling", label = "The Culling of Stratholme", map = 595, rdf = true },
-    { id = "utgarde_pinnacle", label = "Utgarde Pinnacle", map = 575, rdf = true },
-    { id = "trial_champion", label = "Trial of the Champion", map = 650, rdf = true },
-    { id = "forge_souls", label = "The Forge of Souls", map = 632, rdf = true },
-    { id = "pit_saron", label = "Pit of Saron", map = 658, rdf = true },
-    { id = "halls_reflection", label = "Halls of Reflection", map = 668, rdf = true },
+    { id = "random", label = "Random Dungeon", rdf = true , minLevel = 68 },
+    { id = "utgarde_keep", label = "Utgarde Keep", map = 574, rdf = true , minLevel = 68 },
+    { id = "nexus", label = "The Nexus", map = 576, rdf = true , minLevel = 69 },
+    { id = "azjol_nerub", label = "Azjol-Nerub", map = 601, rdf = true , minLevel = 70 },
+    { id = "ahnkahet", label = "Ahn'kahet: The Old Kingdom", map = 619, rdf = true , minLevel = 71 },
+    { id = "drak_tharon", label = "Drak'Tharon Keep", map = 600, rdf = true , minLevel = 72 },
+    { id = "violet_hold", label = "The Violet Hold", map = 608, rdf = true , minLevel = 73 },
+    { id = "gundrak", label = "Gundrak", map = 604, rdf = true , minLevel = 74 },
+    { id = "halls_of_stone", label = "Halls of Stone", map = 599, rdf = true , minLevel = 75 },
+    { id = "halls_of_lightning", label = "Halls of Lightning", map = 602, rdf = true , minLevel = 77 },
+    { id = "oculus", label = "The Oculus", map = 578, rdf = true , minLevel = 77 },
+    { id = "culling", label = "The Culling of Stratholme", map = 595, rdf = true , minLevel = 78 },
+    { id = "utgarde_pinnacle", label = "Utgarde Pinnacle", map = 575, rdf = true , minLevel = 77 },
+    { id = "trial_champion", label = "Trial of the Champion", map = 650, rdf = true , minLevel = 80 },
+    { id = "forge_souls", label = "The Forge of Souls", map = 632, rdf = true , minLevel = 80 },
+    { id = "pit_saron", label = "Pit of Saron", map = 658, rdf = true , minLevel = 80 },
+    { id = "halls_reflection", label = "Halls of Reflection", map = 668, rdf = true , minLevel = 80 },
 }
 
 D.DUNGEON_DIFFICULTIES = {
@@ -160,33 +160,33 @@ D.DUNGEON_DIFFICULTIES = {
 
 D.RAIDS = {
     -- Wrath
-    { id = "naxxramas", label = "Naxxramas", sizes = { 10, 25 }, heroic = false, era = "WotLK" },
-    { id = "obsidian_sanctum", label = "The Obsidian Sanctum", sizes = { 10, 25 }, heroic = false, era = "WotLK" },
-    { id = "eye_of_eternity", label = "The Eye of Eternity", sizes = { 10, 25 }, heroic = false, era = "WotLK" },
-    { id = "ulduar", label = "Ulduar", sizes = { 10, 25 }, heroic = false, era = "WotLK" },
-    { id = "trial_crusader", label = "Trial of the Crusader", sizes = { 10, 25 }, heroic = true, era = "WotLK" },
-    { id = "onyxia", label = "Onyxia's Lair", sizes = { 10, 25 }, heroic = false, era = "WotLK" },
-    { id = "vault_archavon", label = "Vault of Archavon", sizes = { 10, 25 }, heroic = false, era = "WotLK" },
-    { id = "icecrown", label = "Icecrown Citadel", sizes = { 10, 25 }, heroic = true, era = "WotLK" },
-    { id = "ruby_sanctum", label = "The Ruby Sanctum", sizes = { 10, 25 }, heroic = true, era = "WotLK" },
+    { id = "naxxramas", label = "Naxxramas", sizes = { 10, 25 }, heroic = false, era = "WotLK", requiredLevel = 80 },
+    { id = "obsidian_sanctum", label = "The Obsidian Sanctum", sizes = { 10, 25 }, heroic = false, era = "WotLK", requiredLevel = 80 },
+    { id = "eye_of_eternity", label = "The Eye of Eternity", sizes = { 10, 25 }, heroic = false, era = "WotLK", requiredLevel = 80 },
+    { id = "ulduar", label = "Ulduar", sizes = { 10, 25 }, heroic = false, era = "WotLK", requiredLevel = 80 },
+    { id = "trial_crusader", label = "Trial of the Crusader", sizes = { 10, 25 }, heroic = true, era = "WotLK", requiredLevel = 80 },
+    { id = "onyxia", label = "Onyxia's Lair", sizes = { 10, 25 }, heroic = false, era = "WotLK", requiredLevel = 80 },
+    { id = "vault_archavon", label = "Vault of Archavon", sizes = { 10, 25 }, heroic = false, era = "WotLK", requiredLevel = 80 },
+    { id = "icecrown", label = "Icecrown Citadel", sizes = { 10, 25 }, heroic = true, era = "WotLK", requiredLevel = 80 },
+    { id = "ruby_sanctum", label = "The Ruby Sanctum", sizes = { 10, 25 }, heroic = true, era = "WotLK", requiredLevel = 80 },
 
     -- Burning Crusade
-    { id = "karazhan", label = "Karazhan", sizes = { 10 }, heroic = false, era = "TBC" },
-    { id = "zulaman", label = "Zul'Aman", sizes = { 10 }, heroic = false, era = "TBC" },
-    { id = "gruul", label = "Gruul's Lair", sizes = { 25 }, heroic = false, era = "TBC" },
-    { id = "magtheridon", label = "Magtheridon's Lair", sizes = { 25 }, heroic = false, era = "TBC" },
-    { id = "serpentshrine", label = "Serpentshrine Cavern", sizes = { 25 }, heroic = false, era = "TBC" },
-    { id = "tempest_keep", label = "Tempest Keep", sizes = { 25 }, heroic = false, era = "TBC" },
-    { id = "hyjal", label = "Battle for Mount Hyjal", sizes = { 25 }, heroic = false, era = "TBC" },
-    { id = "black_temple", label = "Black Temple", sizes = { 25 }, heroic = false, era = "TBC" },
-    { id = "sunwell", label = "Sunwell Plateau", sizes = { 25 }, heroic = false, era = "TBC" },
+    { id = "karazhan", label = "Karazhan", sizes = { 10 }, heroic = false, era = "TBC", requiredLevel = 70 },
+    { id = "zulaman", label = "Zul'Aman", sizes = { 10 }, heroic = false, era = "TBC", requiredLevel = 70 },
+    { id = "gruul", label = "Gruul's Lair", sizes = { 25 }, heroic = false, era = "TBC", requiredLevel = 70 },
+    { id = "magtheridon", label = "Magtheridon's Lair", sizes = { 25 }, heroic = false, era = "TBC", requiredLevel = 70 },
+    { id = "serpentshrine", label = "Serpentshrine Cavern", sizes = { 25 }, heroic = false, era = "TBC", requiredLevel = 70 },
+    { id = "tempest_keep", label = "Tempest Keep", sizes = { 25 }, heroic = false, era = "TBC", requiredLevel = 70 },
+    { id = "hyjal", label = "Battle for Mount Hyjal", sizes = { 25 }, heroic = false, era = "TBC", requiredLevel = 70 },
+    { id = "black_temple", label = "Black Temple", sizes = { 25 }, heroic = false, era = "TBC", requiredLevel = 70 },
+    { id = "sunwell", label = "Sunwell Plateau", sizes = { 25 }, heroic = false, era = "TBC", requiredLevel = 70 },
 
     -- Classic legacy
-    { id = "zul_gurub", label = "Zul'Gurub", sizes = { 20 }, heroic = false, era = "Classic" },
-    { id = "aq20", label = "Ruins of Ahn'Qiraj", sizes = { 20 }, heroic = false, era = "Classic" },
-    { id = "molten_core", label = "Molten Core", sizes = { 40 }, heroic = false, era = "Classic" },
-    { id = "blackwing_lair", label = "Blackwing Lair", sizes = { 40 }, heroic = false, era = "Classic" },
-    { id = "aq40", label = "Temple of Ahn'Qiraj", sizes = { 40 }, heroic = false, era = "Classic" },
+    { id = "zul_gurub", label = "Zul'Gurub", sizes = { 20 }, heroic = false, era = "Classic", requiredLevel = 60 },
+    { id = "aq20", label = "Ruins of Ahn'Qiraj", sizes = { 20 }, heroic = false, era = "Classic", requiredLevel = 60 },
+    { id = "molten_core", label = "Molten Core", sizes = { 40 }, heroic = false, era = "Classic", requiredLevel = 60 },
+    { id = "blackwing_lair", label = "Blackwing Lair", sizes = { 40 }, heroic = false, era = "Classic", requiredLevel = 60 },
+    { id = "aq40", label = "Temple of Ahn'Qiraj", sizes = { 40 }, heroic = false, era = "Classic", requiredLevel = 60 },
 }
 
 D.RAID_DIFFICULTIES = {

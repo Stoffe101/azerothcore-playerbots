@@ -12,6 +12,7 @@ import * as ModalUI from "../widgets/Modal";
 import * as ScrollUI from "../widgets/ScrollList";
 import * as InputUI from "../widgets/TextInput";
 import * as ToggleUI from "../widgets/Toggle";
+import * as StepperUI from "../widgets/Stepper";
 
 const GC: any = Model.composer();
 const D: any = Model.data();
@@ -259,6 +260,9 @@ export function createModernDashboard(): Dashboard {
     const activitySub = Native.createText(activity.frame, "", "GameFontHighlightSmall", theme.colors.muted);
     activitySub.SetPoint("TOPLEFT", activityName, "BOTTOMLEFT", 0, -4);
     activitySub.SetWidth(320);
+    const activityEligibility = Native.createText(activity.frame, "", "GameFontHighlightSmall", theme.colors.success);
+    activityEligibility.SetPoint("TOPLEFT", activitySub, "BOTTOMLEFT", 0, -7);
+    activityEligibility.SetWidth(320);
 
     const activityFieldLabel = Native.createText(activity.frame, "DUNGEON", "GameFontNormalSmall", theme.colors.muted);
     activityFieldLabel.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 360, -12);
@@ -512,41 +516,47 @@ export function createModernDashboard(): Dashboard {
     });
     resetRoles.frame.SetPoint("RIGHT", quickSummary.frame, "RIGHT", -14, 0);
 
-    const exactColumns: Record<Role, any> = {} as Record<Role, any>;
-    for (let i = 0; i < roleOrder.length; i += 1) {
-        const role = roleOrder[i];
-        const panel = Native.createPanel(exactView, theme.colors.surfaceRaised, theme.colors.border);
+    // One full-width, vertically scrollable surface replaces the three cramped fixed columns.
+    const exactScroll = ScrollUI.createScrollList(exactView, 882, 360);
+    exactScroll.frame.SetPoint("TOPLEFT", exactView, "TOPLEFT", 0, -4);
+
+    const exactSections: Record<Role, any> = {} as Record<Role, any>;
+    for (const role of roleOrder) {
+        const panel = Native.createPanel(exactScroll.content, theme.colors.background, theme.colors.border);
+        panel.frame.SetWidth(852);
+
         const roleStrip = Native.createSolid(panel.frame, Model.roleAccent(role), "ARTWORK");
-        roleStrip.SetHeight(3);
+        roleStrip.SetWidth(4);
         roleStrip.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 0, 0);
-        roleStrip.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", 0, 0);
-        panel.frame.SetPoint("TOPLEFT", exactView, "TOPLEFT", i * 294, -8);
-        panel.frame.SetSize(282, 410);
+        roleStrip.SetPoint("BOTTOMLEFT", panel.frame, "BOTTOMLEFT", 0, 0);
 
-        const icon = Native.createIcon(panel.frame, D.ROLE_ICON[role], 28);
-        icon.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 12, -12);
+        const icon = Native.createIcon(panel.frame, D.ROLE_ICON[role], 30);
+        icon.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 16, -14);
         const label = Native.createText(panel.frame, Model.roleLabel(role).toUpperCase(), "GameFontNormal", Model.roleAccent(role));
-        label.SetPoint("LEFT", icon, "RIGHT", 9, 5);
+        label.SetPoint("LEFT", icon, "RIGHT", 10, 5);
         const count = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-        count.SetPoint("LEFT", icon, "RIGHT", 9, -12);
+        count.SetPoint("LEFT", icon, "RIGHT", 10, -12);
+        count.SetWidth(430);
 
-        const add = ButtonUI.createButton(panel.frame, { text: "+ Add specific", width: 118, height: 30, accent: Model.roleAccent(role) });
-        add.frame.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -10, -11);
-
-        const scroll = ScrollUI.createScrollList(panel.frame, 258, 330);
-        scroll.frame.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 12, -66);
+        const add = ButtonUI.createButton(panel.frame, {
+            text: "+ Add specific build",
+            width: 154,
+            height: 32,
+            accent: Model.roleAccent(role),
+        });
+        add.frame.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -12, -12);
 
         const empty = Native.createText(
-            scroll.content,
-            "No specific builds yet.\nEvery unreserved slot stays on Auto.",
+            panel.frame,
+            "No reserved builds. Composer will Auto-fill every remaining " + Model.roleLabel(role).toLowerCase() + " slot.",
             "GameFontHighlightSmall",
             theme.colors.muted,
         );
-        empty.SetPoint("TOPLEFT", scroll.content, "TOPLEFT", 8, -12);
-        empty.SetWidth(226);
+        empty.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 18, -68);
+        empty.SetWidth(760);
         empty.SetJustifyV("TOP");
 
-        exactColumns[role] = { panel, count, add, scroll, empty, rows: [] as any[] };
+        exactSections[role] = { panel, count, add, empty, rows: [] as any[] };
     }
 
     const groupCards: any[] = [];
@@ -679,7 +689,7 @@ export function createModernDashboard(): Dashboard {
     resetButton.frame.SetPoint("LEFT", assembleButton.frame, "RIGHT", 8, 0);
 
     // Templates modal --------------------------------------------------------
-    const templatesModal = ModalUI.createModal(frame, 920, 650);
+    const templatesModal = ModalUI.createModal(frame, 960, 680);
     templatesModal.setTitle("Raid Templates");
     templatesModal.setSubtitle("Coverage-first raid cores reserve key buffs; every unlisted slot stays Auto-filled.");
 
@@ -717,15 +727,6 @@ export function createModernDashboard(): Dashboard {
     const customScroll = ScrollUI.createScrollList(templatesModal.content, 414, 430);
     customScroll.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 440, -110);
 
-    const builtinUp = ButtonUI.createButton(templatesModal.content, { text: "Up", width: 54, height: 26, onClick: () => builtinScroll.scrollBy(-220) });
-    builtinUp.frame.SetPoint("TOPRIGHT", templatesModal.content, "TOPLEFT", 350, -78);
-    const builtinDown = ButtonUI.createButton(templatesModal.content, { text: "Down", width: 54, height: 26, onClick: () => builtinScroll.scrollBy(220) });
-    builtinDown.frame.SetPoint("LEFT", builtinUp.frame, "RIGHT", 4, 0);
-
-    const customUp = ButtonUI.createButton(templatesModal.content, { text: "▲", width: 54, height: 26, onClick: () => customScroll.scrollBy(-220) });
-    customUp.frame.SetPoint("TOPRIGHT", templatesModal.content, "TOPLEFT", 790, -78);
-    const customDown = ButtonUI.createButton(templatesModal.content, { text: "▼", width: 54, height: 26, onClick: () => customScroll.scrollBy(220) });
-    customDown.frame.SetPoint("LEFT", customUp.frame, "RIGHT", 4, 0);
     const builtinRows: WoWFrame[] = [];
     const customRows: WoWFrame[] = [];
 
@@ -985,7 +986,7 @@ export function createModernDashboard(): Dashboard {
     };
 
     // Options modal ----------------------------------------------------------
-    const optionsModal = ModalUI.createModal(frame, 700, 560);
+    const optionsModal = ModalUI.createModal(frame, 720, 620);
     optionsModal.setTitle("Composition Options");
     optionsModal.setSubtitle("Keep the common path simple. These controls tune how Composer fills unspecified slots.");
 
@@ -1025,9 +1026,30 @@ export function createModernDashboard(): Dashboard {
         optionToggles.push(toggle);
     }
 
+    const gearRow = Native.createPanel(optionsModal.content, theme.colors.surfaceRaised, theme.colors.borderStrong);
+    gearRow.frame.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", 0, -(optionDefs.length * 62));
+    gearRow.frame.SetPoint("RIGHT", optionsModal.content, "RIGHT", 0, 0);
+    gearRow.frame.SetHeight(58);
+
+    const gearTitle = Native.createText(gearRow.frame, "Minimum item level", "GameFontNormal");
+    gearTitle.SetPoint("TOPLEFT", gearRow.frame, "TOPLEFT", 12, -9);
+    const gearHint = Native.createText(gearRow.frame, "0 disables the floor. Guild/world bots below the configured value are rejected.", "GameFontHighlightSmall", theme.colors.muted);
+    gearHint.SetPoint("TOPLEFT", gearRow.frame, "TOPLEFT", 12, -31);
+    gearHint.SetWidth(470);
+
+    const gearStepper = StepperUI.createNumberStepper(
+        gearRow.frame,
+        0,
+        300,
+        Number(Model.config().options?.minimumItemLevel ?? 0),
+        (value) => Model.setMinimumItemLevel(value),
+    );
+    gearStepper.frame.SetPoint("RIGHT", gearRow.frame, "RIGHT", -12, 0);
+
     showOptions = () => {
         ChoiceUI.closeChoicePopup();
         for (const toggle of optionToggles) toggle.refresh();
+        gearStepper.setValue(Number(Model.config().options?.minimumItemLevel ?? 0), false);
         optionsModal.show();
     };
 
@@ -1087,6 +1109,7 @@ export function createModernDashboard(): Dashboard {
         const cfg = Model.config();
         activityName.SetText(Model.selectedActivityLabel());
         activitySub.SetText(activitySubtitle());
+        activityEligibility.SetText("ELIGIBILITY  ·  " + Model.activityEligibilityText());
         activityFieldLabel.SetText(Model.config().mode === "RAID" ? "RAID" : "DUNGEON");
         activitySelect.refresh();
         difficultySelect.refresh();
@@ -1181,7 +1204,10 @@ export function createModernDashboard(): Dashboard {
                 } else widgets.specIcon.Hide();
 
                 widgets.name.SetText(String(prepared.name));
-                widgets.sub.SetText(String(prepared.spec || Model.classLabel(String(prepared.class))) + "  ·  " + String(prepared.source ?? "Bot"));
+                widgets.sub.SetText(
+                    "Lv " + String(prepared.level ?? "?") + "  ·  " +
+                    String(prepared.spec || Model.classLabel(String(prepared.class))) + "  ·  " + String(prepared.source ?? "Bot")
+                );
             } else if (exact !== undefined) {
                 Native.setClassIcon(widgets.classIcon, exact.classId);
                 widgets.classIcon.Show();
@@ -1238,54 +1264,73 @@ export function createModernDashboard(): Dashboard {
     }
 
     function refreshExactRaid(): void {
+        let cursor = 0;
+
         for (const role of roleOrder) {
-            const column = exactColumns[role];
+            const section = exactSections[role];
             const rows = Model.requiredBuilds(role);
-            column.count.SetText(String(Model.exactCount(role)) + " reserved  ·  " + String(Math.max(0, Model.remainingBotSlots(role) - Model.exactCount(role))) + " Auto");
-            column.add.setEnabled(Model.exactCount(role) < Model.remainingBotSlots(role));
-            if (rows.length === 0) column.empty.Show();
-            else column.empty.Hide();
+            const reserved = Model.exactCount(role);
+            const auto = Math.max(0, Model.remainingBotSlots(role) - reserved);
+
+            section.count.SetText(String(reserved) + " reserved · " + String(auto) + " Auto");
+            section.add.setEnabled(reserved < Model.remainingBotSlots(role));
+
             const roleCopy = role;
-            column.add.frame.SetScript("OnMouseDown", () => {
+            section.add.frame.SetScript("OnMouseDown", () => {
                 if (Model.exactCount(roleCopy) >= Model.remainingBotSlots(roleCopy)) return;
                 selectorContext = { mode: "RAID_ADD", role: roleCopy, index: -1 };
                 buildSelector.open(roleCopy, { role: roleCopy, count: 1 }, true);
             });
 
-            for (const old of column.rows) old.panel.frame.Hide();
+            for (const old of section.rows) old.panel.frame.Hide();
+
+            const sectionHeight = rows.length === 0 ? 106 : 70 + rows.length * 60;
+            section.panel.frame.ClearAllPoints();
+            section.panel.frame.SetPoint("TOPLEFT", exactScroll.content, "TOPLEFT", 0, -cursor);
+            section.panel.frame.SetSize(852, sectionHeight);
+
+            if (rows.length === 0) section.empty.Show();
+            else section.empty.Hide();
 
             for (let i = 0; i < rows.length; i += 1) {
                 const build = rows[i];
-                let widgets = column.rows[i + 1];
+                let widgets = section.rows[i];
                 if (widgets === undefined) {
-                    const panel = Native.createPanel(column.scroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                    panel.frame.SetSize(250, 52);
+                    const panel = Native.createPanel(section.panel.frame, theme.colors.surfaceRaised, theme.colors.border);
+                    panel.frame.SetSize(816, 52);
+
                     const classIcon = panel.frame.CreateTexture(undefined, "ARTWORK");
-                    classIcon.SetSize(30, 30);
-                    classIcon.SetPoint("LEFT", panel.frame, "LEFT", 8, 0);
+                    classIcon.SetSize(32, 32);
+                    classIcon.SetPoint("LEFT", panel.frame, "LEFT", 12, 0);
+
                     const specIcon = panel.frame.CreateTexture(undefined, "ARTWORK");
-                    specIcon.SetSize(24, 24);
-                    specIcon.SetPoint("LEFT", classIcon, "RIGHT", 6, 0);
-                    const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
-                    name.SetPoint("LEFT", panel.frame, "LEFT", 76, 7);
-                    name.SetWidth(112);
+                    specIcon.SetSize(28, 28);
+                    specIcon.SetPoint("LEFT", classIcon, "RIGHT", 7, 0);
+
+                    const name = Native.createText(panel.frame, "", "GameFontNormal");
+                    name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 86, -11);
+                    name.SetWidth(470);
+
                     const count = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-                    count.SetPoint("LEFT", panel.frame, "LEFT", 76, -10);
-                    const edit = ButtonUI.createButton(panel.frame, { text: "Edit", width: 46, height: 26, accent: theme.colors.primary });
+                    count.SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -4);
+
+                    const edit = ButtonUI.createButton(panel.frame, { text: "Edit", width: 72, height: 30, accent: theme.colors.primary });
                     edit.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -54, 0);
-                    const remove = ButtonUI.createButton(panel.frame, { text: "X", width: 40, height: 26, accent: theme.colors.error });
+
+                    const remove = ButtonUI.createButton(panel.frame, { text: "X", width: 40, height: 30, accent: theme.colors.error });
                     remove.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
+
                     widgets = { panel, classIcon, specIcon, name, count, edit, remove };
-                    column.rows[i + 1] = widgets;
+                    section.rows[i] = widgets;
                 }
 
                 widgets.panel.frame.ClearAllPoints();
-                widgets.panel.frame.SetPoint("TOPLEFT", column.scroll.content, "TOPLEFT", 0, -(i * 58));
+                widgets.panel.frame.SetPoint("TOPLEFT", section.panel.frame, "TOPLEFT", 18, -(62 + i * 60));
                 Native.setClassIcon(widgets.classIcon, build.classId);
                 widgets.specIcon.SetTexture(Model.getSpecIcon(build.classId, build.specId));
                 widgets.specIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
                 widgets.name.SetText(Model.getSpecLabel(build.classId, build.specId) + " " + Model.classLabel(build.classId));
-                widgets.count.SetText("×" + String(build.count));
+                widgets.count.SetText("Reserved ×" + String(build.count) + " · remaining role slots stay Auto");
 
                 const indexCopy = i;
                 widgets.edit.frame.SetScript("OnMouseDown", () => {
@@ -1301,8 +1346,10 @@ export function createModernDashboard(): Dashboard {
                 widgets.panel.frame.Show();
             }
 
-            column.scroll.setContentHeight(Math.max(330, rows.length * 58));
+            cursor += sectionHeight + 12;
         }
+
+        exactScroll.setContentHeight(Math.max(360, cursor));
     }
 
     function refreshRoster(): void {
@@ -1343,7 +1390,7 @@ export function createModernDashboard(): Dashboard {
                     rowWidgets.icon.Show();
                     rowWidgets.name.SetText((member.isPlayer ? "YOU  ·  " : "") + String(member.name));
                     rowWidgets.name.SetTextColor(theme.colors.text[0], theme.colors.text[1], theme.colors.text[2], 1);
-                    rowWidgets.spec.SetText(String(member.spec ?? Model.classLabel(String(member.class))));
+                    rowWidgets.spec.SetText("Lv " + String(member.level ?? "?") + " · " + String(member.spec ?? Model.classLabel(String(member.class))));
                     Native.setTextureColor(rowWidgets.roleBar, Model.roleAccent(member.role as Role));
                 }
             }

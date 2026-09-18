@@ -58,6 +58,8 @@ struct Config
     uint8 tanks = 1;
     uint8 healers = 1;
     uint8 dps = 3;
+    // Server-derived eligibility floor for the selected activity. The client never supplies this.
+    uint8 requiredLevel = 1;
 
     bool preferGuild = true;
     bool fillWorld = true;
@@ -82,6 +84,7 @@ struct Candidate
     uint8 cls = 0;
     uint8 role = ROLE_DPS;
     uint8 spec = ANY_SPEC;
+    uint8 level = 1;
 
     bool guild = false;
     bool online = false;
@@ -103,6 +106,7 @@ struct Member
     uint8 role = ROLE_DPS;
     uint8 spec = ANY_SPEC;
     uint8 subgroup = 1;
+    uint8 level = 1;
 
     bool human = false;
     bool locked = false;

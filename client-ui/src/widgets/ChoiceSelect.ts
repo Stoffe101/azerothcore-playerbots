@@ -1,10 +1,11 @@
-import { createIcon, createPanel, createText } from "../core/Native";
+import { createPanel, createSolid, createText } from "../core/Native";
 import { theme } from "../theme/Theme";
 import { createButton, UIButton } from "./Button";
 
 export interface ChoiceItem {
     value: string | number;
     label: string;
+    detail?: string;
     icon?: string;
 }
 
@@ -22,6 +23,11 @@ export interface ChoiceSelectOptions {
     onChange(value: string | number): void;
 }
 
+interface ChoiceRow {
+    button: UIButton;
+    detail: WoWFontString;
+}
+
 let activePopup: WoWFrame | undefined;
 
 function closeActive(): void {
@@ -36,14 +42,14 @@ export function closeChoicePopup(): void {
 }
 
 export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOptions): ChoiceSelect {
-    const trigger = createButton(parent, { text: "Select", width: options.width, height: 34 });
+    const trigger = createButton(parent, { text: "Select", width: options.width, height: 36 });
     trigger.label.ClearAllPoints();
     trigger.label.SetPoint("LEFT", trigger.frame, "LEFT", 12, 0);
-    trigger.label.SetPoint("RIGHT", trigger.frame, "RIGHT", -28, 0);
+    trigger.label.SetPoint("RIGHT", trigger.frame, "RIGHT", -32, 0);
     trigger.label.SetJustifyH("LEFT");
 
     const arrow = createText(trigger.frame, "v", "GameFontHighlightSmall", theme.colors.muted);
-    arrow.SetPoint("RIGHT", trigger.frame, "RIGHT", -10, 0);
+    arrow.SetPoint("RIGHT", trigger.frame, "RIGHT", -11, 0);
 
     const popup = createPanel(trigger.frame, theme.colors.background, theme.colors.borderStrong);
     popup.frame.SetFrameStrata("TOOLTIP");
@@ -51,49 +57,106 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
     popup.frame.EnableMouseWheel(true);
     popup.frame.Hide();
 
-    const maxVisible = options.maxVisible ?? 9;
+    const maxVisible = options.maxVisible ?? 8;
+    const rowHeight = 48;
+    const railWidth = 24;
     let offset = 0;
-    const rows: UIButton[] = [];
+    const rows: ChoiceRow[] = [];
 
-    const scrollHint = createText(popup.frame, "Mouse wheel for more", "GameFontHighlightSmall", theme.colors.muted);
-    scrollHint.SetPoint("BOTTOMLEFT", popup.frame, "BOTTOMLEFT", 10, 6);
-    scrollHint.Hide();
+    const rail = createPanel(popup.frame, theme.colors.surface, theme.colors.border);
+    rail.frame.SetPoint("TOPRIGHT", popup.frame, "TOPRIGHT", -4, -4);
+    rail.frame.SetPoint("BOTTOMRIGHT", popup.frame, "BOTTOMRIGHT", -4, 4);
+    rail.frame.SetWidth(railWidth);
+
+    function move(delta: number): void {
+        const items = options.getItems();
+        const maxOffset = Math.max(0, items.length - maxVisible);
+        offset = Math.max(0, Math.min(maxOffset, offset + delta));
+        refreshRows();
+    }
+
+    const up = createButton(rail.frame, { text: "^", width: 20, height: 22, onClick: () => move(-1) });
+    up.frame.SetPoint("TOP", rail.frame, "TOP", 0, -2);
+    const down = createButton(rail.frame, { text: "v", width: 20, height: 22, onClick: () => move(1) });
+    down.frame.SetPoint("BOTTOM", rail.frame, "BOTTOM", 0, 2);
+
+    const track = createSolid(rail.frame, theme.colors.borderStrong, "ARTWORK");
+    track.SetPoint("TOP", up.frame, "BOTTOM", 0, -4);
+    track.SetPoint("BOTTOM", down.frame, "TOP", 0, 4);
+    track.SetWidth(4);
+
+    const thumb = createSolid(rail.frame, theme.colors.primary, "OVERLAY");
+    thumb.SetWidth(6);
+    thumb.SetHeight(22);
+
+    function refreshRail(): void {
+        const items = options.getItems();
+        const maxOffset = Math.max(0, items.length - maxVisible);
+        const canScroll = maxOffset > 0;
+        up.setEnabled(canScroll && offset > 0);
+        down.setEnabled(canScroll && offset < maxOffset);
+
+        if (!canScroll) {
+            rail.frame.Hide();
+            return;
+        }
+        rail.frame.Show();
+
+        const popupHeight = popup.frame.GetHeight ? popup.frame.GetHeight() : (maxVisible * rowHeight + 8);
+        const trackHeight = Math.max(36, popupHeight - 58);
+        const thumbHeight = Math.max(22, Math.floor(trackHeight * Math.min(1, maxVisible / items.length)));
+        const travel = Math.max(0, trackHeight - thumbHeight);
+        const ratio = maxOffset > 0 ? offset / maxOffset : 0;
+        thumb.SetHeight(thumbHeight);
+        thumb.ClearAllPoints();
+        thumb.SetPoint("TOP", up.frame, "BOTTOM", 0, -(4 + travel * ratio));
+        thumb.Show();
+    }
 
     function refreshRows(): void {
         const items = options.getItems();
         const visible = Math.min(maxVisible, items.length);
-        const hasMore = items.length > maxVisible;
-        popup.frame.SetHeight(Math.max(12, visible * 32 + 8 + (hasMore ? 22 : 0)));
-        if (hasMore) scrollHint.Show();
-        else scrollHint.Hide();
+        popup.frame.SetHeight(Math.max(16, visible * rowHeight + 8));
 
         for (let i = 0; i < maxVisible; i += 1) {
             let row = rows[i];
             if (row === undefined) {
-                row = createButton(popup.frame, { text: "", width: options.width - 8, height: 28 });
-                row.frame.SetPoint("TOPLEFT", popup.frame, "TOPLEFT", 4, -(4 + i * 32));
-                row.label.ClearAllPoints();
-                row.label.SetPoint("LEFT", row.frame, "LEFT", 10, 0);
-                row.label.SetPoint("RIGHT", row.frame, "RIGHT", -8, 0);
-                row.label.SetJustifyH("LEFT");
+                const button = createButton(popup.frame, {
+                    text: "",
+                    width: options.width - railWidth - 12,
+                    height: rowHeight - 4,
+                });
+                button.frame.SetPoint("TOPLEFT", popup.frame, "TOPLEFT", 4, -(4 + i * rowHeight));
+                button.label.ClearAllPoints();
+                button.label.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 10, -7);
+                button.label.SetPoint("RIGHT", button.frame, "RIGHT", -8, 7);
+                button.label.SetJustifyH("LEFT");
+
+                const detail = createText(button.frame, "", "GameFontHighlightSmall", theme.colors.muted);
+                detail.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 10, -25);
+                detail.SetPoint("RIGHT", button.frame, "RIGHT", -8, 0);
+                detail.SetJustifyH("LEFT");
+                row = { button, detail };
                 rows[i] = row;
             }
 
             const item = items[offset + i];
             if (item !== undefined) {
-                row.setText(item.label);
-                row.setSelected(item.value === options.getValue());
+                row.button.setText(item.label);
+                row.detail.SetText(item.detail ?? "");
+                row.button.setSelected(item.value === options.getValue());
                 const value = item.value;
-                row.frame.SetScript("OnMouseDown", () => {
+                row.button.frame.SetScript("OnMouseDown", () => {
                     options.onChange(value);
                     closeActive();
                     refresh();
                 });
-                row.frame.Show();
+                row.button.frame.Show();
             } else {
-                row.frame.Hide();
+                row.button.frame.Hide();
             }
         }
+        refreshRail();
     }
 
     function refresh(): void {
@@ -111,7 +174,17 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
 
     function open(): void {
         closeActive();
-        offset = 0;
+        const items = options.getItems();
+        const selected = options.getValue();
+        let selectedIndex = 0;
+        for (let i = 0; i < items.length; i += 1) {
+            if (items[i].value === selected) {
+                selectedIndex = i;
+                break;
+            }
+        }
+        const maxOffset = Math.max(0, items.length - maxVisible);
+        offset = Math.max(0, Math.min(maxOffset, selectedIndex - Math.floor(maxVisible / 2)));
         refreshRows();
         popup.frame.ClearAllPoints();
         popup.frame.SetPoint("TOPLEFT", trigger.frame, "BOTTOMLEFT", 0, -4);
@@ -125,10 +198,7 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
     });
 
     popup.frame.SetScript("OnMouseWheel", (_frame, delta) => {
-        const items = options.getItems();
-        const maxOffset = Math.max(0, items.length - maxVisible);
-        offset = Math.max(0, Math.min(maxOffset, offset - Number(delta)));
-        refreshRows();
+        move(Number(delta) > 0 ? -1 : 1);
     });
 
     refresh();

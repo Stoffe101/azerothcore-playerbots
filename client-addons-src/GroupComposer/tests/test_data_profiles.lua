@@ -164,3 +164,12 @@ eq(deduped.arrangement.Alice, 1, "valid subgroup retained")
 truth(deduped.arrangement.Bob == nil, "invalid subgroup discarded")
 
 print("Group Composer data/profile tests passed")
+
+
+for _, dungeon in ipairs(D.DUNGEONS) do
+    truth(tonumber(dungeon.minLevel) and dungeon.minLevel >= 1, "dungeon must expose normal LFD minimum level: " .. dungeon.id)
+end
+for _, raid in ipairs(D.RAIDS) do
+    local expected = raid.era == "WotLK" and 80 or raid.era == "TBC" and 70 or 60
+    eq(raid.requiredLevel, expected, "raid expansion level floor: " .. raid.id)
+end

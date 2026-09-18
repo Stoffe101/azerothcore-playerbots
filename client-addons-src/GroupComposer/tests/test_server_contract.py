@@ -96,7 +96,7 @@ for command in (
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
 assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
-assert '## Version: 0.6.2' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
+assert '## Version: 0.7.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
@@ -467,3 +467,20 @@ assert "more human anchor" in MODERN, (
 assert 'getClassesForRole(currentRole)' in SELECTOR and 'getSpecsForRole(currentClass, currentRole)' in SELECTOR, (
     "Class/spec selector no longer filters both stages by the selected role"
 )
+
+
+# Activity eligibility is authoritative and precedes guild preference / assembly.
+assert "uint8 requiredLevel = 1;" in TYPES, "Config lost server-derived activity level floor"
+assert "uint8 level = 1;" in TYPES, "Candidate/member level snapshots disappeared"
+assert "uint8 RequiredActivityLevel(Player* master, Config const& config)" in SERVER
+assert "GetLFGDungeon(mapId, difficulty)" in SERVER, "Named dungeon levels must come from Blizzard LFGDungeons.dbc data"
+assert "config.requiredLevel = RequiredActivityLevel(master, config);" in SERVER
+assert "if (bot->GetLevel() < config.requiredLevel) return;" in PLANNER, "Online bots can bypass activity level eligibility"
+assert "SELECT guid, name, class, level FROM characters" in PLANNER, "Offline reserve selection no longer checks persisted level"
+assert "if (c.level < config.requiredLevel) continue;" in PLANNER, "Offline reserve bots can bypass activity level eligibility"
+assert "sCharacterCache->GetCharacterLevelByGuid(guid)" in PLANNER, "Managed offline candidates lost their level gate"
+assert "below the selected activity's required level" in SERVER, "Assembly no longer revalidates selected bot levels"
+assert "activityEligibilityText" in MODEL and "Minimum item level" in MODERN
+assert "const exactScroll = ScrollUI.createScrollList" in MODERN, "Specific Builds regressed to fixed clipping columns"
+assert "scrollBy(-92)" in SCROLL_LIST and "scrollBy(92)" in SCROLL_LIST, "Bidirectional scroll controls disappeared"
+assert 'detail?: string;' in CHOICE_SELECT, "Rich activity selector metadata disappeared"
