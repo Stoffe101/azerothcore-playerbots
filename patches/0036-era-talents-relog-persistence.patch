@@ -59,7 +59,7 @@ diff --git a/modules/mod-era-talents/src/EraTransition.cpp b/modules/mod-era-tal
 diff --git a/modules/mod-era-talents/src/EraTalentPin.cpp b/modules/mod-era-talents/src/EraTalentPin.cpp
 --- a/modules/mod-era-talents/src/EraTalentPin.cpp
 +++ b/modules/mod-era-talents/src/EraTalentPin.cpp
-@@ -282,15 +282,20 @@ public:
+@@ -282,15 +282,24 @@ public:
      // exactly resetTalentsCost() — what the trainer's confirm dialog displayed (the core's
      // escalation counter is private and never advances for a character with 0 native talents,
      // so this is effectively a flat 1g — the dialog-truthful choice, user-approved).
@@ -80,6 +80,11 @@ diff --git a/modules/mod-era-talents/src/EraTalentPin.cpp b/modules/mod-era-tale
 +
 +        // Native-spec cleanup during login/era transitions is NOT an era-tree reset.
 +        if (EraTransition::IsInternalTalentReset())
++            return;
++
++        // Core login can also issue no-cost native resets before the player is in-world.
++        // Those are lifecycle cleanup, not an explicit request to erase the custom era build.
++        if (noCost && !p->IsInWorld())
 +            return;
 +
          EraId era = EraFromIP(p);
