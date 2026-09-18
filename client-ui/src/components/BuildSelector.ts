@@ -32,9 +32,11 @@ interface ClassTile {
 
 interface SpecTile {
     readonly classId: ClassId;
+    readonly classLabel: string;
     readonly spec: SpecDefinition;
     readonly button: UIButton;
     readonly icon: WoWTexture;
+    readonly sub: WoWFontString;
 }
 
 function roleLabel(role: Role): string {
@@ -193,12 +195,12 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             button.label.SetPoint("RIGHT", button.frame, "RIGHT", -12, 7);
             button.label.SetJustifyH("LEFT");
 
-            const sub = createText(button.frame, classDef.label + "  ·  " + roleLabel(spec.role), "GameFontHighlightSmall", theme.colors.muted);
+            const sub = createText(button.frame, classDef.label, "GameFontHighlightSmall", theme.colors.muted);
             sub.SetPoint("LEFT", button.frame, "LEFT", 58, -11);
             sub.SetWidth(300);
 
             button.frame.Hide();
-            specTiles.push({ classId: classDef.id, spec, button, icon });
+            specTiles.push({ classId: classDef.id, classLabel: classDef.label, spec, button, icon, sub });
         }
     }
 
@@ -249,6 +251,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             if (visible) {
                 tile.button.frame.ClearAllPoints();
                 tile.button.frame.SetPoint("TOPLEFT", rightPanel.frame, "TOPLEFT", 18, -(64 + specIndex * 66));
+                tile.sub.SetText(tile.classLabel + "  ·  " + roleLabel(currentRole));
                 tile.button.setSelected(tile.spec.id === currentSpec);
                 tile.button.frame.Show();
                 specIndex += 1;
