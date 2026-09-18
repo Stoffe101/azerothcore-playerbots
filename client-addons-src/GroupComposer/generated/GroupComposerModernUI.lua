@@ -33,6 +33,7 @@ ____exports.theme = {spacing = {
     xl = 24
 }, control = {sm = 28, md = 36, lg = 44}, colors = {
     background = {0.018, 0.024, 0.034, 0.98},
+    scrim = {0, 0, 0, 0.62},
     surface = {0.032, 0.044, 0.06, 1},
     surfaceRaised = {0.047, 0.063, 0.084, 1},
     surfaceHover = {0.065, 0.086, 0.112, 1},
@@ -353,12 +354,20 @@ return ____exports
 local ____exports = {}
 local ____Native = require("core.Native")
 local createPanel = ____Native.createPanel
+local createSolid = ____Native.createSolid
 local createText = ____Native.createText
 local ____Theme = require("theme.Theme")
 local theme = ____Theme.theme
 local ____Button = require("widgets.Button")
 local createButton = ____Button.createButton
 function ____exports.createModal(self, parent, width, height)
+    local scrim = CreateFrame("Frame", nil, parent)
+    scrim:SetAllPoints(parent)
+    scrim:SetFrameStrata("DIALOG")
+    scrim:SetFrameLevel(parent:GetFrameLevel() + 20)
+    scrim:EnableMouse(true)
+    local scrimTexture = createSolid(nil, scrim, theme.colors.scrim)
+    scrimTexture:SetAllPoints(scrim)
     local panel = createPanel(nil, parent, theme.colors.background, theme.colors.borderStrong)
     panel.frame:SetSize(width, height)
     panel.frame:SetPoint(
@@ -369,6 +378,19 @@ function ____exports.createModal(self, parent, width, height)
         0
     )
     panel.frame:SetFrameStrata("DIALOG")
+    panel.frame:SetFrameLevel(scrim:GetFrameLevel() + 1)
+    local function hideModal(self)
+        panel.frame:Hide()
+        scrim:Hide()
+    end
+    local function showModal(self)
+        scrim:Show()
+        panel.frame:Show()
+    end
+    scrim:SetScript(
+        "OnMouseDown",
+        function() return hideModal(nil) end
+    )
     local title = createText(nil, panel.frame, "Choose Build", "GameFontNormalLarge")
     title:SetPoint(
         "TOPLEFT",
@@ -391,6 +413,7 @@ function ____exports.createModal(self, parent, width, height)
         0,
         -theme.spacing.xs
     )
+    subtitle:SetWidth(width - 100)
     local close = createButton(
         nil,
         panel.frame,
@@ -399,7 +422,7 @@ function ____exports.createModal(self, parent, width, height)
             width = 30,
             height = 30,
             accent = theme.colors.error,
-            onClick = function() return panel.frame:Hide() end
+            onClick = function() return hideModal(nil) end
         }
     )
     close.frame:SetPoint(
@@ -425,14 +448,15 @@ function ____exports.createModal(self, parent, width, height)
         theme.spacing.lg
     )
     panel.frame:Hide()
+    scrim:Hide()
     return {
         frame = panel.frame,
         content = content,
         show = function(self)
-            panel.frame:Show()
+            showModal(nil)
         end,
         hide = function(self)
-            panel.frame:Hide()
+            hideModal(nil)
         end,
         setTitle = function(self, value)
             title:SetText(value)
@@ -581,10 +605,10 @@ local function roleAccent(self, role)
     return theme.colors.dps
 end
 function ____exports.createBuildSelector(self, parent, options)
-    local refresh, modal, leftPanel, rightPanel, summaryIcon, summaryText, summarySub, currentRole, currentClass, currentSpec, apply, classTiles, specTiles
+    local refresh, modal, leftPanel, rightPanel, specEmpty, summaryClassIcon, summaryIcon, summaryText, summarySub, currentRole, currentClass, currentSpec, apply, classTiles, specTiles
     function refresh(self)
         modal:setTitle(("Choose " .. roleLabel(nil, currentRole)) .. " Build")
-        modal:setSubtitle(("Only " .. roleLabel(nil, currentRole)) .. " classes and specs are available.")
+        modal:setSubtitle(("Pick a class on the left, then a valid " .. string.lower(roleLabel(nil, currentRole))) .. " spec on the right.")
         local validClasses = getClassesForRole(currentRole)
         local classIndex = 0
         for ____, tile in ipairs(classTiles) do
@@ -642,6 +666,11 @@ function ____exports.createBuildSelector(self, parent, options)
                 tile.button.frame:Hide()
             end
         end
+        if currentClass == nil then
+            specEmpty:Show()
+        else
+            specEmpty:Hide()
+        end
         local ____temp_0
         if currentClass == nil then
             ____temp_0 = nil
@@ -658,6 +687,12 @@ function ____exports.createBuildSelector(self, parent, options)
                 end
             end
         end
+        if selectedClass ~= nil then
+            setClassIcon(nil, summaryClassIcon, selectedClass.id)
+        else
+            summaryClassIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+            summaryClassIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        end
         if selectedClass ~= nil and selectedSpec ~= nil then
             summaryIcon:SetTexture(selectedSpec.icon)
             summaryIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
@@ -665,6 +700,8 @@ function ____exports.createBuildSelector(self, parent, options)
             summarySub:SetText(roleLabel(nil, currentRole) .. " build selected")
             apply:setEnabled(true)
         else
+            summaryIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+            summaryIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
             summaryIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
             summaryIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
             summaryText:SetText(currentClass == nil and "Choose a class" or "Choose a specialization")
@@ -722,6 +759,22 @@ function ____exports.createBuildSelector(self, parent, options)
         theme.spacing.md,
         -theme.spacing.md
     )
+    specEmpty = createText(
+        nil,
+        rightPanel.frame,
+        "Choose a class to see only the specs that can fill this role.",
+        "GameFontHighlightSmall",
+        theme.colors.muted
+    )
+    specEmpty:SetPoint(
+        "TOPLEFT",
+        rightPanel.frame,
+        "TOPLEFT",
+        theme.spacing.md,
+        -54
+    )
+    specEmpty:SetWidth(330)
+    specEmpty:SetJustifyV("TOP")
     local summary = createPanel(nil, modal.content, theme.colors.surfaceRaised, theme.colors.borderStrong)
     summary.frame:SetPoint(
         "BOTTOMLEFT",
@@ -738,13 +791,24 @@ function ____exports.createBuildSelector(self, parent, options)
         0
     )
     summary.frame:SetHeight(78)
-    summaryIcon = summary.frame:CreateTexture(nil, "ARTWORK")
-    summaryIcon:SetSize(38, 38)
-    summaryIcon:SetPoint(
+    summaryClassIcon = summary.frame:CreateTexture(nil, "ARTWORK")
+    summaryClassIcon:SetSize(38, 38)
+    summaryClassIcon:SetPoint(
         "LEFT",
         summary.frame,
         "LEFT",
         theme.spacing.md,
+        0
+    )
+    summaryClassIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+    summaryClassIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    summaryIcon = summary.frame:CreateTexture(nil, "ARTWORK")
+    summaryIcon:SetSize(38, 38)
+    summaryIcon:SetPoint(
+        "LEFT",
+        summaryClassIcon,
+        "RIGHT",
+        6,
         0
     )
     summaryIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
