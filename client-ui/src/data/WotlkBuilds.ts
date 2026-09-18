@@ -1,3 +1,5 @@
+/** @noSelfInFile */
+
 export type Role = "TANK" | "HEALER" | "DPS";
 export type ClassId =
     | "WARRIOR" | "PALADIN" | "HUNTER" | "ROGUE" | "PRIEST"
