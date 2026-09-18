@@ -153,11 +153,12 @@ function GroupComposerProfiles.ListCustom() return {"My Raid"} end
 
 GroupComposer = {
     backendSeen = true,
+    config = nil,
     plan = { members = {}, warnings = {}, valid = false, ready = false, summary = {} },
     progress = { phase = "IDLE", current = 0, total = 0, detail = "Configure a roster to begin." },
 }
 
-function GroupComposer:GetConfig() return cfg end
+function GroupComposer:GetConfig() return self.config end
 function GroupComposer:ScanHumans() return {human} end
 function GroupComposer:Touch(reason)
     self.plan = { members = {}, warnings = {}, valid = false, ready = false, summary = {}, reason = reason }
@@ -198,8 +199,15 @@ end
 dofile(bundle)
 
 assert(type(GroupComposerModernUI) == "table", "modern UI API missing")
-assert(type(GroupComposerModernUI.dashboard) == "table", "modern dashboard did not initialize")
+assert(GroupComposerModernUI.dashboard == nil, "dashboard must defer creation until Core initializes config")
+assert(type(GroupComposer.Toggle) == "function", "lazy /gc toggle was not installed")
 
+-- Reproduce the real Core.lua ADDON_LOADED order: config becomes available only after every TOC file
+-- has loaded, then CONFIG_CHANGED is fired.
+GroupComposer.config = cfg
+GroupComposer:Fire("CONFIG_CHANGED", cfg)
+
+assert(type(GroupComposerModernUI.dashboard) == "table", "modern dashboard did not initialize after CONFIG_CHANGED")
 GroupComposerModernUI.dashboard.show()
 assert(GroupComposerModernUI.dashboard.frame:IsShown(), "dashboard should be visible after show")
 
