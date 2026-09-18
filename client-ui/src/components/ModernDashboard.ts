@@ -159,17 +159,17 @@ export function createModernDashboard(): Dashboard {
     const header = Native.createPanel(frame, theme.colors.surface, theme.colors.border);
     header.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1);
     header.frame.SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -1);
-    header.frame.SetHeight(68);
+    header.frame.SetHeight(72);
 
     const mark = Native.createPanel(header.frame, theme.colors.surfaceRaised, theme.colors.primary);
-    mark.frame.SetSize(40, 40);
-    mark.frame.SetPoint("LEFT", header.frame, "LEFT", 18, 0);
+    mark.frame.SetSize(42, 42);
+    mark.frame.SetPoint("LEFT", header.frame, "LEFT", 20, 0);
     const markText = Native.createText(mark.frame, "GC", "GameFontNormalLarge", theme.colors.primary);
     markText.SetPoint("CENTER", mark.frame, "CENTER", 0, 0);
     markText.SetJustifyH("CENTER");
 
     const title = Native.createText(header.frame, "GROUP COMPOSER", "GameFontNormalLarge");
-    title.SetPoint("TOPLEFT", header.frame, "TOPLEFT", 72, -14);
+    title.SetPoint("TOPLEFT", header.frame, "TOPLEFT", 78, -15);
     const subtitle = Native.createText(header.frame, "Build the team you want, then let Composer prepare it.", "GameFontHighlightSmall", theme.colors.muted);
     subtitle.SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4);
 
@@ -183,7 +183,7 @@ export function createModernDashboard(): Dashboard {
     close.frame.SetPoint("RIGHT", header.frame, "RIGHT", -18, 0);
 
     const sidebar = Native.createPanel(frame, theme.colors.surface, theme.colors.border);
-    sidebar.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -69);
+    sidebar.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -73);
     sidebar.frame.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 36);
     sidebar.frame.SetWidth(176);
 
@@ -215,11 +215,11 @@ export function createModernDashboard(): Dashboard {
     sideHint.SetJustifyV("TOP");
 
     const center = CreateFrame("Frame", undefined, frame);
-    center.SetPoint("TOPLEFT", frame, "TOPLEFT", 194, -84);
+    center.SetPoint("TOPLEFT", frame, "TOPLEFT", 194, -88);
     center.SetSize(928, 744);
 
     const status = Native.createPanel(frame, theme.colors.surface, theme.colors.borderStrong);
-    status.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1138, -84);
+    status.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1138, -88);
     status.frame.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -16, 52);
 
     const footer = Native.createPanel(frame, theme.colors.surface, theme.colors.border);
@@ -234,14 +234,19 @@ export function createModernDashboard(): Dashboard {
     const activity = Native.createPanel(center, theme.colors.surface, theme.colors.borderStrong);
     activity.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, 0);
     activity.frame.SetPoint("TOPRIGHT", center, "TOPRIGHT", 0, 0);
-    activity.frame.SetHeight(96);
+    activity.frame.SetHeight(108);
 
     const activityEyebrow = Native.createText(activity.frame, "ACTIVITY", "GameFontNormalSmall", theme.colors.muted);
     activityEyebrow.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 16, -12);
     const activityName = Native.createText(activity.frame, "Dungeon", "GameFontNormalLarge");
-    activityName.SetPoint("TOPLEFT", activityEyebrow, "BOTTOMLEFT", 0, -5);
+    activityName.SetPoint("TOPLEFT", activityEyebrow, "BOTTOMLEFT", 0, -6);
     const activitySub = Native.createText(activity.frame, "", "GameFontHighlightSmall", theme.colors.muted);
     activitySub.SetPoint("TOPLEFT", activityName, "BOTTOMLEFT", 0, -4);
+
+    const activityFieldLabel = Native.createText(activity.frame, "DUNGEON", "GameFontNormalSmall", theme.colors.muted);
+    activityFieldLabel.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 380, -12);
+    const difficultyFieldLabel = Native.createText(activity.frame, "DIFFICULTY", "GameFontNormalSmall", theme.colors.muted);
+    difficultyFieldLabel.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 700, -12);
 
     const activitySelect = ChoiceUI.createChoiceSelect(activity.frame, {
         width: 310,
@@ -253,7 +258,7 @@ export function createModernDashboard(): Dashboard {
             else Model.setDungeonActivity(String(value));
         },
     });
-    activitySelect.frame.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 380, -18);
+    activitySelect.frame.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 380, -36);
 
     const difficultySelect = ChoiceUI.createChoiceSelect(activity.frame, {
         width: 180,
@@ -262,7 +267,7 @@ export function createModernDashboard(): Dashboard {
         getValue: () => Model.config().difficulty,
         onChange: (value) => Model.setDifficulty(String(value)),
     });
-    difficultySelect.frame.SetPoint("LEFT", activitySelect.frame, "RIGHT", 10, 0);
+    difficultySelect.frame.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 700, -36);
 
     const raidSizeButtons: Record<number, UIButton> = {};
     for (const size of [10, 20, 25, 40]) {
@@ -278,16 +283,16 @@ export function createModernDashboard(): Dashboard {
 
     // Human anchor -----------------------------------------------------------
     const humanPanel = Native.createPanel(center, theme.colors.surface, theme.colors.border);
-    humanPanel.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -108);
-    humanPanel.frame.SetPoint("TOPRIGHT", center, "TOPRIGHT", 0, -108);
-    humanPanel.frame.SetHeight(104);
+    humanPanel.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -120);
+    humanPanel.frame.SetPoint("TOPRIGHT", center, "TOPRIGHT", 0, -120);
+    humanPanel.frame.SetHeight(92);
 
     const humanTitle = Native.createText(humanPanel.frame, "YOUR PARTY", "GameFontNormalSmall", theme.colors.muted);
     humanTitle.SetPoint("TOPLEFT", humanPanel.frame, "TOPLEFT", 16, -12);
 
     const humanIcon = humanPanel.frame.CreateTexture(undefined, "ARTWORK");
     humanIcon.SetSize(38, 38);
-    humanIcon.SetPoint("BOTTOMLEFT", humanPanel.frame, "BOTTOMLEFT", 16, 12);
+    humanIcon.SetPoint("BOTTOMLEFT", humanPanel.frame, "BOTTOMLEFT", 16, 10);
     Native.setClassIcon(humanIcon, "WARRIOR");
 
     const humanName = Native.createText(humanPanel.frame, "Choose your role", "GameFontNormal");
@@ -295,12 +300,15 @@ export function createModernDashboard(): Dashboard {
     const humanSub = Native.createText(humanPanel.frame, "Real players are locked anchors.", "GameFontHighlightSmall", theme.colors.muted);
     humanSub.SetPoint("TOPLEFT", humanName, "BOTTOMLEFT", 0, -5);
 
+    const yourRoleLabel = Native.createText(humanPanel.frame, "YOUR ROLE", "GameFontNormalSmall", theme.colors.muted);
+    yourRoleLabel.SetPoint("TOPRIGHT", humanPanel.frame, "TOPRIGHT", -16, -12);
+
     const humanRoleButtons: Record<Role, UIButton> = {
         TANK: ButtonUI.createButton(humanPanel.frame, { text: "Tank", width: 96, height: 36, accent: theme.colors.tank }),
         HEALER: ButtonUI.createButton(humanPanel.frame, { text: "Healer", width: 96, height: 36, accent: theme.colors.healer }),
         DPS: ButtonUI.createButton(humanPanel.frame, { text: "DPS", width: 96, height: 36, accent: theme.colors.dps }),
     };
-    humanRoleButtons.TANK.frame.SetPoint("RIGHT", humanPanel.frame, "RIGHT", -224, -12);
+    humanRoleButtons.TANK.frame.SetPoint("TOPRIGHT", humanPanel.frame, "TOPRIGHT", -224, -40);
     humanRoleButtons.HEALER.frame.SetPoint("LEFT", humanRoleButtons.TANK.frame, "RIGHT", 8, 0);
     humanRoleButtons.DPS.frame.SetPoint("LEFT", humanRoleButtons.HEALER.frame, "RIGHT", 8, 0);
 
@@ -339,9 +347,9 @@ export function createModernDashboard(): Dashboard {
 
     const dungeonRows: any[] = [];
     for (let i = 0; i < 5; i += 1) {
-        const row = Native.createPanel(dungeonView, theme.colors.background, theme.colors.border);
-        row.frame.SetHeight(78);
-        row.frame.SetPoint("TOPLEFT", dungeonView, "TOPLEFT", 0, -(i * 84));
+        const row = Native.createPanel(dungeonView, theme.colors.surfaceRaised, theme.colors.border);
+        row.frame.SetHeight(76);
+        row.frame.SetPoint("TOPLEFT", dungeonView, "TOPLEFT", 0, -(i * 82));
         row.frame.SetPoint("RIGHT", dungeonView, "RIGHT", 0, 0);
 
         const accent = Native.createSolid(row.frame, theme.colors.dps, "ARTWORK");
@@ -350,7 +358,7 @@ export function createModernDashboard(): Dashboard {
         accent.SetPoint("BOTTOMLEFT", row.frame, "BOTTOMLEFT", 0, 0);
 
         const roleIcon = row.frame.CreateTexture(undefined, "ARTWORK");
-        roleIcon.SetSize(28, 28);
+        roleIcon.SetSize(30, 30);
         roleIcon.SetPoint("LEFT", row.frame, "LEFT", 16, 0);
 
         const roleText = Native.createText(row.frame, "DPS", "GameFontNormal");
@@ -359,7 +367,7 @@ export function createModernDashboard(): Dashboard {
         slotText.SetPoint("LEFT", roleIcon, "RIGHT", 10, -10);
 
         const classIcon = row.frame.CreateTexture(undefined, "ARTWORK");
-        classIcon.SetSize(38, 38);
+        classIcon.SetSize(40, 40);
         classIcon.SetPoint("LEFT", row.frame, "LEFT", 178, 0);
         classIcon.Hide();
 
@@ -520,12 +528,12 @@ export function createModernDashboard(): Dashboard {
     }
 
     // Status ----------------------------------------------------------------
-    const statusTitle = Native.createText(status.frame, "COMPOSITION & STATUS", "GameFontNormal");
+    const statusTitle = Native.createText(status.frame, "STATUS", "GameFontNormalSmall", theme.colors.muted);
     statusTitle.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -16);
 
     const phaseDot = Native.createSolid(status.frame, theme.colors.primary, "ARTWORK");
     phaseDot.SetSize(10, 10);
-    phaseDot.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 18, -54);
+    phaseDot.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 18, -48);
     const phaseText = Native.createText(status.frame, "Configure roster", "GameFontNormalLarge");
     phaseText.SetPoint("LEFT", phaseDot, "RIGHT", 10, 4);
     const phaseDetail = Native.createText(status.frame, "", "GameFontHighlightSmall", theme.colors.muted);
@@ -534,7 +542,7 @@ export function createModernDashboard(): Dashboard {
     phaseDetail.SetJustifyV("TOP");
 
     const rosterCount = Native.createText(status.frame, "1 / 5", "GameFontNormalHuge");
-    rosterCount.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -116);
+    rosterCount.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -112);
     const sourceText = Native.createText(status.frame, "1 human  ·  4 bot slots", "GameFontHighlightSmall", theme.colors.muted);
     sourceText.SetPoint("TOPLEFT", rosterCount, "BOTTOMLEFT", 0, -6);
 
@@ -980,6 +988,7 @@ export function createModernDashboard(): Dashboard {
         const cfg = Model.config();
         activityName.SetText(Model.selectedActivityLabel());
         activitySub.SetText(activitySubtitle());
+        activityFieldLabel.SetText(Model.config().mode === "RAID" ? "RAID" : "DUNGEON");
         activitySelect.refresh();
         difficultySelect.refresh();
 
