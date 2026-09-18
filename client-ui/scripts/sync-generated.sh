@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SRC="$ROOT/client-ui/dist/GroupComposerModernUI.lua"
-DEST="$ROOT/client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua"
+DEST="$ROOT/client-addons-src/GroupComposer/GroupComposerModernUI.lua"
 
 [[ -f "$SRC" ]] || {
   echo "ERROR: generated UI bundle not found: $SRC" >&2
