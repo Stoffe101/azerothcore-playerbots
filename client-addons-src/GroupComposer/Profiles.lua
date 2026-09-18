@@ -220,6 +220,28 @@ function P.ListCustom()
     return out
 end
 
+function P.Describe(name)
+    local profile = P.Get and P.Get(name) or nil
+    if not profile then
+        for _, builtin in ipairs(D.BUILTIN_PROFILES or {}) do
+            if builtin.name == name then profile = P.Normalize(builtin); break end
+        end
+    end
+    if not profile then return "" end
+
+    local exact = 0
+    for _, role in ipairs({ "TANK", "HEALER", "DPS" }) do
+        for _, pref in ipairs((profile.preferences and profile.preferences[role]) or {}) do
+            if pref.required then exact = exact + 1 end
+        end
+    end
+
+    local prefix = tostring(profile.size or "?") .. "-player · " ..
+        tostring(profile.tanks or 0) .. "T / " .. tostring(profile.healers or 0) .. "H / " .. tostring(profile.dps or 0) .. "D"
+    local detail = profile.description or (exact > 0 and (tostring(exact) .. " reserved builds + Auto remainder") or "Role targets + Auto fill")
+    return prefix .. " · " .. detail
+end
+
 function P.GetBuiltin(name)
     for _, profile in ipairs(D.BUILTIN_PROFILES) do
         if profile.name == name then
