@@ -21,6 +21,8 @@ SELECTOR = (ROOT / "client-ui/src/components/BuildSelector.ts").read_text(encodi
 CHOICE_SELECT = (ROOT / "client-ui/src/widgets/ChoiceSelect.ts").read_text(encoding="utf-8")
 SCROLL_LIST = (ROOT / "client-ui/src/widgets/ScrollList.ts").read_text(encoding="utf-8")
 TOGGLE = (ROOT / "client-ui/src/widgets/Toggle.ts").read_text(encoding="utf-8")
+BUTTON = (ROOT / "client-ui/src/widgets/Button.ts").read_text(encoding="utf-8")
+MODAL = (ROOT / "client-ui/src/widgets/Modal.ts").read_text(encoding="utf-8")
 WOW_RUNTIME_SMOKE = (ROOT / "client-ui/tests/wow_runtime_smoke.lua").read_text(encoding="utf-8")
 SERVER = (ROOT / "modules/mod-raid-roster/src/GroupComposerCommand.cpp").read_text(encoding="utf-8")
 PLANNER = (ROOT / "modules/mod-raid-roster/src/GroupComposerPlanner.cpp").read_text(encoding="utf-8")
@@ -99,7 +101,7 @@ for command in (
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
 assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
-assert '## Version: 0.7.1' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
+assert '## Version: 0.8.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
@@ -520,3 +522,16 @@ assert "minimumItemLevel" not in human_snapshot, "Assembly item-level validation
 assert "SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel, 0, false);" in SERVER, (
     "Persistent guild spec retask lost the expanded managed-sync contract"
 )
+
+
+# Modern dashboard redesign contracts.
+assert 'frame.SetSize(1520, 900)' in MODERN, "Modern shell lost the redesigned workspace dimensions"
+assert 'center.SetSize(986, 776)' in MODERN, "Composition workspace lost its expanded layout"
+assert 'Adjust the highlighted requirement, then Build & Prepare again.' in MODERN, (
+    "Status rail regressed to repeating backend errors instead of giving an actionable next step"
+)
+assert 'Choose a class' in SELECTOR and 'Choose a specialization' in SELECTOR
+assert 'column = classIndex % 5' in SELECTOR, "Build selector lost its class-card grid"
+assert 'Any valid spec' in SELECTOR and 'Use this build' in SELECTOR
+assert 'activeEdge' in BUTTON, "Buttons lost the modern selected-state edge"
+assert 'headerAccent' in MODAL, "Modals lost the redesigned header treatment"

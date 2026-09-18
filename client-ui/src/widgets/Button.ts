@@ -25,6 +25,11 @@ export function createButton(parent: WoWFrame, options: ButtonOptions): UIButton
     const background = createSolid(frame, theme.colors.surfaceRaised);
     background.SetAllPoints(frame);
     const outline = createOutline(frame, theme.colors.border);
+    const activeEdge = createSolid(frame, options.accent ?? theme.colors.primary, "OVERLAY");
+    activeEdge.SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0);
+    activeEdge.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0);
+    activeEdge.SetWidth(3);
+    activeEdge.Hide();
     const label = createText(frame, options.text, options.height >= 34 ? "GameFontHighlight" : "GameFontHighlightSmall");
     label.SetPoint("CENTER", frame, "CENTER", 0, 0);
     label.SetJustifyH("CENTER");
@@ -37,6 +42,8 @@ export function createButton(parent: WoWFrame, options: ButtonOptions): UIButton
         frame.SetAlpha(enabled ? 1 : 0.48);
         outline.setColor(selected ? accent : theme.colors.border);
         setTextureColor(background, selected ? theme.colors.surfaceHover : theme.colors.surfaceRaised);
+        if (selected) activeEdge.Show();
+        else activeEdge.Hide();
         const color = selected ? accent : theme.colors.text;
         label.SetTextColor(color[0], color[1], color[2], 1);
     }

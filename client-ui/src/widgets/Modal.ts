@@ -38,10 +38,19 @@ export function createModal(parent: WoWFrame, width: number, height: number): Mo
 
     scrim.SetScript("OnMouseDown", () => hideModal());
 
+    const headerBg = createSolid(panel.frame, theme.colors.surface, "BACKGROUND");
+    headerBg.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 1, -1);
+    headerBg.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -1, -1);
+    headerBg.SetHeight(62);
+    const headerAccent = createSolid(panel.frame, theme.colors.primary, "ARTWORK");
+    headerAccent.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 1, -1);
+    headerAccent.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -1, -1);
+    headerAccent.SetHeight(2);
+
     const title = createText(panel.frame, "Choose Build", "GameFontNormalLarge");
-    title.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", theme.spacing.lg, -theme.spacing.lg);
+    title.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", theme.spacing.lg, -12);
     const subtitle = createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-    subtitle.SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -theme.spacing.xs);
+    subtitle.SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3);
     subtitle.SetWidth(width - 100);
 
     const close = createButton(panel.frame, {
@@ -54,7 +63,7 @@ export function createModal(parent: WoWFrame, width: number, height: number): Mo
     close.frame.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -theme.spacing.md, -theme.spacing.md);
 
     const content = CreateFrame("Frame", undefined, panel.frame);
-    content.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", theme.spacing.lg, -72);
+    content.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", theme.spacing.lg, -76);
     content.SetPoint("BOTTOMRIGHT", panel.frame, "BOTTOMRIGHT", -theme.spacing.lg, theme.spacing.lg);
 
     panel.frame.Hide();
