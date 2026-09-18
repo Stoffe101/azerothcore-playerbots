@@ -22,6 +22,8 @@ jobs:
       - name: Validate client addon
         run: |
           set -euo pipefail
+          bash -n fetch-client-addons.sh
+          bash -n install-group-composer-wsl.sh
           find client-addons-src/GroupComposer -type f -name '*.lua' -print0 | xargs -0 -n1 luac5.1 -p
           lua5.1 client-addons-src/GroupComposer/tests/test_data_profiles.lua
           python3 client-addons-src/GroupComposer/tests/test_server_contract.py
