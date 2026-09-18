@@ -1,72 +1,21 @@
-import { BuildSelection, createBuildSelector } from "./BuildSelector";
-import { createIcon, createPanel, createSolid, createText, setClassIcon, setTextureColor } from "../core/Native";
-import { ClassId, getClass, getClassesForRole, getSpecsForRole, Role } from "../data/WotlkBuilds";
-import {
-    addPin,
-    addRequiredBuild,
-    assemble,
-    buildAndPrepare,
-    classLabel,
-    clearDungeonExact,
-    clearPlan,
-    composer,
-    config,
-    data,
-    deleteProfile,
-    difficultyItems,
-    dungeonItems,
-    exactCount,
-    fireStatus,
-    getSpecIcon,
-    getSpecLabel,
-    humanReady,
-    humans,
-    isBusy,
-    isTravelRetry,
-    listBuiltinProfiles,
-    listCustomProfiles,
-    loadProfile,
-    phaseLabel,
-    plan,
-    planMembers,
-    profiles,
-    progress,
-    raidDifficultyItems,
-    raidItems,
-    remainingBotSlots,
-    removePin,
-    removeRequiredBuild,
-    replaceRequiredBuild,
-    requestAnchors,
-    requestStatus,
-    requiredBuilds,
-    requiredFlat,
-    roleAccent,
-    roleLabel,
-    saveProfile,
-    selectedActivityLabel,
-    setDifficulty,
-    setDungeonActivity,
-    setDungeonExact,
-    setHumanRole,
-    setMode,
-    setRaidActivity,
-    setRaidSize,
-    supportedRaidSizes,
-    targetForRole,
-    touch,
-} from "../model/ComposerModel";
+import type { BuildSelection } from "./BuildSelector";
+import * as BuildSelectorUI from "./BuildSelector";
+import * as Native from "../core/Native";
+import type { ClassId, Role } from "../data/WotlkBuilds";
+import * as Builds from "../data/WotlkBuilds";
+import * as Model from "../model/ComposerModel";
 import { theme } from "../theme/Theme";
-import { createButton, UIButton } from "../widgets/Button";
-import { ChoiceItem, closeChoicePopup, createChoiceSelect } from "../widgets/ChoiceSelect";
-import { createModal } from "../widgets/Modal";
-import { createScrollList } from "../widgets/ScrollList";
-import { createTextInput } from "../widgets/TextInput";
-import { createToggle } from "../widgets/Toggle";
+import type { UIButton } from "../widgets/Button";
+import * as ButtonUI from "../widgets/Button";
+import * as ChoiceUI from "../widgets/ChoiceSelect";
+import * as ModalUI from "../widgets/Modal";
+import * as ScrollUI from "../widgets/ScrollList";
+import * as InputUI from "../widgets/TextInput";
+import * as ToggleUI from "../widgets/Toggle";
 
-const GC: any = composer();
-const D: any = data();
-const P: any = profiles();
+const GC: any = Model.composer();
+const D: any = Model.data();
+const P: any = Model.profiles();
 
 type RaidTab = "QUICK" | "EXACT" | "ROSTER";
 
@@ -106,8 +55,8 @@ function classCanRole(classToken: string, role: Role): boolean {
 
 function humanCounts(): Record<Role, number> {
     const out: Record<Role, number> = { TANK: 0, HEALER: 0, DPS: 0 };
-    const roles = config().humanRoles ?? {};
-    for (const human of humans()) {
+    const roles = Model.config().humanRoles ?? {};
+    for (const human of Model.humans()) {
         const role = roles[human.name] as Role | undefined;
         if (role !== undefined) out[role] += 1;
     }
@@ -116,13 +65,13 @@ function humanCounts(): Record<Role, number> {
 
 function buildDungeonModel(): DungeonSlot[] {
     const sequence: Role[] = ["TANK", "HEALER", "DPS", "DPS", "DPS"];
-    const anchors = humans();
+    const anchors = Model.humans();
     const usedHumans: boolean[] = [];
     const assigned: Array<any | undefined> = [];
 
     for (let h = 0; h < anchors.length; h += 1) {
         const human = anchors[h];
-        const role = config().humanRoles?.[human.name] as Role | undefined;
+        const role = Model.config().humanRoles?.[human.name] as Role | undefined;
         if (role === undefined) continue;
         for (let i = 0; i < sequence.length; i += 1) {
             if (sequence[i] === role && assigned[i] === undefined) {
@@ -134,15 +83,15 @@ function buildDungeonModel(): DungeonSlot[] {
     }
 
     const flat: Record<Role, Array<{ classId: ClassId; specId: number }>> = {
-        TANK: requiredFlat("TANK"),
-        HEALER: requiredFlat("HEALER"),
-        DPS: requiredFlat("DPS"),
+        TANK: Model.requiredFlat("TANK"),
+        HEALER: Model.requiredFlat("HEALER"),
+        DPS: Model.requiredFlat("DPS"),
     };
     const counters: Record<Role, number> = { TANK: 0, HEALER: 0, DPS: 0 };
 
     const preparedByRole: Record<Role, any[]> = { TANK: [], HEALER: [], DPS: [] };
-    if (plan().ready === true) {
-        for (const member of planMembers()) {
+    if (Model.plan().ready === true) {
+        for (const member of Model.planMembers()) {
             if (member.human !== true && preparedByRole[member.role] !== undefined) preparedByRole[member.role].push(member);
         }
     }
@@ -170,14 +119,14 @@ function buildDungeonModel(): DungeonSlot[] {
 }
 
 function specIdFromLabel(classId: string, label: string): number | undefined {
-    const classDef = getClass(classId as ClassId);
+    const classDef = Builds.getClass(classId as ClassId);
     if (classDef === undefined) return undefined;
     for (const spec of classDef.specs) if (spec.label === label) return spec.id;
     return undefined;
 }
 
 function activitySubtitle(): string {
-    const cfg = config();
+    const cfg = Model.config();
     if (cfg.mode === "RAID") {
         return String(cfg.size) + " player  ·  " + (cfg.difficulty === "heroic" ? "Heroic" : "Normal") + "  ·  Auto-enter after assembly";
     }
@@ -202,65 +151,65 @@ export function createModernDashboard(): Dashboard {
     frame.SetScript("OnDragStop", (self) => self.StopMovingOrSizing());
     frame.Hide();
 
-    const root = createSolid(frame, theme.colors.background);
+    const root = Native.createSolid(frame, theme.colors.background);
     root.SetAllPoints(frame);
-    const rootOutline = createPanel(frame, theme.colors.background, theme.colors.borderStrong);
+    const rootOutline = Native.createPanel(frame, theme.colors.background, theme.colors.borderStrong);
     rootOutline.frame.SetAllPoints(frame);
 
-    const header = createPanel(frame, theme.colors.surface, theme.colors.border);
+    const header = Native.createPanel(frame, theme.colors.surface, theme.colors.border);
     header.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1);
     header.frame.SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -1);
     header.frame.SetHeight(68);
 
-    const mark = createPanel(header.frame, theme.colors.surfaceRaised, theme.colors.primary);
+    const mark = Native.createPanel(header.frame, theme.colors.surfaceRaised, theme.colors.primary);
     mark.frame.SetSize(40, 40);
     mark.frame.SetPoint("LEFT", header.frame, "LEFT", 18, 0);
-    const markText = createText(mark.frame, "GC", "GameFontNormalLarge", theme.colors.primary);
+    const markText = Native.createText(mark.frame, "GC", "GameFontNormalLarge", theme.colors.primary);
     markText.SetPoint("CENTER", mark.frame, "CENTER", 0, 0);
     markText.SetJustifyH("CENTER");
 
-    const title = createText(header.frame, "GROUP COMPOSER", "GameFontNormalLarge");
+    const title = Native.createText(header.frame, "GROUP COMPOSER", "GameFontNormalLarge");
     title.SetPoint("TOPLEFT", header.frame, "TOPLEFT", 72, -14);
-    const subtitle = createText(header.frame, "Build the team you want, then let Composer prepare it.", "GameFontHighlightSmall", theme.colors.muted);
+    const subtitle = Native.createText(header.frame, "Build the team you want, then let Composer prepare it.", "GameFontHighlightSmall", theme.colors.muted);
     subtitle.SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4);
 
-    const backendDot = createSolid(header.frame, theme.colors.muted, "ARTWORK");
+    const backendDot = Native.createSolid(header.frame, theme.colors.muted, "ARTWORK");
     backendDot.SetSize(8, 8);
     backendDot.SetPoint("RIGHT", header.frame, "RIGHT", -150, 0);
-    const backendText = createText(header.frame, "Checking backend", "GameFontHighlightSmall", theme.colors.muted);
+    const backendText = Native.createText(header.frame, "Checking backend", "GameFontHighlightSmall", theme.colors.muted);
     backendText.SetPoint("LEFT", backendDot, "RIGHT", 8, 0);
 
-    const close = createButton(header.frame, { text: "Close", width: 100, height: 32, accent: theme.colors.error, onClick: () => frame.Hide() });
+    const close = ButtonUI.createButton(header.frame, { text: "Close", width: 100, height: 32, accent: theme.colors.error, onClick: () => frame.Hide() });
     close.frame.SetPoint("RIGHT", header.frame, "RIGHT", -18, 0);
 
-    const sidebar = createPanel(frame, theme.colors.surface, theme.colors.border);
+    const sidebar = Native.createPanel(frame, theme.colors.surface, theme.colors.border);
     sidebar.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -69);
     sidebar.frame.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 36);
     sidebar.frame.SetWidth(176);
 
-    const navTitle = createText(sidebar.frame, "PLAN", "GameFontNormalSmall", theme.colors.muted);
+    const navTitle = Native.createText(sidebar.frame, "PLAN", "GameFontNormalSmall", theme.colors.muted);
     navTitle.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 16, -20);
 
-    const navDungeon = createButton(sidebar.frame, { text: "Dungeon", width: 144, height: 42, accent: theme.colors.primary, onClick: () => setMode("DUNGEON") });
+    const navDungeon = ButtonUI.createButton(sidebar.frame, { text: "Dungeon", width: 144, height: 42, accent: theme.colors.primary, onClick: () => Model.setMode("DUNGEON") });
     navDungeon.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 16, -48);
-    const navRaid = createButton(sidebar.frame, { text: "Raid", width: 144, height: 42, accent: theme.colors.warning, onClick: () => setMode("RAID") });
+    const navRaid = ButtonUI.createButton(sidebar.frame, { text: "Raid", width: 144, height: 42, accent: theme.colors.warning, onClick: () => Model.setMode("RAID") });
     navRaid.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 16, -98);
 
-    const manageTitle = createText(sidebar.frame, "MANAGE", "GameFontNormalSmall", theme.colors.muted);
+    const manageTitle = Native.createText(sidebar.frame, "MANAGE", "GameFontNormalSmall", theme.colors.muted);
     manageTitle.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 16, -164);
 
     let showTemplates = () => {};
     let showPeople = () => {};
     let showOptions = () => {};
 
-    const navTemplates = createButton(sidebar.frame, { text: "Templates", width: 144, height: 38, onClick: () => showTemplates() });
+    const navTemplates = ButtonUI.createButton(sidebar.frame, { text: "Templates", width: 144, height: 38, onClick: () => showTemplates() });
     navTemplates.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 16, -190);
-    const navPeople = createButton(sidebar.frame, { text: "Humans & Pins", width: 144, height: 38, onClick: () => showPeople() });
+    const navPeople = ButtonUI.createButton(sidebar.frame, { text: "Humans & Pins", width: 144, height: 38, onClick: () => showPeople() });
     navPeople.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 16, -234);
-    const navOptions = createButton(sidebar.frame, { text: "Options", width: 144, height: 38, onClick: () => showOptions() });
+    const navOptions = ButtonUI.createButton(sidebar.frame, { text: "Options", width: 144, height: 38, onClick: () => showOptions() });
     navOptions.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 16, -278);
 
-    const sideHint = createText(sidebar.frame, "Humans stay locked.\nExact builds only affect bot slots.", "GameFontHighlightSmall", theme.colors.muted);
+    const sideHint = Native.createText(sidebar.frame, "Humans stay locked.\nExact builds only affect bot slots.", "GameFontHighlightSmall", theme.colors.muted);
     sideHint.SetPoint("BOTTOMLEFT", sidebar.frame, "BOTTOMLEFT", 16, 18);
     sideHint.SetWidth(144);
     sideHint.SetJustifyV("TOP");
@@ -269,118 +218,118 @@ export function createModernDashboard(): Dashboard {
     center.SetPoint("TOPLEFT", frame, "TOPLEFT", 194, -84);
     center.SetSize(928, 744);
 
-    const status = createPanel(frame, theme.colors.surface, theme.colors.borderStrong);
+    const status = Native.createPanel(frame, theme.colors.surface, theme.colors.borderStrong);
     status.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1138, -84);
     status.frame.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -16, 52);
 
-    const footer = createPanel(frame, theme.colors.surface, theme.colors.border);
+    const footer = Native.createPanel(frame, theme.colors.surface, theme.colors.border);
     footer.frame.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 194, 12);
     footer.frame.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -16, 12);
     footer.frame.SetHeight(28);
-    const footerText = createText(footer.frame, "Ready.", "GameFontHighlightSmall", theme.colors.muted);
+    const footerText = Native.createText(footer.frame, "Ready.", "GameFontHighlightSmall", theme.colors.muted);
     footerText.SetPoint("LEFT", footer.frame, "LEFT", 10, 0);
     footerText.SetPoint("RIGHT", footer.frame, "RIGHT", -10, 0);
 
     // Activity ---------------------------------------------------------------
-    const activity = createPanel(center, theme.colors.surface, theme.colors.borderStrong);
+    const activity = Native.createPanel(center, theme.colors.surface, theme.colors.borderStrong);
     activity.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, 0);
     activity.frame.SetPoint("TOPRIGHT", center, "TOPRIGHT", 0, 0);
     activity.frame.SetHeight(96);
 
-    const activityEyebrow = createText(activity.frame, "ACTIVITY", "GameFontNormalSmall", theme.colors.muted);
+    const activityEyebrow = Native.createText(activity.frame, "ACTIVITY", "GameFontNormalSmall", theme.colors.muted);
     activityEyebrow.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 16, -12);
-    const activityName = createText(activity.frame, "Dungeon", "GameFontNormalLarge");
+    const activityName = Native.createText(activity.frame, "Dungeon", "GameFontNormalLarge");
     activityName.SetPoint("TOPLEFT", activityEyebrow, "BOTTOMLEFT", 0, -5);
-    const activitySub = createText(activity.frame, "", "GameFontHighlightSmall", theme.colors.muted);
+    const activitySub = Native.createText(activity.frame, "", "GameFontHighlightSmall", theme.colors.muted);
     activitySub.SetPoint("TOPLEFT", activityName, "BOTTOMLEFT", 0, -4);
 
-    const activitySelect = createChoiceSelect(activity.frame, {
+    const activitySelect = ChoiceUI.createChoiceSelect(activity.frame, {
         width: 310,
         maxVisible: 10,
-        getItems: () => config().mode === "RAID" ? raidItems() : dungeonItems(),
-        getValue: () => config().activity,
+        getItems: () => Model.config().mode === "RAID" ? Model.raidItems() : Model.dungeonItems(),
+        getValue: () => Model.config().activity,
         onChange: (value) => {
-            if (config().mode === "RAID") setRaidActivity(String(value));
-            else setDungeonActivity(String(value));
+            if (Model.config().mode === "RAID") Model.setRaidActivity(String(value));
+            else Model.setDungeonActivity(String(value));
         },
     });
     activitySelect.frame.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 380, -18);
 
-    const difficultySelect = createChoiceSelect(activity.frame, {
+    const difficultySelect = ChoiceUI.createChoiceSelect(activity.frame, {
         width: 180,
         maxVisible: 7,
-        getItems: () => config().mode === "RAID" ? raidDifficultyItems() : difficultyItems(),
-        getValue: () => config().difficulty,
-        onChange: (value) => setDifficulty(String(value)),
+        getItems: () => Model.config().mode === "RAID" ? Model.raidDifficultyItems() : Model.difficultyItems(),
+        getValue: () => Model.config().difficulty,
+        onChange: (value) => Model.setDifficulty(String(value)),
     });
     difficultySelect.frame.SetPoint("LEFT", activitySelect.frame, "RIGHT", 10, 0);
 
     const raidSizeButtons: Record<number, UIButton> = {};
     for (const size of [10, 20, 25, 40]) {
         const copy = size;
-        raidSizeButtons[size] = createButton(activity.frame, {
+        raidSizeButtons[size] = ButtonUI.createButton(activity.frame, {
             text: String(size),
             width: 52,
             height: 30,
             accent: theme.colors.warning,
-            onClick: () => setRaidSize(copy),
+            onClick: () => Model.setRaidSize(copy),
         });
     }
 
     // Human anchor -----------------------------------------------------------
-    const humanPanel = createPanel(center, theme.colors.surface, theme.colors.border);
+    const humanPanel = Native.createPanel(center, theme.colors.surface, theme.colors.border);
     humanPanel.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -108);
     humanPanel.frame.SetPoint("TOPRIGHT", center, "TOPRIGHT", 0, -108);
     humanPanel.frame.SetHeight(104);
 
-    const humanTitle = createText(humanPanel.frame, "YOUR PARTY", "GameFontNormalSmall", theme.colors.muted);
+    const humanTitle = Native.createText(humanPanel.frame, "YOUR PARTY", "GameFontNormalSmall", theme.colors.muted);
     humanTitle.SetPoint("TOPLEFT", humanPanel.frame, "TOPLEFT", 16, -12);
 
     const humanIcon = humanPanel.frame.CreateTexture(undefined, "ARTWORK");
     humanIcon.SetSize(38, 38);
     humanIcon.SetPoint("BOTTOMLEFT", humanPanel.frame, "BOTTOMLEFT", 16, 12);
-    setClassIcon(humanIcon, "WARRIOR");
+    Native.setClassIcon(humanIcon, "WARRIOR");
 
-    const humanName = createText(humanPanel.frame, "Choose your role", "GameFontNormal");
+    const humanName = Native.createText(humanPanel.frame, "Choose your role", "GameFontNormal");
     humanName.SetPoint("TOPLEFT", humanIcon, "TOPRIGHT", 10, 0);
-    const humanSub = createText(humanPanel.frame, "Real players are locked anchors.", "GameFontHighlightSmall", theme.colors.muted);
+    const humanSub = Native.createText(humanPanel.frame, "Real players are locked anchors.", "GameFontHighlightSmall", theme.colors.muted);
     humanSub.SetPoint("TOPLEFT", humanName, "BOTTOMLEFT", 0, -5);
 
     const humanRoleButtons: Record<Role, UIButton> = {
-        TANK: createButton(humanPanel.frame, { text: "Tank", width: 96, height: 36, accent: theme.colors.tank }),
-        HEALER: createButton(humanPanel.frame, { text: "Healer", width: 96, height: 36, accent: theme.colors.healer }),
-        DPS: createButton(humanPanel.frame, { text: "DPS", width: 96, height: 36, accent: theme.colors.dps }),
+        TANK: ButtonUI.createButton(humanPanel.frame, { text: "Tank", width: 96, height: 36, accent: theme.colors.tank }),
+        HEALER: ButtonUI.createButton(humanPanel.frame, { text: "Healer", width: 96, height: 36, accent: theme.colors.healer }),
+        DPS: ButtonUI.createButton(humanPanel.frame, { text: "DPS", width: 96, height: 36, accent: theme.colors.dps }),
     };
     humanRoleButtons.TANK.frame.SetPoint("RIGHT", humanPanel.frame, "RIGHT", -230, -14);
     humanRoleButtons.HEALER.frame.SetPoint("LEFT", humanRoleButtons.TANK.frame, "RIGHT", 8, 0);
     humanRoleButtons.DPS.frame.SetPoint("LEFT", humanRoleButtons.HEALER.frame, "RIGHT", 8, 0);
 
-    const humanMore = createButton(humanPanel.frame, { text: "Manage", width: 90, height: 30, onClick: () => showPeople() });
+    const humanMore = ButtonUI.createButton(humanPanel.frame, { text: "Manage", width: 90, height: 30, onClick: () => showPeople() });
     humanMore.frame.SetPoint("BOTTOMRIGHT", humanPanel.frame, "BOTTOMRIGHT", -16, 10);
 
     // Composition shell ------------------------------------------------------
-    const composition = createPanel(center, theme.colors.surface, theme.colors.border);
+    const composition = Native.createPanel(center, theme.colors.surface, theme.colors.border);
     composition.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -224);
     composition.frame.SetPoint("BOTTOMRIGHT", center, "BOTTOMRIGHT", 0, 0);
 
-    const compositionTitle = createText(composition.frame, "PARTY COMPOSITION", "GameFontNormal");
+    const compositionTitle = Native.createText(composition.frame, "PARTY COMPOSITION", "GameFontNormal");
     compositionTitle.SetPoint("TOPLEFT", composition.frame, "TOPLEFT", 16, -14);
-    const compositionHint = createText(composition.frame, "Auto-fill what you do not care about. Choose exact builds only where you do.", "GameFontHighlightSmall", theme.colors.muted);
+    const compositionHint = Native.createText(composition.frame, "Auto-fill what you do not care about. Choose exact builds only where you do.", "GameFontHighlightSmall", theme.colors.muted);
     compositionHint.SetPoint("TOPLEFT", compositionTitle, "BOTTOMLEFT", 0, -4);
 
     // Shared build selector --------------------------------------------------
     let selectorContext: SelectorContext = { mode: "DUNGEON", role: "DPS", index: 0 };
 
-    const buildSelector = createBuildSelector(frame, {
+    const buildSelector = BuildSelectorUI.createBuildSelector(frame, {
         allowCount: true,
         maxCount: 40,
         onApply: (selection: BuildSelection) => {
             if (selectorContext.mode === "DUNGEON") {
-                setDungeonExact(selectorContext.role, selectorContext.index, selection.classId, selection.specId);
+                Model.setDungeonExact(selectorContext.role, selectorContext.index, selection.classId, selection.specId);
             } else if (selectorContext.mode === "RAID_ADD") {
-                addRequiredBuild(selectorContext.role, selection.classId, selection.specId, selection.count);
+                Model.addRequiredBuild(selectorContext.role, selection.classId, selection.specId, selection.count);
             } else {
-                replaceRequiredBuild(selectorContext.role, selectorContext.index, selection.classId, selection.specId, selection.count);
+                Model.replaceRequiredBuild(selectorContext.role, selectorContext.index, selection.classId, selection.specId, selection.count);
             }
         },
     });
@@ -392,12 +341,12 @@ export function createModernDashboard(): Dashboard {
 
     const dungeonRows: any[] = [];
     for (let i = 0; i < 5; i += 1) {
-        const row = createPanel(dungeonView, theme.colors.background, theme.colors.border);
+        const row = Native.createPanel(dungeonView, theme.colors.background, theme.colors.border);
         row.frame.SetHeight(78);
         row.frame.SetPoint("TOPLEFT", dungeonView, "TOPLEFT", 0, -(i * 84));
         row.frame.SetPoint("RIGHT", dungeonView, "RIGHT", 0, 0);
 
-        const accent = createSolid(row.frame, theme.colors.dps, "ARTWORK");
+        const accent = Native.createSolid(row.frame, theme.colors.dps, "ARTWORK");
         accent.SetWidth(4);
         accent.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 0, 0);
         accent.SetPoint("BOTTOMLEFT", row.frame, "BOTTOMLEFT", 0, 0);
@@ -406,9 +355,9 @@ export function createModernDashboard(): Dashboard {
         roleIcon.SetSize(28, 28);
         roleIcon.SetPoint("LEFT", row.frame, "LEFT", 16, 0);
 
-        const roleText = createText(row.frame, "DPS", "GameFontNormal");
+        const roleText = Native.createText(row.frame, "DPS", "GameFontNormal");
         roleText.SetPoint("LEFT", roleIcon, "RIGHT", 10, 8);
-        const slotText = createText(row.frame, "Slot", "GameFontHighlightSmall", theme.colors.muted);
+        const slotText = Native.createText(row.frame, "Slot", "GameFontHighlightSmall", theme.colors.muted);
         slotText.SetPoint("LEFT", roleIcon, "RIGHT", 10, -10);
 
         const classIcon = row.frame.CreateTexture(undefined, "ARTWORK");
@@ -421,16 +370,16 @@ export function createModernDashboard(): Dashboard {
         specIcon.SetPoint("LEFT", classIcon, "RIGHT", 8, 0);
         specIcon.Hide();
 
-        const name = createText(row.frame, "Auto-fill bot", "GameFontNormal");
+        const name = Native.createText(row.frame, "Auto-fill bot", "GameFontNormal");
         name.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 264, -20);
         name.SetWidth(270);
-        const sub = createText(row.frame, "Composer chooses a suitable build", "GameFontHighlightSmall", theme.colors.muted);
+        const sub = Native.createText(row.frame, "Composer chooses a suitable build", "GameFontHighlightSmall", theme.colors.muted);
         sub.SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -4);
         sub.SetWidth(330);
 
-        const choose = createButton(row.frame, { text: "Choose build", width: 130, height: 34, accent: theme.colors.primary });
+        const choose = ButtonUI.createButton(row.frame, { text: "Choose build", width: 130, height: 34, accent: theme.colors.primary });
         choose.frame.SetPoint("RIGHT", row.frame, "RIGHT", -84, 0);
-        const auto = createButton(row.frame, { text: "Auto", width: 66, height: 34 });
+        const auto = ButtonUI.createButton(row.frame, { text: "Auto", width: 66, height: 34 });
         auto.frame.SetPoint("RIGHT", row.frame, "RIGHT", -12, 0);
 
         dungeonRows.push({ row, accent, roleIcon, roleText, slotText, classIcon, specIcon, name, sub, choose, auto });
@@ -443,11 +392,11 @@ export function createModernDashboard(): Dashboard {
     raidView.Hide();
 
     let raidTab: RaidTab = "QUICK";
-    const tabQuick = createButton(raidView, { text: "Quick Composition", width: 164, height: 32, accent: theme.colors.primary });
+    const tabQuick = ButtonUI.createButton(raidView, { text: "Quick Composition", width: 164, height: 32, accent: theme.colors.primary });
     tabQuick.frame.SetPoint("TOPLEFT", raidView, "TOPLEFT", 0, 0);
-    const tabExact = createButton(raidView, { text: "Exact Builds", width: 140, height: 32, accent: theme.colors.warning });
+    const tabExact = ButtonUI.createButton(raidView, { text: "Exact Builds", width: 140, height: 32, accent: theme.colors.warning });
     tabExact.frame.SetPoint("LEFT", tabQuick.frame, "RIGHT", 8, 0);
-    const tabRoster = createButton(raidView, { text: "Prepared Roster", width: 150, height: 32, accent: theme.colors.success });
+    const tabRoster = ButtonUI.createButton(raidView, { text: "Prepared Roster", width: 150, height: 32, accent: theme.colors.success });
     tabRoster.frame.SetPoint("LEFT", tabExact.frame, "RIGHT", 8, 0);
 
     const quickView = CreateFrame("Frame", undefined, raidView);
@@ -466,31 +415,31 @@ export function createModernDashboard(): Dashboard {
     const roleOrder: Role[] = ["TANK", "HEALER", "DPS"];
     for (let i = 0; i < roleOrder.length; i += 1) {
         const role = roleOrder[i];
-        const card = createPanel(quickView, theme.colors.background, roleAccent(role));
+        const card = Native.createPanel(quickView, theme.colors.background, Model.roleAccent(role));
         card.frame.SetSize(282, 178);
         card.frame.SetPoint("TOPLEFT", quickView, "TOPLEFT", i * 294, -12);
 
-        const icon = createIcon(card.frame, D.ROLE_ICON[role], 34);
+        const icon = Native.createIcon(card.frame, D.ROLE_ICON[role], 34);
         icon.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 14, -14);
-        const label = createText(card.frame, roleLabel(role).toUpperCase(), "GameFontNormal", roleAccent(role));
+        const label = Native.createText(card.frame, Model.roleLabel(role).toUpperCase(), "GameFontNormal", Model.roleAccent(role));
         label.SetPoint("LEFT", icon, "RIGHT", 10, 5);
-        const note = createText(card.frame, "Raid-wide role target", "GameFontHighlightSmall", theme.colors.muted);
+        const note = Native.createText(card.frame, "Raid-wide role target", "GameFontHighlightSmall", theme.colors.muted);
         note.SetPoint("LEFT", icon, "RIGHT", 10, -12);
 
-        const count = createText(card.frame, "0", "GameFontNormalHuge");
+        const count = Native.createText(card.frame, "0", "GameFontNormalHuge");
         count.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 18, -70);
-        const botSlots = createText(card.frame, "0 bot slots after humans", "GameFontHighlightSmall", theme.colors.muted);
+        const botSlots = Native.createText(card.frame, "0 bot slots after humans", "GameFontHighlightSmall", theme.colors.muted);
         botSlots.SetPoint("TOPLEFT", count, "BOTTOMLEFT", 0, -7);
 
         let minus: UIButton | undefined;
         let plus: UIButton | undefined;
         if (role !== "DPS") {
-            minus = createButton(card.frame, { text: "-", width: 38, height: 32 });
-            plus = createButton(card.frame, { text: "+", width: 38, height: 32, accent: roleAccent(role) });
+            minus = ButtonUI.createButton(card.frame, { text: "-", width: 38, height: 32 });
+            plus = ButtonUI.createButton(card.frame, { text: "+", width: 38, height: 32, accent: Model.roleAccent(role) });
             minus.frame.SetPoint("BOTTOMRIGHT", card.frame, "BOTTOMRIGHT", -58, 12);
             plus.frame.SetPoint("BOTTOMRIGHT", card.frame, "BOTTOMRIGHT", -12, 12);
         } else {
-            const derived = createText(card.frame, "Auto remainder", "GameFontHighlightSmall", theme.colors.muted);
+            const derived = Native.createText(card.frame, "Auto remainder", "GameFontHighlightSmall", theme.colors.muted);
             derived.SetPoint("BOTTOMRIGHT", card.frame, "BOTTOMRIGHT", -14, 20);
         }
 
@@ -499,14 +448,14 @@ export function createModernDashboard(): Dashboard {
 
     function adjustRole(role: Role, delta: number): void {
         if (role === "DPS") return;
-        const cfg = config();
+        const cfg = Model.config();
         const key = role === "TANK" ? "tanks" : "healers";
         const next = Math.max(0, Number(cfg[key] ?? 0) + delta);
         const nextDps = Number(cfg.dps ?? 0) - delta;
         if (nextDps < 0) return;
         cfg[key] = next;
         cfg.dps = nextDps;
-        touch("Role composition changed");
+        Model.touch("Role composition changed");
     }
 
     quickCards.TANK.minus.frame.SetScript("OnMouseDown", () => adjustRole("TANK", -1));
@@ -517,21 +466,21 @@ export function createModernDashboard(): Dashboard {
     const exactColumns: Record<Role, any> = {} as Record<Role, any>;
     for (let i = 0; i < roleOrder.length; i += 1) {
         const role = roleOrder[i];
-        const panel = createPanel(exactView, theme.colors.background, roleAccent(role));
+        const panel = Native.createPanel(exactView, theme.colors.background, Model.roleAccent(role));
         panel.frame.SetPoint("TOPLEFT", exactView, "TOPLEFT", i * 294, -8);
         panel.frame.SetSize(282, 410);
 
-        const icon = createIcon(panel.frame, D.ROLE_ICON[role], 28);
+        const icon = Native.createIcon(panel.frame, D.ROLE_ICON[role], 28);
         icon.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 12, -12);
-        const label = createText(panel.frame, roleLabel(role).toUpperCase(), "GameFontNormal", roleAccent(role));
+        const label = Native.createText(panel.frame, Model.roleLabel(role).toUpperCase(), "GameFontNormal", Model.roleAccent(role));
         label.SetPoint("LEFT", icon, "RIGHT", 9, 5);
-        const count = createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
+        const count = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
         count.SetPoint("LEFT", icon, "RIGHT", 9, -12);
 
-        const add = createButton(panel.frame, { text: "+ Add build", width: 112, height: 30, accent: roleAccent(role) });
+        const add = ButtonUI.createButton(panel.frame, { text: "+ Add build", width: 112, height: 30, accent: Model.roleAccent(role) });
         add.frame.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -10, -11);
 
-        const scroll = createScrollList(panel.frame, 258, 330);
+        const scroll = ScrollUI.createScrollList(panel.frame, 258, 330);
         scroll.frame.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 12, -66);
 
         exactColumns[role] = { panel, count, add, scroll, rows: [] as any[] };
@@ -539,8 +488,8 @@ export function createModernDashboard(): Dashboard {
 
     const groupCards: any[] = [];
     for (let g = 0; g < 8; g += 1) {
-        const card = createPanel(rosterView, theme.colors.background, theme.colors.border);
-        const groupTitle = createText(card.frame, "GROUP " + String(g + 1), "GameFontNormalSmall", theme.colors.muted);
+        const card = Native.createPanel(rosterView, theme.colors.background, theme.colors.border);
+        const groupTitle = Native.createText(card.frame, "GROUP " + String(g + 1), "GameFontNormalSmall", theme.colors.muted);
         groupTitle.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 10, -10);
         const rows: any[] = [];
         for (let r = 0; r < 5; r += 1) {
@@ -549,7 +498,7 @@ export function createModernDashboard(): Dashboard {
             row.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 8, -(36 + r * 35));
             row.SetPoint("RIGHT", card.frame, "RIGHT", -8, 0);
 
-            const roleBar = createSolid(row, theme.colors.dps, "ARTWORK");
+            const roleBar = Native.createSolid(row, theme.colors.dps, "ARTWORK");
             roleBar.SetWidth(3);
             roleBar.SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0);
             roleBar.SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0);
@@ -559,10 +508,10 @@ export function createModernDashboard(): Dashboard {
             icon.SetPoint("LEFT", row, "LEFT", 8, 0);
             icon.Hide();
 
-            const name = createText(row, "Empty", "GameFontHighlightSmall", theme.colors.muted);
+            const name = Native.createText(row, "Empty", "GameFontHighlightSmall", theme.colors.muted);
             name.SetPoint("LEFT", row, "LEFT", 38, 7);
             name.SetWidth(112);
-            const spec = createText(row, "", "GameFontHighlightSmall", theme.colors.muted);
+            const spec = Native.createText(row, "", "GameFontHighlightSmall", theme.colors.muted);
             spec.SetPoint("LEFT", row, "LEFT", 38, -8);
             spec.SetWidth(125);
 
@@ -573,51 +522,51 @@ export function createModernDashboard(): Dashboard {
     }
 
     // Status ----------------------------------------------------------------
-    const statusTitle = createText(status.frame, "COMPOSITION & STATUS", "GameFontNormal");
+    const statusTitle = Native.createText(status.frame, "COMPOSITION & STATUS", "GameFontNormal");
     statusTitle.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -16);
 
-    const phaseDot = createSolid(status.frame, theme.colors.primary, "ARTWORK");
+    const phaseDot = Native.createSolid(status.frame, theme.colors.primary, "ARTWORK");
     phaseDot.SetSize(10, 10);
     phaseDot.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 18, -54);
-    const phaseText = createText(status.frame, "Configure roster", "GameFontNormalLarge");
+    const phaseText = Native.createText(status.frame, "Configure roster", "GameFontNormalLarge");
     phaseText.SetPoint("LEFT", phaseDot, "RIGHT", 10, 4);
-    const phaseDetail = createText(status.frame, "", "GameFontHighlightSmall", theme.colors.muted);
+    const phaseDetail = Native.createText(status.frame, "", "GameFontHighlightSmall", theme.colors.muted);
     phaseDetail.SetPoint("TOPLEFT", phaseText, "BOTTOMLEFT", 0, -4);
     phaseDetail.SetWidth(266);
     phaseDetail.SetJustifyV("TOP");
 
-    const rosterCount = createText(status.frame, "1 / 5", "GameFontNormalHuge");
+    const rosterCount = Native.createText(status.frame, "1 / 5", "GameFontNormalHuge");
     rosterCount.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -116);
-    const sourceText = createText(status.frame, "1 human  ·  4 bot slots", "GameFontHighlightSmall", theme.colors.muted);
+    const sourceText = Native.createText(status.frame, "1 human  ·  4 bot slots", "GameFontHighlightSmall", theme.colors.muted);
     sourceText.SetPoint("TOPLEFT", rosterCount, "BOTTOMLEFT", 0, -6);
 
     const statusRoleChips: Record<Role, any> = {} as Record<Role, any>;
     for (let i = 0; i < roleOrder.length; i += 1) {
         const role = roleOrder[i];
-        const chip = createPanel(status.frame, theme.colors.background, roleAccent(role));
+        const chip = Native.createPanel(status.frame, theme.colors.background, Model.roleAccent(role));
         chip.frame.SetSize(88, 32);
         chip.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16 + i * 96, -174);
-        const icon = createIcon(chip.frame, D.ROLE_ICON[role], 17);
+        const icon = Native.createIcon(chip.frame, D.ROLE_ICON[role], 17);
         icon.SetPoint("LEFT", chip.frame, "LEFT", 7, 0);
-        const label = createText(chip.frame, "", "GameFontHighlightSmall", roleAccent(role));
+        const label = Native.createText(chip.frame, "", "GameFontHighlightSmall", Model.roleAccent(role));
         label.SetPoint("LEFT", icon, "RIGHT", 6, 0);
         statusRoleChips[role] = { chip, label };
     }
 
-    const progressBg = createPanel(status.frame, theme.colors.background, theme.colors.border);
+    const progressBg = Native.createPanel(status.frame, theme.colors.background, theme.colors.border);
     progressBg.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -222);
     progressBg.frame.SetSize(286, 12);
-    const progressFill = createSolid(progressBg.frame, theme.colors.primary, "ARTWORK");
+    const progressFill = Native.createSolid(progressBg.frame, theme.colors.primary, "ARTWORK");
     progressFill.SetPoint("TOPLEFT", progressBg.frame, "TOPLEFT", 2, -2);
     progressFill.SetPoint("BOTTOMLEFT", progressBg.frame, "BOTTOMLEFT", 2, 2);
     progressFill.SetWidth(1);
-    const progressText = createText(status.frame, "", "GameFontHighlightSmall", theme.colors.muted);
+    const progressText = Native.createText(status.frame, "", "GameFontHighlightSmall", theme.colors.muted);
     progressText.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -244);
     progressText.SetWidth(286);
 
-    const coverageTitle = createText(status.frame, "COVERAGE", "GameFontNormalSmall", theme.colors.muted);
+    const coverageTitle = Native.createText(status.frame, "COVERAGE", "GameFontNormalSmall", theme.colors.muted);
     coverageTitle.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -286);
-    const coverageText = createText(status.frame, "Build a roster to inspect coverage.", "GameFontHighlightSmall", theme.colors.muted);
+    const coverageText = Native.createText(status.frame, "Build a roster to inspect coverage.", "GameFontHighlightSmall", theme.colors.muted);
     coverageText.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -308);
     coverageText.SetWidth(286);
     coverageText.SetJustifyV("TOP");
@@ -631,36 +580,36 @@ export function createModernDashboard(): Dashboard {
         classIcons.push(icon);
     }
 
-    const warningsTitle = createText(status.frame, "NEXT STEP", "GameFontNormalSmall", theme.colors.warning);
+    const warningsTitle = Native.createText(status.frame, "NEXT STEP", "GameFontNormalSmall", theme.colors.warning);
     warningsTitle.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -396);
     const warningRows: WoWFontString[] = [];
     for (let i = 0; i < 3; i += 1) {
-        const row = createText(status.frame, "", "GameFontHighlightSmall", i === 0 ? theme.colors.warning : theme.colors.muted);
+        const row = Native.createText(status.frame, "", "GameFontHighlightSmall", i === 0 ? theme.colors.warning : theme.colors.muted);
         row.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -(420 + i * 42));
         row.SetWidth(286);
         row.SetJustifyV("TOP");
         warningRows.push(row);
     }
 
-    const buildButton = createButton(status.frame, { text: "Build & Prepare", width: 286, height: 40, accent: theme.colors.primary, onClick: () => buildAndPrepare() });
+    const buildButton = ButtonUI.createButton(status.frame, { text: "Build & Prepare", width: 286, height: 40, accent: theme.colors.primary, onClick: () => Model.buildAndPrepare() });
     buildButton.frame.SetPoint("BOTTOMLEFT", status.frame, "BOTTOMLEFT", 16, 66);
 
     let showAssembleConfirm = () => {};
-    const assembleButton = createButton(status.frame, { text: "Assemble", width: 210, height: 38, accent: theme.colors.success, onClick: () => showAssembleConfirm() });
+    const assembleButton = ButtonUI.createButton(status.frame, { text: "Assemble", width: 210, height: 38, accent: theme.colors.success, onClick: () => showAssembleConfirm() });
     assembleButton.frame.SetPoint("BOTTOMLEFT", status.frame, "BOTTOMLEFT", 16, 18);
-    const resetButton = createButton(status.frame, { text: "Reset", width: 68, height: 38, accent: theme.colors.error, onClick: () => clearPlan() });
+    const resetButton = ButtonUI.createButton(status.frame, { text: "Reset", width: 68, height: 38, accent: theme.colors.error, onClick: () => Model.clearPlan() });
     resetButton.frame.SetPoint("LEFT", assembleButton.frame, "RIGHT", 8, 0);
 
     // Templates modal --------------------------------------------------------
-    const templatesModal = createModal(frame, 880, 620);
+    const templatesModal = ModalUI.createModal(frame, 880, 620);
     templatesModal.setTitle("Templates");
     templatesModal.setSubtitle("Built-in starting points and your saved compositions.");
 
-    const templateSaveLabel = createText(templatesModal.content, "SAVE CURRENT", "GameFontNormalSmall", theme.colors.muted);
+    const templateSaveLabel = Native.createText(templatesModal.content, "SAVE CURRENT", "GameFontNormalSmall", theme.colors.muted);
     templateSaveLabel.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, 0);
-    const templateName = createTextInput(templatesModal.content, 300, 34);
+    const templateName = InputUI.createTextInput(templatesModal.content, 300, 34);
     templateName.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -24);
-    const templateSave = createButton(templatesModal.content, {
+    const templateSave = ButtonUI.createButton(templatesModal.content, {
         text: "Save Current",
         width: 120,
         height: 34,
@@ -668,7 +617,7 @@ export function createModernDashboard(): Dashboard {
         onClick: () => {
             const name = templateName.getText();
             if (name !== "") {
-                saveProfile(name);
+                Model.saveProfile(name);
                 templateName.clear();
                 refreshTemplates();
             }
@@ -676,14 +625,14 @@ export function createModernDashboard(): Dashboard {
     });
     templateSave.frame.SetPoint("LEFT", templateName.frame, "RIGHT", 8, 0);
 
-    const builtinTitle = createText(templatesModal.content, "BUILT-IN", "GameFontNormalSmall", theme.colors.muted);
+    const builtinTitle = Native.createText(templatesModal.content, "BUILT-IN", "GameFontNormalSmall", theme.colors.muted);
     builtinTitle.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -82);
-    const customTitle = createText(templatesModal.content, "MY TEMPLATES", "GameFontNormalSmall", theme.colors.muted);
+    const customTitle = Native.createText(templatesModal.content, "MY TEMPLATES", "GameFontNormalSmall", theme.colors.muted);
     customTitle.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 420, -82);
 
-    const builtinScroll = createScrollList(templatesModal.content, 390, 410);
+    const builtinScroll = ScrollUI.createScrollList(templatesModal.content, 390, 410);
     builtinScroll.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -108);
-    const customScroll = createScrollList(templatesModal.content, 390, 410);
+    const customScroll = ScrollUI.createScrollList(templatesModal.content, 390, 410);
     customScroll.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 420, -108);
     const builtinRows: WoWFrame[] = [];
     const customRows: WoWFrame[] = [];
@@ -696,16 +645,16 @@ export function createModernDashboard(): Dashboard {
         clearDynamicRows(builtinRows);
         clearDynamicRows(customRows);
 
-        const builtins = listBuiltinProfiles();
+        const builtins = Model.listBuiltinProfiles();
         for (let i = 0; i < builtins.length; i += 1) {
             let row = builtinRows[i];
             if (row === undefined) {
-                const panel = createPanel(builtinScroll.content, theme.colors.background, theme.colors.border);
+                const panel = Native.createPanel(builtinScroll.content, theme.colors.background, theme.colors.border);
                 panel.frame.SetSize(382, 40);
-                const name = createText(panel.frame, "", "GameFontHighlightSmall");
+                const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
                 name.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
                 name.SetWidth(235);
-                const load = createButton(panel.frame, { text: "Load", width: 82, height: 28, accent: theme.colors.primary });
+                const load = ButtonUI.createButton(panel.frame, { text: "Load", width: 82, height: 28, accent: theme.colors.primary });
                 load.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -6, 0);
                 (panel.frame as any)._name = name;
                 (panel.frame as any)._load = load;
@@ -717,25 +666,25 @@ export function createModernDashboard(): Dashboard {
             (row as any)._name.SetText(builtins[i]);
             const profileName = builtins[i];
             (row as any)._load.frame.SetScript("OnMouseDown", () => {
-                loadProfile(profileName);
+                Model.loadProfile(profileName);
                 templatesModal.hide();
             });
             row.Show();
         }
         builtinScroll.setContentHeight(Math.max(410, builtins.length * 46));
 
-        const customs = listCustomProfiles();
+        const customs = Model.listCustomProfiles();
         for (let i = 0; i < customs.length; i += 1) {
             let row = customRows[i];
             if (row === undefined) {
-                const panel = createPanel(customScroll.content, theme.colors.background, theme.colors.border);
+                const panel = Native.createPanel(customScroll.content, theme.colors.background, theme.colors.border);
                 panel.frame.SetSize(382, 40);
-                const name = createText(panel.frame, "", "GameFontHighlightSmall");
+                const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
                 name.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
                 name.SetWidth(190);
-                const load = createButton(panel.frame, { text: "Load", width: 68, height: 28, accent: theme.colors.primary });
+                const load = ButtonUI.createButton(panel.frame, { text: "Load", width: 68, height: 28, accent: theme.colors.primary });
                 load.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -74, 0);
-                const remove = createButton(panel.frame, { text: "Delete", width: 62, height: 28, accent: theme.colors.error });
+                const remove = ButtonUI.createButton(panel.frame, { text: "Delete", width: 62, height: 28, accent: theme.colors.error });
                 remove.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -6, 0);
                 (panel.frame as any)._name = name;
                 (panel.frame as any)._load = load;
@@ -748,11 +697,11 @@ export function createModernDashboard(): Dashboard {
             (row as any)._name.SetText(customs[i]);
             const profileName = customs[i];
             (row as any)._load.frame.SetScript("OnMouseDown", () => {
-                loadProfile(profileName);
+                Model.loadProfile(profileName);
                 templatesModal.hide();
             });
             (row as any)._remove.frame.SetScript("OnMouseDown", () => {
-                deleteProfile(profileName);
+                Model.deleteProfile(profileName);
                 refreshTemplates();
             });
             row.Show();
@@ -761,33 +710,33 @@ export function createModernDashboard(): Dashboard {
     }
 
     showTemplates = () => {
-        closeChoicePopup();
+        ChoiceUI.closeChoicePopup();
         refreshTemplates();
         templatesModal.show();
     };
 
     // Humans & Pins modal ----------------------------------------------------
-    const peopleModal = createModal(frame, 900, 650);
+    const peopleModal = ModalUI.createModal(frame, 900, 650);
     peopleModal.setTitle("Humans & Pins");
     peopleModal.setSubtitle("Real players stay locked. Pins request named companions without turning humans into disposable roster slots.");
 
-    const peopleHumanTitle = createText(peopleModal.content, "HUMAN ANCHORS", "GameFontNormalSmall", theme.colors.muted);
+    const peopleHumanTitle = Native.createText(peopleModal.content, "HUMAN ANCHORS", "GameFontNormalSmall", theme.colors.muted);
     peopleHumanTitle.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, 0);
-    const humanScroll = createScrollList(peopleModal.content, 820, 220);
+    const humanScroll = ScrollUI.createScrollList(peopleModal.content, 820, 220);
     humanScroll.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -26);
     const humanRowsModal: WoWFrame[] = [];
 
-    const pinTitle = createText(peopleModal.content, "PIN COMPANION", "GameFontNormalSmall", theme.colors.muted);
+    const pinTitle = Native.createText(peopleModal.content, "PIN COMPANION", "GameFontNormalSmall", theme.colors.muted);
     pinTitle.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -266);
-    const pinInput = createTextInput(peopleModal.content, 230, 34);
+    const pinInput = InputUI.createTextInput(peopleModal.content, 230, 34);
     pinInput.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -292);
 
     let pinRole: Role = "DPS";
     let pinRequired = false;
     const pinRoleButtons: Record<Role, UIButton> = {
-        TANK: createButton(peopleModal.content, { text: "Tank", width: 78, height: 34, accent: theme.colors.tank }),
-        HEALER: createButton(peopleModal.content, { text: "Healer", width: 78, height: 34, accent: theme.colors.healer }),
-        DPS: createButton(peopleModal.content, { text: "DPS", width: 78, height: 34, accent: theme.colors.dps }),
+        TANK: ButtonUI.createButton(peopleModal.content, { text: "Tank", width: 78, height: 34, accent: theme.colors.tank }),
+        HEALER: ButtonUI.createButton(peopleModal.content, { text: "Healer", width: 78, height: 34, accent: theme.colors.healer }),
+        DPS: ButtonUI.createButton(peopleModal.content, { text: "DPS", width: 78, height: 34, accent: theme.colors.dps }),
     };
     pinRoleButtons.TANK.frame.SetPoint("LEFT", pinInput.frame, "RIGHT", 8, 0);
     pinRoleButtons.HEALER.frame.SetPoint("LEFT", pinRoleButtons.TANK.frame, "RIGHT", 6, 0);
@@ -800,7 +749,7 @@ export function createModernDashboard(): Dashboard {
         });
     }
 
-    const pinToggle = createToggle(
+    const pinToggle = ToggleUI.createToggle(
         peopleModal.content,
         "Required",
         () => pinRequired,
@@ -809,7 +758,7 @@ export function createModernDashboard(): Dashboard {
     pinToggle.frame.SetPoint("LEFT", pinRoleButtons.DPS.frame, "RIGHT", 12, 0);
     pinToggle.frame.SetWidth(98);
 
-    const addPinButton = createButton(peopleModal.content, {
+    const addPinButton = ButtonUI.createButton(peopleModal.content, {
         text: "Pin Member",
         width: 110,
         height: 34,
@@ -817,7 +766,7 @@ export function createModernDashboard(): Dashboard {
         onClick: () => {
             const name = pinInput.getText();
             if (name !== "") {
-                addPin(name, pinRole, pinRequired);
+                Model.addPin(name, pinRole, pinRequired);
                 pinInput.clear();
                 refreshPeople();
             }
@@ -825,32 +774,32 @@ export function createModernDashboard(): Dashboard {
     });
     addPinButton.frame.SetPoint("TOPRIGHT", peopleModal.content, "TOPRIGHT", 0, -292);
 
-    const pinListTitle = createText(peopleModal.content, "PINNED MEMBERS", "GameFontNormalSmall", theme.colors.muted);
+    const pinListTitle = Native.createText(peopleModal.content, "PINNED MEMBERS", "GameFontNormalSmall", theme.colors.muted);
     pinListTitle.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -344);
-    const pinScroll = createScrollList(peopleModal.content, 820, 170);
+    const pinScroll = ScrollUI.createScrollList(peopleModal.content, 820, 170);
     pinScroll.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -370);
     const pinRows: WoWFrame[] = [];
 
     function refreshPeople(): void {
         clearDynamicRows(humanRowsModal);
-        const list = humans();
+        const list = Model.humans();
 
         for (let i = 0; i < list.length; i += 1) {
             const human = list[i];
             let row = humanRowsModal[i];
             if (row === undefined) {
-                const panel = createPanel(humanScroll.content, theme.colors.background, theme.colors.border);
+                const panel = Native.createPanel(humanScroll.content, theme.colors.background, theme.colors.border);
                 panel.frame.SetSize(812, 42);
                 const icon = panel.frame.CreateTexture(undefined, "ARTWORK");
                 icon.SetSize(26, 26);
                 icon.SetPoint("LEFT", panel.frame, "LEFT", 8, 0);
-                const name = createText(panel.frame, "", "GameFontHighlightSmall");
+                const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
                 name.SetPoint("LEFT", panel.frame, "LEFT", 44, 0);
                 name.SetWidth(250);
                 const buttons: Record<Role, UIButton> = {
-                    TANK: createButton(panel.frame, { text: "Tank", width: 78, height: 28, accent: theme.colors.tank }),
-                    HEALER: createButton(panel.frame, { text: "Healer", width: 78, height: 28, accent: theme.colors.healer }),
-                    DPS: createButton(panel.frame, { text: "DPS", width: 78, height: 28, accent: theme.colors.dps }),
+                    TANK: ButtonUI.createButton(panel.frame, { text: "Tank", width: 78, height: 28, accent: theme.colors.tank }),
+                    HEALER: ButtonUI.createButton(panel.frame, { text: "Healer", width: 78, height: 28, accent: theme.colors.healer }),
+                    DPS: ButtonUI.createButton(panel.frame, { text: "DPS", width: 78, height: 28, accent: theme.colors.dps }),
                 };
                 buttons.DPS.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
                 buttons.HEALER.frame.SetPoint("RIGHT", buttons.DPS.frame, "LEFT", -6, 0);
@@ -864,9 +813,9 @@ export function createModernDashboard(): Dashboard {
 
             row.ClearAllPoints();
             row.SetPoint("TOPLEFT", humanScroll.content, "TOPLEFT", 0, -(i * 48));
-            setClassIcon((row as any)._icon, String(human.class));
-            (row as any)._name.SetText((human.isPlayer ? "YOU  ·  " : "") + human.name + "  ·  " + classLabel(String(human.class)));
-            const selected = config().humanRoles?.[human.name] as Role | undefined;
+            Native.setClassIcon((row as any)._icon, String(human.class));
+            (row as any)._name.SetText((human.isPlayer ? "YOU  ·  " : "") + human.name + "  ·  " + Model.classLabel(String(human.class)));
+            const selected = Model.config().humanRoles?.[human.name] as Role | undefined;
 
             for (const role of roleOrder) {
                 const button = (row as any)._buttons[role] as UIButton;
@@ -877,7 +826,7 @@ export function createModernDashboard(): Dashboard {
                 const roleCopy = role;
                 button.frame.SetScript("OnMouseDown", () => {
                     if (allowed) {
-                        setHumanRole(humanNameCopy, roleCopy);
+                        Model.setHumanRole(humanNameCopy, roleCopy);
                         refreshPeople();
                     }
                 });
@@ -890,19 +839,19 @@ export function createModernDashboard(): Dashboard {
         pinToggle.refresh();
 
         clearDynamicRows(pinRows);
-        const pins = config().pinned ?? [];
+        const pins = Model.config().pinned ?? [];
         for (let i = 0; i < pins.length; i += 1) {
             const pin = pins[i];
             let row = pinRows[i];
             if (row === undefined) {
-                const panel = createPanel(pinScroll.content, theme.colors.background, theme.colors.border);
+                const panel = Native.createPanel(pinScroll.content, theme.colors.background, theme.colors.border);
                 panel.frame.SetSize(812, 40);
-                const name = createText(panel.frame, "", "GameFontHighlightSmall");
+                const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
                 name.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
                 name.SetWidth(260);
-                const info = createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
+                const info = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
                 info.SetPoint("LEFT", panel.frame, "LEFT", 280, 0);
-                const remove = createButton(panel.frame, { text: "Remove", width: 78, height: 28, accent: theme.colors.error });
+                const remove = ButtonUI.createButton(panel.frame, { text: "Remove", width: 78, height: 28, accent: theme.colors.error });
                 remove.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -6, 0);
                 (panel.frame as any)._name = name;
                 (panel.frame as any)._info = info;
@@ -913,10 +862,10 @@ export function createModernDashboard(): Dashboard {
             row.ClearAllPoints();
             row.SetPoint("TOPLEFT", pinScroll.content, "TOPLEFT", 0, -(i * 46));
             (row as any)._name.SetText(String(pin.name));
-            (row as any)._info.SetText(roleLabel(pin.role as Role) + "  ·  " + (pin.required ? "Required" : "Preferred"));
+            (row as any)._info.SetText(Model.roleLabel(pin.role as Role) + "  ·  " + (pin.required ? "Required" : "Preferred"));
             const indexCopy = i + 1;
             (row as any)._remove.frame.SetScript("OnMouseDown", () => {
-                removePin(indexCopy);
+                Model.removePin(indexCopy);
                 refreshPeople();
             });
             row.Show();
@@ -925,13 +874,13 @@ export function createModernDashboard(): Dashboard {
     }
 
     showPeople = () => {
-        closeChoicePopup();
+        ChoiceUI.closeChoicePopup();
         refreshPeople();
         peopleModal.show();
     };
 
     // Options modal ----------------------------------------------------------
-    const optionsModal = createModal(frame, 700, 560);
+    const optionsModal = ModalUI.createModal(frame, 700, 560);
     optionsModal.setTitle("Composition Options");
     optionsModal.setSubtitle("Keep the common path simple. These controls tune how Composer fills unspecified slots.");
 
@@ -948,66 +897,66 @@ export function createModernDashboard(): Dashboard {
 
     for (let i = 0; i < optionDefs.length; i += 1) {
         const def = optionDefs[i];
-        const row = createPanel(optionsModal.content, theme.colors.background, theme.colors.border);
+        const row = Native.createPanel(optionsModal.content, theme.colors.background, theme.colors.border);
         row.frame.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", 0, -(i * 62));
         row.frame.SetPoint("RIGHT", optionsModal.content, "RIGHT", 0, 0);
         row.frame.SetHeight(52);
 
-        const toggle = createToggle(
+        const toggle = ToggleUI.createToggle(
             row.frame,
             def.label,
-            () => config().options?.[def.key] === true,
+            () => Model.config().options?.[def.key] === true,
             (value) => {
-                config().options[def.key] = value;
-                touch("Composition option changed");
+                Model.config().options[def.key] = value;
+                Model.touch("Composition option changed");
             },
         );
         toggle.frame.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 12, -5);
         toggle.frame.SetWidth(280);
 
-        const hint = createText(row.frame, def.hint, "GameFontHighlightSmall", theme.colors.muted);
+        const hint = Native.createText(row.frame, def.hint, "GameFontHighlightSmall", theme.colors.muted);
         hint.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 42, -31);
         hint.SetWidth(580);
         optionToggles.push(toggle);
     }
 
     showOptions = () => {
-        closeChoicePopup();
+        ChoiceUI.closeChoicePopup();
         for (const toggle of optionToggles) toggle.refresh();
         optionsModal.show();
     };
 
     // Assemble confirmation --------------------------------------------------
-    const confirmModal = createModal(frame, 560, 270);
-    const confirmText = createText(confirmModal.content, "", "GameFontHighlight", theme.colors.muted);
+    const confirmModal = ModalUI.createModal(frame, 560, 270);
+    const confirmText = Native.createText(confirmModal.content, "", "GameFontHighlight", theme.colors.muted);
     confirmText.SetPoint("TOPLEFT", confirmModal.content, "TOPLEFT", 8, -8);
     confirmText.SetWidth(490);
     confirmText.SetJustifyH("CENTER");
     confirmText.SetJustifyV("TOP");
 
-    const confirmCancel = createButton(confirmModal.content, { text: "Cancel", width: 120, height: 36, onClick: () => confirmModal.hide() });
+    const confirmCancel = ButtonUI.createButton(confirmModal.content, { text: "Cancel", width: 120, height: 36, onClick: () => confirmModal.hide() });
     confirmCancel.frame.SetPoint("BOTTOMLEFT", confirmModal.content, "BOTTOMLEFT", 112, 0);
-    const confirmGo = createButton(confirmModal.content, {
+    const confirmGo = ButtonUI.createButton(confirmModal.content, {
         text: "Assemble",
         width: 120,
         height: 36,
         accent: theme.colors.success,
         onClick: () => {
             confirmModal.hide();
-            assemble();
+            Model.assemble();
         },
     });
     confirmGo.frame.SetPoint("BOTTOMRIGHT", confirmModal.content, "BOTTOMRIGHT", -112, 0);
 
     showAssembleConfirm = () => {
-        const p = progress();
+        const p = Model.progress();
         if (p.phase !== "READY") {
-            fireStatus("Build & Prepare must finish first.");
+            Model.fireStatus("Build & Prepare must finish first.");
             return;
         }
-        const retry = isTravelRetry();
-        const cfg = config();
-        const activity = selectedActivityLabel();
+        const retry = Model.isTravelRetry();
+        const cfg = Model.config();
+        const activity = Model.selectedActivityLabel();
 
         if (retry) {
             confirmModal.setTitle("Enter selected activity?");
@@ -1030,13 +979,13 @@ export function createModernDashboard(): Dashboard {
 
     // Refresh helpers --------------------------------------------------------
     function refreshActivity(): void {
-        const cfg = config();
-        activityName.SetText(selectedActivityLabel());
+        const cfg = Model.config();
+        activityName.SetText(Model.selectedActivityLabel());
         activitySub.SetText(activitySubtitle());
         activitySelect.refresh();
         difficultySelect.refresh();
 
-        const sizes = supportedRaidSizes();
+        const sizes = Model.supportedRaidSizes();
         let sizeIndex = 0;
         for (const size of [10, 20, 25, 40]) {
             const button = raidSizeButtons[size];
@@ -1057,7 +1006,7 @@ export function createModernDashboard(): Dashboard {
     }
 
     function refreshHumanPanel(): void {
-        const list = humans();
+        const list = Model.humans();
         const primary = list.length > 0 ? list[0] : undefined;
         if (primary === undefined) {
             humanName.SetText("Waiting for player...");
@@ -1069,11 +1018,11 @@ export function createModernDashboard(): Dashboard {
         }
 
         humanIcon.Show();
-        setClassIcon(humanIcon, String(primary.class));
+        Native.setClassIcon(humanIcon, String(primary.class));
         humanName.SetText((primary.isPlayer ? "YOU  ·  " : "") + primary.name);
-        humanSub.SetText(classLabel(String(primary.class)) + (list.length > 1 ? "  ·  +" + String(list.length - 1) + " more human anchor" + (list.length > 2 ? "s" : "") : ""));
+        humanSub.SetText(Model.classLabel(String(primary.class)) + (list.length > 1 ? "  ·  +" + String(list.length - 1) + " more human anchor" + (list.length > 2 ? "s" : "") : ""));
 
-        const selected = config().humanRoles?.[primary.name] as Role | undefined;
+        const selected = Model.config().humanRoles?.[primary.name] as Role | undefined;
         for (const role of roleOrder) {
             const allowed = classCanRole(String(primary.class), role);
             humanRoleButtons[role].setEnabled(allowed);
@@ -1081,7 +1030,7 @@ export function createModernDashboard(): Dashboard {
             const roleCopy = role;
             const nameCopy = primary.name;
             humanRoleButtons[role].frame.SetScript("OnMouseDown", () => {
-                if (allowed) setHumanRole(nameCopy, roleCopy);
+                if (allowed) Model.setHumanRole(nameCopy, roleCopy);
             });
         }
         humanMore.setText(list.length > 1 ? "Manage " + String(list.length) : "Manage");
@@ -1092,21 +1041,21 @@ export function createModernDashboard(): Dashboard {
         for (let i = 0; i < dungeonRows.length; i += 1) {
             const widgets = dungeonRows[i];
             const slot = slots[i];
-            const accent = roleAccent(slot.role);
-            setTextureColor(widgets.accent, accent);
+            const accent = Model.roleAccent(slot.role);
+            Native.setTextureColor(widgets.accent, accent);
             widgets.row.outline.setColor(accent);
             widgets.roleIcon.SetTexture(D.ROLE_ICON[slot.role]);
             widgets.roleIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
-            widgets.roleText.SetText(roleLabel(slot.role));
+            widgets.roleText.SetText(Model.roleLabel(slot.role));
             widgets.roleText.SetTextColor(accent[0], accent[1], accent[2], 1);
             widgets.slotText.SetText(slot.human !== undefined ? "Human anchor" : "Bot slot " + String(slot.botIndex ?? 1));
 
             if (slot.human !== undefined) {
-                setClassIcon(widgets.classIcon, String(slot.human.class));
+                Native.setClassIcon(widgets.classIcon, String(slot.human.class));
                 widgets.classIcon.Show();
                 widgets.specIcon.Hide();
                 widgets.name.SetText((slot.human.isPlayer ? "YOU  ·  " : "") + slot.human.name);
-                widgets.sub.SetText(classLabel(String(slot.human.class)) + "  ·  Locked " + roleLabel(slot.role));
+                widgets.sub.SetText(Model.classLabel(String(slot.human.class)) + "  ·  Locked " + Model.roleLabel(slot.role));
                 widgets.choose.frame.Hide();
                 widgets.auto.frame.Hide();
                 continue;
@@ -1114,31 +1063,31 @@ export function createModernDashboard(): Dashboard {
 
             const exact = slot.exact;
             const prepared = slot.prepared;
-            if (prepared !== undefined && plan().ready === true) {
-                setClassIcon(widgets.classIcon, String(prepared.class));
+            if (prepared !== undefined && Model.plan().ready === true) {
+                Native.setClassIcon(widgets.classIcon, String(prepared.class));
                 widgets.classIcon.Show();
                 const specId = specIdFromLabel(String(prepared.class), String(prepared.spec));
                 if (specId !== undefined) {
-                    widgets.specIcon.SetTexture(getSpecIcon(prepared.class as ClassId, specId));
+                    widgets.specIcon.SetTexture(Model.getSpecIcon(prepared.class as ClassId, specId));
                     widgets.specIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
                     widgets.specIcon.Show();
                 } else widgets.specIcon.Hide();
 
                 widgets.name.SetText(String(prepared.name));
-                widgets.sub.SetText(String(prepared.spec || classLabel(String(prepared.class))) + "  ·  " + String(prepared.source ?? "Bot"));
+                widgets.sub.SetText(String(prepared.spec || Model.classLabel(String(prepared.class))) + "  ·  " + String(prepared.source ?? "Bot"));
             } else if (exact !== undefined) {
-                setClassIcon(widgets.classIcon, exact.classId);
+                Native.setClassIcon(widgets.classIcon, exact.classId);
                 widgets.classIcon.Show();
-                widgets.specIcon.SetTexture(getSpecIcon(exact.classId, exact.specId));
+                widgets.specIcon.SetTexture(Model.getSpecIcon(exact.classId, exact.specId));
                 widgets.specIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
                 widgets.specIcon.Show();
-                widgets.name.SetText(getSpecLabel(exact.classId, exact.specId) + " " + classLabel(exact.classId));
+                widgets.name.SetText(Model.getSpecLabel(exact.classId, exact.specId) + " " + Model.classLabel(exact.classId));
                 widgets.sub.SetText("Exact build  ·  Composer will preserve this requirement");
             } else {
                 widgets.classIcon.Hide();
                 widgets.specIcon.Hide();
                 widgets.name.SetText("Auto-fill bot");
-                widgets.sub.SetText("Composer chooses a suitable " + roleLabel(slot.role).toLowerCase() + " build");
+                widgets.sub.SetText("Composer chooses a suitable " + Model.roleLabel(slot.role).toLowerCase() + " build");
             }
 
             const roleCopy = slot.role;
@@ -1157,7 +1106,7 @@ export function createModernDashboard(): Dashboard {
 
             widgets.auto.setEnabled(exact !== undefined);
             widgets.auto.frame.SetScript("OnMouseDown", () => {
-                if (exact !== undefined) clearDungeonExact(roleCopy, botIndex);
+                if (exact !== undefined) Model.clearDungeonExact(roleCopy, botIndex);
             });
             widgets.auto.frame.Show();
         }
@@ -1165,20 +1114,20 @@ export function createModernDashboard(): Dashboard {
 
     function refreshQuickRaid(): void {
         for (const role of roleOrder) {
-            quickCards[role].count.SetText(String(targetForRole(role)));
-            quickCards[role].botSlots.SetText(String(remainingBotSlots(role)) + " bot slots after humans");
+            quickCards[role].count.SetText(String(Model.targetForRole(role)));
+            quickCards[role].botSlots.SetText(String(Model.remainingBotSlots(role)) + " bot slots after humans");
         }
     }
 
     function refreshExactRaid(): void {
         for (const role of roleOrder) {
             const column = exactColumns[role];
-            const rows = requiredBuilds(role);
-            column.count.SetText(String(exactCount(role)) + " exact  ·  " + String(Math.max(0, remainingBotSlots(role) - exactCount(role))) + " Auto");
-            column.add.setEnabled(exactCount(role) < remainingBotSlots(role));
+            const rows = Model.requiredBuilds(role);
+            column.count.SetText(String(Model.exactCount(role)) + " exact  ·  " + String(Math.max(0, Model.remainingBotSlots(role) - Model.exactCount(role))) + " Auto");
+            column.add.setEnabled(Model.exactCount(role) < Model.remainingBotSlots(role));
             const roleCopy = role;
             column.add.frame.SetScript("OnMouseDown", () => {
-                if (exactCount(roleCopy) >= remainingBotSlots(roleCopy)) return;
+                if (Model.exactCount(roleCopy) >= Model.remainingBotSlots(roleCopy)) return;
                 selectorContext = { mode: "RAID_ADD", role: roleCopy, index: -1 };
                 buildSelector.open(roleCopy, { role: roleCopy, count: 1 });
             });
@@ -1189,7 +1138,7 @@ export function createModernDashboard(): Dashboard {
                 const build = rows[i];
                 let widgets = column.rows[i];
                 if (widgets === undefined) {
-                    const panel = createPanel(column.scroll.content, theme.colors.surfaceRaised, theme.colors.border);
+                    const panel = Native.createPanel(column.scroll.content, theme.colors.surfaceRaised, theme.colors.border);
                     panel.frame.SetSize(250, 52);
                     const classIcon = panel.frame.CreateTexture(undefined, "ARTWORK");
                     classIcon.SetSize(30, 30);
@@ -1197,14 +1146,14 @@ export function createModernDashboard(): Dashboard {
                     const specIcon = panel.frame.CreateTexture(undefined, "ARTWORK");
                     specIcon.SetSize(24, 24);
                     specIcon.SetPoint("LEFT", classIcon, "RIGHT", 6, 0);
-                    const name = createText(panel.frame, "", "GameFontHighlightSmall");
+                    const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
                     name.SetPoint("LEFT", panel.frame, "LEFT", 76, 7);
                     name.SetWidth(112);
-                    const count = createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
+                    const count = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
                     count.SetPoint("LEFT", panel.frame, "LEFT", 76, -10);
-                    const edit = createButton(panel.frame, { text: "Edit", width: 46, height: 26, accent: theme.colors.primary });
+                    const edit = ButtonUI.createButton(panel.frame, { text: "Edit", width: 46, height: 26, accent: theme.colors.primary });
                     edit.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -54, 0);
-                    const remove = createButton(panel.frame, { text: "X", width: 40, height: 26, accent: theme.colors.error });
+                    const remove = ButtonUI.createButton(panel.frame, { text: "X", width: 40, height: 26, accent: theme.colors.error });
                     remove.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
                     widgets = { panel, classIcon, specIcon, name, count, edit, remove };
                     column.rows[i] = widgets;
@@ -1212,10 +1161,10 @@ export function createModernDashboard(): Dashboard {
 
                 widgets.panel.frame.ClearAllPoints();
                 widgets.panel.frame.SetPoint("TOPLEFT", column.scroll.content, "TOPLEFT", 0, -(i * 58));
-                setClassIcon(widgets.classIcon, build.classId);
-                widgets.specIcon.SetTexture(getSpecIcon(build.classId, build.specId));
+                Native.setClassIcon(widgets.classIcon, build.classId);
+                widgets.specIcon.SetTexture(Model.getSpecIcon(build.classId, build.specId));
                 widgets.specIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
-                widgets.name.SetText(getSpecLabel(build.classId, build.specId) + " " + classLabel(build.classId));
+                widgets.name.SetText(Model.getSpecLabel(build.classId, build.specId) + " " + Model.classLabel(build.classId));
                 widgets.count.SetText("×" + String(build.count));
 
                 const indexCopy = i;
@@ -1228,7 +1177,7 @@ export function createModernDashboard(): Dashboard {
                         count: build.count,
                     });
                 });
-                widgets.remove.frame.SetScript("OnMouseDown", () => removeRequiredBuild(roleCopy, indexCopy));
+                widgets.remove.frame.SetScript("OnMouseDown", () => Model.removeRequiredBuild(roleCopy, indexCopy));
                 widgets.panel.frame.Show();
             }
 
@@ -1237,7 +1186,7 @@ export function createModernDashboard(): Dashboard {
     }
 
     function refreshRoster(): void {
-        const cfg = config();
+        const cfg = Model.config();
         const totalGroups = Math.max(1, Math.ceil(Number(cfg.size ?? 5) / 5));
         const wideFive = totalGroups === 5;
         const columns = wideFive ? 5 : totalGroups >= 8 ? 4 : Math.min(4, totalGroups);
@@ -1259,7 +1208,7 @@ export function createModernDashboard(): Dashboard {
             widgets.groupTitle.SetText("GROUP " + String(g + 1));
 
             const members: any[] = [];
-            for (const member of planMembers()) if (Number(member.subgroup) === g + 1) members.push(member);
+            for (const member of Model.planMembers()) if (Number(member.subgroup) === g + 1) members.push(member);
 
             for (let r = 0; r < 5; r += 1) {
                 const rowWidgets = widgets.rows[r];
@@ -1269,14 +1218,14 @@ export function createModernDashboard(): Dashboard {
                     rowWidgets.name.SetText("Empty");
                     rowWidgets.name.SetTextColor(theme.colors.muted[0], theme.colors.muted[1], theme.colors.muted[2], 1);
                     rowWidgets.spec.SetText("");
-                    setTextureColor(rowWidgets.roleBar, theme.colors.borderStrong);
+                    Native.setTextureColor(rowWidgets.roleBar, theme.colors.borderStrong);
                 } else {
-                    setClassIcon(rowWidgets.icon, String(member.class));
+                    Native.setClassIcon(rowWidgets.icon, String(member.class));
                     rowWidgets.icon.Show();
                     rowWidgets.name.SetText((member.isPlayer ? "YOU  ·  " : "") + String(member.name));
                     rowWidgets.name.SetTextColor(theme.colors.text[0], theme.colors.text[1], theme.colors.text[2], 1);
-                    rowWidgets.spec.SetText(String(member.spec ?? classLabel(String(member.class))));
-                    setTextureColor(rowWidgets.roleBar, roleAccent(member.role as Role));
+                    rowWidgets.spec.SetText(String(member.spec ?? Model.classLabel(String(member.class))));
+                    Native.setTextureColor(rowWidgets.roleBar, Model.roleAccent(member.role as Role));
                 }
             }
             widgets.card.frame.Show();
@@ -1284,7 +1233,7 @@ export function createModernDashboard(): Dashboard {
     }
 
     function refreshRaidTabs(): void {
-        const ready = plan().ready === true && plan().valid === true;
+        const ready = Model.plan().ready === true && Model.plan().valid === true;
         tabQuick.setSelected(raidTab === "QUICK");
         tabExact.setSelected(raidTab === "EXACT");
         tabRoster.setSelected(raidTab === "ROSTER");
@@ -1311,45 +1260,45 @@ export function createModernDashboard(): Dashboard {
     tabQuick.frame.SetScript("OnMouseDown", () => { raidTab = "QUICK"; refreshRaidTabs(); });
     tabExact.frame.SetScript("OnMouseDown", () => { raidTab = "EXACT"; refreshRaidTabs(); });
     tabRoster.frame.SetScript("OnMouseDown", () => {
-        if (plan().ready === true && plan().valid === true) {
+        if (Model.plan().ready === true && Model.plan().valid === true) {
             raidTab = "ROSTER";
             refreshRaidTabs();
         }
     });
 
     function refreshStatus(): void {
-        const p = progress();
+        const p = Model.progress();
         const phase = String(p.phase ?? "IDLE");
         const phaseColor = colorForPhase(phase);
-        setTextureColor(phaseDot, phaseColor);
-        phaseText.SetText(isTravelRetry() ? "Ready to enter activity" : phaseLabel(phase));
+        Native.setTextureColor(phaseDot, phaseColor);
+        phaseText.SetText(Model.isTravelRetry() ? "Ready to enter activity" : Model.phaseLabel(phase));
         phaseText.SetTextColor(phaseColor[0], phaseColor[1], phaseColor[2], 1);
         phaseDetail.SetText(String(p.detail ?? ""));
 
-        const humanCount = humans().length;
-        const target = Number(config().size ?? 5);
-        const total = plan().ready === true ? Number(plan().summary?.total ?? planMembers().length) : humanCount;
+        const humanCount = Model.humans().length;
+        const target = Number(Model.config().size ?? 5);
+        const total = Model.plan().ready === true ? Number(Model.plan().summary?.total ?? Model.planMembers().length) : humanCount;
         rosterCount.SetText(String(total) + " / " + String(target));
 
-        if (plan().ready === true) {
+        if (Model.plan().ready === true) {
             sourceText.SetText(
                 String(humanCount) + " human" + (humanCount === 1 ? "" : "s") +
-                "  ·  " + String(plan().summary?.guild ?? 0) + " guild  ·  " +
-                String(plan().summary?.world ?? 0) + " fallback"
+                "  ·  " + String(Model.plan().summary?.guild ?? 0) + " guild  ·  " +
+                String(Model.plan().summary?.world ?? 0) + " fallback"
             );
         } else {
             sourceText.SetText(String(humanCount) + " human" + (humanCount === 1 ? "" : "s") + "  ·  " + String(Math.max(0, target - humanCount)) + " bot slots");
         }
 
-        statusRoleChips.TANK.label.SetText(String(config().tanks ?? 0) + " T");
-        statusRoleChips.HEALER.label.SetText(String(config().healers ?? 0) + " H");
-        statusRoleChips.DPS.label.SetText(String(config().dps ?? 0) + " D");
+        statusRoleChips.TANK.label.SetText(String(Model.config().tanks ?? 0) + " T");
+        statusRoleChips.HEALER.label.SetText(String(Model.config().healers ?? 0) + " H");
+        statusRoleChips.DPS.label.SetText(String(Model.config().dps ?? 0) + " D");
 
         let ratio = 0;
         if (Number(p.total ?? 0) > 0) ratio = Math.min(1, Number(p.current ?? 0) / Number(p.total));
         else if (phase === "READY" || phase === "DONE") ratio = 1;
         progressFill.SetWidth(Math.max(1, 282 * ratio));
-        setTextureColor(progressFill, phaseColor);
+        Native.setTextureColor(progressFill, phaseColor);
         progressText.SetText(
             phase === "PREPARING" || phase === "ASSEMBLING" || phase === "READY" || phase === "DONE"
                 ? String(p.current ?? 0) + " / " + String(p.total ?? 0) + "  ·  " + String(p.detail ?? "")
@@ -1357,50 +1306,50 @@ export function createModernDashboard(): Dashboard {
         );
 
         coverageText.SetText(
-            plan().summary?.utility !== undefined
-                ? String(plan().summary.utility) + "\nRanged DPS: " + String(plan().summary.ranged ?? 0) + "   Melee DPS: " + String(plan().summary.melee ?? 0)
+            Model.plan().summary?.utility !== undefined
+                ? String(Model.plan().summary.utility) + "\nRanged DPS: " + String(Model.plan().summary.ranged ?? 0) + "   Melee DPS: " + String(Model.plan().summary.melee ?? 0)
                 : "Build a roster to inspect utility coverage."
         );
 
         const seen: Record<string, boolean> = {};
         let iconIndex = 0;
-        for (const member of planMembers()) {
+        for (const member of Model.planMembers()) {
             const cls = String(member.class ?? "");
             if (cls !== "" && cls !== "UNKNOWN" && seen[cls] !== true && iconIndex < classIcons.length) {
                 seen[cls] = true;
-                setClassIcon(classIcons[iconIndex], cls);
+                Native.setClassIcon(classIcons[iconIndex], cls);
                 classIcons[iconIndex].Show();
                 iconIndex += 1;
             }
         }
         for (let i = iconIndex; i < classIcons.length; i += 1) classIcons[i].Hide();
 
-        const warnings = plan().warnings ?? [];
+        const warnings = Model.plan().warnings ?? [];
         for (let i = 0; i < warningRows.length; i += 1) {
             let text = warnings[i];
             if (text === undefined && i === 0) {
-                if (phase === "READY") text = isTravelRetry() ? "Clear the travel blocker, then enter the activity." : "Prepared roster is ready for review.";
+                if (phase === "READY") text = Model.isTravelRetry() ? "Clear the travel blocker, then enter the activity." : "Prepared roster is ready for review.";
                 else if (phase === "PREPARING") text = "Bots are being prepared in the background.";
-                else if (!humanReady()) text = "Choose a legal role for every real player.";
+                else if (!Model.humanReady()) text = "Choose a legal role for every real player.";
                 else text = "Build & Prepare when the composition looks right.";
             }
             warningRows[i].SetText(String(text ?? ""));
         }
 
-        buildButton.setEnabled(humanReady() && !isBusy());
-        assembleButton.setEnabled(plan().ready === true && plan().valid === true && phase === "READY");
-        assembleButton.setText(isTravelRetry() ? "Enter Activity" : (config().mode === "RAID" ? "Assemble Raid" : "Assemble Party"));
-        assembleButton.setSelected(plan().ready === true && plan().valid === true && phase === "READY");
+        buildButton.setEnabled(Model.humanReady() && !Model.isBusy());
+        assembleButton.setEnabled(Model.plan().ready === true && Model.plan().valid === true && phase === "READY");
+        assembleButton.setText(Model.isTravelRetry() ? "Enter Activity" : (Model.config().mode === "RAID" ? "Assemble Raid" : "Assemble Party"));
+        assembleButton.setSelected(Model.plan().ready === true && Model.plan().valid === true && phase === "READY");
     }
 
     function refresh(): void {
         if (!frame.IsShown()) return;
 
-        const raid = config().mode === "RAID";
+        const raid = Model.config().mode === "RAID";
         navDungeon.setSelected(!raid);
         navRaid.setSelected(raid);
         backendText.SetText(GC.backendSeen === true ? "Backend connected" : "Checking backend");
-        setTextureColor(backendDot, GC.backendSeen === true ? theme.colors.success : theme.colors.muted);
+        Native.setTextureColor(backendDot, GC.backendSeen === true ? theme.colors.success : theme.colors.muted);
 
         refreshActivity();
         refreshHumanPanel();
@@ -1438,15 +1387,15 @@ export function createModernDashboard(): Dashboard {
     const dashboard: Dashboard = {
         frame,
         show(): void {
-            closeChoicePopup();
+            ChoiceUI.closeChoicePopup();
             applyScale();
             frame.Show();
             refresh();
-            requestAnchors();
-            requestStatus();
+            Model.requestAnchors();
+            Model.requestStatus();
         },
         hide(): void {
-            closeChoicePopup();
+            ChoiceUI.closeChoicePopup();
             frame.Hide();
         },
         toggle(): void {
@@ -1461,7 +1410,7 @@ export function createModernDashboard(): Dashboard {
 
     GC.RegisterCallback(GC, "CONFIG_CHANGED", () => refresh());
     GC.RegisterCallback(GC, "PLAN_CHANGED", () => {
-        if (config().mode === "RAID" && plan().ready === true && plan().valid === true) raidTab = "ROSTER";
+        if (Model.config().mode === "RAID" && Model.plan().ready === true && Model.plan().valid === true) raidTab = "ROSTER";
         refresh();
     });
     GC.RegisterCallback(GC, "PROGRESS_CHANGED", () => refresh());
