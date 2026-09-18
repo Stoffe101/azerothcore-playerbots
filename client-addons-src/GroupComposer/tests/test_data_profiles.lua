@@ -42,21 +42,36 @@ truth(not D.GetRaidById("ulduar").heroic, "Ulduar separate heroic must remain fa
 truth(not D.GetRaidById("naxxramas").heroic, "Naxx separate heroic must remain false")
 
 local names = {}
+local raidKeys = {}
 for _, profile in ipairs(D.BUILTIN_PROFILES) do
     truth(profile.name and profile.name ~= "", "built-in profile name")
     truth(not names[profile.name], "duplicate built-in profile name: " .. profile.name)
     names[profile.name] = true
+    eq(profile.mode, "RAID", "built-in templates are raid-only")
     eq(profile.tanks + profile.healers + profile.dps, profile.size, "profile total: " .. profile.name)
-    if profile.mode == "RAID" then
-        local raid = D.GetRaidById(profile.activity)
-        truth(raid, "unknown raid in profile: " .. profile.name)
-        local supported = false
-        for _, size in ipairs(raid.sizes) do if size == profile.size then supported = true end end
-        truth(supported, "unsupported raid size in profile: " .. profile.name)
-        if profile.difficulty == "heroic" then truth(raid.heroic, "invalid heroic profile: " .. profile.name) end
-    else
-        truth(D.GetDungeonById(profile.activity), "unknown dungeon in profile: " .. profile.name)
-        eq(profile.size, 5, "dungeon profile size")
+
+    local raid = D.GetRaidById(profile.activity)
+    truth(raid, "unknown raid in profile: " .. profile.name)
+    local supported = false
+    for _, size in ipairs(raid.sizes) do if size == profile.size then supported = true end end
+    truth(supported, "unsupported raid size in profile: " .. profile.name)
+    if profile.difficulty == "heroic" then truth(raid.heroic, "invalid heroic profile: " .. profile.name) end
+
+    local required = 0
+    for _, role in ipairs({ "TANK", "HEALER", "DPS" }) do
+        for _, pref in ipairs((profile.preferences and profile.preferences[role]) or {}) do
+            if pref.required then required = required + 1 end
+        end
+    end
+    truth(required > 0, "coverage template must reserve a useful core: " .. profile.name)
+    truth(required < profile.size, "coverage template must leave Auto remainder: " .. profile.name)
+    raidKeys[profile.activity .. ":" .. tostring(profile.size) .. ":" .. profile.difficulty] = true
+end
+
+for _, raid in ipairs(D.RAIDS) do
+    for _, size in ipairs(raid.sizes) do
+        truth(raidKeys[raid.id .. ":" .. tostring(size) .. ":normal], "missing normal coverage template: " .. raid.id .. " " .. size)
+        if raid.heroic then truth(raidKeys[raid.id .. ":" .. tostring(size) .. ":heroic], "missing heroic coverage template: " .. raid.id .. " " .. size) end
     end
 end
 
@@ -88,6 +103,25 @@ eq(normalized.arrangement.Stoffe, 1, "human override arrangement")
 eq(normalized.arrangement.FriendWithoutOverride, 1, "auto human arrangement")
 eq(normalized.arrangement.Stonewall, 2, "pin arrangement")
 truth(normalized.arrangement.Disposablebot == nil, "transient bot arrangement must be discarded")
+
+local classOnly = P.Normalize({
+    mode = "RAID", activity = "icecrown", difficulty = "normal", size = 25,
+    tanks = 2, healers = 5, dps = 18,
+    preferences = {
+        TANK = { { class = "PALADIN", spec = "ANY", required = true } },
+        HEALER = {}, DPS = {},
+    },
+})
+eq(classOnly.preferences.TANK[1].class, "PALADIN", "class-only preference class")
+eq(classOnly.preferences.TANK[1].spec, "ANY", "class-only preference keeps Auto spec")
+truth(classOnly.preferences.TANK[1].required, "class-only preference remains required")
+
+GroupComposerDB = nil
+local savedDungeon, dungeonErr = P.Save("No dungeon template", {
+    mode = "DUNGEON", activity = "random", difficulty = "heroic", size = 5,
+    tanks = 1, healers = 1, dps = 3,
+})
+truth(not savedDungeon and string.find(dungeonErr or "", "raid%-only"), "dungeon template saves must be rejected")
 eq(#normalized.stableHumans, 1, "stable human count")
 eq(normalized.stableHumans[1], "FriendWithoutOverride", "stable human name")
 
