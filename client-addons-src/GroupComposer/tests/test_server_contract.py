@@ -15,7 +15,12 @@ RUNTIME = (ROOT / "client-addons-src/GroupComposer/RuntimeGuards.lua").read_text
 TOC = (ROOT / "client-addons-src/GroupComposer/GroupComposer.toc").read_text(encoding="utf-8")
 CORE = (ROOT / "client-addons-src/GroupComposer/Core.lua").read_text(encoding="utf-8")
 POLICY = (ROOT / "client-addons-src/GroupComposer/ComposerPolicy.lua").read_text(encoding="utf-8")
-DASHBOARD = (ROOT / "client-addons-src/GroupComposer/DashboardV4.lua").read_text(encoding="utf-8")
+MODERN = (ROOT / "client-ui/src/components/ModernDashboard.ts").read_text(encoding="utf-8")
+MODEL = (ROOT / "client-ui/src/model/ComposerModel.ts").read_text(encoding="utf-8")
+SELECTOR = (ROOT / "client-ui/src/components/BuildSelector.ts").read_text(encoding="utf-8")
+CHOICE_SELECT = (ROOT / "client-ui/src/widgets/ChoiceSelect.ts").read_text(encoding="utf-8")
+TOGGLE = (ROOT / "client-ui/src/widgets/Toggle.ts").read_text(encoding="utf-8")
+WOW_RUNTIME_SMOKE = (ROOT / "client-ui/tests/wow_runtime_smoke.lua").read_text(encoding="utf-8")
 SERVER = (ROOT / "modules/mod-raid-roster/src/GroupComposerCommand.cpp").read_text(encoding="utf-8")
 PLANNER = (ROOT / "modules/mod-raid-roster/src/GroupComposerPlanner.cpp").read_text(encoding="utf-8")
 TYPES = (ROOT / "modules/mod-raid-roster/src/GroupComposerTypes.h").read_text(encoding="utf-8")
@@ -87,26 +92,27 @@ for command in (
         f"Missing server command registration: {command}"
     )
 
-# Client safety and architecture contracts. Dashboard V4 owns presentation while RuntimeGuards owns
-# protocol-only safety. No unloaded legacy UI file may be required for live behavior.
-assert 'DashboardV4.lua' in TOC and 'DashboardV3.lua' not in TOC, "The live addon must load only Dashboard V4"
-assert '## Version: 0.5.0' in TOC and '## X-UI-Shell: DashboardV4' in TOC
+# Client safety and architecture contracts. The live shell is generated from typed TypeScript,
+# while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
+assert 'generated/GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
+assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
+assert '## Version: 0.6.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
 assert 'GROUPCOMPOSER_CONFIRM_ASSEMBLY' not in RUNTIME and 'StaticPopup_Show' not in RUNTIME, (
-    "V4 must not use the legacy Blizzard assembly popup"
+    "Modern Composer must not use the legacy Blizzard assembly popup"
 )
-assert 'function U:ShowAssembleConfirm()' in DASHBOARD and 'GC:Assemble()' in DASHBOARD, (
-    "Dashboard V4 lost its in-window assembly confirmation boundary"
+assert 'showAssembleConfirm' in MODERN and 'Model.assemble()' in MODERN, (
+    "Modern dashboard lost its in-window assembly confirmation boundary"
 )
-assert 'SetShown(' not in DASHBOARD, "Dashboard V4 uses a post-Wrath frame API"
-assert 'UI-CheckBox-Check' in DASHBOARD, "V4 status/toggles should use real textures instead of unsupported Unicode glyphs"
-assert 'maxVisible' in DASHBOARD and 'EnableMouseWheel(true)' in DASHBOARD, (
-    "V4 selectors/templates must remain bounded and scrollable"
+assert 'SetShown(' not in MODERN, "Modern dashboard uses a post-Wrath frame API"
+assert 'UI-CheckBox-Check' in TOGGLE, "Modern toggles should use real textures instead of Unicode glyphs"
+assert 'maxVisible' in CHOICE_SELECT and 'EnableMouseWheel(true)' in CHOICE_SELECT, (
+    "Modern selectors must remain bounded and scrollable"
 )
-assert 'Build & Prepare' in DASHBOARD and 'PROGRESS_CHANGED' in DASHBOARD, (
-    "V4 must expose preparation as a visible first-class phase"
+assert 'Build & Prepare' in MODERN and 'PROGRESS_CHANGED' in MODERN, (
+    "Modern dashboard must expose preparation as a visible first-class phase"
 )
 
 # Safety invariants. These are intentionally source-level contracts because removing any one of
@@ -323,14 +329,13 @@ assert "bool fullRebuild = false;" in SERVER and "itr->second.fullRebuild" in SE
 assert 'if (member.reserve) return "RESERVE";' in SERVER
 assert 'needsPreparation = fields[11] == "1"' in CORE and 'reserve = fields[12] == "1"' in CORE
 assert "Policy.HumanRoleCounts = HumanRoleCounts" in POLICY
-assert 'local function Remaining(role)' in DASHBOARD
-assert 'Remaining("TANK")' in DASHBOARD or 'Remaining(role)' in DASHBOARD
-assert 'ipairs({10,20,25,40})' in DASHBOARD, "Dashboard no longer exposes all supported raid-size families"
-assert 'for _,r in ipairs(D.RAIDS)' in DASHBOARD, "Dashboard hard-filters the full raid planner catalog"
-assert 'Roster planner only' in DASHBOARD and 'Encounter AI certified' in DASHBOARD, (
-    "Planner-only raids must remain visibly distinct from certified encounter automation"
+assert 'remainingBotSlots(role' in MODEL
+assert 'humanRoleCounts()' in MODEL
+assert '[10, 20, 25, 40]' in MODERN, "Modern dashboard no longer exposes all supported raid-size families"
+assert 'for (const raid of D.RAIDS' in MODEL, "Modern dashboard hard-filters the full raid planner catalog"
+assert 'READY_RAIDS' not in MODERN and 'ENCOUNTER_READY' not in MODERN, (
+    "Legacy hard-coded raid whitelist still restricts Group Composer"
 )
-assert 'local READY_RAIDS = {' not in DASHBOARD, "Legacy hard-coded raid whitelist still restricts Group Composer"
 
 # Utility coverage describes actual WotLK raid tools, not later-expansion semantics. Soulstone is a
 # pre-applied self-resurrection safety net in this client era, not the planner's on-demand battle-rez
@@ -387,7 +392,7 @@ assert world_update.index("ApplyArrangement(master, plan, arrangementError)") < 
 )
 assert 'SendProgress(master, "TRAVEL"' in world_update, "Client no longer receives selected-activity travel progress"
 assert 'GC:GetConfig().activity == "random"' in CORE, "Named dungeons must not queue again after direct travel"
-assert 'TRAVEL="Entering activity"' in DASHBOARD, "Dashboard lost the explicit automatic travel phase"
+assert 'if (phase === "TRAVEL") return "Entering activity";' in MODEL, "Modern dashboard lost the explicit automatic travel phase"
 
 
 # A travel-only failure happens after the exact roster is already live. It must preserve that valid
@@ -405,25 +410,26 @@ assert 'GC.pendingCommand == "assemble"' in CORE and '"Enter Activity"' in CORE,
     "Retryable travel must release the client assembly action lock"
 )
 assert 'press Enter Activity to retry' in travel_update
-assert 'Ready to enter activity' in DASHBOARD and 'ENTER SELECTED ACTIVITY?' in DASHBOARD
-assert 'Auto travel after Assemble' in DASHBOARD and 'Dungeon Finder selects destination' in DASHBOARD
+assert 'Ready to enter activity' in MODERN and 'Enter selected activity?' in MODERN
+assert 'Auto-enter after assembly' in MODERN and 'Dungeon Finder chooses destination' in MODERN
 
 # V4 sends an explicit local-player marker with each roster member. Human no longer implies YOU,
 # which matters as soon as a real friend is part of the reviewed raid.
 send_plan = section(SERVER, "void SendPlan(", "bool RaidSupports(")
 assert "viewer && member.guid == viewer->GetGUID()" in send_plan, "Roster protocol lost the local-player marker"
 assert 'isPlayer = fields[13] == "1"' in CORE, "Client no longer parses the local-player roster marker"
-assert '(m.isPlayer and "YOU " or "")' in DASHBOARD, "Raid preview labels every human as YOU again"
+assert 'member.isPlayer ? "YOU  ·  " : ""' in MODERN, "Raid preview labels every human as YOU again"
 
-# Runtime-load and visual-density contracts for the polished V4 dashboard.
-group_decl = DASHBOARD.index('local groupScroll=CreateFrame("ScrollFrame"')
-content_decl = DASHBOARD.index('local content=Panel(body,C.card,C.line)')
-assert 'groupScroll:Hide()' not in DASHBOARD[content_decl:group_decl], (
-    "Dashboard touches groupScroll before its local declaration; Lua 5.1 would load a nil global"
+# Runtime-load and visual-density contracts for the typed modern dashboard.
+assert 'Group Composer WoW runtime smoke test passed' in WOW_RUNTIME_SMOKE, (
+    "Modern dashboard lost its mocked 3.3.5a runtime-load regression test"
 )
-assert "summaryRoles" in DASHBOARD and "SpecIdByLabel" in DASHBOARD, (
-    "V4 lost the compact role summary or class/spec icon presentation"
+assert "statusRoleChips" in MODERN and "Model.getSpecIcon" in MODERN, (
+    "Modern dashboard lost the compact role summary or class/spec icon presentation"
 )
-assert "humanOverflow" in DASHBOARD and "more human anchor" in DASHBOARD, (
+assert "more human anchor" in MODERN, (
     "Main dashboard no longer explains when additional real-player anchors are hidden from the compact strip"
+)
+assert 'getClassesForRole(currentRole)' in SELECTOR and 'getSpecsForRole(currentClass, currentRole)' in SELECTOR, (
+    "Class/spec selector no longer filters both stages by the selected role"
 )
