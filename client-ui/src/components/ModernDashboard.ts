@@ -1404,22 +1404,22 @@ export function createModernDashboard(): Dashboard {
 
     GC.Toggle = () => dashboard.toggle();
 
-    GC.RegisterCallback(GC, "CONFIG_CHANGED", () => refresh());
-    GC.RegisterCallback(GC, "PLAN_CHANGED", () => {
+    GC.RegisterCallback("CONFIG_CHANGED", () => refresh());
+    GC.RegisterCallback("PLAN_CHANGED", () => {
         if (Model.config().mode === "RAID" && Model.plan().ready === true && Model.plan().valid === true) raidTab = "ROSTER";
         refresh();
     });
-    GC.RegisterCallback(GC, "PROGRESS_CHANGED", () => refresh());
-    GC.RegisterCallback(GC, "HUMANS_CHANGED", () => refresh());
-    GC.RegisterCallback(GC, "PROFILES_CHANGED", () => {
+    GC.RegisterCallback("PROGRESS_CHANGED", () => refresh());
+    GC.RegisterCallback("HUMANS_CHANGED", () => refresh());
+    GC.RegisterCallback("PROFILES_CHANGED", () => {
         if (templatesModal.frame.IsShown()) refreshTemplates();
         refresh();
     });
-    GC.RegisterCallback(GC, "STATUS", (text: string) => {
+    GC.RegisterCallback("STATUS", (text: string) => {
         footerText.SetText(String(text ?? "Ready."));
         refresh();
     });
-    GC.RegisterCallback(GC, "DISPLAY_CHANGED", () => applyScale());
+    GC.RegisterCallback("DISPLAY_CHANGED", () => applyScale());
 
     return dashboard;
 }
