@@ -884,7 +884,7 @@ function ____exports.createChoiceSelect(self, parent, options)
         )
         refreshRows(nil)
     end
-    function wheel(self, _frame, delta)
+    function wheel(_frame, delta)
         move(
             nil,
             __TS__Number(delta) > 0 and -1 or 1
@@ -3831,7 +3831,7 @@ function ____exports.createScrollList(self, parent, width, height)
         scroll:SetVerticalScroll(offset)
         refreshRail(nil)
     end
-    local function wheel(self, _target, delta)
+    local function wheel(_target, delta)
         scrollBy(
             nil,
             __TS__Number(delta) > 0 and -72 or 72
@@ -4864,11 +4864,11 @@ function ____exports.createModernDashboard(self)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript(
         "OnDragStart",
-        function(____, ____self) return ____self:StartMoving() end
+        function() return frame:StartMoving() end
     )
     frame:SetScript(
         "OnDragStop",
-        function(____, ____self) return ____self:StopMovingOrSizing() end
+        function() return frame:StopMovingOrSizing() end
     )
     frame:Hide()
     local root = Native:createSolid(frame, theme.colors.background)
@@ -8134,7 +8134,7 @@ local function ensureDashboard()
     return dashboard
 end
 _G.GroupComposerModernUI = {
-    version = "0.7.0",
+    version = "0.7.1",
     dashboard = nil,
     ensureDashboard = function() return ensureDashboard() end,
     createBuildSelector = function(...) return createBuildSelector(nil, ...) end,
