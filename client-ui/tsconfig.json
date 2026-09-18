@@ -4,6 +4,7 @@
     "target": "ESNext",
     "lib": ["ESNext"],
     "moduleResolution": "Node",
+    "ignoreDeprecations": "6.0",
     "rootDir": "src",
     "strict": true,
     "skipLibCheck": true,
