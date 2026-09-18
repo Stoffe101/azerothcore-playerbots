@@ -19,6 +19,7 @@ MODERN = (ROOT / "client-ui/src/components/ModernDashboard.ts").read_text(encodi
 MODEL = (ROOT / "client-ui/src/model/ComposerModel.ts").read_text(encoding="utf-8")
 SELECTOR = (ROOT / "client-ui/src/components/BuildSelector.ts").read_text(encoding="utf-8")
 CHOICE_SELECT = (ROOT / "client-ui/src/widgets/ChoiceSelect.ts").read_text(encoding="utf-8")
+SCROLL_LIST = (ROOT / "client-ui/src/widgets/ScrollList.ts").read_text(encoding="utf-8")
 TOGGLE = (ROOT / "client-ui/src/widgets/Toggle.ts").read_text(encoding="utf-8")
 WOW_RUNTIME_SMOKE = (ROOT / "client-ui/tests/wow_runtime_smoke.lua").read_text(encoding="utf-8")
 SERVER = (ROOT / "modules/mod-raid-roster/src/GroupComposerCommand.cpp").read_text(encoding="utf-8")
@@ -321,7 +322,8 @@ assert 'RaidProfile(' in builtin_profile_tail
 assert 'Profile("Dungeon' not in builtin_profile_tail, "Dungeon presets must not return to the raid template library"
 assert 'Templates are raid-only' in (ROOT / "client-addons-src/GroupComposer/Profiles.lua").read_text(encoding="utf-8")
 assert 'profileDescription' in MODEL and 'BUILT-IN RAID COMPS' in MODERN
-assert 'builtinScroll.scrollToTop()' in MODERN and 'builtinScroll.scrollBy(-220)' in MODERN
+assert 'builtinScroll.scrollToTop()' in MODERN and 'createScrollList(templatesModal.content' in MODERN
+assert 'scrollBy(-92)' in SCROLL_LIST and 'scrollBy(92)' in SCROLL_LIST
 
 # Preparation is allowed to rebuild combat state, not a persistent companion's life history.
 sync = section(SERVER, "void SyncManagedBot(", "void ApplyGroupSettings(")

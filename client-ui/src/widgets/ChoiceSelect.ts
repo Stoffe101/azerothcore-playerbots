@@ -102,7 +102,7 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
         }
         rail.frame.Show();
 
-        const popupHeight = popup.frame.GetHeight ? popup.frame.GetHeight() : (maxVisible * rowHeight + 8);
+        const popupHeight = popup.frame.GetHeight();
         const trackHeight = Math.max(36, popupHeight - 58);
         const thumbHeight = Math.max(22, Math.floor(trackHeight * Math.min(1, maxVisible / items.length)));
         const travel = Math.max(0, trackHeight - thumbHeight);
