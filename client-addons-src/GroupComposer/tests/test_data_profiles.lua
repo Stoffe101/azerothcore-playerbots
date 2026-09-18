@@ -65,6 +65,9 @@ for _, profile in ipairs(D.BUILTIN_PROFILES) do
     end
     truth(required > 0, "coverage template must reserve a useful core: " .. profile.name)
     truth(required < profile.size, "coverage template must leave Auto remainder: " .. profile.name)
+    if profile.size == 10 then
+        truth(required <= 8, "10-player coverage core must leave Auto room even with a DPS human: " .. profile.name)
+    end
     raidKeys[profile.activity .. ":" .. tostring(profile.size) .. ":" .. profile.difficulty] = true
 end
 
