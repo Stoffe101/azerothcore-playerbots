@@ -531,7 +531,7 @@ assert "SyncManagedBot(master, bot, member.role, member.spec, plan.config.requir
 
 # Modern dashboard redesign contracts.
 assert 'frame.SetSize(1520, 900)' in MODERN, "Modern shell lost the redesigned workspace dimensions"
-assert 'center.SetSize(986, 776)' in MODERN, "Composition workspace lost its expanded layout"
+assert 'center.SetSize(970, 768)' in MODERN, "Composition workspace lost its expanded layout"
 assert 'Adjust the highlighted requirement, then Build & Prepare again.' in MODERN, (
     "Status rail regressed to repeating backend errors instead of giving an actionable next step"
 )
@@ -548,7 +548,7 @@ assert 'panel.frame.SetSize(438, 76);' in MODERN, "Template cards regressed to t
 
 
 # Premium mockup-target visual contracts.
-assert "createChrome(frame)" in MODERN, "Main dashboard lost the framed chrome treatment"
+assert "Native.createChrome(frame, theme.colors.chrome, true)" in MODERN, "Main dashboard lost the framed chrome treatment"
 assert "ICON_DUNGEON" in MODERN and "ICON_RAID" in MODERN and "ICON_TEMPLATES" in MODERN
 assert "activityBadge = Native.createFramedIcon" in MODERN, "Activity card lost its icon-led visual treatment"
 assert "emphasis: true" in MODERN, "Primary Build & Prepare CTA lost its luminous emphasis"
@@ -557,11 +557,11 @@ assert "classBadge = Native.createFramedIcon" in MODERN and "specBadge = Native.
     "Specific Builds rows lost the framed real class/spec icon treatment"
 )
 assert "const modal = createModal(parent, 1080, 790);" in SELECTOR
-assert "classIndex % 5" in SELECTOR and "row * 104" in SELECTOR, "Class picker lost the 5x2 card-grid layout"
+assert "classIndex % 5" in SELECTOR and "row * 122" in SELECTOR, "Class picker lost the 5x2 card-grid layout"
 assert "specSummary" in SELECTOR and 'labels.join("  ·  ")' in SELECTOR
 assert "Any valid spec" in SELECTOR and "emphasis: true" in SELECTOR
-assert "modal.setHeaderIcon(roleIcon(currentRole))" in SELECTOR
-assert "createChrome(panel.frame)" in MODAL and "setHeaderIcon(path?: string)" in MODAL
+assert "modal.setHeaderRole(currentRole)" in SELECTOR
+assert "createChrome(panel.frame, theme.colors.chrome, true)" in MODAL and "setHeaderIcon(path?: string)" in MODAL
 assert "topTint" in BUTTON and "activeTop" in BUTTON and "emphasis?: boolean" in BUTTON
 assert "createFramedIcon" in NATIVE and "createChrome" in NATIVE and "withAlpha" in NATIVE
 assert '" TANK"' in MODERN and '" HEALER"' in MODERN and '" DPS"' in MODERN, (
