@@ -155,6 +155,13 @@ struct Plan
     bool assembling = false;
     uint32 assembleElapsed = 0;
     uint32 assembleProgressElapsed = 0;
+
+    // Named activities enter automatically after assembly. Delay/retry the actual instance
+    // teleport for a few world ticks so group conversion, difficulty and subgroup changes have
+    // settled before PlayerCannotEnter/TeleportTo are evaluated.
+    bool travelPending = false;
+    uint32 travelElapsed = 0;
+    uint8 travelAttempts = 0;
 };
 }
 
