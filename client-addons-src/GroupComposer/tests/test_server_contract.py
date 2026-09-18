@@ -372,8 +372,8 @@ assert "bool preparing = false;" in TYPES and "bool prepared = false;" in TYPES,
     "Plan lost the explicit V4 preparation state"
 )
 assert "plan.prepareElapsed > 50000" in SERVER, "Preparation timeout must allow bulk async login/provisioning to settle"
-assert "three automatic replacement attempts" not in world_update, (
-    "World update regressed to whole-roster replacement churn"
+assert "ReplaceUnreadyCandidates" not in SERVER, (
+    "Composer regressed to whole-roster replacement churn"
 )
 assert 'PSendSysMessage("[GC]|PROGRESS|' in SERVER, "Server no longer publishes granular V4 progress"
 assemble = section(SERVER, "bool GroupComposerCommand::HandleAssemble", "bool GroupComposerCommand::HandleQueue")

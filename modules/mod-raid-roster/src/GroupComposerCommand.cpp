@@ -1027,61 +1027,6 @@ bool PreparePlan(Player* master, Plan& plan, std::string& error)
     return true;
 }
 
-bool ReplaceUnreadyCandidates(Player* master, Plan& plan, std::string& detail)
-{
-    if (!master) { detail = "Composer lost its owner while replacing unavailable bots."; return false; }
-    if (plan.prepareAttempts >= 3)
-    {
-        detail = "Composer exhausted three automatic replacement attempts.";
-        return false;
-    }
-
-    std::vector<uint32> failed = UnreadyBotGuids(plan);
-    if (failed.empty())
-    {
-        detail = "No replaceable unavailable bot was identified.";
-        return false;
-    }
-
-    std::string firstFailed = "bot";
-    for (Member const& member : plan.members)
-        if (std::find(failed.begin(), failed.end(), member.guid.GetCounter()) != failed.end()) { firstFailed = member.name; break; }
-
-    std::unordered_set<uint32> rejected = plan.rejectedCandidates;
-    for (uint32 low : failed) rejected.insert(low);
-    Config config = plan.config;
-    uint8 nextAttempt = static_cast<uint8>(plan.prepareAttempts + 1);
-    uint32 ownerLow = master->GetGUID().GetCounter();
-
-    ClearPendingSync(ownerLow);
-    Reserve::ReleaseUnjoined(master);
-
-    Plan replacement;
-    std::string buildError;
-    if (!Planner::Build(master, config, replacement, buildError, rejected))
-    {
-        detail = "Could not replace unavailable '" + firstFailed + "': " + buildError;
-        return false;
-    }
-    replacement.prepareAttempts = nextAttempt;
-    replacement.rejectedCandidates = std::move(rejected);
-
-    std::string prepareError;
-    if (!PreparePlan(master, replacement, prepareError))
-    {
-        detail = "Replacement roster could not reserve/prepare fresh capacity: " + prepareError;
-        return false;
-    }
-
-    plan = std::move(replacement);
-    ChatHandler handler(master->GetSession());
-    SendPlan(&handler, plan);
-    detail = "Replaced unavailable '" + firstFailed + "' automatically; preparing fresh capacity (attempt "
-        + std::to_string(unsigned(plan.prepareAttempts)) + "/3).";
-    SendProgress(master, plan.prepared ? "READY" : "PREPARING", PreparedBotCount(plan), SelectedBotCount(plan), detail);
-    return true;
-}
-
 bool EnsureComposerGroup(Player* master, Plan const& plan, Group*& group, std::string& error)
 {
     if (!master) { error = "Group Composer lost the live owner while assembling."; return false; }
@@ -1270,7 +1215,7 @@ public:
                 {
                     // Do not throw away and rebuild an otherwise-ready 25-player roster because one
                     // asynchronous login stalled. Whole-plan replacement multiplied login/provision
-                    // work and caused the observed "three automatic replacement attempts" loop.
+                    // work and caused repeated full-roster retry loops.
                     // Keep the failure precise; a new explicit Build & Prepare gets a fresh candidate
                     // snapshot while every currently grouped member remains protected.
                     std::string failed = "a selected bot";

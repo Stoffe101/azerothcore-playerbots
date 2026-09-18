@@ -49,7 +49,7 @@ jobs:
           grep -q 'AvailableTo' modules/mod-raid-roster/src/GroupComposerReserve.cpp
           grep -q 'addclassCache' modules/mod-raid-roster/src/GroupComposerPlanner.cpp
           ! grep -q 'PruneUnselectedBots' modules/mod-raid-roster/src/GroupComposerCommand.cpp
-          ! grep -q 'three automatic replacement attempts' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          ! grep -q 'ReplaceUnreadyCandidates' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'GetMapEntranceTrigger(mapId)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'TeleportCompletedPlan' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'TitanRune::SaveSelectedMode(travelLeader, titanMode)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
