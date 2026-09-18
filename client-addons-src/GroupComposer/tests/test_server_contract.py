@@ -312,7 +312,7 @@ assert "ProjectCandidateForRole(candidate, role, required, projected)" in retask
 # may also be locked with spec ANY so, for example, "bring a Warlock" does not force one spec.
 assert 'export const ANY_SPEC_ID = -1' in MODEL
 assert 'spec: row.specId === ANY_SPEC_ID ? "ANY" : row.specId' in MODEL
-assert 'Any valid specialization' in SELECTOR
+assert 'Any valid spec' in SELECTOR
 assert 'Every unreserved slot stays Auto-filled.' in SELECTOR
 preference_handler = section(SERVER, "bool GroupComposerCommand::HandlePreference", "bool GroupComposerCommand::HandleHumanRole")
 assert "spec == ANY_SPEC && !Planner::CanClassFillRole(cls, role)" in preference_handler
