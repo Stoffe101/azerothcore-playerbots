@@ -16,6 +16,8 @@ export function createTextInput(parent: WoWFrame, width: number, height = 34): T
     const edit = CreateFrame("EditBox", undefined, panel.frame);
     edit.SetAllPoints(panel.frame);
     edit.SetAutoFocus(false);
+    edit.SetFontObject(GameFontHighlightSmall);
+    edit.SetTextColor(theme.colors.text[0], theme.colors.text[1], theme.colors.text[2], 1);
     edit.SetTextInsets(10, 10, 0, 0);
 
     return {
