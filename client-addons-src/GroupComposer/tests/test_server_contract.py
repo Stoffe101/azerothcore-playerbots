@@ -104,7 +104,7 @@ for command in (
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
 assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
-assert '## Version: 0.10.1' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
+assert '## Version: 0.11.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
@@ -115,8 +115,8 @@ assert 'showAssembleConfirm' in MODERN and 'Model.assemble()' in MODERN, (
     "Modern dashboard lost its in-window assembly confirmation boundary"
 )
 assert 'SetShown(' not in MODERN, "Modern dashboard uses a post-Wrath frame API"
-assert 'const track = createPanel' in TOGGLE and 'const knob = createPanel' in TOGGLE, (
-    "Modern toggles must use the premium native switch control"
+assert 'UI-CheckBox-Check' in TOGGLE and 'createOutline' in TOGGLE, (
+    "Modern toggles must use the compact native checkbox treatment"
 )
 assert 'maxVisible' in CHOICE_SELECT and 'EnableMouseWheel(true)' in CHOICE_SELECT, (
     "Modern selectors must remain bounded and scrollable"

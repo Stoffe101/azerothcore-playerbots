@@ -1609,7 +1609,7 @@ export function createModernDashboard(): Dashboard {
                     exactScroll.bindWheel(remove.frame);
                     widgets = { panel, classBadge, classIcon, specBadge, specIcon, name, count, edit, remove };
                     section.rowsByKey[rowKey] = widgets;
-                    section.rowKeys.push(rowKey);
+                    (section.rowKeys as string[]).push(rowKey);
                 }
 
                 widgets.panel.frame.ClearAllPoints();

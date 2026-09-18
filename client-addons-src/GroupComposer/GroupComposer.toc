@@ -2,7 +2,7 @@
 ## Title: Group Composer
 ## Notes: Clean dungeon and raid roster planning with prepared Playerbots.
 ## Author: Stoffe101
-## Version: 0.10.1
+## Version: 0.11.0
 ## X-UI-Shell: ModernTypedV1
 ## SavedVariables: GroupComposerDB
 Data.lua
