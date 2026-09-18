@@ -32,8 +32,23 @@ export interface PlanMember {
 }
 
 const GC: any = _G.GroupComposer;
+
+/** @noSelf */
+interface DataFunctions {
+    GetDungeonById(id: string): any;
+    GetRaidById(id: string): any;
+}
+
+/** @noSelf */
+interface ProfileFunctions {
+    ListBuiltins(): string[];
+    ListCustom(): string[];
+}
+
 const D: any = _G.GroupComposerData;
+const DataFns: DataFunctions = _G.GroupComposerData as DataFunctions;
 const P: any = _G.GroupComposerProfiles;
+const ProfileFns: ProfileFunctions = _G.GroupComposerProfiles as ProfileFunctions;
 
 export function composer(): any { return GC; }
 export function data(): any { return D; }
@@ -265,13 +280,11 @@ export function roleLabel(role: Role): string {
 }
 
 function dungeonById(id: string): any {
-    const fn = D.GetDungeonById;
-    return fn(id);
+    return DataFns.GetDungeonById(id);
 }
 
 function raidById(id: string): any {
-    const fn = D.GetRaidById;
-    return fn(id);
+    return DataFns.GetRaidById(id);
 }
 
 export function pinnedMembers(): any[] {
@@ -345,8 +358,8 @@ export function clearPlan(): void { GC.ClearServerPlan(); }
 export function loadProfile(name: string): void { GC.LoadProfile(name); }
 export function saveProfile(name: string): void { GC.SaveProfile(name); }
 export function deleteProfile(name: string): void { GC.DeleteProfile(name); }
-export function listBuiltinProfiles(): string[] { return P.ListBuiltins() ?? []; }
-export function listCustomProfiles(): string[] { return P.ListCustom() ?? []; }
+export function listBuiltinProfiles(): string[] { return ProfileFns.ListBuiltins() ?? []; }
+export function listCustomProfiles(): string[] { return ProfileFns.ListCustom() ?? []; }
 export function addPin(name: string, role: Role, required: boolean): void { GC.AddPinnedMember(name, role, required); }
 export function removePin(index: number): void { GC.RemovePinnedMember(index); }
 
