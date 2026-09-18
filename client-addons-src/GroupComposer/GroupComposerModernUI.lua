@@ -3875,24 +3875,40 @@ function ____exports.createModernDashboard(self)
         16,
         -16
     )
-    local phaseDot = Native:createSolid(status.frame, theme.colors.primary, "ARTWORK")
-    phaseDot:SetSize(10, 10)
-    phaseDot:SetPoint(
+    local phaseCard = Native:createPanel(status.frame, theme.colors.surfaceRaised, theme.colors.border)
+    phaseCard.frame:SetPoint(
         "TOPLEFT",
         status.frame,
         "TOPLEFT",
-        18,
-        -48
+        16,
+        -40
     )
-    local phaseText = Native:createText(status.frame, "Configure roster", "GameFontNormalLarge")
+    phaseCard.frame:SetPoint(
+        "TOPRIGHT",
+        status.frame,
+        "TOPRIGHT",
+        -16,
+        -40
+    )
+    phaseCard.frame:SetHeight(72)
+    local phaseDot = Native:createSolid(phaseCard.frame, theme.colors.primary, "ARTWORK")
+    phaseDot:SetSize(9, 9)
+    phaseDot:SetPoint(
+        "TOPLEFT",
+        phaseCard.frame,
+        "TOPLEFT",
+        12,
+        -16
+    )
+    local phaseText = Native:createText(phaseCard.frame, "Configure roster", "GameFontNormal")
     phaseText:SetPoint(
         "LEFT",
         phaseDot,
         "RIGHT",
         10,
-        4
+        3
     )
-    local phaseDetail = Native:createText(status.frame, "", "GameFontHighlightSmall", theme.colors.muted)
+    local phaseDetail = Native:createText(phaseCard.frame, "", "GameFontHighlightSmall", theme.colors.muted)
     phaseDetail:SetPoint(
         "TOPLEFT",
         phaseText,
@@ -3900,7 +3916,7 @@ function ____exports.createModernDashboard(self)
         0,
         -4
     )
-    phaseDetail:SetWidth(266)
+    phaseDetail:SetWidth(246)
     phaseDetail:SetJustifyV("TOP")
     local rosterCount = Native:createText(status.frame, "1 / 5", "GameFontNormalHuge")
     rosterCount:SetPoint(
@@ -3908,7 +3924,7 @@ function ____exports.createModernDashboard(self)
         status.frame,
         "TOPLEFT",
         16,
-        -112
+        -126
     )
     local sourceText = Native:createText(status.frame, "1 human  ·  4 bot slots", "GameFontHighlightSmall", theme.colors.muted)
     sourceText:SetPoint(
@@ -3916,7 +3932,7 @@ function ____exports.createModernDashboard(self)
         rosterCount,
         "BOTTOMLEFT",
         0,
-        -6
+        -5
     )
     local statusRoleChips = {}
     do
@@ -3934,7 +3950,7 @@ function ____exports.createModernDashboard(self)
                 status.frame,
                 "TOPLEFT",
                 16 + i * 96,
-                -174
+                -184
             )
             local icon = Native:createIcon(chip.frame, D.ROLE_ICON[role], 17)
             icon:SetPoint(
@@ -3967,7 +3983,7 @@ function ____exports.createModernDashboard(self)
         status.frame,
         "TOPLEFT",
         16,
-        -222
+        -228
     )
     progressBg.frame:SetSize(286, 12)
     local progressFill = Native:createSolid(progressBg.frame, theme.colors.primary, "ARTWORK")
@@ -3992,66 +4008,98 @@ function ____exports.createModernDashboard(self)
         status.frame,
         "TOPLEFT",
         16,
-        -244
+        -247
     )
     progressText:SetWidth(286)
-    local coverageTitle = Native:createText(status.frame, "COVERAGE", "GameFontNormalSmall", theme.colors.muted)
-    coverageTitle:SetPoint(
+    local coverageCard = Native:createPanel(status.frame, theme.colors.background, theme.colors.border)
+    coverageCard.frame:SetPoint(
         "TOPLEFT",
         status.frame,
         "TOPLEFT",
         16,
         -286
     )
-    local coverageText = Native:createText(status.frame, "Build a roster to inspect coverage.", "GameFontHighlightSmall", theme.colors.muted)
+    coverageCard.frame:SetPoint(
+        "TOPRIGHT",
+        status.frame,
+        "TOPRIGHT",
+        -16,
+        -286
+    )
+    coverageCard.frame:SetHeight(112)
+    local coverageTitle = Native:createText(coverageCard.frame, "COVERAGE", "GameFontNormalSmall", theme.colors.muted)
+    coverageTitle:SetPoint(
+        "TOPLEFT",
+        coverageCard.frame,
+        "TOPLEFT",
+        12,
+        -12
+    )
+    local coverageText = Native:createText(coverageCard.frame, "Build a roster to inspect coverage.", "GameFontHighlightSmall", theme.colors.muted)
     coverageText:SetPoint(
         "TOPLEFT",
-        status.frame,
+        coverageCard.frame,
         "TOPLEFT",
-        16,
-        -308
+        12,
+        -34
     )
-    coverageText:SetWidth(286)
+    coverageText:SetWidth(262)
     coverageText:SetJustifyV("TOP")
     local classIcons = {}
     do
         local i = 0
         while i < 10 do
-            local icon = status.frame:CreateTexture(nil, "ARTWORK")
+            local icon = coverageCard.frame:CreateTexture(nil, "ARTWORK")
             icon:SetSize(20, 20)
             icon:SetPoint(
-                "TOPLEFT",
-                status.frame,
-                "TOPLEFT",
-                16 + i * 25,
-                -356
+                "BOTTOMLEFT",
+                coverageCard.frame,
+                "BOTTOMLEFT",
+                12 + i * 25,
+                10
             )
             icon:Hide()
             classIcons[#classIcons + 1] = icon
             i = i + 1
         end
     end
-    local warningsTitle = Native:createText(status.frame, "NEXT STEP", "GameFontNormalSmall", theme.colors.warning)
-    warningsTitle:SetPoint(
+    local nextCard = Native:createPanel(status.frame, theme.colors.background, theme.colors.border)
+    nextCard.frame:SetPoint(
         "TOPLEFT",
         status.frame,
         "TOPLEFT",
         16,
-        -396
+        -414
+    )
+    nextCard.frame:SetPoint(
+        "TOPRIGHT",
+        status.frame,
+        "TOPRIGHT",
+        -16,
+        -414
+    )
+    nextCard.frame:SetHeight(146)
+    local warningsTitle = Native:createText(nextCard.frame, "NEXT STEP", "GameFontNormalSmall", theme.colors.warning)
+    warningsTitle:SetPoint(
+        "TOPLEFT",
+        nextCard.frame,
+        "TOPLEFT",
+        12,
+        -12
     )
     local warningRows = {}
     do
         local i = 0
         while i < 3 do
-            local row = Native:createText(status.frame, "", "GameFontHighlightSmall", i == 0 and theme.colors.warning or theme.colors.muted)
+            local row = Native:createText(nextCard.frame, "", "GameFontHighlightSmall", i == 0 and theme.colors.warning or theme.colors.muted)
             row:SetPoint(
                 "TOPLEFT",
-                status.frame,
+                nextCard.frame,
                 "TOPLEFT",
-                16,
-                -(420 + i * 42)
+                12,
+                -(36 + i * 34)
             )
-            row:SetWidth(286)
+            row:SetWidth(258)
             row:SetJustifyV("TOP")
             warningRows[#warningRows + 1] = row
             i = i + 1
