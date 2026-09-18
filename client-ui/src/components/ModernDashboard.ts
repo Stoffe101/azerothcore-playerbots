@@ -432,7 +432,7 @@ export function createModernDashboard(): Dashboard {
     let raidTab: RaidTab = "QUICK";
     const tabQuick = ButtonUI.createButton(raidView, { text: "Quick Composition", width: 164, height: 32, accent: theme.colors.primary });
     tabQuick.frame.SetPoint("TOPLEFT", raidView, "TOPLEFT", 0, 0);
-    const tabExact = ButtonUI.createButton(raidView, { text: "Exact Builds", width: 140, height: 32, accent: theme.colors.warning });
+    const tabExact = ButtonUI.createButton(raidView, { text: "Specific Builds", width: 150, height: 32, accent: theme.colors.warning });
     tabExact.frame.SetPoint("LEFT", tabQuick.frame, "RIGHT", 8, 0);
     const tabRoster = ButtonUI.createButton(raidView, { text: "Prepared Roster", width: 150, height: 32, accent: theme.colors.success });
     tabRoster.frame.SetPoint("LEFT", tabExact.frame, "RIGHT", 8, 0);
@@ -496,7 +496,7 @@ export function createModernDashboard(): Dashboard {
     quickTotal.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 14, -34);
     const quickHelp = Native.createText(
         quickSummary.frame,
-        "All three role counts are editable. Exact Builds can then reserve specific class/spec slots.",
+        "All three role counts are editable. Specific Builds can reserve only the class/spec slots you care about.",
         "GameFontHighlightSmall",
         theme.colors.muted,
     );
@@ -530,7 +530,7 @@ export function createModernDashboard(): Dashboard {
         const count = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
         count.SetPoint("LEFT", icon, "RIGHT", 9, -12);
 
-        const add = ButtonUI.createButton(panel.frame, { text: "+ Add build", width: 112, height: 30, accent: Model.roleAccent(role) });
+        const add = ButtonUI.createButton(panel.frame, { text: "+ Add specific", width: 118, height: 30, accent: Model.roleAccent(role) });
         add.frame.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -10, -11);
 
         const scroll = ScrollUI.createScrollList(panel.frame, 258, 330);
@@ -538,7 +538,7 @@ export function createModernDashboard(): Dashboard {
 
         const empty = Native.createText(
             scroll.content,
-            "No exact builds yet.\nUnspecified slots stay on Auto.",
+            "No specific builds yet.\nEvery unreserved slot stays on Auto.",
             "GameFontHighlightSmall",
             theme.colors.muted,
         );
@@ -1241,7 +1241,7 @@ export function createModernDashboard(): Dashboard {
         for (const role of roleOrder) {
             const column = exactColumns[role];
             const rows = Model.requiredBuilds(role);
-            column.count.SetText(String(Model.exactCount(role)) + " exact  ·  " + String(Math.max(0, Model.remainingBotSlots(role) - Model.exactCount(role))) + " Auto");
+            column.count.SetText(String(Model.exactCount(role)) + " reserved  ·  " + String(Math.max(0, Model.remainingBotSlots(role) - Model.exactCount(role))) + " Auto");
             column.add.setEnabled(Model.exactCount(role) < Model.remainingBotSlots(role));
             if (rows.length === 0) column.empty.Show();
             else column.empty.Hide();
