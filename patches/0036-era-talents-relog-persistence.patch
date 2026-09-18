@@ -71,8 +71,8 @@ diff --git a/modules/mod-era-talents/src/EraTalentPin.cpp b/modules/mod-era-tale
 +    // EraTransition::ResetAllSpecs is explicitly guarded because those resetTalents(true) calls
 +    // only clean Blizzard's native talent maps. Same-era login cleanup can run while a perfectly
 +    // valid custom era build already exists, so treating that internal reset as a real respec
-+    // would delete all persisted era rows. External noCost callers (GM .reset talents,
-+    // AT_LOGIN_RESET_TALENTS) remain unguarded and still reset era talents for free.
++    // would delete all persisted era rows. Explicit trainer/GM resets while the player is
++    // in-world still reset the era tree through the normal hook/command paths.
      void OnPlayerTalentsReset(Player* p, bool noCost) override
      {
          if (!sEraTalentsConfig->Enabled() || IsBot(p))
