@@ -82,6 +82,27 @@ local firstDescription = P.Describe(D.BUILTIN_PROFILES[1].name)
 truth(string.find(firstDescription, "Coverage core:", 1, true), "template description must expose its preconfigured core")
 truth(string.find(firstDescription, "Auto", 1, true), "template description must expose Auto remainder")
 
+local function hasRequired(profile, role, classToken, spec)
+    for _, pref in ipairs((profile.preferences and profile.preferences[role]) or {}) do
+        if pref.required and pref.class == classToken and pref.spec == spec then return true end
+    end
+    return false
+end
+
+local icc25
+for _, profile in ipairs(D.BUILTIN_PROFILES) do
+    if profile.activity == "icecrown" and profile.size == 25 and profile.difficulty == "normal" then icc25 = profile; break end
+end
+truth(icc25, "ICC 25 coverage template")
+truth(hasRequired(icc25, "HEALER", "PRIEST", 0), "Fortitude/Discipline Priest coverage")
+truth(hasRequired(icc25, "DPS", "MAGE", 0), "Arcane Brilliance/Arcane Mage coverage")
+truth(hasRequired(icc25, "DPS", "WARLOCK", 1), "Demonic Pact/Demonology Warlock coverage")
+truth(hasRequired(icc25, "HEALER", "SHAMAN", 2), "Heroism/Restoration Shaman coverage")
+truth(hasRequired(icc25, "DPS", "SHAMAN", 1), "Enhancement melee/totem coverage")
+truth(hasRequired(icc25, "DPS", "PALADIN", 2), "Retribution blessing/replenishment coverage")
+truth(hasRequired(icc25, "DPS", "DRUID", 0), "Balance spell-hit/crit coverage")
+truth(hasRequired(icc25, "DPS", "WARRIOR", 0), "Arms physical-debuff coverage")
+
 local migrated = P.Normalize({
     mode = "RAID", activity = "icecrown", difficulty = "normal", size = 25,
     tanks = 2, healers = 6, dps = 17,
