@@ -204,7 +204,7 @@ export function createModernDashboard(): Dashboard {
     backendText.SetPoint("LEFT", backendDot, "RIGHT", 8, 0);
 
     const close = ButtonUI.createButton(header.frame, {
-        text: "Close", width: 100, height: 34, accent: theme.colors.error, emphasis: true,
+        text: "Close   X", width: 108, height: 34, accent: theme.colors.error, emphasis: true,
         onClick: () => frame.Hide(),
     });
     close.frame.SetPoint("RIGHT", header.frame, "RIGHT", -16, 0);

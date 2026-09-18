@@ -623,3 +623,9 @@ assert '"[GC]|ANCHOR|{}|{}|{}|{}|{}|{}|{}"' in SERVER
 assert 'level = ParseNumber(fields[8], 1)' in CORE
 assert 'level?: number;' in MODEL
 assert '"Level " + String(primary.level ?? "?")' in MODERN
+
+
+# Wrath-native ornament parity with the visual target.
+assert "UI-DialogBox-Gold-Corner" in NATIVE, "Premium chrome lost Blizzard's native gold corner ornament"
+assert "topLeft.SetTexCoord(0, 1, 0, 1)" in NATIVE and "bottomRight.SetTexCoord(1, 0, 1, 0)" in NATIVE
+assert '"Close   X"' in MODERN
