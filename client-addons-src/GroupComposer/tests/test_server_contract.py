@@ -590,3 +590,13 @@ assert "classBadge = Native.createFramedIcon" in MODERN and "specBadge = Native.
 assert "BUILT-IN" in MODERN and "CUSTOM" in MODERN, "Template cards lost their visual category tags"
 assert "_roleBadge" in MODERN and "Preferred companion" in MODERN
 assert "gearIcon = Native.createFramedIcon" in MODERN
+
+
+# Final visual-density and empty-state contracts.
+assert 'activity.frame.SetHeight(124)' in MODERN
+assert 'humanPanel.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -136)' in MODERN
+assert 'composition.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -226)' in MODERN
+assert "sidebarDivider" in MODERN, "Sidebar hierarchy lost the Compose/Tools divider"
+assert "builtinEmpty" in MODERN and "customEmpty" in MODERN, "Template browser lost explicit empty states"
+assert "humanEmpty" in MODERN and "pinEmpty" in MODERN, "People browser lost explicit empty states"
+assert "activityTop" in MODERN and "compositionTop" in MODERN, "Main content lost premium section accents"

@@ -220,8 +220,13 @@ export function createModernDashboard(): Dashboard {
     navRaid.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -102);
     navRaid.label.SetJustifyH("LEFT");
 
+    const sidebarDivider = Native.createSolid(sidebar.frame, theme.colors.borderStrong, "ARTWORK");
+    sidebarDivider.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -160);
+    sidebarDivider.SetPoint("TOPRIGHT", sidebar.frame, "TOPRIGHT", -14, -160);
+    sidebarDivider.SetHeight(1);
+
     const manageTitle = Native.createText(sidebar.frame, "TOOLS", "GameFontNormalSmall", theme.colors.muted);
-    manageTitle.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -170);
+    manageTitle.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -174);
 
     let showTemplates = () => {};
     let showPeople = () => {};
@@ -262,7 +267,11 @@ export function createModernDashboard(): Dashboard {
     const activity = Native.createPanel(center, theme.colors.surface, theme.colors.borderStrong);
     activity.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, 0);
     activity.frame.SetPoint("TOPRIGHT", center, "TOPRIGHT", 0, 0);
-    activity.frame.SetHeight(116);
+    activity.frame.SetHeight(124);
+    const activityTop = Native.createSolid(activity.frame, Native.withAlpha(theme.colors.primary, 0.65), "ARTWORK");
+    activityTop.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 0, 0);
+    activityTop.SetPoint("TOPRIGHT", activity.frame, "TOPRIGHT", 0, 0);
+    activityTop.SetHeight(2);
 
     const activityEyebrow = Native.createText(activity.frame, "ACTIVITY", "GameFontNormalSmall", theme.colors.muted);
     activityEyebrow.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 16, -12);
@@ -324,9 +333,13 @@ export function createModernDashboard(): Dashboard {
 
     // Human anchor -----------------------------------------------------------
     const humanPanel = Native.createPanel(center, theme.colors.surface, theme.colors.border);
-    humanPanel.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -128);
-    humanPanel.frame.SetPoint("TOPRIGHT", center, "TOPRIGHT", 0, -128);
+    humanPanel.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -136);
+    humanPanel.frame.SetPoint("TOPRIGHT", center, "TOPRIGHT", 0, -136);
     humanPanel.frame.SetHeight(78);
+    const humanTop = Native.createSolid(humanPanel.frame, Native.withAlpha(theme.colors.chromeBright, 0.38), "ARTWORK");
+    humanTop.SetPoint("TOPLEFT", humanPanel.frame, "TOPLEFT", 0, 0);
+    humanTop.SetPoint("TOPRIGHT", humanPanel.frame, "TOPRIGHT", 0, 0);
+    humanTop.SetHeight(1);
 
     const humanTitle = Native.createText(humanPanel.frame, "YOUR PARTY", "GameFontNormalSmall", theme.colors.muted);
     humanTitle.SetPoint("TOPLEFT", humanPanel.frame, "TOPLEFT", 16, -12);
@@ -367,8 +380,12 @@ export function createModernDashboard(): Dashboard {
 
     // Composition shell ------------------------------------------------------
     const composition = Native.createPanel(center, theme.colors.surface, theme.colors.border);
-    composition.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -218);
+    composition.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -226);
     composition.frame.SetPoint("BOTTOMRIGHT", center, "BOTTOMRIGHT", 0, 0);
+    const compositionTop = Native.createSolid(composition.frame, Native.withAlpha(theme.colors.primary, 0.34), "ARTWORK");
+    compositionTop.SetPoint("TOPLEFT", composition.frame, "TOPLEFT", 0, 0);
+    compositionTop.SetPoint("TOPRIGHT", composition.frame, "TOPRIGHT", 0, 0);
+    compositionTop.SetHeight(2);
 
     const compositionTitle = Native.createText(composition.frame, "PARTY COMPOSITION", "GameFontNormal");
     compositionTitle.SetPoint("TOPLEFT", composition.frame, "TOPLEFT", 18, -14);
@@ -776,6 +793,29 @@ export function createModernDashboard(): Dashboard {
     const builtinRows: WoWFrame[] = [];
     const customRows: WoWFrame[] = [];
 
+    const builtinEmpty = Native.createText(
+        builtinScroll.content,
+        "Built-in raid compositions will appear here.",
+        "GameFontHighlight",
+        theme.colors.muted,
+    );
+    builtinEmpty.SetPoint("TOPLEFT", builtinScroll.content, "TOPLEFT", 18, -22);
+    builtinEmpty.SetWidth(360);
+    builtinEmpty.SetJustifyH("CENTER");
+    builtinEmpty.Hide();
+
+    const customEmpty = Native.createText(
+        customScroll.content,
+        "No custom templates yet. Configure a raid, name it above, then Save Current.",
+        "GameFontHighlight",
+        theme.colors.muted,
+    );
+    customEmpty.SetPoint("TOPLEFT", customScroll.content, "TOPLEFT", 22, -22);
+    customEmpty.SetWidth(350);
+    customEmpty.SetJustifyH("CENTER");
+    customEmpty.SetJustifyV("TOP");
+    customEmpty.Hide();
+
     function clearDynamicRows(rows: WoWFrame[]): void {
         for (const row of rows) row.Hide();
     }
@@ -786,6 +826,8 @@ export function createModernDashboard(): Dashboard {
         templateSave.setEnabled(Model.config().mode === "RAID");
 
         const builtins = Model.listBuiltinProfiles();
+        if (builtins.length === 0) builtinEmpty.Show();
+        else builtinEmpty.Hide();
         for (let i = 0; i < builtins.length; i += 1) {
             let row = builtinRows[i];
             if (row === undefined) {
@@ -829,6 +871,8 @@ export function createModernDashboard(): Dashboard {
         builtinScroll.setContentHeight(Math.max(460, builtins.length * 84));
 
         const customs = Model.listCustomProfiles();
+        if (customs.length === 0) customEmpty.Show();
+        else customEmpty.Hide();
         for (let i = 0; i < customs.length; i += 1) {
             let row = customRows[i];
             if (row === undefined) {
@@ -899,6 +943,16 @@ export function createModernDashboard(): Dashboard {
     const humanScroll = ScrollUI.createScrollList(peopleModal.content, 900, 210);
     humanScroll.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -26);
     const humanRowsModal: WoWFrame[] = [];
+    const humanEmpty = Native.createText(
+        humanScroll.content,
+        "No additional human anchors detected.",
+        "GameFontHighlight",
+        theme.colors.muted,
+    );
+    humanEmpty.SetPoint("TOPLEFT", humanScroll.content, "TOPLEFT", 18, -20);
+    humanEmpty.SetWidth(820);
+    humanEmpty.SetJustifyH("CENTER");
+    humanEmpty.Hide();
 
     const pinBuilder = Native.createPanel(peopleModal.content, theme.colors.surfaceRaised, theme.colors.border);
     pinBuilder.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -242);
@@ -959,10 +1013,22 @@ export function createModernDashboard(): Dashboard {
     const pinScroll = ScrollUI.createScrollList(peopleModal.content, 900, 190);
     pinScroll.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -364);
     const pinRows: WoWFrame[] = [];
+    const pinEmpty = Native.createText(
+        pinScroll.content,
+        "No companions pinned. Add a name above to keep a familiar bot in mind.",
+        "GameFontHighlight",
+        theme.colors.muted,
+    );
+    pinEmpty.SetPoint("TOPLEFT", pinScroll.content, "TOPLEFT", 18, -20);
+    pinEmpty.SetWidth(820);
+    pinEmpty.SetJustifyH("CENTER");
+    pinEmpty.Hide();
 
     function refreshPeople(): void {
         clearDynamicRows(humanRowsModal);
         const list = Model.humans();
+        if (list.length === 0) humanEmpty.Show();
+        else humanEmpty.Hide();
 
         for (let i = 0; i < list.length; i += 1) {
             const human = list[i];
@@ -1026,6 +1092,8 @@ export function createModernDashboard(): Dashboard {
 
         clearDynamicRows(pinRows);
         const pins = Model.pinnedMembers();
+        if (pins.length === 0) pinEmpty.Show();
+        else pinEmpty.Hide();
         for (let i = 0; i < pins.length; i += 1) {
             const pin = pins[i];
             let row = pinRows[i];
