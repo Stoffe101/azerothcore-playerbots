@@ -36,7 +36,7 @@ grep -q '^## X-UI-Shell: ModernTypedV1$' "$SRC/GroupComposer.toc" || {
   echo "ERROR: staged GroupComposer is not the modern UI shell." >&2
   exit 1
 }
-grep -q '^generated/GroupComposerModernUI.lua$' "$SRC/GroupComposer.toc" || {
+grep -Fxq 'generated\\GroupComposerModernUI.lua' "$SRC/GroupComposer.toc" || {
   echo "ERROR: staged GroupComposer TOC does not load the modern generated UI." >&2
   exit 1
 }
@@ -48,7 +48,7 @@ cp -a "$SRC" "$DST"
 echo
 echo "Installed Group Composer:"
 grep -E '^## (Version|X-UI-Shell):' "$DST/GroupComposer.toc"
-grep -q '^generated/GroupComposerModernUI.lua$' "$DST/GroupComposer.toc"
+grep -Fxq 'generated\\GroupComposerModernUI.lua' "$DST/GroupComposer.toc"
 echo "Modern UI bundle: $DST/generated/GroupComposerModernUI.lua"
 echo
 echo "Done. Fully restart WoW before testing the new UI."
