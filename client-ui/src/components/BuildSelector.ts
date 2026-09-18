@@ -158,7 +158,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     anySpecButton.label.SetPoint("LEFT", anySpecButton.frame, "LEFT", 58, 7);
     anySpecButton.label.SetPoint("RIGHT", anySpecButton.frame, "RIGHT", -12, 7);
     anySpecButton.label.SetJustifyH("LEFT");
-    const anySpecSub = createText(anySpecButton.frame, "Lock this class and let Composer choose its best valid spec.", "GameFontHighlightSmall", theme.colors.muted);
+    const anySpecSub = createText(anySpecButton.frame, "Lock this class and let Composer choose a suitable valid spec.", "GameFontHighlightSmall", theme.colors.muted);
     anySpecSub.SetPoint("LEFT", anySpecButton.frame, "LEFT", 58, -11);
     anySpecSub.SetWidth(320);
     anySpecButton.frame.Hide();
@@ -324,7 +324,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             summarySpecIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
             summarySpecIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
             summaryText.SetText(selectedClass.label + " · Any valid spec");
-            summarySub.SetText("Class locked; Composer auto-selects the best " + roleLabel(currentRole).toLowerCase() + " spec.");
+            summarySub.SetText("Class locked; Composer auto-selects a suitable " + roleLabel(currentRole).toLowerCase() + " spec.");
             apply.setEnabled(true);
         } else if (selectedClass !== undefined && selectedSpec !== undefined) {
             summarySpecIcon.SetTexture(selectedSpec.icon);
