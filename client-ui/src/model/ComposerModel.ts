@@ -45,6 +45,7 @@ interface DataFunctions {
 interface ProfileFunctions {
     ListBuiltins(): string[];
     ListCustom(): string[];
+    Describe(name: string): string;
 }
 
 const D: any = _G.GroupComposerData;
@@ -422,6 +423,7 @@ export function saveProfile(name: string): void { GC.SaveProfile(name); }
 export function deleteProfile(name: string): void { GC.DeleteProfile(name); }
 export function listBuiltinProfiles(): string[] { return ProfileFns.ListBuiltins() ?? []; }
 export function listCustomProfiles(): string[] { return ProfileFns.ListCustom() ?? []; }
+export function profileDescription(name: string): string { return ProfileFns.Describe(name) ?? ""; }
 export function addPin(name: string, role: Role, required: boolean): void { GC.AddPinnedMember(name, role, required); }
 export function removePin(index: number): void { GC.RemovePinnedMember(index); }
 
