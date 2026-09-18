@@ -1,0 +1,87 @@
+diff --git a/modules/mod-era-talents/src/EraTransition.h b/modules/mod-era-talents/src/EraTransition.h
+--- a/modules/mod-era-talents/src/EraTransition.h
++++ b/modules/mod-era-talents/src/EraTransition.h
+@@ -9,6 +9,7 @@ namespace EraTransition
+     void FlushCombat(Player* p);                 // apply a deferred transition on leave-combat
+     EraId StoredEra(Player* p);                  // era_talent_char_state.lastEra (default = EraFromIP)
+     void  SetStoredEra(Player* p, EraId era);
+     void StripNativeTalents(Player* p, EraId era); // same-era login backstop: wipe leaked core talents
++    bool IsInternalTalentReset();                // native cleanup reset in progress; do not wipe era rows
+ }
+ #endif
+diff --git a/modules/mod-era-talents/src/EraTransition.cpp b/modules/mod-era-talents/src/EraTransition.cpp
+--- a/modules/mod-era-talents/src/EraTransition.cpp
++++ b/modules/mod-era-talents/src/EraTransition.cpp
+@@ -17,11 +17,31 @@ namespace
+     std::unordered_map<ObjectGuid, EraId> g_pending;   // deferred target era while in combat
+     std::mutex g_pendingMutex;   // Detect/FlushCombat run per-player inside Map::Update — maps
+                                  // tick in parallel, so this shared map needs the same locking
+                                  // as the era caches (prod rehash-race segfault, 2026-08-26)
++
++    // resetTalents(true) fires PlayerScript::OnPlayerTalentsReset even when the reset is an
++    // INTERNAL cleanup of Blizzard's native talent maps. On a plain managed-era relog,
++    // StripNativeTalents can find a leaked/stale native talent and call ResetAllSpecs while
++    // valid era_character_talent rows already exist. Without a guard, the talent-reset hook
++    // mistakes that cleanup for a user/GM respec and deletes the entire custom era build.
++    //
++    // The re-entry is synchronous on the same thread. Keep this thread_local because players
++    // on different maps can run transition checks in parallel.
++    thread_local uint32 g_internalTalentResetDepth = 0;
++
++    class InternalTalentResetScope
++    {
++    public:
++        InternalTalentResetScope() { ++g_internalTalentResetDepth; }
++        ~InternalTalentResetScope() { --g_internalTalentResetDepth; }
++        InternalTalentResetScope(InternalTalentResetScope const&) = delete;
++        InternalTalentResetScope& operator=(InternalTalentResetScope const&) = delete;
++    };
+ }
+ 
+ namespace EraTransition
+ {
++    bool IsInternalTalentReset()
++    {
++        return g_internalTalentResetDepth != 0;
++    }
++
+     EraId StoredEra(Player* p)
+     {
+         if (QueryResult r = CharacterDatabase.Query(
+@@ -61,6 +81,7 @@ namespace EraTransition
+     // character takes the same path resetTalents(true) always did.
+     static void ResetAllSpecs(Player* p)
+     {
++        InternalTalentResetScope internalReset;
+         uint8 const specs = p->GetSpecsCount();
+         if (specs <= 1)
+         {
+diff --git a/modules/mod-era-talents/src/EraTalentPin.cpp b/modules/mod-era-talents/src/EraTalentPin.cpp
+--- a/modules/mod-era-talents/src/EraTalentPin.cpp
++++ b/modules/mod-era-talents/src/EraTalentPin.cpp
+@@ -282,16 +282,22 @@ public:
+     // exactly resetTalentsCost() — what the trainer's confirm dialog displayed (the core's
+     // escalation counter is private and never advances for a character with 0 native talents,
+     // so this is effectively a flat 1g — the dialog-truthful choice, user-approved).
+-    // Re-entrancy (EraTransition::Run's own resetTalents(true) calls) needs no flag:
+-    //   * entering a managed era: its rows were wiped when it was last left -> SpentPoints == 0;
+-    //   * leaving one: EraFromIP is already the new native era -> EraHasTalentTrees bails.
+-    // noCost callers (GM .reset talents, AT_LOGIN_RESET_TALENTS) reset era talents free — the
+-    // intended semantics of those paths.
++    // EraTransition::ResetAllSpecs is explicitly guarded because those resetTalents(true) calls
++    // only clean Blizzard's native talent maps. Same-era login cleanup can run while a perfectly
++    // valid custom era build already exists, so treating that internal reset as a real respec
++    // would delete all persisted era rows. External noCost callers (GM .reset talents,
++    // AT_LOGIN_RESET_TALENTS) remain unguarded and still reset era talents for free.
+     void OnPlayerTalentsReset(Player* p, bool noCost) override
+     {
+         if (!sEraTalentsConfig->Enabled() || IsBot(p))
+             return;
++
++        // Native-spec cleanup during login/era transitions is NOT an era-tree reset.
++        if (EraTransition::IsInternalTalentReset())
++            return;
++
+         EraId era = EraFromIP(p);
+         if (!EraHasTalentTrees(era))
+             return;                              // native-era char: core handles everything
