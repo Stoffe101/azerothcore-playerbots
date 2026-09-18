@@ -1,3 +1,5 @@
+/** @noSelfInFile */
+
 import { createBuildSelector } from "./components/BuildSelector";
 import { createModernDashboard } from "./components/ModernDashboard";
 import { getClassesForRole, getSpecsForRole } from "./data/WotlkBuilds";
