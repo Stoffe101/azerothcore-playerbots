@@ -2,7 +2,7 @@ local bundle = assert(arg[1], "expected generated bundle path")
 dofile(bundle)
 
 assert(type(GroupComposerModernUI) == "table", "modern UI API was not exported")
-assert(GroupComposerModernUI.version == "0.2.1", "unexpected modern UI API version")
+assert(GroupComposerModernUI.version == "0.3.0", "unexpected modern UI API version")
 
 local tanks = GroupComposerModernUI.getClassesForRole("TANK")
 local healers = GroupComposerModernUI.getClassesForRole("HEALER")
