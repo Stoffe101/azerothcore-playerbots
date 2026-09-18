@@ -75,7 +75,8 @@ jobs:
           grep -q 'InternalTalentResetScope internalReset' "$ERA/EraTransition.cpp"
           grep -q 'bool IsInternalTalentReset()' "$ERA/EraTransition.cpp"
           grep -q 'if (EraTransition::IsInternalTalentReset())' "$ERA/EraTalentPin.cpp"
-          # Internal native-spec cleanup must never delete the custom era talent rows.
+          grep -q 'if (noCost && !p->IsInWorld())' "$ERA/EraTalentPin.cpp"
+          # Internal native-spec cleanup and login-time native resets must never delete the custom era talent rows.
           python3 - <<'PY'
           from pathlib import Path
           text = Path("azerothcore-wotlk/modules/mod-era-talents/src/EraTalentPin.cpp").read_text()
