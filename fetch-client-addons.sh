@@ -72,6 +72,220 @@ if [[ "${GROUP_COMPOSER_UI_BUILD:-0}" == "1" ]]; then
   "$ROOT/build-client-ui.sh" --sync
 fi
 
+# Group Composer's modern TypeScript UI is committed as generated Lua so normal players/server
+# operators do not need Node.js. Refuse to package an old shell by accident.
+GC_MODERN="$ROOT/client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua"
+GC_TOC="$ROOT/client-addons-src/GroupComposer/GroupComposer.toc"
+if [[ ! -f "$GC_MODERN" ]]; then
+  echo "ERROR: Modern Group Composer bundle is missing: $GC_MODERN" >&2
+  echo "Pull the latest test/group-composer-v4 branch or run ./build-client-ui.sh --sync." >&2
+  exit 1
+fi
+if ! grep -q '^generated/GroupComposerModernUI.lua
+# downloaded). Staged into $DEST alongside the rest so they ship the same way.
+if [[ -d "$ROOT/client-addons-src" ]]; then
+  for src in "$ROOT"/client-addons-src/*/; do
+    [[ -d "$src" ]] || continue
+    name="$(basename "$src")"
+    echo "==> Staging local addon $name"
+    rm -rf "${DEST:?}/$name"
+    cp -a "$src" "$DEST/$name"
+  done
+fi
+
+# EraTalents addon ships inside the mod-era-talents module clone (own repo since 2026-09-07).
+ERA_MOD="$ROOT/azerothcore-wotlk/modules/mod-era-talents"
+if [[ -d "$ERA_MOD/client-addon/EraTalents" ]]; then
+  echo "==> Staging EraTalents addon (from modules/mod-era-talents)"
+  rm -rf "${DEST:?}/EraTalents"
+  cp -a "$ERA_MOD/client-addon/EraTalents" "$DEST/EraTalents"
+  rm -f "$DEST/EraTalents/build-addon.sh" "$DEST"/EraTalents/test_*.lua
+else
+  echo "NOTE: modules/mod-era-talents not cloned yet (run setup.sh) — EraTalents addon not staged"
+fi
+
+# --- Client DATA patch (NOT an addon): World Dungeon Maps --------------------
+# WDM injects real Classic/TBC dungeon maps into the 3.3.5a client so the
+# default map (M) renders the dungeon layout WITH the player-position arrow,
+# like an outdoor zone. This is an .MPQ that belongs in
+#   World of Warcraft/Data/<lang>/         (NOT Interface/AddOns/)
+# Its companion addons (WDM/!Astrolabe/LibMapData-1.0) are staged by the list
+# above. Override the client language with WDM_LANG (default enUS); set it empty
+# to skip the patch. Pinned-tip note: known-good release at time of writing was
+# Trimitor/WDM-patch 2.4.5-stable; keep the release pinned for reproducible packs.
+WDM_LANG="${WDM_LANG-enUS}"
+if [[ -n "$WDM_LANG" ]]; then
+  DATADIR="$DEST/_data-patches"
+  mkdir -p "$DATADIR"
+  echo "==> Downloading WDM dungeon-map data patch (patch-${WDM_LANG}-M.MPQ)"
+  curl -fsSL "https://github.com/Trimitor/WDM-patch/releases/download/2.4.5-stable/patch-${WDM_LANG}-M.MPQ" \
+    -o "$DATADIR/patch-${WDM_LANG}-M.MPQ"
+fi
+
+# --- Client DATA patch (NOT an addon): mod-individual-progression patch-V ------
+# The CLIENT half of IP's era mana-cost change: players drop patch-V.mpq into
+#   World of Warcraft/Data/            (NOT Interface/AddOns/)
+# The SERVER half (Spell.dbc + profession DBCs) is overlaid by setup.sh, not here.
+# dbc.7z's only client files are cosmetic (patch-J/U) and are skipped by choice.
+if [[ "${IP_CLIENT_PATCH_V:-1}" == "1" ]]; then
+  DATADIR="$DEST/_data-patches"; mkdir -p "$DATADIR"
+  # mod-era-talents ships a few CUSTOM visible client spells (the Improved Blizzard "Chilled" debuff,
+  # etc.) the stock client can't render. Its client-patch/build-client-patch.sh fetches IP's patch-V,
+  # merges those rows INTO it (patch-V loads after our own patch-4 slot and its Spell.dbc would
+  # otherwise override ours) and writes the result here. It uses the native MPQ tools when present
+  # and otherwise builds+runs everything in a throwaway Docker image, so no host toolchain (7z,
+  # compilers, PyYAML) is required — Docker is the one thing every host of this project has.
+  if [[ -x "$ERA_MOD/client-patch/build-client-patch.sh" ]]; then
+    echo "==> Staging IP client patch-V.mpq with era-talent client spells merged (mod-era-talents)"
+    ERA_LOG="$(mktemp)"
+    if bash "$ERA_MOD/client-patch/build-client-patch.sh" --from-ip --out "$DATADIR/patch-V.mpq" > "$ERA_LOG" 2>&1; then
+      rm -f "$ERA_LOG"
+    else
+      echo "ERROR: mod-era-talents client patch build failed — patch-V.mpq NOT staged. Last lines:" >&2
+      tail -15 "$ERA_LOG" >&2; rm -f "$ERA_LOG"
+      exit 1
+    fi
+  elif command -v 7z >/dev/null; then
+    # No era-talents module clone (ERATALENTS off / setup.sh not run yet): stage IP's stock patch-V.
+    IPTMP="$(mktemp -d)"
+    git clone --depth 1 https://github.com/ZhengPeiRu21/mod-individual-progression.git "$IPTMP/ip" >/dev/null 2>&1
+    echo "==> Staging IP client patch-V.mpq (era mana costs; no era-talents merge — module not cloned)"
+    7z x -y -o"$IPTMP/v" "$IPTMP/ip/optional/patch-V.7z" >/dev/null
+    find "$IPTMP/v" -type f -iname 'patch-V.mpq' -exec cp -f {} "$DATADIR/patch-V.mpq" \;
+    rm -rf "$IPTMP"
+  else
+    echo "NOTE: neither modules/mod-era-talents (run setup.sh) nor '7z' available — IP patch-V.mpq not staged"
+  fi
+fi
+
+# --- Build the ready-to-unzip addons bundle ---------------------------------
+# Produce client-dist/client-addons.zip, pre-structured so a player unzips
+# it directly into their World of Warcraft base folder:
+#   Interface/AddOns/<addon>/   -- every folder that has a .toc at its top level
+#   Data/<lang>/patch-<lang>-M.MPQ
+# Folder rule (two levels only, matching the install note above): a staging dir
+# WITH a .toc at its root is itself one addon; a staging dir WITHOUT one is a
+# container whose immediate subdirs that have a .toc are each an addon. We stop
+# at immediate children so an embedded library deeper inside an addon rides
+# along inside its parent rather than being hoisted out.
+echo "==> Building client-dist/client-addons.zip"
+BUNDLE="$DEST/_bundle"
+rm -rf "$BUNDLE"
+mkdir -p "$BUNDLE/Interface/AddOns"
+
+# has_toc <dir> -> true if <dir> contains a *.toc directly at its top level.
+has_toc() { compgen -G "$1/*.toc" >/dev/null 2>&1; }
+
+for entry in "$DEST"/*/; do
+  entry="${entry%/}"
+  name="$(basename "$entry")"
+  # Skip our own staging/data dirs.
+  [[ "$name" == "_bundle" || "$name" == "_data-patches" ]] && continue
+  if has_toc "$entry"; then
+    cp -a "$entry" "$BUNDLE/Interface/AddOns/$name"
+  else
+    for sub in "$entry"/*/; do
+      sub="${sub%/}"
+      [[ -d "$sub" ]] || continue
+      has_toc "$sub" && cp -a "$sub" "$BUNDLE/Interface/AddOns/$(basename "$sub")"
+    done
+  fi
+done
+
+# Place the WDM data patch under Data/<lang>/ (lang parsed from patch-<lang>-M.MPQ).
+find "$BUNDLE/Interface/AddOns" -type d -name .git -prune -exec rm -rf -- {} +
+
+if [[ -n "$WDM_LANG" ]] && compgen -G "$DEST/_data-patches/patch-*-M.MPQ" >/dev/null 2>&1; then
+  for mpq in "$DEST"/_data-patches/patch-*-M.MPQ; do
+    base="$(basename "$mpq")"          # patch-enUS-M.MPQ
+    lang="${base#patch-}"; lang="${lang%-M.MPQ}"
+    [[ "$lang" == "$WDM_LANG" ]] || continue
+    mkdir -p "$BUNDLE/Data/$lang"
+    cp -a "$mpq" "$BUNDLE/Data/$lang/$base"
+  done
+fi
+
+# IP client patch-V goes at Data/patch-V.mpq (base Data dir, not a <lang> subdir).
+if [[ "${IP_CLIENT_PATCH_V:-1}" == "1" && -f "$DEST/_data-patches/patch-V.mpq" ]]; then
+  mkdir -p "$BUNDLE/Data"
+  cp -a "$DEST/_data-patches/patch-V.mpq" "$BUNDLE/Data/patch-V.mpq"
+fi
+
+# client-dist/ is bind-mounted (as a DIRECTORY) into ac-webreg, so the site picks
+# the new zip up live. Build to a temp name and mv into place so a player who
+# clicks "Download bot addons" mid-build never gets a half-written archive.
+DIST="$ROOT/client-dist"
+mkdir -p "$DIST"
+rm -f "$DIST/client-addons.zip.tmp"
+# Only zip the trees that exist: Data is absent when WDM_LANG="" skipped the patch.
+targets=(Interface)
+[[ -d "$BUNDLE/Data" ]] && targets+=(Data)
+( cd "$BUNDLE" && zip -qr "$DIST/client-addons.zip.tmp" "${targets[@]}" )
+mv -f "$DIST/client-addons.zip.tmp" "$DIST/client-addons.zip"
+rm -rf "$BUNDLE"
+# Pre-2026-09-12 builds wrote the zip at the repo root; drop a stale copy so nobody
+# hands out an outdated bundle by mistake.
+rm -f "$ROOT/client-addons.zip"
+echo "    Wrote $DIST/client-addons.zip"
+
+cat <<EOF
+
+==================================================================
+ Client addons are staged in: $DEST
+
+ Or hand a player ONE file: $DIST/client-addons.zip -- they unzip it directly
+ into their "World of Warcraft" folder and everything lands in the right place
+ (Interface/AddOns/ and Data/<lang>/). The registration site serves this zip
+ via its "Download bot addons" button and sees a rebuilt zip immediately
+ (client-dist/ is folder-mounted into ac-webreg) -- no restart. The one
+ exception: an ac-webreg container created before the folder mount existed
+ needs a single ./setup.sh re-run to pick up the new mount.
+
+ Not every entry is one ready-to-copy folder: MultiBot, PlayerBotManager
+ and Questie-335 are single-folder addons, while AtlasLoot, Atlas, Grid2 and
+ WDM-addons each unpack to SEVERAL addon folders. The rule is the same either
+ way -- copy every folder that has a .toc at its top level. List them with:
+     find "$DEST" -name '*.toc'
+
+ Install on EACH player's machine:
+   1. Copy each addon folder (one with a .toc at its root) into:
+        World of Warcraft/Interface/AddOns/
+      (e.g. .../AddOns/MultiBot/MultiBot.toc)
+   2. At the character-select screen, click "AddOns" and enable them.
+
+ SEPARATE STEP -- the World Dungeon Maps DATA patch (NOT an addon):
+   The .MPQ staged in $DEST/_data-patches/ does NOT go in AddOns/. Copy it to:
+        World of Warcraft/Data/<lang>/        (e.g. Data/enUS/patch-enUS-M.MPQ)
+   This is what makes the default M map show dungeon maps + your position.
+
+   IP era mana costs (patch-V): also copy patch-V.mpq from $DEST/_data-patches/ into
+   World of Warcraft/Data/. (The matching server-side DBCs are applied on the server by setup.sh.)
+
+ What they do:
+   - MultiBot / PlayerBotManager : bot management. MultiBot opens via its
+     button/slash command; PlayerBotManager via /pmb or its minimap button.
+   - Atlas        : dungeon & raid maps for Vanilla, TBC and WotLK instances.
+                    Opens in its OWN window (/atlas or its minimap button) --
+                    it does NOT replace the default M map.
+   - AtlasLoot    : boss loot tables, browsable from the Atlas window.
+   - Questie-335  : quest givers / objectives on the map + minimap
+                    (quest data aligned to AzerothCore).
+   - Grid2        : compact raid/party unit frames (r736, WotLK build).
+                    Copy Grid2, Grid2Options and Grid2AoeHeals.
+   - WDM          : World Dungeon Maps -- pairs with the .MPQ data patch so the
+                    DEFAULT map (M) shows dungeon layouts with your position,
+                    like a normal zone. Copy WDM, !Astrolabe and LibMapData-1.0;
+                    then install the .MPQ (see the SEPARATE STEP above).
+
+ NOTE: MultiBot needs the server-side mod-multibot-bridge module,
+ which setup.sh already builds into the server.
+==================================================================
+EOF
+ "$GC_TOC"; then
+  echo "ERROR: Group Composer TOC is not pointing at the modern generated UI." >&2
+  exit 1
+fi
+
 # Locally-authored addons (version-controlled under client-addons-src/, not
 # downloaded). Staged into $DEST alongside the rest so they ship the same way.
 if [[ -d "$ROOT/client-addons-src" ]]; then
