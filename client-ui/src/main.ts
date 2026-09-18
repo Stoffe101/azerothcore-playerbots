@@ -17,7 +17,7 @@ function ensureDashboard(): any {
 }
 
 _G.GroupComposerModernUI = {
-    version: "0.7.0",
+    version: "0.7.1",
     dashboard: undefined,
     ensureDashboard: () => ensureDashboard(),
     createBuildSelector: (...args: Parameters<typeof createBuildSelector>) => createBuildSelector(...args),

@@ -81,7 +81,7 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
         refreshRows();
     }
 
-    function wheel(_frame: WoWFrame, delta: number): void {
+    function wheel(this: void, _frame: WoWFrame, delta: number): void {
         move(Number(delta) > 0 ? -1 : 1);
     }
 

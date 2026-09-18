@@ -53,7 +53,7 @@ export function createScrollList(parent: WoWFrame, width: number, height: number
         refreshRail();
     }
 
-    function wheel(_target: WoWFrame, delta: number): void {
+    function wheel(this: void, _target: WoWFrame, delta: number): void {
         scrollBy(Number(delta) > 0 ? -72 : 72);
     }
 

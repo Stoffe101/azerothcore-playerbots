@@ -161,8 +161,10 @@ export function createModernDashboard(): Dashboard {
     frame.SetClampedToScreen(true);
     frame.EnableMouse(true);
     frame.RegisterForDrag("LeftButton");
-    frame.SetScript("OnDragStart", (self) => self.StartMoving());
-    frame.SetScript("OnDragStop", (self) => self.StopMovingOrSizing());
+    // Capture the frame instead of consuming callback args. This avoids TypeScriptToLua's
+    // implicit-self calling convention and matches WoW 3.3.5's SetScript ABI exactly.
+    frame.SetScript("OnDragStart", () => frame.StartMoving());
+    frame.SetScript("OnDragStop", () => frame.StopMovingOrSizing());
     frame.Hide();
 
     const root = Native.createSolid(frame, theme.colors.background);

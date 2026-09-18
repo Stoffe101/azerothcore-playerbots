@@ -200,6 +200,14 @@ docker compose up -d --build
 echo "==> Pruning Docker build cache older than 7 days"
 docker builder prune -f --filter until=168h || echo "    (build-cache prune skipped)"
 
+# Group Composer is a client addon. On the development PC, keep the explicitly configured
+# private 3.3.5a client in lockstep with the branch so a normal git pull + ./update.sh cannot
+# leave an old UI installed while the server is already on the new backend.
+if [[ "${SYNC_GROUP_COMPOSER_CLIENT:-1}" == "1" && -x "$ROOT/sync-group-composer-client.sh" ]]; then
+  "$ROOT/sync-group-composer-client.sh" --if-present
+fi
+
+
 cat <<EOF
 
 ==================================================================

@@ -691,3 +691,17 @@ assert 'text: "Build & Prepare", width: 270, height: 52' in MODERN
 # Raid tabs use the target amber composition accent and taller proportions.
 assert 'Quick Composition", width: 164, height: 38, accent: theme.colors.warning' in MODERN
 assert 'Specific Builds", width: 150, height: 38, accent: theme.colors.warning' in MODERN
+
+
+# WoW 3.3.5 callback ABI regression guards.
+TYPES = (ROOT / "client-ui/src/types/wow-335a.d.ts").read_text(encoding="utf-8")
+UPDATE_SH = (ROOT / "update.sh").read_text(encoding="utf-8")
+SYNC_CLIENT = (ROOT / "sync-group-composer-client.sh").read_text(encoding="utf-8")
+assert "(this: void, frame: WoWFrame" in TYPES, "SetScript callback type must not inject Lua self"
+assert 'frame.SetScript("OnDragStart", () => frame.StartMoving())' in MODERN
+assert 'frame.SetScript("OnDragStop", () => frame.StopMovingOrSizing())' in MODERN
+assert "function wheel(this: void" in CHOICE_SELECT
+assert "function wheel(this: void" in SCROLL_LIST
+assert "sync-group-composer-client.sh" in UPDATE_SH
+assert "GroupComposerModernUI.lua" in SYNC_CLIENT and "Interface/AddOns/GroupComposer" in SYNC_CLIENT
+assert "0.10.1" in TOC and "0.10.1" in DATA

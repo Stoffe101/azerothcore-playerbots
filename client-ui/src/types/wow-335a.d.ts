@@ -55,7 +55,9 @@ interface WoWFrame extends WoWRegion {
     GetVerticalScroll(this: WoWFrame): number;
     GetVerticalScrollRange(this: WoWFrame): number;
     SetVerticalScroll(this: WoWFrame, value: number): void;
-    SetScript(this: WoWFrame, event: string, handler?: (frame: WoWFrame, ...args: any[]) => void): void;
+    // WoW invokes script handlers as plain Lua callbacks: handler(frame, ...args).
+    // Mark callback this:void so TypeScriptToLua does not inject a synthetic self argument.
+    SetScript(this: WoWFrame, event: string, handler?: (this: void, frame: WoWFrame, ...args: any[]) => void): void;
 }
 
 interface WoWEditBox extends WoWFrame {
