@@ -78,11 +78,11 @@ interface SelectorContext {
 
 interface Dashboard {
     readonly frame: WoWFrame;
-    show(): void;
-    hide(): void;
-    toggle(): void;
-    refresh(): void;
-    applyScale(): void;
+    show: () => void;
+    hide: () => void;
+    toggle: () => void;
+    refresh: () => void;
+    applyScale: () => void;
 }
 
 interface DungeonSlot {
@@ -1453,8 +1453,8 @@ export function createModernDashboard(): Dashboard {
             if (frame.IsShown()) dashboard.hide();
             else dashboard.show();
         },
-        refresh,
-        applyScale,
+        refresh: () => refresh(),
+        applyScale: () => applyScale(),
     };
 
     GC.Toggle = () => dashboard.toggle();
