@@ -1438,7 +1438,9 @@ function ____exports.roleLabel(self, role)
 end
 local GC = _G.GroupComposer
 local D = _G.GroupComposerData
+local DataFns = _G.GroupComposerData
 local P = _G.GroupComposerProfiles
+local ProfileFns = _G.GroupComposerProfiles
 function ____exports.composer(self)
     return GC
 end
@@ -1813,12 +1815,10 @@ function ____exports.classLabel(self, classId)
     return classDef and classDef.label or tostring(classId)
 end
 local function dungeonById(self, id)
-    local fn = D.GetDungeonById
-    return fn(nil, id)
+    return DataFns.GetDungeonById(id)
 end
 local function raidById(self, id)
-    local fn = D.GetRaidById
-    return fn(nil, id)
+    return DataFns.GetRaidById(id)
 end
 function ____exports.pinnedMembers(self)
     local result = {}
@@ -1981,18 +1981,10 @@ function ____exports.deleteProfile(self, name)
     GC:DeleteProfile(name)
 end
 function ____exports.listBuiltinProfiles(self)
-    local ____temp_38 = P:ListBuiltins()
-    if ____temp_38 == nil then
-        ____temp_38 = {}
-    end
-    return ____temp_38
+    return ProfileFns.ListBuiltins() or ({})
 end
 function ____exports.listCustomProfiles(self)
-    local ____temp_39 = P:ListCustom()
-    if ____temp_39 == nil then
-        ____temp_39 = {}
-    end
-    return ____temp_39
+    return ProfileFns.ListCustom() or ({})
 end
 function ____exports.addPin(self, name, role, required)
     GC:AddPinnedMember(name, role, required)
@@ -2001,11 +1993,11 @@ function ____exports.removePin(self, index)
     GC:RemovePinnedMember(index)
 end
 function ____exports.planMembers(self)
-    local ____exports_plan_result_members_40 = ____exports.plan(nil).members
-    if ____exports_plan_result_members_40 == nil then
-        ____exports_plan_result_members_40 = {}
+    local ____exports_plan_result_members_38 = ____exports.plan(nil).members
+    if ____exports_plan_result_members_38 == nil then
+        ____exports_plan_result_members_38 = {}
     end
-    return ____exports_plan_result_members_40
+    return ____exports_plan_result_members_38
 end
 function ____exports.roleAccent(self, role)
     if role == "TANK" then
@@ -2041,29 +2033,29 @@ function ____exports.phaseLabel(self, phase)
     return "Configure roster"
 end
 function ____exports.isBusy(self)
-    local ____exports_progress_result_phase_41 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_41 == nil then
-        ____exports_progress_result_phase_41 = "IDLE"
+    local ____exports_progress_result_phase_39 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_39 == nil then
+        ____exports_progress_result_phase_39 = "IDLE"
     end
-    local phase = tostring(____exports_progress_result_phase_41)
+    local phase = tostring(____exports_progress_result_phase_39)
     return phase == "BUILDING" or phase == "PREPARING" or phase == "ASSEMBLING" or phase == "TRAVEL"
 end
 function ____exports.isTravelRetry(self)
     local p = ____exports.progress(nil)
-    local ____temp_43 = p.phase == "READY"
-    if ____temp_43 then
-        local ____p_detail_42 = p.detail
-        if ____p_detail_42 == nil then
-            ____p_detail_42 = ""
+    local ____temp_41 = p.phase == "READY"
+    if ____temp_41 then
+        local ____p_detail_40 = p.detail
+        if ____p_detail_40 == nil then
+            ____p_detail_40 = ""
         end
-        ____temp_43 = (string.find(
-            tostring(____p_detail_42),
+        ____temp_41 = (string.find(
+            tostring(____p_detail_40),
             "Enter Activity",
             nil,
             true
         ) or 0) - 1 >= 0
     end
-    return ____temp_43
+    return ____temp_41
 end
 return ____exports
  end,
