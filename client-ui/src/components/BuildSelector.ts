@@ -54,15 +54,30 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     classTitle.SetPoint("TOPLEFT", leftPanel.frame, "TOPLEFT", theme.spacing.md, -theme.spacing.md);
     const specTitle = createText(rightPanel.frame, "SPECIALIZATION", "GameFontNormalSmall", theme.colors.muted);
     specTitle.SetPoint("TOPLEFT", rightPanel.frame, "TOPLEFT", theme.spacing.md, -theme.spacing.md);
+    const specEmpty = createText(
+        rightPanel.frame,
+        "Choose a class to see only the specs that can fill this role.",
+        "GameFontHighlightSmall",
+        theme.colors.muted,
+    );
+    specEmpty.SetPoint("TOPLEFT", rightPanel.frame, "TOPLEFT", theme.spacing.md, -54);
+    specEmpty.SetWidth(330);
+    specEmpty.SetJustifyV("TOP");
 
     const summary = createPanel(modal.content, theme.colors.surfaceRaised, theme.colors.borderStrong);
     summary.frame.SetPoint("BOTTOMLEFT", modal.content, "BOTTOMLEFT", 0, 0);
     summary.frame.SetPoint("BOTTOMRIGHT", modal.content, "BOTTOMRIGHT", 0, 0);
     summary.frame.SetHeight(78);
 
+    const summaryClassIcon = summary.frame.CreateTexture(undefined, "ARTWORK");
+    summaryClassIcon.SetSize(38, 38);
+    summaryClassIcon.SetPoint("LEFT", summary.frame, "LEFT", theme.spacing.md, 0);
+    summaryClassIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
+    summaryClassIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+
     const summaryIcon = summary.frame.CreateTexture(undefined, "ARTWORK");
     summaryIcon.SetSize(38, 38);
-    summaryIcon.SetPoint("LEFT", summary.frame, "LEFT", theme.spacing.md, 0);
+    summaryIcon.SetPoint("LEFT", summaryClassIcon, "RIGHT", 6, 0);
     summaryIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
     summaryIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
 
@@ -149,7 +164,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
 
     function refresh(): void {
         modal.setTitle("Choose " + roleLabel(currentRole) + " Build");
-        modal.setSubtitle("Only " + roleLabel(currentRole) + " classes and specs are available.");
+        modal.setSubtitle("Pick a class on the left, then a valid " + roleLabel(currentRole).toLowerCase() + " spec on the right.");
 
         const validClasses = getClassesForRole(currentRole);
         let classIndex = 0;
@@ -186,12 +201,22 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             } else tile.button.frame.Hide();
         }
 
+        if (currentClass === undefined) specEmpty.Show();
+        else specEmpty.Hide();
+
         const selectedClass = currentClass === undefined ? undefined : getClass(currentClass);
         let selectedSpec: SpecDefinition | undefined;
         if (currentClass !== undefined && currentSpec !== undefined) {
             for (const spec of getSpecsForRole(currentClass, currentRole)) {
                 if (spec.id === currentSpec) { selectedSpec = spec; break; }
             }
+        }
+
+        if (selectedClass !== undefined) {
+            setClassIcon(summaryClassIcon, selectedClass.id);
+        } else {
+            summaryClassIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
+            summaryClassIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
         }
 
         if (selectedClass !== undefined && selectedSpec !== undefined) {
@@ -201,6 +226,8 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             summarySub.SetText(roleLabel(currentRole) + " build selected");
             apply.setEnabled(true);
         } else {
+            summaryIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
+            summaryIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
             summaryIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
             summaryIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
             summaryText.SetText(currentClass === undefined ? "Choose a class" : "Choose a specialization");
