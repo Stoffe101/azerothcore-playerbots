@@ -4555,7 +4555,7 @@ function ____exports.createModernDashboard(self)
                                 else
                                     ____temp_22 = {role = roleCopy, classId = exact.classId, specId = exact.specId, count = 1}
                                 end
-                                ____buildSelector_open_23(buildSelector, roleCopy, ____temp_22)
+                                ____buildSelector_open_23(buildSelector, roleCopy, ____temp_22, false)
                             end
                         )
                         widgets.choose.frame:Show()
@@ -4602,7 +4602,7 @@ function ____exports.createModernDashboard(self)
                         return
                     end
                     selectorContext = {mode = "RAID_ADD", role = roleCopy, index = -1}
-                    buildSelector:open(roleCopy, {role = roleCopy, count = 1})
+                    buildSelector:open(roleCopy, {role = roleCopy, count = 1}, true)
                 end
             )
             for ____, old in __TS__Iterator(column.rows) do
@@ -4696,7 +4696,7 @@ function ____exports.createModernDashboard(self)
                         "OnMouseDown",
                         function()
                             selectorContext = {mode = "RAID_EDIT", role = roleCopy, index = indexCopy}
-                            buildSelector:open(roleCopy, {role = roleCopy, classId = build.classId, specId = build.specId, count = build.count})
+                            buildSelector:open(roleCopy, {role = roleCopy, classId = build.classId, specId = build.specId, count = build.count}, true)
                         end
                     )
                     widgets.remove.frame:SetScript(
