@@ -678,3 +678,11 @@ assert '"Select a specialization for your " + (selectedClass?.label ?? "selected
 assert 'frame.SetSize(110, 42)' in STEPPER
 assert 'plus.frame.SetPoint("TOPRIGHT"' in STEPPER and 'minus.frame.SetPoint("BOTTOMRIGHT"' in STEPPER
 assert 'text: "^"' in STEPPER and 'text: "v"' in STEPPER
+
+
+# Premium density targets retain roomier party/specific-build/status cards.
+assert 'row.frame.SetHeight(76)' in MODERN and 'i * 82' in MODERN
+assert 'createFramedRoleIcon(row.frame, "DPS", 44' in MODERN
+assert 'panel.frame.SetSize(870, 56)' in MODERN and 'i * 64' in MODERN
+assert 'phaseCard.frame.SetHeight(96)' in MODERN
+assert 'text: "Build & Prepare", width: 270, height: 52' in MODERN

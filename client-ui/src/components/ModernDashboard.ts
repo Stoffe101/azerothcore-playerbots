@@ -431,8 +431,8 @@ export function createModernDashboard(): Dashboard {
     const dungeonRows: any[] = [];
     for (let i = 0; i < 5; i += 1) {
         const row = Native.createPanel(dungeonView, theme.colors.surfaceRaised, theme.colors.border);
-        row.frame.SetHeight(66);
-        row.frame.SetPoint("TOPLEFT", dungeonView, "TOPLEFT", 0, -(i * 72));
+        row.frame.SetHeight(76);
+        row.frame.SetPoint("TOPLEFT", dungeonView, "TOPLEFT", 0, -(i * 82));
         row.frame.SetPoint("RIGHT", dungeonView, "RIGHT", 0, 0);
 
         const accent = Native.createSolid(row.frame, theme.colors.dps, "ARTWORK");
@@ -440,7 +440,7 @@ export function createModernDashboard(): Dashboard {
         accent.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 0, 0);
         accent.SetPoint("BOTTOMLEFT", row.frame, "BOTTOMLEFT", 0, 0);
 
-        const roleBadge = Native.createFramedRoleIcon(row.frame, "DPS", 38, theme.colors.borderStrong);
+        const roleBadge = Native.createFramedRoleIcon(row.frame, "DPS", 44, theme.colors.borderStrong);
         roleBadge.frame.SetPoint("LEFT", row.frame, "LEFT", 12, 0);
         const roleIcon = roleBadge.icon;
 
@@ -449,32 +449,32 @@ export function createModernDashboard(): Dashboard {
         const slotText = Native.createText(row.frame, "Slot", "GameFontHighlightSmall", theme.colors.muted);
         slotText.SetPoint("LEFT", roleBadge.frame, "RIGHT", 10, -10);
 
-        const classBadge = Native.createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 42, theme.colors.borderStrong);
+        const classBadge = Native.createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 46, theme.colors.borderStrong);
         classBadge.frame.SetPoint("LEFT", row.frame, "LEFT", 170, 0);
         classBadge.frame.Hide();
         const classIcon = classBadge.icon;
 
-        const specBadge = Native.createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 36, theme.colors.borderStrong);
+        const specBadge = Native.createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 40, theme.colors.borderStrong);
         specBadge.frame.SetPoint("LEFT", classBadge.frame, "RIGHT", 7, 0);
         specBadge.frame.Hide();
         const specIcon = specBadge.icon;
 
         const name = Native.createText(row.frame, "Auto-fill bot", "GameFontNormal");
-        name.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 262, -15);
+        name.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 270, -18);
         name.SetWidth(350);
         const sub = Native.createText(row.frame, "Composer chooses a suitable build", "GameFontHighlightSmall", theme.colors.muted);
-        sub.SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -4);
+        sub.SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -5);
         sub.SetWidth(390);
 
-        const choose = ButtonUI.createButton(row.frame, { text: "Choose build", width: 130, height: 34, accent: theme.colors.primary });
+        const choose = ButtonUI.createButton(row.frame, { text: "Choose build", width: 136, height: 38, accent: theme.colors.primary });
         choose.frame.SetPoint("RIGHT", row.frame, "RIGHT", -82, 0);
-        const auto = ButtonUI.createButton(row.frame, { text: "Auto", width: 66, height: 34 });
+        const auto = ButtonUI.createButton(row.frame, { text: "Auto", width: 68, height: 38 });
         auto.frame.SetPoint("RIGHT", row.frame, "RIGHT", -12, 0);
 
         const humanAnchor = ButtonUI.createButton(row.frame, {
             text: "Human anchor",
-            width: 132,
-            height: 34,
+            width: 136,
+            height: 38,
             accent: theme.colors.borderStrong,
         });
         humanAnchor.frame.SetPoint("RIGHT", row.frame, "RIGHT", -12, 0);
@@ -624,7 +624,7 @@ export function createModernDashboard(): Dashboard {
         const roleTint = Native.createSolid(panel.frame, Native.withAlpha(Model.roleAccent(role), 0.045), "BACKGROUND");
         roleTint.SetAllPoints(panel.frame);
 
-        const roleBadge = Native.createFramedRoleIcon(panel.frame, role, 38, Model.roleAccent(role));
+        const roleBadge = Native.createFramedRoleIcon(panel.frame, role, 42, Model.roleAccent(role));
         roleBadge.frame.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 14, -12);
         const icon = roleBadge.icon;
         const label = Native.createText(panel.frame, Model.roleLabel(role).toUpperCase(), "GameFontNormal", Model.roleAccent(role));
@@ -699,7 +699,7 @@ export function createModernDashboard(): Dashboard {
     const phaseCard = Native.createPanel(status.frame, theme.colors.surfaceBlue, theme.colors.borderStrong);
     phaseCard.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -40);
     phaseCard.frame.SetPoint("TOPRIGHT", status.frame, "TOPRIGHT", -16, -40);
-    phaseCard.frame.SetHeight(84);
+    phaseCard.frame.SetHeight(96);
 
     const phaseAccent = Native.createSolid(phaseCard.frame, theme.colors.primary, "ARTWORK");
     phaseAccent.SetWidth(3);
@@ -719,7 +719,7 @@ export function createModernDashboard(): Dashboard {
     phaseDetail.SetJustifyV("TOP");
 
     const rosterCount = Native.createText(status.frame, "1 / 5", "GameFontNormalHuge");
-    rosterCount.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -140);
+    rosterCount.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -152);
     const sourceText = Native.createText(status.frame, "1 human  ·  4 bot slots", "GameFontHighlightSmall", theme.colors.muted);
     sourceText.SetPoint("TOPLEFT", rosterCount, "BOTTOMLEFT", 0, -5);
 
@@ -728,7 +728,7 @@ export function createModernDashboard(): Dashboard {
         const role = roleOrder[i];
         const chip = Native.createPanel(status.frame, theme.colors.background, Model.roleAccent(role));
         chip.frame.SetSize(86, 34);
-        chip.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16 + i * 90, -198);
+        chip.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16 + i * 90, -210);
         const icon = chip.frame.CreateTexture(undefined, "ARTWORK");
         icon.SetSize(17, 17);
         icon.SetPoint("LEFT", chip.frame, "LEFT", 6, 0);
@@ -739,19 +739,19 @@ export function createModernDashboard(): Dashboard {
     }
 
     const progressBg = Native.createPanel(status.frame, theme.colors.background, theme.colors.border);
-    progressBg.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -242);
+    progressBg.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -254);
     progressBg.frame.SetSize(270, 14);
     const progressFill = Native.createSolid(progressBg.frame, theme.colors.primary, "ARTWORK");
     progressFill.SetPoint("TOPLEFT", progressBg.frame, "TOPLEFT", 2, -2);
     progressFill.SetPoint("BOTTOMLEFT", progressBg.frame, "BOTTOMLEFT", 2, 2);
     progressFill.SetWidth(1);
     const progressText = Native.createText(status.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-    progressText.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -260);
+    progressText.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -274);
     progressText.SetWidth(270);
 
     const coverageCard = Native.createPanel(status.frame, theme.colors.background, theme.colors.border);
-    coverageCard.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -298);
-    coverageCard.frame.SetPoint("TOPRIGHT", status.frame, "TOPRIGHT", -16, -286);
+    coverageCard.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -312);
+    coverageCard.frame.SetPoint("TOPRIGHT", status.frame, "TOPRIGHT", -16, -312);
     coverageCard.frame.SetHeight(120);
 
     const coverageGlyph = Native.createPanel(coverageCard.frame, theme.colors.surfaceDeep, theme.colors.borderStrong);
@@ -780,8 +780,8 @@ export function createModernDashboard(): Dashboard {
     }
 
     const nextCard = Native.createPanel(status.frame, theme.colors.background, theme.colors.border);
-    nextCard.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -434);
-    nextCard.frame.SetPoint("TOPRIGHT", status.frame, "TOPRIGHT", -16, -414);
+    nextCard.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -448);
+    nextCard.frame.SetPoint("TOPRIGHT", status.frame, "TOPRIGHT", -16, -448);
     nextCard.frame.SetHeight(126);
 
     const nextBadge = Native.createPanel(nextCard.frame, theme.colors.surfaceDeep, theme.colors.warning);
@@ -802,15 +802,15 @@ export function createModernDashboard(): Dashboard {
     }
 
     const buildButton = ButtonUI.createButton(status.frame, {
-        text: "Build & Prepare", width: 270, height: 46, accent: theme.colors.primary, emphasis: true,
+        text: "Build & Prepare", width: 270, height: 52, accent: theme.colors.primary, emphasis: true,
         onClick: () => Model.buildAndPrepare(),
     });
     buildButton.frame.SetPoint("BOTTOMLEFT", status.frame, "BOTTOMLEFT", 16, 66);
 
     let showAssembleConfirm = () => {};
-    const assembleButton = ButtonUI.createButton(status.frame, { text: "Assemble", width: 194, height: 42, accent: theme.colors.success, onClick: () => showAssembleConfirm() });
+    const assembleButton = ButtonUI.createButton(status.frame, { text: "Assemble", width: 194, height: 46, accent: theme.colors.success, onClick: () => showAssembleConfirm() });
     assembleButton.frame.SetPoint("BOTTOMLEFT", status.frame, "BOTTOMLEFT", 16, 18);
-    const resetButton = ButtonUI.createButton(status.frame, { text: "Reset", width: 68, height: 42, accent: theme.colors.error, onClick: () => Model.clearPlan() });
+    const resetButton = ButtonUI.createButton(status.frame, { text: "Reset", width: 68, height: 46, accent: theme.colors.error, onClick: () => Model.clearPlan() });
     resetButton.frame.SetPoint("LEFT", assembleButton.frame, "RIGHT", 8, 0);
 
     // Templates modal --------------------------------------------------------
@@ -1557,7 +1557,7 @@ export function createModernDashboard(): Dashboard {
 
             for (const old of section.rows) old.panel.frame.Hide();
 
-            const sectionHeight = rows.length === 0 ? 106 : 70 + rows.length * 60;
+            const sectionHeight = rows.length === 0 ? 112 : 76 + rows.length * 64;
             section.panel.frame.ClearAllPoints();
             section.panel.frame.SetPoint("TOPLEFT", exactScroll.content, "TOPLEFT", 0, -cursor);
             section.panel.frame.SetSize(906, sectionHeight);
@@ -1570,7 +1570,7 @@ export function createModernDashboard(): Dashboard {
                 let widgets = section.rows[i];
                 if (widgets === undefined) {
                     const panel = Native.createPanel(section.panel.frame, theme.colors.surfaceRaised, theme.colors.border);
-                    panel.frame.SetSize(870, 52);
+                    panel.frame.SetSize(870, 56);
 
                     const classBadge = Native.createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 38, theme.colors.borderStrong);
                     classBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
@@ -1601,7 +1601,7 @@ export function createModernDashboard(): Dashboard {
                 }
 
                 widgets.panel.frame.ClearAllPoints();
-                widgets.panel.frame.SetPoint("TOPLEFT", section.panel.frame, "TOPLEFT", 18, -(62 + i * 60));
+                widgets.panel.frame.SetPoint("TOPLEFT", section.panel.frame, "TOPLEFT", 18, -(66 + i * 64));
                 Native.setClassIcon(widgets.classIcon, build.classId);
                 widgets.classBadge.outline.setColor(Native.classColor(build.classId));
                 widgets.specBadge.outline.setColor(theme.colors.primary);
