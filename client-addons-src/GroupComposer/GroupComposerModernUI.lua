@@ -606,10 +606,13 @@ local function roleAccent(self, role)
     return theme.colors.dps
 end
 function ____exports.createBuildSelector(self, parent, options)
-    local refresh, modal, leftPanel, rightPanel, specEmpty, summaryClassIcon, summaryIcon, summaryText, summarySub, currentRole, currentClass, currentSpec, apply, classTiles, specTiles
+    local refresh, modal, leftPanel, rightPanel, specHint, emptySpec, summaryClassIcon, summarySpecIcon, summaryText, summarySub, currentRole, currentClass, currentSpec, apply, classTiles, specTiles
     function refresh(self)
+        local accent = roleAccent(nil, currentRole)
         modal:setTitle(("Choose " .. roleLabel(nil, currentRole)) .. " Build")
-        modal:setSubtitle(("Pick a class on the left, then a valid " .. string.lower(roleLabel(nil, currentRole))) .. " spec on the right.")
+        modal:setSubtitle("Class first, specialization second. Invalid choices for this role are hidden.")
+        leftPanel.outline:setColor(accent)
+        rightPanel.outline:setColor(accent)
         local validClasses = getClassesForRole(currentRole)
         local classIndex = 0
         for ____, tile in ipairs(classTiles) do
@@ -621,15 +624,15 @@ function ____exports.createBuildSelector(self, parent, options)
                 end
             end
             if valid then
-                local column = classIndex % 4
-                local row = math.floor(classIndex / 4)
+                local column = classIndex % 2
+                local row = math.floor(classIndex / 2)
                 tile.button.frame:ClearAllPoints()
                 tile.button.frame:SetPoint(
                     "TOPLEFT",
                     leftPanel.frame,
                     "TOPLEFT",
-                    theme.spacing.md + column * 92,
-                    -(42 + row * 90)
+                    14 + column * 204,
+                    -(64 + row * 58)
                 )
                 tile.button:setSelected(tile.classDef.id == currentClass)
                 tile.button.frame:Show()
@@ -650,16 +653,15 @@ function ____exports.createBuildSelector(self, parent, options)
                 end
             end
             if visible then
-                local column = specIndex % 3
-                local row = math.floor(specIndex / 3)
                 tile.button.frame:ClearAllPoints()
                 tile.button.frame:SetPoint(
                     "TOPLEFT",
                     rightPanel.frame,
                     "TOPLEFT",
-                    theme.spacing.md + column * 116,
-                    -(48 + row * 104)
+                    18,
+                    -(64 + specIndex * 66)
                 )
+                tile.sub:SetText((tile.classLabel .. "  ·  ") .. roleLabel(nil, currentRole))
                 tile.button:setSelected(tile.spec.id == currentSpec)
                 tile.button.frame:Show()
                 specIndex = specIndex + 1
@@ -668,9 +670,12 @@ function ____exports.createBuildSelector(self, parent, options)
             end
         end
         if currentClass == nil then
-            specEmpty:Show()
+            specHint:SetText("Select a class first.")
+            emptySpec:Show()
         else
-            specEmpty:Hide()
+            local selectedClass = getClass(currentClass)
+            specHint:SetText(selectedClass == nil and "Choose a specialization." or ((selectedClass.label .. " specializations valid for ") .. roleLabel(nil, currentRole)) .. ".")
+            emptySpec:Hide()
         end
         local ____temp_0
         if currentClass == nil then
@@ -691,29 +696,24 @@ function ____exports.createBuildSelector(self, parent, options)
         if selectedClass ~= nil then
             setClassIcon(nil, summaryClassIcon, selectedClass.id)
         else
-            summaryClassIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+            summaryClassIcon:SetTexture("InterfaceIconsINV_Misc_QuestionMark")
             summaryClassIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         end
         if selectedClass ~= nil and selectedSpec ~= nil then
-            summaryIcon:SetTexture(selectedSpec.icon)
-            summaryIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            summarySpecIcon:SetTexture(selectedSpec.icon)
+            summarySpecIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
             summaryText:SetText((selectedSpec.label .. " ") .. selectedClass.label)
             summarySub:SetText(roleLabel(nil, currentRole) .. " build selected")
             apply:setEnabled(true)
         else
-            summaryIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-            summaryIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-            summaryIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-            summaryIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            summarySpecIcon:SetTexture("InterfaceIconsINV_Misc_QuestionMark")
+            summarySpecIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
             summaryText:SetText(currentClass == nil and "Choose a class" or "Choose a specialization")
-            summarySub:SetText(("Only legal " .. roleLabel(nil, currentRole)) .. " choices are shown.")
+            summarySub:SetText(("Only legal " .. string.lower(roleLabel(nil, currentRole))) .. " builds are shown.")
             apply:setEnabled(false)
         end
-        local accent = roleAccent(nil, currentRole)
-        leftPanel.outline:setColor(accent)
-        rightPanel.outline:setColor(accent)
     end
-    modal = createModal(nil, parent, 820, 500)
+    modal = createModal(nil, parent, 960, 590)
     leftPanel = createPanel(nil, modal.content, theme.colors.surface, theme.colors.border)
     leftPanel.frame:SetPoint(
         "TOPLEFT",
@@ -722,7 +722,7 @@ function ____exports.createBuildSelector(self, parent, options)
         0,
         0
     )
-    leftPanel.frame:SetSize(390, 330)
+    leftPanel.frame:SetSize(438, 382)
     rightPanel = createPanel(nil, modal.content, theme.colors.surface, theme.colors.border)
     rightPanel.frame:SetPoint(
         "TOPRIGHT",
@@ -731,11 +731,11 @@ function ____exports.createBuildSelector(self, parent, options)
         0,
         0
     )
-    rightPanel.frame:SetSize(374, 330)
+    rightPanel.frame:SetSize(438, 382)
     local classTitle = createText(
         nil,
         leftPanel.frame,
-        "CLASS",
+        "CHOOSE CLASS",
         "GameFontNormalSmall",
         theme.colors.muted
     )
@@ -743,13 +743,27 @@ function ____exports.createBuildSelector(self, parent, options)
         "TOPLEFT",
         leftPanel.frame,
         "TOPLEFT",
-        theme.spacing.md,
-        -theme.spacing.md
+        14,
+        -14
+    )
+    local classHint = createText(
+        nil,
+        leftPanel.frame,
+        "Only classes that can fill this role are shown.",
+        "GameFontHighlightSmall",
+        theme.colors.muted
+    )
+    classHint:SetPoint(
+        "TOPLEFT",
+        classTitle,
+        "BOTTOMLEFT",
+        0,
+        -5
     )
     local specTitle = createText(
         nil,
         rightPanel.frame,
-        "SPECIALIZATION",
+        "CHOOSE SPECIALIZATION",
         "GameFontNormalSmall",
         theme.colors.muted
     )
@@ -757,26 +771,40 @@ function ____exports.createBuildSelector(self, parent, options)
         "TOPLEFT",
         rightPanel.frame,
         "TOPLEFT",
-        theme.spacing.md,
-        -theme.spacing.md
+        14,
+        -14
     )
-    specEmpty = createText(
+    specHint = createText(
         nil,
         rightPanel.frame,
-        "Choose a class to see only the specs that can fill this role.",
+        "Select a class first.",
         "GameFontHighlightSmall",
         theme.colors.muted
     )
-    specEmpty:SetPoint(
+    specHint:SetPoint(
+        "TOPLEFT",
+        specTitle,
+        "BOTTOMLEFT",
+        0,
+        -5
+    )
+    emptySpec = createText(
+        nil,
+        rightPanel.frame,
+        "Choose a class on the left. This panel will then show only specializations valid for the selected role.",
+        "GameFontHighlight",
+        theme.colors.muted
+    )
+    emptySpec:SetPoint(
         "TOPLEFT",
         rightPanel.frame,
         "TOPLEFT",
-        theme.spacing.md,
-        -54
+        18,
+        -78
     )
-    specEmpty:SetWidth(330)
-    specEmpty:SetJustifyV("TOP")
-    local summary = createPanel(nil, modal.content, theme.colors.surfaceRaised, theme.colors.borderStrong)
+    emptySpec:SetWidth(390)
+    emptySpec:SetJustifyV("TOP")
+    local summary = createPanel(nil, modal.content, theme.colors.surfaceRaised, theme.colors.border)
     summary.frame:SetPoint(
         "BOTTOMLEFT",
         modal.content,
@@ -791,41 +819,56 @@ function ____exports.createBuildSelector(self, parent, options)
         0,
         0
     )
-    summary.frame:SetHeight(78)
-    summaryClassIcon = summary.frame:CreateTexture(nil, "ARTWORK")
-    summaryClassIcon:SetSize(38, 38)
-    summaryClassIcon:SetPoint(
-        "LEFT",
+    summary.frame:SetHeight(94)
+    local selectedLabel = createText(
+        nil,
         summary.frame,
-        "LEFT",
-        theme.spacing.md,
-        0
+        "SELECTED BUILD",
+        "GameFontNormalSmall",
+        theme.colors.muted
     )
-    summaryClassIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+    selectedLabel:SetPoint(
+        "TOPLEFT",
+        summary.frame,
+        "TOPLEFT",
+        14,
+        -12
+    )
+    summaryClassIcon = summary.frame:CreateTexture(nil, "ARTWORK")
+    summaryClassIcon:SetSize(40, 40)
+    summaryClassIcon:SetPoint(
+        "BOTTOMLEFT",
+        summary.frame,
+        "BOTTOMLEFT",
+        14,
+        12
+    )
+    summaryClassIcon:SetTexture("InterfaceIconsINV_Misc_QuestionMark")
     summaryClassIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    summaryIcon = summary.frame:CreateTexture(nil, "ARTWORK")
-    summaryIcon:SetSize(38, 38)
-    summaryIcon:SetPoint(
+    summarySpecIcon = summary.frame:CreateTexture(nil, "ARTWORK")
+    summarySpecIcon:SetSize(40, 40)
+    summarySpecIcon:SetPoint(
         "LEFT",
         summaryClassIcon,
         "RIGHT",
         6,
         0
     )
-    summaryIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-    summaryIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    summarySpecIcon:SetTexture("InterfaceIconsINV_Misc_QuestionMark")
+    summarySpecIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     summaryText = createText(nil, summary.frame, "Choose a class and specialization", "GameFontNormal")
     summaryText:SetPoint(
         "LEFT",
-        summaryIcon,
+        summarySpecIcon,
         "RIGHT",
-        theme.spacing.md,
+        12,
         8
     )
+    summaryText:SetWidth(330)
     summarySub = createText(
         nil,
         summary.frame,
-        "Only legal choices for the selected role are shown.",
+        "Role-filtered choices only.",
         "GameFontHighlightSmall",
         theme.colors.muted
     )
@@ -834,8 +877,9 @@ function ____exports.createBuildSelector(self, parent, options)
         summaryText,
         "BOTTOMLEFT",
         0,
-        -4
+        -5
     )
+    summarySub:SetWidth(330)
     currentRole = "DPS"
     local countEnabled = options.allowCount == true
     local countLabel = createText(
@@ -846,11 +890,11 @@ function ____exports.createBuildSelector(self, parent, options)
         theme.colors.muted
     )
     countLabel:SetPoint(
-        "RIGHT",
+        "TOPRIGHT",
         summary.frame,
-        "RIGHT",
-        -204,
-        13
+        "TOPRIGHT",
+        -194,
+        -14
     )
     local countStepper = createNumberStepper(
         nil,
@@ -860,23 +904,19 @@ function ____exports.createBuildSelector(self, parent, options)
         1
     )
     countStepper.frame:SetPoint(
-        "RIGHT",
+        "BOTTOMRIGHT",
         summary.frame,
-        "RIGHT",
-        -170,
-        -8
+        "BOTTOMRIGHT",
+        -154,
+        12
     )
-    if options.allowCount ~= true then
-        countLabel:Hide()
-        countStepper.frame:Hide()
-    end
     apply = createButton(
         nil,
         summary.frame,
         {
             text = "Apply Build",
             width = 136,
-            height = 38,
+            height = 40,
             accent = theme.colors.primary,
             onClick = function()
                 if currentClass == nil or currentSpec == nil then
@@ -893,17 +933,19 @@ function ____exports.createBuildSelector(self, parent, options)
         }
     )
     apply.frame:SetPoint(
-        "RIGHT",
+        "BOTTOMRIGHT",
         summary.frame,
-        "RIGHT",
-        -theme.spacing.md,
-        0
+        "BOTTOMRIGHT",
+        -12,
+        12
     )
     classTiles = {}
     specTiles = {}
     local function selectClass(self, classId)
+        if currentClass ~= classId then
+            currentSpec = nil
+        end
         currentClass = classId
-        currentSpec = nil
         refresh(nil)
     end
     local function selectSpec(self, specId)
@@ -916,32 +958,39 @@ function ____exports.createBuildSelector(self, parent, options)
             leftPanel.frame,
             {
                 text = classDef.label,
-                width = 86,
-                height = 82,
+                width = 194,
+                height = 52,
                 accent = classColor(nil, classDef.id),
                 onClick = function() return selectClass(nil, classDef.id) end
             }
         )
         local icon = button.frame:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(38, 38)
+        icon:SetSize(32, 32)
         icon:SetPoint(
-            "TOP",
+            "LEFT",
             button.frame,
-            "TOP",
-            0,
-            -8
+            "LEFT",
+            10,
+            0
         )
         setClassIcon(nil, icon, classDef.id)
         button.label:ClearAllPoints()
         button.label:SetPoint(
-            "BOTTOM",
+            "LEFT",
             button.frame,
-            "BOTTOM",
-            0,
-            8
+            "LEFT",
+            52,
+            0
         )
-        button.label:SetJustifyH("CENTER")
-        classTiles[#classTiles + 1] = {classDef = classDef, button = button}
+        button.label:SetPoint(
+            "RIGHT",
+            button.frame,
+            "RIGHT",
+            -10,
+            0
+        )
+        button.label:SetJustifyH("LEFT")
+        classTiles[#classTiles + 1] = {classDef = classDef, button = button, icon = icon}
     end
     for ____, classDef in ipairs(getClassesForRole("DPS")) do
         for ____, spec in ipairs(classDef.specs) do
@@ -950,8 +999,8 @@ function ____exports.createBuildSelector(self, parent, options)
                 rightPanel.frame,
                 {
                     text = spec.label,
-                    width = 104,
-                    height = 94,
+                    width = 398,
+                    height = 58,
                     accent = classColor(nil, classDef.id),
                     onClick = function()
                         currentClass = classDef.id
@@ -959,25 +1008,54 @@ function ____exports.createBuildSelector(self, parent, options)
                     end
                 }
             )
-            local icon = createIcon(nil, button.frame, spec.icon, 44)
+            local icon = createIcon(nil, button.frame, spec.icon, 34)
             icon:SetPoint(
-                "TOP",
+                "LEFT",
                 button.frame,
-                "TOP",
-                0,
-                -10
+                "LEFT",
+                12,
+                0
             )
             button.label:ClearAllPoints()
             button.label:SetPoint(
-                "BOTTOM",
+                "LEFT",
                 button.frame,
-                "BOTTOM",
-                0,
-                10
+                "LEFT",
+                58,
+                7
             )
-            button.label:SetJustifyH("CENTER")
+            button.label:SetPoint(
+                "RIGHT",
+                button.frame,
+                "RIGHT",
+                -12,
+                7
+            )
+            button.label:SetJustifyH("LEFT")
+            local sub = createText(
+                nil,
+                button.frame,
+                classDef.label,
+                "GameFontHighlightSmall",
+                theme.colors.muted
+            )
+            sub:SetPoint(
+                "LEFT",
+                button.frame,
+                "LEFT",
+                58,
+                -11
+            )
+            sub:SetWidth(300)
             button.frame:Hide()
-            specTiles[#specTiles + 1] = {classId = classDef.id, spec = spec, button = button}
+            specTiles[#specTiles + 1] = {
+                classId = classDef.id,
+                classLabel = classDef.label,
+                spec = spec,
+                button = button,
+                icon = icon,
+                sub = sub
+            }
         end
     end
     return {
@@ -1560,6 +1638,76 @@ function ____exports.targetForRole(self, role)
     end
     return __TS__Number(____cfg_dps_9)
 end
+function ____exports.roleTargetTotal(self)
+    local cfg = ____exports.config(nil)
+    local ____cfg_tanks_10 = cfg.tanks
+    if ____cfg_tanks_10 == nil then
+        ____cfg_tanks_10 = 0
+    end
+    local ____TS__Number_result_12 = __TS__Number(____cfg_tanks_10)
+    local ____cfg_healers_11 = cfg.healers
+    if ____cfg_healers_11 == nil then
+        ____cfg_healers_11 = 0
+    end
+    local ____temp_14 = ____TS__Number_result_12 + __TS__Number(____cfg_healers_11)
+    local ____cfg_dps_13 = cfg.dps
+    if ____cfg_dps_13 == nil then
+        ____cfg_dps_13 = 0
+    end
+    return ____temp_14 + __TS__Number(____cfg_dps_13)
+end
+function ____exports.setRoleTarget(self, role, value)
+    local cfg = ____exports.config(nil)
+    local ____cfg_size_15 = cfg.size
+    if ____cfg_size_15 == nil then
+        ____cfg_size_15 = 40
+    end
+    local next = math.max(
+        0,
+        math.min(
+            __TS__Number(____cfg_size_15),
+            math.floor(value)
+        )
+    )
+    if role == "TANK" then
+        cfg.tanks = next
+    elseif role == "HEALER" then
+        cfg.healers = next
+    else
+        cfg.dps = next
+    end
+    ____exports.touch(nil, "Role composition changed")
+end
+function ____exports.resetRoleTargets(self)
+    local cfg = ____exports.config(nil)
+    local ____cfg_size_16 = cfg.size
+    if ____cfg_size_16 == nil then
+        ____cfg_size_16 = 25
+    end
+    local size = __TS__Number(____cfg_size_16)
+    if size == 10 then
+        cfg.tanks = 2
+        cfg.healers = 2
+        cfg.dps = 6
+    elseif size == 20 then
+        cfg.tanks = 3
+        cfg.healers = 5
+        cfg.dps = 12
+    elseif size == 40 then
+        cfg.tanks = 5
+        cfg.healers = 10
+        cfg.dps = 25
+    elseif size == 5 then
+        cfg.tanks = 1
+        cfg.healers = 1
+        cfg.dps = 3
+    else
+        cfg.tanks = 2
+        cfg.healers = 6
+        cfg.dps = math.max(0, size - 8)
+    end
+    ____exports.touch(nil, "Role composition reset")
+end
 function ____exports.remainingBotSlots(self, role)
     local counts = ____exports.humanRoleCounts(nil)
     return math.max(
@@ -1569,15 +1717,15 @@ function ____exports.remainingBotSlots(self, role)
 end
 local function rawRequired(self, role)
     local result = {}
-    local ____opt_10 = ____exports.config(nil).preferences
-    if ____opt_10 ~= nil then
-        ____opt_10 = ____opt_10[role]
+    local ____opt_17 = ____exports.config(nil).preferences
+    if ____opt_17 ~= nil then
+        ____opt_17 = ____opt_17[role]
     end
-    local ____opt_10_12 = ____opt_10
-    if ____opt_10_12 == nil then
-        ____opt_10_12 = {}
+    local ____opt_17_19 = ____opt_17
+    if ____opt_17_19 == nil then
+        ____opt_17_19 = {}
     end
-    local list = ____opt_10_12
+    local list = ____opt_17_19
     for ____, pref in __TS__Iterator(list) do
         if pref.required == true and pref.class ~= nil and pref.class ~= "ANY" and type(pref.spec) == "number" then
             result[#result + 1] = pref
@@ -1630,15 +1778,15 @@ function ____exports.writeRequiredBuilds(self, role, rows, reason)
         reason = "Exact composition changed"
     end
     local cfg = ____exports.config(nil)
-    local ____opt_13 = cfg.preferences
-    if ____opt_13 ~= nil then
-        ____opt_13 = ____opt_13[role]
+    local ____opt_20 = cfg.preferences
+    if ____opt_20 ~= nil then
+        ____opt_20 = ____opt_20[role]
     end
-    local ____opt_13_15 = ____opt_13
-    if ____opt_13_15 == nil then
-        ____opt_13_15 = {}
+    local ____opt_20_22 = ____opt_20
+    if ____opt_20_22 == nil then
+        ____opt_20_22 = {}
     end
-    local existing = ____opt_13_15
+    local existing = ____opt_20_22
     local next = {}
     for ____, pref in __TS__Iterator(existing) do
         if pref.required ~= true then
@@ -1823,55 +1971,114 @@ local function raidById(self, id)
 end
 function ____exports.pinnedMembers(self)
     local result = {}
-    local ____exports_config_result_pinned_18 = ____exports.config(nil).pinned
-    if ____exports_config_result_pinned_18 == nil then
-        ____exports_config_result_pinned_18 = {}
+    local ____exports_config_result_pinned_25 = ____exports.config(nil).pinned
+    if ____exports_config_result_pinned_25 == nil then
+        ____exports_config_result_pinned_25 = {}
     end
-    for ____, pin in ipairs(____exports_config_result_pinned_18) do
+    for ____, pin in ipairs(____exports_config_result_pinned_25) do
         result[#result + 1] = pin
     end
     return result
 end
 function ____exports.planWarnings(self)
     local result = {}
-    local ____exports_plan_result_warnings_19 = ____exports.plan(nil).warnings
-    if ____exports_plan_result_warnings_19 == nil then
-        ____exports_plan_result_warnings_19 = {}
+    local ____exports_plan_result_warnings_26 = ____exports.plan(nil).warnings
+    if ____exports_plan_result_warnings_26 == nil then
+        ____exports_plan_result_warnings_26 = {}
     end
-    for ____, warning in ipairs(____exports_plan_result_warnings_19) do
+    for ____, warning in ipairs(____exports_plan_result_warnings_26) do
         result[#result + 1] = tostring(warning)
     end
     return result
 end
+function ____exports.coverageDisplay(self)
+    local ____exports_plan_result_summary_27 = ____exports.plan(nil).summary
+    if ____exports_plan_result_summary_27 == nil then
+        ____exports_plan_result_summary_27 = {}
+    end
+    local summary = ____exports_plan_result_summary_27
+    local ____summary_utility_28 = summary.utility
+    if ____summary_utility_28 == nil then
+        ____summary_utility_28 = ""
+    end
+    local raw = tostring(____summary_utility_28)
+    local labels = {}
+    if (string.find(raw, "interrupt", nil, true) or 0) - 1 >= 0 then
+        labels[#labels + 1] = "Interrupts"
+    end
+    if (string.find(raw, "dispel", nil, true) or 0) - 1 >= 0 then
+        labels[#labels + 1] = "Dispels"
+    end
+    if (string.find(raw, "buffs", nil, true) or 0) - 1 >= 0 then
+        labels[#labels + 1] = "Raid buffs"
+    end
+    if (string.find(raw, "heroism", nil, true) or 0) - 1 >= 0 then
+        labels[#labels + 1] = "Heroism"
+    end
+    if (string.find(raw, "battle-rez", nil, true) or 0) - 1 >= 0 then
+        labels[#labels + 1] = "Battle rez"
+    end
+    if (string.find(raw, "cc", nil, true) or 0) - 1 >= 0 then
+        labels[#labels + 1] = "Crowd control"
+    end
+    if (string.find(raw, "threat", nil, true) or 0) - 1 >= 0 then
+        labels[#labels + 1] = "Threat support"
+    end
+    local utility = ""
+    do
+        local i = 0
+        while i < #labels do
+            if i > 0 then
+                utility = utility .. "  ·  "
+            end
+            utility = utility .. labels[i + 1]
+            i = i + 1
+        end
+    end
+    if utility == "" then
+        utility = "No utility coverage yet"
+    end
+    local ____temp_30 = (utility .. "\n") .. "Ranged DPS  "
+    local ____summary_ranged_29 = summary.ranged
+    if ____summary_ranged_29 == nil then
+        ____summary_ranged_29 = 0
+    end
+    local ____temp_32 = (____temp_30 .. tostring(____summary_ranged_29)) .. "     Melee DPS  "
+    local ____summary_melee_31 = summary.melee
+    if ____summary_melee_31 == nil then
+        ____summary_melee_31 = 0
+    end
+    return ____temp_32 .. tostring(____summary_melee_31)
+end
 function ____exports.dungeonItems(self)
     local result = {}
-    local ____D_DUNGEONS_20 = D.DUNGEONS
-    if ____D_DUNGEONS_20 == nil then
-        ____D_DUNGEONS_20 = {}
+    local ____D_DUNGEONS_33 = D.DUNGEONS
+    if ____D_DUNGEONS_33 == nil then
+        ____D_DUNGEONS_33 = {}
     end
-    for ____, dungeon in __TS__Iterator(____D_DUNGEONS_20) do
+    for ____, dungeon in __TS__Iterator(____D_DUNGEONS_33) do
         result[#result + 1] = {value = dungeon.id, label = dungeon.label}
     end
     return result
 end
 function ____exports.difficultyItems(self)
     local result = {}
-    local ____D_DUNGEON_DIFFICULTIES_21 = D.DUNGEON_DIFFICULTIES
-    if ____D_DUNGEON_DIFFICULTIES_21 == nil then
-        ____D_DUNGEON_DIFFICULTIES_21 = {}
+    local ____D_DUNGEON_DIFFICULTIES_34 = D.DUNGEON_DIFFICULTIES
+    if ____D_DUNGEON_DIFFICULTIES_34 == nil then
+        ____D_DUNGEON_DIFFICULTIES_34 = {}
     end
-    for ____, difficulty in __TS__Iterator(____D_DUNGEON_DIFFICULTIES_21) do
+    for ____, difficulty in __TS__Iterator(____D_DUNGEON_DIFFICULTIES_34) do
         result[#result + 1] = {value = difficulty.id, label = difficulty.label}
     end
     return result
 end
 function ____exports.raidItems(self)
     local result = {}
-    local ____D_RAIDS_22 = D.RAIDS
-    if ____D_RAIDS_22 == nil then
-        ____D_RAIDS_22 = {}
+    local ____D_RAIDS_35 = D.RAIDS
+    if ____D_RAIDS_35 == nil then
+        ____D_RAIDS_35 = {}
     end
-    for ____, raid in __TS__Iterator(____D_RAIDS_22) do
+    for ____, raid in __TS__Iterator(____D_RAIDS_35) do
         result[#result + 1] = {
             value = raid.id,
             label = (tostring(raid.era) .. "  ·  ") .. tostring(raid.label)
@@ -1885,11 +2092,11 @@ function ____exports.raidDifficultyItems(self)
         nil,
         ____exports.config(nil).activity
     )
-    local ____opt_result_25
+    local ____opt_result_38
     if raid ~= nil then
-        ____opt_result_25 = raid.heroic
+        ____opt_result_38 = raid.heroic
     end
-    if ____opt_result_25 == true then
+    if ____opt_result_38 == true then
         result[#result + 1] = {value = "heroic", label = "Heroic"}
     end
     return result
@@ -1898,26 +2105,26 @@ function ____exports.selectedActivityLabel(self)
     local cfg = ____exports.config(nil)
     if cfg.mode == "RAID" then
         local raid = raidById(nil, cfg.activity)
-        local ____opt_result_28
+        local ____opt_result_41
         if raid ~= nil then
-            ____opt_result_28 = raid.label
+            ____opt_result_41 = raid.label
         end
-        local ____opt_result_28_29 = ____opt_result_28
-        if ____opt_result_28_29 == nil then
-            ____opt_result_28_29 = "Raid"
+        local ____opt_result_41_42 = ____opt_result_41
+        if ____opt_result_41_42 == nil then
+            ____opt_result_41_42 = "Raid"
         end
-        return ____opt_result_28_29
+        return ____opt_result_41_42
     end
     local dungeon = dungeonById(nil, cfg.activity)
-    local ____opt_result_32
+    local ____opt_result_45
     if dungeon ~= nil then
-        ____opt_result_32 = dungeon.label
+        ____opt_result_45 = dungeon.label
     end
-    local ____opt_result_32_33 = ____opt_result_32
-    if ____opt_result_32_33 == nil then
-        ____opt_result_32_33 = "Dungeon"
+    local ____opt_result_45_46 = ____opt_result_45
+    if ____opt_result_45_46 == nil then
+        ____opt_result_45_46 = "Dungeon"
     end
-    return ____opt_result_32_33
+    return ____opt_result_45_46
 end
 function ____exports.supportedRaidSizes(self)
     local raid = raidById(
@@ -1925,15 +2132,15 @@ function ____exports.supportedRaidSizes(self)
         ____exports.config(nil).activity
     )
     local result = {}
-    local ____opt_result_36
+    local ____opt_result_49
     if raid ~= nil then
-        ____opt_result_36 = raid.sizes
+        ____opt_result_49 = raid.sizes
     end
-    local ____opt_result_36_37 = ____opt_result_36
-    if ____opt_result_36_37 == nil then
-        ____opt_result_36_37 = {}
+    local ____opt_result_49_50 = ____opt_result_49
+    if ____opt_result_49_50 == nil then
+        ____opt_result_49_50 = {}
     end
-    for ____, size in __TS__Iterator(____opt_result_36_37) do
+    for ____, size in __TS__Iterator(____opt_result_49_50) do
         result[#result + 1] = __TS__Number(size)
     end
     return result
@@ -1994,11 +2201,11 @@ function ____exports.removePin(self, index)
     GC:RemovePinnedMember(index)
 end
 function ____exports.planMembers(self)
-    local ____exports_plan_result_members_38 = ____exports.plan(nil).members
-    if ____exports_plan_result_members_38 == nil then
-        ____exports_plan_result_members_38 = {}
+    local ____exports_plan_result_members_51 = ____exports.plan(nil).members
+    if ____exports_plan_result_members_51 == nil then
+        ____exports_plan_result_members_51 = {}
     end
-    return ____exports_plan_result_members_38
+    return ____exports_plan_result_members_51
 end
 function ____exports.roleAccent(self, role)
     if role == "TANK" then
@@ -2034,29 +2241,29 @@ function ____exports.phaseLabel(self, phase)
     return "Configure roster"
 end
 function ____exports.isBusy(self)
-    local ____exports_progress_result_phase_39 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_39 == nil then
-        ____exports_progress_result_phase_39 = "IDLE"
+    local ____exports_progress_result_phase_52 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_52 == nil then
+        ____exports_progress_result_phase_52 = "IDLE"
     end
-    local phase = tostring(____exports_progress_result_phase_39)
+    local phase = tostring(____exports_progress_result_phase_52)
     return phase == "BUILDING" or phase == "PREPARING" or phase == "ASSEMBLING" or phase == "TRAVEL"
 end
 function ____exports.isTravelRetry(self)
     local p = ____exports.progress(nil)
-    local ____temp_41 = p.phase == "READY"
-    if ____temp_41 then
-        local ____p_detail_40 = p.detail
-        if ____p_detail_40 == nil then
-            ____p_detail_40 = ""
+    local ____temp_54 = p.phase == "READY"
+    if ____temp_54 then
+        local ____p_detail_53 = p.detail
+        if ____p_detail_53 == nil then
+            ____p_detail_53 = ""
         end
-        ____temp_41 = (string.find(
-            tostring(____p_detail_40),
+        ____temp_54 = (string.find(
+            tostring(____p_detail_53),
             "Enter Activity",
             nil,
             true
         ) or 0) - 1 >= 0
     end
-    return ____temp_41
+    return ____temp_54
 end
 return ____exports
  end,
@@ -2684,11 +2891,11 @@ function ____exports.createModernDashboard(self)
                     tostring(human.class)
                 )
                 row._name:SetText((((human.isPlayer and "YOU  ·  " or "") .. human.name) .. "  ·  ") .. Model:classLabel(tostring(human.class)))
-                local ____opt_11 = Model:config().humanRoles
-                if ____opt_11 ~= nil then
-                    ____opt_11 = ____opt_11[human.name]
+                local ____opt_9 = Model:config().humanRoles
+                if ____opt_9 ~= nil then
+                    ____opt_9 = ____opt_9[human.name]
                 end
-                local selected = ____opt_11
+                local selected = ____opt_9
                 for ____, role in ipairs(roleOrder) do
                     local button = row._buttons[role]
                     local allowed = classCanRole(
@@ -3140,7 +3347,7 @@ function ____exports.createModernDashboard(self)
         0,
         0
     )
-    activity.frame:SetHeight(108)
+    activity.frame:SetHeight(132)
     local activityEyebrow = Native:createText(activity.frame, "ACTIVITY", "GameFontNormalSmall", theme.colors.muted)
     activityEyebrow:SetPoint(
         "TOPLEFT",
@@ -3170,7 +3377,7 @@ function ____exports.createModernDashboard(self)
         "TOPLEFT",
         activity.frame,
         "TOPLEFT",
-        380,
+        360,
         -12
     )
     local difficultyFieldLabel = Native:createText(activity.frame, "DIFFICULTY", "GameFontNormalSmall", theme.colors.muted)
@@ -3178,13 +3385,13 @@ function ____exports.createModernDashboard(self)
         "TOPLEFT",
         activity.frame,
         "TOPLEFT",
-        700,
+        680,
         -12
     )
     local activitySelect = ChoiceUI:createChoiceSelect(
         activity.frame,
         {
-            width = 310,
+            width = 290,
             maxVisible = 10,
             getItems = function() return Model:config().mode == "RAID" and Model:raidItems() or Model:dungeonItems() end,
             getValue = function() return Model:config().activity end,
@@ -3201,13 +3408,13 @@ function ____exports.createModernDashboard(self)
         "TOPLEFT",
         activity.frame,
         "TOPLEFT",
-        380,
+        360,
         -36
     )
     local difficultySelect = ChoiceUI:createChoiceSelect(
         activity.frame,
         {
-            width = 180,
+            width = 170,
             maxVisible = 7,
             getItems = function() return Model:config().mode == "RAID" and Model:raidDifficultyItems() or Model:difficultyItems() end,
             getValue = function() return Model:config().difficulty end,
@@ -3218,9 +3425,18 @@ function ____exports.createModernDashboard(self)
         "TOPLEFT",
         activity.frame,
         "TOPLEFT",
-        700,
+        680,
         -36
     )
+    local raidSizeLabel = Native:createText(activity.frame, "RAID SIZE", "GameFontNormalSmall", theme.colors.muted)
+    raidSizeLabel:SetPoint(
+        "TOPLEFT",
+        activity.frame,
+        "TOPLEFT",
+        680,
+        -78
+    )
+    raidSizeLabel:Hide()
     local raidSizeButtons = {}
     for ____, size in ipairs({10, 20, 25, 40}) do
         local copy = size
@@ -3241,14 +3457,14 @@ function ____exports.createModernDashboard(self)
         center,
         "TOPLEFT",
         0,
-        -120
+        -144
     )
     humanPanel.frame:SetPoint(
         "TOPRIGHT",
         center,
         "TOPRIGHT",
         0,
-        -120
+        -144
     )
     humanPanel.frame:SetHeight(92)
     local humanTitle = Native:createText(humanPanel.frame, "YOUR PARTY", "GameFontNormalSmall", theme.colors.muted)
@@ -3345,7 +3561,7 @@ function ____exports.createModernDashboard(self)
         center,
         "TOPLEFT",
         0,
-        -224
+        -248
     )
     composition.frame:SetPoint(
         "BOTTOMRIGHT",
@@ -3608,7 +3824,7 @@ function ____exports.createModernDashboard(self)
         while i < #roleOrder do
             local role = roleOrder[i + 1]
             local card = Native:createPanel(quickView, theme.colors.surfaceRaised, theme.colors.border)
-            card.frame:SetSize(282, 178)
+            card.frame:SetSize(282, 170)
             local roleStrip = Native:createSolid(
                 card.frame,
                 Model:roleAccent(role),
@@ -3671,7 +3887,7 @@ function ____exports.createModernDashboard(self)
                 card.frame,
                 "TOPLEFT",
                 18,
-                -70
+                -68
             )
             local botSlots = Native:createText(card.frame, "0 bot slots after humans", "GameFontHighlightSmall", theme.colors.muted)
             botSlots:SetPoint(
@@ -3681,43 +3897,45 @@ function ____exports.createModernDashboard(self)
                 0,
                 -7
             )
-            local minus
-            local plus
-            if role ~= "DPS" then
-                minus = ButtonUI:createButton(card.frame, {text = "-", width = 38, height = 32})
-                plus = ButtonUI:createButton(
-                    card.frame,
-                    {
-                        text = "+",
-                        width = 38,
-                        height = 32,
-                        accent = Model:roleAccent(role)
-                    }
-                )
-                minus.frame:SetPoint(
-                    "BOTTOMRIGHT",
-                    card.frame,
-                    "BOTTOMRIGHT",
-                    -58,
-                    12
-                )
-                plus.frame:SetPoint(
-                    "BOTTOMRIGHT",
-                    card.frame,
-                    "BOTTOMRIGHT",
-                    -12,
-                    12
-                )
-            else
-                local derived = Native:createText(card.frame, "Auto remainder", "GameFontHighlightSmall", theme.colors.muted)
-                derived:SetPoint(
-                    "BOTTOMRIGHT",
-                    card.frame,
-                    "BOTTOMRIGHT",
-                    -14,
-                    20
-                )
-            end
+            local minus = ButtonUI:createButton(card.frame, {text = "-", width = 38, height = 34})
+            local plus = ButtonUI:createButton(
+                card.frame,
+                {
+                    text = "+",
+                    width = 38,
+                    height = 34,
+                    accent = Model:roleAccent(role)
+                }
+            )
+            minus.frame:SetPoint(
+                "BOTTOMRIGHT",
+                card.frame,
+                "BOTTOMRIGHT",
+                -58,
+                12
+            )
+            plus.frame:SetPoint(
+                "BOTTOMRIGHT",
+                card.frame,
+                "BOTTOMRIGHT",
+                -12,
+                12
+            )
+            local roleCopy = role
+            minus.frame:SetScript(
+                "OnMouseDown",
+                function() return Model:setRoleTarget(
+                    roleCopy,
+                    Model:targetForRole(roleCopy) - 1
+                ) end
+            )
+            plus.frame:SetScript(
+                "OnMouseDown",
+                function() return Model:setRoleTarget(
+                    roleCopy,
+                    Model:targetForRole(roleCopy) + 1
+                ) end
+            )
             quickCards[role] = {
                 card = card,
                 count = count,
@@ -3728,47 +3946,63 @@ function ____exports.createModernDashboard(self)
             i = i + 1
         end
     end
-    local function adjustRole(self, role, delta)
-        if role == "DPS" then
-            return
-        end
-        local cfg = Model:config()
-        local key = role == "TANK" and "tanks" or "healers"
-        local ____cfg_key_9 = cfg[key]
-        if ____cfg_key_9 == nil then
-            ____cfg_key_9 = 0
-        end
-        local next = math.max(
-            0,
-            __TS__Number(____cfg_key_9) + delta
-        )
-        local ____cfg_dps_10 = cfg.dps
-        if ____cfg_dps_10 == nil then
-            ____cfg_dps_10 = 0
-        end
-        local nextDps = __TS__Number(____cfg_dps_10) - delta
-        if nextDps < 0 then
-            return
-        end
-        cfg[key] = next
-        cfg.dps = nextDps
-        Model:touch("Role composition changed")
-    end
-    quickCards.TANK.minus.frame:SetScript(
-        "OnMouseDown",
-        function() return adjustRole(nil, "TANK", -1) end
+    local quickSummary = Native:createPanel(quickView, theme.colors.background, theme.colors.border)
+    quickSummary.frame:SetPoint(
+        "TOPLEFT",
+        quickView,
+        "TOPLEFT",
+        0,
+        -198
     )
-    quickCards.TANK.plus.frame:SetScript(
-        "OnMouseDown",
-        function() return adjustRole(nil, "TANK", 1) end
+    quickSummary.frame:SetPoint(
+        "TOPRIGHT",
+        quickView,
+        "TOPRIGHT",
+        0,
+        -198
     )
-    quickCards.HEALER.minus.frame:SetScript(
-        "OnMouseDown",
-        function() return adjustRole(nil, "HEALER", -1) end
+    quickSummary.frame:SetHeight(84)
+    local quickTotalLabel = Native:createText(quickSummary.frame, "ROLE TOTAL", "GameFontNormalSmall", theme.colors.muted)
+    quickTotalLabel:SetPoint(
+        "TOPLEFT",
+        quickSummary.frame,
+        "TOPLEFT",
+        14,
+        -12
     )
-    quickCards.HEALER.plus.frame:SetScript(
-        "OnMouseDown",
-        function() return adjustRole(nil, "HEALER", 1) end
+    local quickTotal = Native:createText(quickSummary.frame, "25 / 25", "GameFontNormalLarge")
+    quickTotal:SetPoint(
+        "TOPLEFT",
+        quickSummary.frame,
+        "TOPLEFT",
+        14,
+        -34
+    )
+    local quickHelp = Native:createText(quickSummary.frame, "All three role counts are editable. Exact Builds can then reserve specific class/spec slots.", "GameFontHighlightSmall", theme.colors.muted)
+    quickHelp:SetPoint(
+        "TOPLEFT",
+        quickSummary.frame,
+        "TOPLEFT",
+        122,
+        -27
+    )
+    quickHelp:SetWidth(570)
+    quickHelp:SetJustifyV("TOP")
+    local resetRoles = ButtonUI:createButton(
+        quickSummary.frame,
+        {
+            text = "Reset Standard",
+            width = 132,
+            height = 34,
+            onClick = function() return Model:resetRoleTargets() end
+        }
+    )
+    resetRoles.frame:SetPoint(
+        "RIGHT",
+        quickSummary.frame,
+        "RIGHT",
+        -14,
+        0
     )
     local exactColumns = {}
     do
@@ -3890,13 +4124,13 @@ function ____exports.createModernDashboard(self)
                 local r = 0
                 while r < 5 do
                     local row = CreateFrame("Frame", nil, card.frame)
-                    row:SetHeight(32)
+                    row:SetHeight(28)
                     row:SetPoint(
                         "TOPLEFT",
                         card.frame,
                         "TOPLEFT",
                         8,
-                        -(36 + r * 35)
+                        -(34 + r * 30)
                     )
                     row:SetPoint(
                         "RIGHT",
@@ -3939,7 +4173,7 @@ function ____exports.createModernDashboard(self)
                         38,
                         7
                     )
-                    name:SetWidth(112)
+                    name:SetWidth(154)
                     local spec = Native:createText(row, "", "GameFontHighlightSmall", theme.colors.muted)
                     spec:SetPoint(
                         "LEFT",
@@ -3948,7 +4182,7 @@ function ____exports.createModernDashboard(self)
                         38,
                         -8
                     )
-                    spec:SetWidth(125)
+                    spec:SetWidth(168)
                     rows[#rows + 1] = {
                         row = row,
                         roleBar = roleBar,
@@ -4510,11 +4744,11 @@ function ____exports.createModernDashboard(self)
                 row.frame,
                 def.label,
                 function()
-                    local ____opt_13 = Model:config().options
-                    if ____opt_13 ~= nil then
-                        ____opt_13 = ____opt_13[def.key]
+                    local ____opt_11 = Model:config().options
+                    if ____opt_11 ~= nil then
+                        ____opt_11 = ____opt_11[def.key]
                     end
-                    return ____opt_13 == true
+                    return ____opt_11 == true
                 end,
                 function(____, value)
                     Model:config().options[def.key] = value
@@ -4633,6 +4867,11 @@ function ____exports.createModernDashboard(self)
         difficultySelect:refresh()
         local sizes = Model:supportedRaidSizes()
         local sizeIndex = 0
+        if cfg.mode == "RAID" then
+            raidSizeLabel:Show()
+        else
+            raidSizeLabel:Hide()
+        end
         for ____, size in ipairs({10, 20, 25, 40}) do
             local button = raidSizeButtons[size]
             local supported = false
@@ -4648,8 +4887,8 @@ function ____exports.createModernDashboard(self)
                     "TOPLEFT",
                     activity.frame,
                     "TOPLEFT",
-                    380 + sizeIndex * 58,
-                    -58
+                    680 + sizeIndex * 58,
+                    -92
                 )
                 button:setSelected(__TS__Number(cfg.size) == size)
                 button:setEnabled(true)
@@ -4679,11 +4918,11 @@ function ____exports.createModernDashboard(self)
         )
         humanName:SetText((primary.isPlayer and "YOU  ·  " or "") .. primary.name)
         humanSub:SetText(Model:classLabel(tostring(primary.class)) .. (#list > 1 and (("  ·  +" .. tostring(#list - 1)) .. " more human anchor") .. (#list > 2 and "s" or "") or ""))
-        local ____opt_15 = Model:config().humanRoles
-        if ____opt_15 ~= nil then
-            ____opt_15 = ____opt_15[primary.name]
+        local ____opt_13 = Model:config().humanRoles
+        if ____opt_13 ~= nil then
+            ____opt_13 = ____opt_13[primary.name]
         end
-        local selected = ____opt_15
+        local selected = ____opt_13
         for ____, role in ipairs(roleOrder) do
             local allowed = classCanRole(
                 nil,
@@ -4710,7 +4949,7 @@ function ____exports.createModernDashboard(self)
             local i = 0
             while i < #dungeonRows do
                 do
-                    local __continue160
+                    local __continue156
                     repeat
                         local widgets = dungeonRows[i + 1]
                         local slot = slots[i + 1]
@@ -4733,7 +4972,7 @@ function ____exports.createModernDashboard(self)
                             widgets.sub:SetText((Model:classLabel(tostring(slot.human.class)) .. "  ·  Locked ") .. Model:roleLabel(slot.role))
                             widgets.choose.frame:Hide()
                             widgets.auto.frame:Hide()
-                            __continue160 = true
+                            __continue156 = true
                             break
                         end
                         local exact = slot.exact
@@ -4757,16 +4996,16 @@ function ____exports.createModernDashboard(self)
                                 widgets.specIcon:Hide()
                             end
                             widgets.name:SetText(tostring(prepared.name))
-                            local ____self_19 = widgets.sub
-                            local ____self_19_SetText_20 = ____self_19.SetText
-                            local ____temp_18 = tostring(prepared.spec or Model:classLabel(tostring(prepared.class))) .. "  ·  "
-                            local ____prepared_source_17 = prepared.source
-                            if ____prepared_source_17 == nil then
-                                ____prepared_source_17 = "Bot"
+                            local ____self_17 = widgets.sub
+                            local ____self_17_SetText_18 = ____self_17.SetText
+                            local ____temp_16 = tostring(prepared.spec or Model:classLabel(tostring(prepared.class))) .. "  ·  "
+                            local ____prepared_source_15 = prepared.source
+                            if ____prepared_source_15 == nil then
+                                ____prepared_source_15 = "Bot"
                             end
-                            ____self_19_SetText_20(
-                                ____self_19,
-                                ____temp_18 .. tostring(____prepared_source_17)
+                            ____self_17_SetText_18(
+                                ____self_17,
+                                ____temp_16 .. tostring(____prepared_source_15)
                             )
                         elseif exact ~= nil then
                             Native:setClassIcon(widgets.classIcon, exact.classId)
@@ -4789,14 +5028,14 @@ function ____exports.createModernDashboard(self)
                             "OnMouseDown",
                             function()
                                 selectorContext = {mode = "DUNGEON", role = roleCopy, index = botIndex}
-                                local ____buildSelector_open_22 = buildSelector.open
-                                local ____temp_21
+                                local ____buildSelector_open_20 = buildSelector.open
+                                local ____temp_19
                                 if exact == nil then
-                                    ____temp_21 = nil
+                                    ____temp_19 = nil
                                 else
-                                    ____temp_21 = {role = roleCopy, classId = exact.classId, specId = exact.specId, count = 1}
+                                    ____temp_19 = {role = roleCopy, classId = exact.classId, specId = exact.specId, count = 1}
                                 end
-                                ____buildSelector_open_22(buildSelector, roleCopy, ____temp_21, false)
+                                ____buildSelector_open_20(buildSelector, roleCopy, ____temp_19, false)
                             end
                         )
                         widgets.choose.frame:Show()
@@ -4810,9 +5049,9 @@ function ____exports.createModernDashboard(self)
                             end
                         )
                         widgets.auto.frame:Show()
-                        __continue160 = true
+                        __continue156 = true
                     until true
-                    if not __continue160 then
+                    if not __continue156 then
                         break
                     end
                 end
@@ -4821,10 +5060,24 @@ function ____exports.createModernDashboard(self)
         end
     end
     local function refreshQuickRaid(self)
-        for ____, role in ipairs(roleOrder) do
-            quickCards[role].count:SetText(tostring(Model:targetForRole(role)))
-            quickCards[role].botSlots:SetText(tostring(Model:remainingBotSlots(role)) .. " bot slots after humans")
+        local ____table_size_21 = Model:config().size
+        if ____table_size_21 == nil then
+            ____table_size_21 = 25
         end
+        local size = __TS__Number(____table_size_21)
+        local total = Model:roleTargetTotal()
+        for ____, role in ipairs(roleOrder) do
+            local target = Model:targetForRole(role)
+            quickCards[role].count:SetText(tostring(target))
+            quickCards[role].botSlots:SetText(tostring(Model:remainingBotSlots(role)) .. " bot slots after humans")
+            quickCards[role].minus:setEnabled(target > 0)
+            quickCards[role].plus:setEnabled(target < size)
+        end
+        quickTotal:SetText((tostring(total) .. " / ") .. tostring(size))
+        local valid = total == size
+        local color = valid and theme.colors.success or theme.colors.warning
+        quickTotal:SetTextColor(color[1], color[2], color[3], 1)
+        quickSummary.outline:setColor(valid and theme.colors.border or theme.colors.warning)
     end
     local function refreshExactRaid(self)
         for ____, role in ipairs(roleOrder) do
@@ -4847,7 +5100,7 @@ function ____exports.createModernDashboard(self)
                 end
             )
             for ____, old in __TS__Iterator(column.rows) do
-                old.frame:Hide()
+                old.panel.frame:Hide()
             end
             do
                 local i = 0
@@ -4953,28 +5206,27 @@ function ____exports.createModernDashboard(self)
     end
     local function refreshRoster(self)
         local cfg = Model:config()
-        local ____cfg_size_23 = cfg.size
-        if ____cfg_size_23 == nil then
-            ____cfg_size_23 = 5
+        local ____cfg_size_22 = cfg.size
+        if ____cfg_size_22 == nil then
+            ____cfg_size_22 = 5
         end
         local totalGroups = math.max(
             1,
-            math.ceil(__TS__Number(____cfg_size_23) / 5)
+            math.ceil(__TS__Number(____cfg_size_22) / 5)
         )
-        local wideFive = totalGroups == 5
-        local columns = wideFive and 5 or (totalGroups >= 8 and 4 or math.min(4, totalGroups))
-        local cardWidth = wideFive and 168 or math.floor((880 - (columns - 1) * 10) / columns)
-        local cardHeight = totalGroups >= 8 and 202 or 220
+        local columns = totalGroups <= 3 and totalGroups or (totalGroups <= 5 and 3 or 4)
+        local cardWidth = math.floor((880 - (columns - 1) * 10) / columns)
+        local cardHeight = 190
         do
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue187
+                    local __continue183
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue187 = true
+                            __continue183 = true
                             break
                         end
                         local column = g % columns
@@ -5014,15 +5266,15 @@ function ____exports.createModernDashboard(self)
                                     rowWidgets.icon:Show()
                                     rowWidgets.name:SetText((member.isPlayer and "YOU  ·  " or "") .. tostring(member.name))
                                     rowWidgets.name:SetTextColor(theme.colors.text[1], theme.colors.text[2], theme.colors.text[3], 1)
-                                    local ____self_25 = rowWidgets.spec
-                                    local ____self_25_SetText_26 = ____self_25.SetText
-                                    local ____member_spec_24 = member.spec
-                                    if ____member_spec_24 == nil then
-                                        ____member_spec_24 = Model:classLabel(tostring(member.class))
+                                    local ____self_24 = rowWidgets.spec
+                                    local ____self_24_SetText_25 = ____self_24.SetText
+                                    local ____member_spec_23 = member.spec
+                                    if ____member_spec_23 == nil then
+                                        ____member_spec_23 = Model:classLabel(tostring(member.class))
                                     end
-                                    ____self_25_SetText_26(
-                                        ____self_25,
-                                        tostring(____member_spec_24)
+                                    ____self_24_SetText_25(
+                                        ____self_24,
+                                        tostring(____member_spec_23)
                                     )
                                     Native:setTextureColor(
                                         rowWidgets.roleBar,
@@ -5033,9 +5285,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue187 = true
+                        __continue183 = true
                     until true
-                    if not __continue187 then
+                    if not __continue183 then
                         break
                     end
                 end
@@ -5091,166 +5343,153 @@ function ____exports.createModernDashboard(self)
     )
     local function refreshStatus(self)
         local p = Model:progress()
-        local ____p_phase_27 = p.phase
-        if ____p_phase_27 == nil then
-            ____p_phase_27 = "IDLE"
+        local ____p_phase_26 = p.phase
+        if ____p_phase_26 == nil then
+            ____p_phase_26 = "IDLE"
         end
-        local phase = tostring(____p_phase_27)
+        local phase = tostring(____p_phase_26)
         local phaseColor = colorForPhase(nil, phase)
         Native:setTextureColor(phaseDot, phaseColor)
         phaseText:SetText(Model:isTravelRetry() and "Ready to enter activity" or Model:phaseLabel(phase))
         phaseText:SetTextColor(phaseColor[1], phaseColor[2], phaseColor[3], 1)
-        local ____phaseDetail_SetText_29 = phaseDetail.SetText
-        local ____p_detail_28 = p.detail
-        if ____p_detail_28 == nil then
-            ____p_detail_28 = ""
+        local ____phaseDetail_SetText_28 = phaseDetail.SetText
+        local ____p_detail_27 = p.detail
+        if ____p_detail_27 == nil then
+            ____p_detail_27 = ""
         end
-        ____phaseDetail_SetText_29(
+        ____phaseDetail_SetText_28(
             phaseDetail,
-            tostring(____p_detail_28)
+            tostring(____p_detail_27)
         )
         local humanCount = #Model:humans()
-        local ____table_size_30 = Model:config().size
-        if ____table_size_30 == nil then
-            ____table_size_30 = 5
+        local ____table_size_29 = Model:config().size
+        if ____table_size_29 == nil then
+            ____table_size_29 = 5
         end
-        local target = __TS__Number(____table_size_30)
-        local ____temp_34
+        local target = __TS__Number(____table_size_29)
+        local ____temp_33
         if Model:plan().ready == true then
-            local ____opt_31 = Model:plan().summary
-            if ____opt_31 ~= nil then
-                ____opt_31 = ____opt_31.total
+            local ____opt_30 = Model:plan().summary
+            if ____opt_30 ~= nil then
+                ____opt_30 = ____opt_30.total
             end
-            local ____opt_31_33 = ____opt_31
-            if ____opt_31_33 == nil then
-                ____opt_31_33 = #Model:planMembers()
+            local ____opt_30_32 = ____opt_30
+            if ____opt_30_32 == nil then
+                ____opt_30_32 = #Model:planMembers()
             end
-            ____temp_34 = __TS__Number(____opt_31_33)
+            ____temp_33 = __TS__Number(____opt_30_32)
         else
-            ____temp_34 = humanCount
+            ____temp_33 = humanCount
         end
-        local total = ____temp_34
+        local total = ____temp_33
         rosterCount:SetText((tostring(total) .. " / ") .. tostring(target))
         if Model:plan().ready == true then
-            local ____sourceText_SetText_43 = sourceText.SetText
-            local ____temp_38 = ((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  "
-            local ____opt_35 = Model:plan().summary
-            if ____opt_35 ~= nil then
-                ____opt_35 = ____opt_35.guild
+            local ____sourceText_SetText_42 = sourceText.SetText
+            local ____temp_37 = ((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  "
+            local ____opt_34 = Model:plan().summary
+            if ____opt_34 ~= nil then
+                ____opt_34 = ____opt_34.guild
             end
-            local ____opt_35_37 = ____opt_35
-            if ____opt_35_37 == nil then
-                ____opt_35_37 = 0
+            local ____opt_34_36 = ____opt_34
+            if ____opt_34_36 == nil then
+                ____opt_34_36 = 0
             end
-            local ____temp_42 = (____temp_38 .. tostring(____opt_35_37)) .. " guild  ·  "
-            local ____opt_39 = Model:plan().summary
-            if ____opt_39 ~= nil then
-                ____opt_39 = ____opt_39.world
+            local ____temp_41 = (____temp_37 .. tostring(____opt_34_36)) .. " guild  ·  "
+            local ____opt_38 = Model:plan().summary
+            if ____opt_38 ~= nil then
+                ____opt_38 = ____opt_38.world
             end
-            local ____opt_39_41 = ____opt_39
-            if ____opt_39_41 == nil then
-                ____opt_39_41 = 0
+            local ____opt_38_40 = ____opt_38
+            if ____opt_38_40 == nil then
+                ____opt_38_40 = 0
             end
-            ____sourceText_SetText_43(
+            ____sourceText_SetText_42(
                 sourceText,
-                (____temp_42 .. tostring(____opt_39_41)) .. " fallback"
+                (____temp_41 .. tostring(____opt_38_40)) .. " fallback"
             )
         else
             sourceText:SetText(((((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  ") .. tostring(math.max(0, target - humanCount))) .. " bot slots")
         end
-        local ____self_45 = statusRoleChips.TANK.label
-        local ____self_45_SetText_46 = ____self_45.SetText
-        local ____table_tanks_44 = Model:config().tanks
-        if ____table_tanks_44 == nil then
-            ____table_tanks_44 = 0
+        local ____self_44 = statusRoleChips.TANK.label
+        local ____self_44_SetText_45 = ____self_44.SetText
+        local ____table_tanks_43 = Model:config().tanks
+        if ____table_tanks_43 == nil then
+            ____table_tanks_43 = 0
         end
-        ____self_45_SetText_46(
-            ____self_45,
-            tostring(____table_tanks_44) .. " T"
+        ____self_44_SetText_45(
+            ____self_44,
+            tostring(____table_tanks_43) .. " T"
         )
-        local ____self_48 = statusRoleChips.HEALER.label
-        local ____self_48_SetText_49 = ____self_48.SetText
-        local ____table_healers_47 = Model:config().healers
-        if ____table_healers_47 == nil then
-            ____table_healers_47 = 0
+        local ____self_47 = statusRoleChips.HEALER.label
+        local ____self_47_SetText_48 = ____self_47.SetText
+        local ____table_healers_46 = Model:config().healers
+        if ____table_healers_46 == nil then
+            ____table_healers_46 = 0
         end
-        ____self_48_SetText_49(
-            ____self_48,
-            tostring(____table_healers_47) .. " H"
+        ____self_47_SetText_48(
+            ____self_47,
+            tostring(____table_healers_46) .. " H"
         )
-        local ____self_51 = statusRoleChips.DPS.label
-        local ____self_51_SetText_52 = ____self_51.SetText
-        local ____table_dps_50 = Model:config().dps
-        if ____table_dps_50 == nil then
-            ____table_dps_50 = 0
+        local ____self_50 = statusRoleChips.DPS.label
+        local ____self_50_SetText_51 = ____self_50.SetText
+        local ____table_dps_49 = Model:config().dps
+        if ____table_dps_49 == nil then
+            ____table_dps_49 = 0
         end
-        ____self_51_SetText_52(
-            ____self_51,
-            tostring(____table_dps_50) .. " D"
+        ____self_50_SetText_51(
+            ____self_50,
+            tostring(____table_dps_49) .. " D"
         )
         local ratio = 0
-        local ____p_total_53 = p.total
-        if ____p_total_53 == nil then
-            ____p_total_53 = 0
+        local ____p_total_52 = p.total
+        if ____p_total_52 == nil then
+            ____p_total_52 = 0
         end
-        if __TS__Number(____p_total_53) > 0 then
-            local ____p_current_54 = p.current
-            if ____p_current_54 == nil then
-                ____p_current_54 = 0
+        if __TS__Number(____p_total_52) > 0 then
+            local ____p_current_53 = p.current
+            if ____p_current_53 == nil then
+                ____p_current_53 = 0
             end
             ratio = math.min(
                 1,
-                __TS__Number(____p_current_54) / __TS__Number(p.total)
+                __TS__Number(____p_current_53) / __TS__Number(p.total)
             )
         elseif phase == "READY" or phase == "DONE" then
             ratio = 1
         end
         progressFill:SetWidth(math.max(1, 282 * ratio))
         Native:setTextureColor(progressFill, phaseColor)
-        local ____progressText_SetText_61 = progressText.SetText
-        local ____temp_60
+        local ____progressText_SetText_60 = progressText.SetText
+        local ____temp_59
         if phase == "PREPARING" or phase == "ASSEMBLING" or phase == "READY" or phase == "DONE" then
-            local ____p_current_55 = p.current
-            if ____p_current_55 == nil then
-                ____p_current_55 = 0
+            local ____p_current_54 = p.current
+            if ____p_current_54 == nil then
+                ____p_current_54 = 0
             end
-            local ____temp_57 = tostring(____p_current_55) .. " / "
-            local ____p_total_56 = p.total
-            if ____p_total_56 == nil then
-                ____p_total_56 = 0
+            local ____temp_56 = tostring(____p_current_54) .. " / "
+            local ____p_total_55 = p.total
+            if ____p_total_55 == nil then
+                ____p_total_55 = 0
             end
-            local ____temp_59 = (____temp_57 .. tostring(____p_total_56)) .. "  ·  "
-            local ____p_detail_58 = p.detail
-            if ____p_detail_58 == nil then
-                ____p_detail_58 = ""
+            local ____temp_58 = (____temp_56 .. tostring(____p_total_55)) .. "  ·  "
+            local ____p_detail_57 = p.detail
+            if ____p_detail_57 == nil then
+                ____p_detail_57 = ""
             end
-            ____temp_60 = ____temp_59 .. tostring(____p_detail_58)
+            ____temp_59 = ____temp_58 .. tostring(____p_detail_57)
         else
-            ____temp_60 = ""
+            ____temp_59 = ""
         end
-        ____progressText_SetText_61(progressText, ____temp_60)
-        local ____coverageText_SetText_69 = coverageText.SetText
-        local ____temp_68
-        local ____opt_62 = Model:plan().summary
-        if ____opt_62 ~= nil then
-            ____opt_62 = ____opt_62.utility
+        ____progressText_SetText_60(progressText, ____temp_59)
+        local ____coverageText_SetText_63 = coverageText.SetText
+        local ____opt_61 = Model:plan().summary
+        if ____opt_61 ~= nil then
+            ____opt_61 = ____opt_61.utility
         end
-        if ____opt_62 ~= nil then
-            local ____temp_65 = tostring(Model:plan().summary.utility) .. "\nRanged DPS: "
-            local ____table_summary_ranged_64 = Model:plan().summary.ranged
-            if ____table_summary_ranged_64 == nil then
-                ____table_summary_ranged_64 = 0
-            end
-            local ____temp_67 = (____temp_65 .. tostring(____table_summary_ranged_64)) .. "   Melee DPS: "
-            local ____table_summary_melee_66 = Model:plan().summary.melee
-            if ____table_summary_melee_66 == nil then
-                ____table_summary_melee_66 = 0
-            end
-            ____temp_68 = ____temp_67 .. tostring(____table_summary_melee_66)
-        else
-            ____temp_68 = "Build a roster to inspect utility coverage."
-        end
-        ____coverageText_SetText_69(coverageText, ____temp_68)
+        ____coverageText_SetText_63(
+            coverageText,
+            ____opt_61 ~= nil and Model:coverageDisplay() or "Build a roster to inspect utility coverage."
+        )
         local seen = {}
         local iconIndex = 0
         for ____, member in ipairs(Model:planMembers()) do
@@ -5282,14 +5521,45 @@ function ____exports.createModernDashboard(self)
                     elseif not Model:humanReady() then
                         text = "Choose a legal role for every real player."
                     else
-                        text = "Build & Prepare when the composition looks right."
+                        local ____temp_66 = Model:config().mode == "RAID"
+                        if ____temp_66 then
+                            local ____temp_65 = Model:roleTargetTotal()
+                            local ____table_size_64 = Model:config().size
+                            if ____table_size_64 == nil then
+                                ____table_size_64 = 25
+                            end
+                            ____temp_66 = ____temp_65 ~= __TS__Number(____table_size_64)
+                        end
+                        if ____temp_66 then
+                            local ____table_size_67 = Model:config().size
+                            if ____table_size_67 == nil then
+                                ____table_size_67 = 25
+                            end
+                            text = ("Role counts must total " .. tostring(____table_size_67)) .. " before preparing."
+                        else
+                            text = "Build & Prepare when the composition looks right."
+                        end
                     end
                 end
                 warningRows[i + 1]:SetText(tostring(text or ""))
                 i = i + 1
             end
         end
-        buildButton:setEnabled(Model:humanReady() and not Model:isBusy())
+        local ____buildButton_setEnabled_72 = buildButton.setEnabled
+        local ____temp_71 = Model:humanReady() and not Model:isBusy()
+        if ____temp_71 then
+            local ____temp_70 = Model:config().mode ~= "RAID"
+            if not ____temp_70 then
+                local ____temp_69 = Model:roleTargetTotal()
+                local ____table_size_68 = Model:config().size
+                if ____table_size_68 == nil then
+                    ____table_size_68 = 25
+                end
+                ____temp_70 = ____temp_69 == __TS__Number(____table_size_68)
+            end
+            ____temp_71 = ____temp_70
+        end
+        ____buildButton_setEnabled_72(buildButton, ____temp_71)
         assembleButton:setEnabled(Model:plan().ready == true and Model:plan().valid == true and phase == "READY")
         assembleButton:setText(Model:isTravelRetry() and "Enter Activity" or (Model:config().mode == "RAID" and "Assemble Raid" or "Assemble Party"))
         assembleButton:setSelected(Model:plan().ready == true and Model:plan().valid == true and phase == "READY")
