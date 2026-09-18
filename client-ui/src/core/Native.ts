@@ -6,6 +6,10 @@ export function setTextureColor(texture: WoWTexture, color: Color): void {
     texture.SetTexture(color[0], color[1], color[2], color[3]);
 }
 
+export function withAlpha(color: Color, alpha: number): Color {
+    return [color[0], color[1], color[2], alpha] as Color;
+}
+
 export function createSolid(parent: WoWFrame, color: Color, layer: WoWDrawLayer = "BACKGROUND"): WoWTexture {
     const texture = parent.CreateTexture(undefined, layer);
     setTextureColor(texture, color);
@@ -63,6 +67,8 @@ export interface Panel {
     readonly frame: WoWFrame;
     readonly background: WoWTexture;
     readonly outline: Outline;
+    readonly topSheen: WoWTexture;
+    readonly bottomShade: WoWTexture;
     setBackground(color: Color): void;
 }
 
@@ -75,10 +81,25 @@ export function createPanel(
     const background = createSolid(frame, backgroundColor);
     background.SetAllPoints(frame);
     const outline = createOutline(frame, borderColor);
+
+    // Cheap native-frame bevel: a cool highlight on top and a dark shadow on the bottom.
+    // This stays entirely within 3.3.5 texture primitives while giving panels the same depth
+    // language as the visual target.
+    const topSheen = createSolid(frame, withAlpha(theme.colors.highlight, 0.075), "ARTWORK");
+    topSheen.SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1);
+    topSheen.SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -1);
+    topSheen.SetHeight(1);
+    const bottomShade = createSolid(frame, withAlpha(theme.colors.shadow, 0.56), "ARTWORK");
+    bottomShade.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 1);
+    bottomShade.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -1, 1);
+    bottomShade.SetHeight(1);
+
     return {
         frame,
         background,
         outline,
+        topSheen,
+        bottomShade,
         setBackground(color: Color): void { setTextureColor(background, color); },
     };
 }
@@ -102,4 +123,71 @@ export function classColor(classToken: string): Color {
     const color = RAID_CLASS_COLORS[classToken];
     if (color !== undefined) return [color.r, color.g, color.b, 1] as Color;
     return theme.colors.primary;
+}
+
+
+export interface FramedIcon {
+    readonly frame: WoWFrame;
+    readonly icon: WoWTexture;
+    readonly outline: Outline;
+}
+
+export function createFramedIcon(
+    parent: WoWFrame,
+    path: string,
+    size: number,
+    borderColor: Color = theme.colors.borderStrong,
+): FramedIcon {
+    const frame = CreateFrame("Frame", undefined, parent);
+    frame.SetSize(size, size);
+    const bg = createSolid(frame, theme.colors.surfaceDeep);
+    bg.SetAllPoints(frame);
+    const outline = createOutline(frame, borderColor);
+
+    const inner = createSolid(frame, withAlpha(theme.colors.highlight, 0.08), "ARTWORK");
+    inner.SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2);
+    inner.SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2);
+    inner.SetHeight(1);
+
+    const icon = frame.CreateTexture(undefined, "ARTWORK");
+    icon.SetPoint("TOPLEFT", frame, "TOPLEFT", 4, -4);
+    icon.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -4, 4);
+    icon.SetTexture(path);
+    icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+    return { frame, icon, outline };
+}
+
+export function createChrome(frame: WoWFrame, accent: Color = theme.colors.chrome): void {
+    // Double-line gold/blue chrome with L-shaped corners. No custom art files required.
+    const outer = createOutline(frame, accent);
+    const innerTop = createSolid(frame, withAlpha(theme.colors.highlight, 0.28), "BORDER");
+    innerTop.SetPoint("TOPLEFT", frame, "TOPLEFT", 4, -4);
+    innerTop.SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4);
+    innerTop.SetHeight(1);
+    const innerBottom = createSolid(frame, withAlpha(theme.colors.borderStrong, 0.72), "BORDER");
+    innerBottom.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 4, 4);
+    innerBottom.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -4, 4);
+    innerBottom.SetHeight(1);
+
+    const corner = 12;
+    const thickness = 2;
+    const points: Array<[WoWFramePoint, number, number, number, number]> = [
+        ["TOPLEFT", 2, -2, corner, thickness],
+        ["TOPLEFT", 2, -2, thickness, corner],
+        ["TOPRIGHT", -2, -2, corner, thickness],
+        ["TOPRIGHT", -2, -2, thickness, corner],
+        ["BOTTOMLEFT", 2, 2, corner, thickness],
+        ["BOTTOMLEFT", 2, 2, thickness, corner],
+        ["BOTTOMRIGHT", -2, 2, corner, thickness],
+        ["BOTTOMRIGHT", -2, 2, thickness, corner],
+    ];
+    for (let i = 0; i < points.length; i += 1) {
+        const item = points[i];
+        const piece = createSolid(frame, i % 2 === 0 ? theme.colors.chromeBright : accent, "OVERLAY");
+        piece.SetSize(item[3], item[4]);
+        piece.SetPoint(item[0], frame, item[0], item[1], item[2]);
+    }
+
+    // Keep the outer outline referenced so TypeScriptToLua does not optimize the call away.
+    if (outer.textures.length === 0) return;
 }

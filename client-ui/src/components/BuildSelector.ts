@@ -30,6 +30,7 @@ interface ClassTile {
     readonly button: UIButton;
     readonly icon: WoWTexture;
     readonly sub: WoWFontString;
+    readonly specs: WoWFontString;
 }
 
 interface SpecTile {
@@ -53,8 +54,20 @@ function roleAccent(role: Role) {
     return theme.colors.dps;
 }
 
+function roleIcon(role: Role): string {
+    if (role === "TANK") return "Interface\\Icons\\Ability_Warrior_DefensiveStance";
+    if (role === "HEALER") return "Interface\\Icons\\Spell_Holy_FlashHeal";
+    return "Interface\\Icons\\INV_Sword_04";
+}
+
+function specSummary(classId: ClassId, role: Role): string {
+    const labels: string[] = [];
+    for (const spec of getSpecsForRole(classId, role)) labels.push(spec.label);
+    return labels.join("  ·  ");
+}
+
 export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOptions): BuildSelector {
-    const modal = createModal(parent, 1000, 680);
+    const modal = createModal(parent, 1080, 760);
 
     let currentRole: Role = "DPS";
     let currentClass: ClassId | undefined;
@@ -65,7 +78,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     const classSection = createPanel(modal.content, theme.colors.surface, theme.colors.border);
     classSection.frame.SetPoint("TOPLEFT", modal.content, "TOPLEFT", 0, 0);
     classSection.frame.SetPoint("TOPRIGHT", modal.content, "TOPRIGHT", 0, 0);
-    classSection.frame.SetHeight(212);
+    classSection.frame.SetHeight(292);
 
     const classStep = createPanel(classSection.frame, theme.colors.surfaceRaised, theme.colors.borderStrong);
     classStep.frame.SetSize(34, 34);
@@ -82,28 +95,37 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     for (const classDef of getClassesForRole("DPS")) {
         const button = createButton(classSection.frame, {
             text: classDef.label,
-            width: 170,
-            height: 62,
-            accent: classColor(classDef.id),
+            width: 190,
+            height: 96,
+            accent: theme.colors.primary,
         });
         const accent = createSolid(button.frame, classColor(classDef.id), "ARTWORK");
-        accent.SetWidth(3);
+        accent.SetHeight(3);
         accent.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 0, 0);
-        accent.SetPoint("BOTTOMLEFT", button.frame, "BOTTOMLEFT", 0, 0);
+        accent.SetPoint("TOPRIGHT", button.frame, "TOPRIGHT", 0, 0);
 
-        const icon = button.frame.CreateTexture(undefined, "ARTWORK");
-        icon.SetSize(36, 36);
-        icon.SetPoint("LEFT", button.frame, "LEFT", 12, 0);
+        const iconFrame = createPanel(button.frame, theme.colors.surfaceDeep, classColor(classDef.id));
+        iconFrame.frame.SetSize(40, 40);
+        iconFrame.frame.SetPoint("TOP", button.frame, "TOP", 0, -10);
+        const icon = iconFrame.frame.CreateTexture(undefined, "ARTWORK");
+        icon.SetPoint("TOPLEFT", iconFrame.frame, "TOPLEFT", 3, -3);
+        icon.SetPoint("BOTTOMRIGHT", iconFrame.frame, "BOTTOMRIGHT", -3, 3);
         setClassIcon(icon, classDef.id);
 
         button.label.ClearAllPoints();
-        button.label.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 58, -12);
-        button.label.SetPoint("RIGHT", button.frame, "RIGHT", -8, 8);
-        button.label.SetJustifyH("LEFT");
+        button.label.SetPoint("TOP", button.frame, "TOP", 0, -54);
+        button.label.SetWidth(174);
+        button.label.SetJustifyH("CENTER");
 
-        const sub = createText(button.frame, "Available", "GameFontHighlightSmall", theme.colors.muted);
-        sub.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 58, -34);
-        sub.SetWidth(100);
+        const sub = createText(button.frame, "", "GameFontHighlightSmall", theme.colors.muted);
+        sub.SetPoint("TOP", button.frame, "TOP", 0, -70);
+        sub.SetWidth(174);
+        sub.SetJustifyH("CENTER");
+
+        const specs = createText(button.frame, "", "GameFontHighlightSmall", theme.colors.muted);
+        specs.SetPoint("TOP", button.frame, "TOP", 0, -83);
+        specs.SetWidth(174);
+        specs.SetJustifyH("CENTER");
 
         button.frame.SetScript("OnMouseDown", () => {
             if (currentClass !== classDef.id) currentSpec = undefined;
@@ -111,14 +133,14 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             refresh();
         });
 
-        classTiles.push({ classDef, button, icon, sub });
+        classTiles.push({ classDef, button, icon, sub, specs });
     }
 
     // Step 2: specialization -------------------------------------------------
     const specSection = createPanel(modal.content, theme.colors.surface, theme.colors.border);
-    specSection.frame.SetPoint("TOPLEFT", modal.content, "TOPLEFT", 0, -226);
-    specSection.frame.SetPoint("TOPRIGHT", modal.content, "TOPRIGHT", 0, -226);
-    specSection.frame.SetHeight(224);
+    specSection.frame.SetPoint("TOPLEFT", modal.content, "TOPLEFT", 0, -306);
+    specSection.frame.SetPoint("TOPRIGHT", modal.content, "TOPRIGHT", 0, -306);
+    specSection.frame.SetHeight(238);
 
     const specStep = createPanel(specSection.frame, theme.colors.surfaceRaised, theme.colors.borderStrong);
     specStep.frame.SetSize(34, 34);
@@ -143,8 +165,8 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
 
     const anySpecButton = createButton(specSection.frame, {
         text: "Any valid spec",
-        width: 214,
-        height: 86,
+        width: 236,
+        height: 96,
         accent: theme.colors.primary,
         onClick: () => {
             if (currentClass === undefined) return;
@@ -152,14 +174,14 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             refresh();
         },
     });
-    const anySpecIcon = createIcon(anySpecButton.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 38);
+    const anySpecIcon = createIcon(anySpecButton.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 42);
     anySpecIcon.SetPoint("LEFT", anySpecButton.frame, "LEFT", 14, 0);
     anySpecButton.label.ClearAllPoints();
-    anySpecButton.label.SetPoint("TOPLEFT", anySpecButton.frame, "TOPLEFT", 64, -18);
+    anySpecButton.label.SetPoint("TOPLEFT", anySpecButton.frame, "TOPLEFT", 70, -20);
     anySpecButton.label.SetPoint("RIGHT", anySpecButton.frame, "RIGHT", -10, 10);
     anySpecButton.label.SetJustifyH("LEFT");
     const anySpecSub = createText(anySpecButton.frame, "Lock class, let Composer pick spec", "GameFontHighlightSmall", theme.colors.muted);
-    anySpecSub.SetPoint("TOPLEFT", anySpecButton.frame, "TOPLEFT", 64, -45);
+    anySpecSub.SetPoint("TOPLEFT", anySpecButton.frame, "TOPLEFT", 70, -49);
     anySpecSub.SetWidth(136);
     anySpecSub.SetJustifyV("TOP");
     anySpecButton.frame.Hide();
@@ -169,18 +191,18 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         for (const spec of classDef.specs) {
             const button = createButton(specSection.frame, {
                 text: spec.label,
-                width: 214,
-                height: 86,
-                accent: classColor(classDef.id),
+                width: 236,
+                height: 96,
+                accent: theme.colors.primary,
             });
-            const icon = createIcon(button.frame, spec.icon, 40);
+            const icon = createIcon(button.frame, spec.icon, 44);
             icon.SetPoint("LEFT", button.frame, "LEFT", 14, 0);
             button.label.ClearAllPoints();
-            button.label.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -18);
+            button.label.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 70, -20);
             button.label.SetPoint("RIGHT", button.frame, "RIGHT", -10, 10);
             button.label.SetJustifyH("LEFT");
             const sub = createText(button.frame, classDef.label, "GameFontHighlightSmall", theme.colors.muted);
-            sub.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -45);
+            sub.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 70, -49);
             sub.SetWidth(136);
 
             button.frame.SetScript("OnMouseDown", () => {
@@ -197,19 +219,19 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     const summary = createPanel(modal.content, theme.colors.surfaceRaised, theme.colors.borderStrong);
     summary.frame.SetPoint("BOTTOMLEFT", modal.content, "BOTTOMLEFT", 0, 0);
     summary.frame.SetPoint("BOTTOMRIGHT", modal.content, "BOTTOMRIGHT", 0, 0);
-    summary.frame.SetHeight(104);
+    summary.frame.SetHeight(112);
 
     const selectedLabel = createText(summary.frame, "SELECTION", "GameFontNormalSmall", theme.colors.muted);
     selectedLabel.SetPoint("TOPLEFT", summary.frame, "TOPLEFT", 14, -12);
 
     const summaryClassIcon = summary.frame.CreateTexture(undefined, "ARTWORK");
-    summaryClassIcon.SetSize(42, 42);
+    summaryClassIcon.SetSize(46, 46);
     summaryClassIcon.SetPoint("BOTTOMLEFT", summary.frame, "BOTTOMLEFT", 14, 13);
     summaryClassIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
     summaryClassIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
 
     const summarySpecIcon = summary.frame.CreateTexture(undefined, "ARTWORK");
-    summarySpecIcon.SetSize(42, 42);
+    summarySpecIcon.SetSize(46, 46);
     summarySpecIcon.SetPoint("LEFT", summaryClassIcon, "RIGHT", 7, 0);
     summarySpecIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
     summarySpecIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
@@ -228,8 +250,9 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
 
     const apply = createButton(summary.frame, {
         text: "Use this build",
-        width: 148,
-        height: 42,
+        width: 168,
+        height: 46,
+        emphasis: true,
         accent: theme.colors.success,
         onClick: () => {
             if (currentClass === undefined || currentSpec === undefined) return;
@@ -242,12 +265,13 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             modal.hide();
         },
     });
-    apply.frame.SetPoint("BOTTOMRIGHT", summary.frame, "BOTTOMRIGHT", -12, 13);
+    apply.frame.SetPoint("BOTTOMRIGHT", summary.frame, "BOTTOMRIGHT", -12, 14);
 
     function refresh(): void {
         const accent = roleAccent(currentRole);
         modal.setTitle("Add " + roleLabel(currentRole) + " Build");
-        modal.setSubtitle("Reserve only what matters. Unspecified slots remain Auto-filled.");
+        modal.setSubtitle("Choose a class and specialization. Every unreserved slot stays Auto-filled.");
+        modal.setHeaderIcon(roleIcon(currentRole));
 
         classSection.outline.setColor(accent);
         specSection.outline.setColor(accent);
@@ -274,8 +298,10 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             const column = classIndex % 5;
             const row = Math.floor(classIndex / 5);
             tile.button.frame.ClearAllPoints();
-            tile.button.frame.SetPoint("TOPLEFT", classSection.frame, "TOPLEFT", 14 + column * 184, -(72 + row * 70));
-            tile.sub.SetText(roleLabel(currentRole) + " capable");
+            tile.button.frame.SetPoint("TOPLEFT", classSection.frame, "TOPLEFT", 14 + column * 202, -(72 + row * 104));
+            const validSpecs = getSpecsForRole(tile.classDef.id, currentRole);
+            tile.sub.SetText(String(validSpecs.length) + " " + roleLabel(currentRole) + (validSpecs.length === 1 ? " spec" : " specs"));
+            tile.specs.SetText(specSummary(tile.classDef.id, currentRole));
             tile.button.setSelected(tile.classDef.id === currentClass);
             tile.button.frame.Show();
             classIndex += 1;
@@ -291,12 +317,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             specHint.SetText((selectedClass?.label ?? "Selected class") + " options for " + roleLabel(currentRole) + ".");
             emptySpec.Hide();
 
-            anySpecButton.frame.ClearAllPoints();
-            anySpecButton.frame.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 14, -74);
-            anySpecButton.setSelected(currentSpec === ANY_SPEC_ID);
-            anySpecButton.frame.Show();
-
-            let specIndex = 1;
+            let specIndex = 0;
             for (const tile of specTiles) {
                 let visible = false;
                 if (tile.classId === currentClass) {
@@ -310,13 +331,18 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
 
                 if (visible) {
                     tile.button.frame.ClearAllPoints();
-                    tile.button.frame.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 14 + specIndex * 226, -74);
+                    tile.button.frame.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 14 + specIndex * 248, -78);
                     tile.sub.SetText(tile.classLabel + " · " + roleLabel(currentRole));
                     tile.button.setSelected(tile.spec.id === currentSpec);
                     tile.button.frame.Show();
                     specIndex += 1;
                 } else tile.button.frame.Hide();
             }
+
+            anySpecButton.frame.ClearAllPoints();
+            anySpecButton.frame.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 14 + specIndex * 248, -78);
+            anySpecButton.setSelected(currentSpec === ANY_SPEC_ID);
+            anySpecButton.frame.Show();
         }
 
         const selectedClass = currentClass === undefined ? undefined : getClass(currentClass);

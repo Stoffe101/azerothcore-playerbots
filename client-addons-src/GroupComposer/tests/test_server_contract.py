@@ -23,6 +23,7 @@ SCROLL_LIST = (ROOT / "client-ui/src/widgets/ScrollList.ts").read_text(encoding=
 TOGGLE = (ROOT / "client-ui/src/widgets/Toggle.ts").read_text(encoding="utf-8")
 BUTTON = (ROOT / "client-ui/src/widgets/Button.ts").read_text(encoding="utf-8")
 MODAL = (ROOT / "client-ui/src/widgets/Modal.ts").read_text(encoding="utf-8")
+NATIVE = (ROOT / "client-ui/src/core/Native.ts").read_text(encoding="utf-8")
 WOW_RUNTIME_SMOKE = (ROOT / "client-ui/tests/wow_runtime_smoke.lua").read_text(encoding="utf-8")
 SERVER = (ROOT / "modules/mod-raid-roster/src/GroupComposerCommand.cpp").read_text(encoding="utf-8")
 PLANNER = (ROOT / "modules/mod-raid-roster/src/GroupComposerPlanner.cpp").read_text(encoding="utf-8")
@@ -101,7 +102,7 @@ for command in (
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
 assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
-assert '## Version: 0.8.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
+assert '## Version: 0.9.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
@@ -540,3 +541,22 @@ assert 'const optionsModal = ModalUI.createModal(frame, 900, 650);' in MODERN
 assert 'column * 430' in MODERN and 'rowIndex * 84' in MODERN, "Options regressed to the old vertical settings list"
 assert 'const pinBuilder = Native.createPanel' in MODERN, "Humans & Pins lost the dedicated pin-composer card"
 assert 'panel.frame.SetSize(438, 76);' in MODERN, "Template cards regressed to the cramped legacy row height"
+
+
+# Premium mockup-target visual contracts.
+assert "createChrome(frame)" in MODERN, "Main dashboard lost the framed chrome treatment"
+assert "ICON_DUNGEON" in MODERN and "ICON_RAID" in MODERN and "ICON_TEMPLATES" in MODERN
+assert "activityBadge = Native.createFramedIcon" in MODERN, "Activity card lost its icon-led visual treatment"
+assert "emphasis: true" in MODERN, "Primary Build & Prepare CTA lost its luminous emphasis"
+assert "roleTint = Native.createSolid" in MODERN, "Role cards lost their role-tinted depth treatment"
+assert "classBadge = Native.createFramedIcon" in MODERN and "specBadge = Native.createFramedIcon" in MODERN, (
+    "Specific Builds rows lost the framed real class/spec icon treatment"
+)
+assert "const modal = createModal(parent, 1080, 760);" in SELECTOR
+assert "classIndex % 5" in SELECTOR and "row * 104" in SELECTOR, "Class picker lost the 5x2 card-grid layout"
+assert "specSummary" in SELECTOR and 'labels.join("  ·  ")' in SELECTOR
+assert "Any valid spec" in SELECTOR and "emphasis: true" in SELECTOR
+assert "modal.setHeaderIcon(roleIcon(currentRole))" in SELECTOR
+assert "createChrome(panel.frame)" in MODAL and "setHeaderIcon(path?: string)" in MODAL
+assert "topTint" in BUTTON and "activeTop" in BUTTON and "emphasis?: boolean" in BUTTON
+assert "createFramedIcon" in NATIVE and "createChrome" in NATIVE and "withAlpha" in NATIVE

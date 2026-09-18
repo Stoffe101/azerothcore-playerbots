@@ -19,6 +19,12 @@ export const theme = {
         error: [0.93, 0.28, 0.31, 1] as Color,
         tank: [0.20, 0.58, 0.98, 1] as Color,
         healer: [0.18, 0.78, 0.42, 1] as Color,
-        dps: [0.91, 0.31, 0.30, 1] as Color
+        dps: [0.91, 0.31, 0.30, 1] as Color,
+        chrome: [0.52, 0.36, 0.14, 1] as Color,
+        chromeBright: [0.93, 0.68, 0.24, 1] as Color,
+        surfaceDeep: [0.010, 0.018, 0.030, 1] as Color,
+        surfaceBlue: [0.018, 0.055, 0.095, 1] as Color,
+        highlight: [0.42, 0.75, 1.00, 1] as Color,
+        shadow: [0.0, 0.0, 0.0, 0.72] as Color
     }
 } as const;
