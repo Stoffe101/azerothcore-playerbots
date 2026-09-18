@@ -55,10 +55,17 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
     let offset = 0;
     const rows: UIButton[] = [];
 
+    const scrollHint = createText(popup.frame, "Mouse wheel for more", "GameFontHighlightSmall", theme.colors.muted);
+    scrollHint.SetPoint("BOTTOMLEFT", popup.frame, "BOTTOMLEFT", 10, 6);
+    scrollHint.Hide();
+
     function refreshRows(): void {
         const items = options.getItems();
         const visible = Math.min(maxVisible, items.length);
-        popup.frame.SetHeight(Math.max(12, visible * 32 + 8));
+        const hasMore = items.length > maxVisible;
+        popup.frame.SetHeight(Math.max(12, visible * 32 + 8 + (hasMore ? 22 : 0)));
+        if (hasMore) scrollHint.Show();
+        else scrollHint.Hide();
 
         for (let i = 0; i < maxVisible; i += 1) {
             let row = rows[i];
