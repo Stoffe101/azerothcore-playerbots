@@ -291,7 +291,7 @@ function ____exports.createButton(self, parent, options)
     local background = createSolid(nil, frame, theme.colors.surfaceRaised)
     background:SetAllPoints(frame)
     local outline = createOutline(nil, frame, theme.colors.border)
-    local label = createText(nil, frame, options.text, "GameFontHighlightSmall")
+    local label = createText(nil, frame, options.text, options.height >= 34 and "GameFontHighlight" or "GameFontHighlightSmall")
     label:SetPoint(
         "CENTER",
         frame,
@@ -304,7 +304,7 @@ function ____exports.createButton(self, parent, options)
     local enabled = true
     local accent = options.accent or theme.colors.primary
     local function render(self)
-        frame:SetAlpha(enabled and 1 or 0.35)
+        frame:SetAlpha(enabled and 1 or 0.48)
         outline:setColor(selected and accent or theme.colors.border)
         setTextureColor(nil, background, selected and theme.colors.surfaceHover or theme.colors.surfaceRaised)
         local color = selected and accent or theme.colors.text
@@ -4091,11 +4091,22 @@ function ____exports.createModernDashboard(self)
                 12,
                 -66
             )
+            local empty = Native:createText(scroll.content, "No exact builds yet.\nUnspecified slots stay on Auto.", "GameFontHighlightSmall", theme.colors.muted)
+            empty:SetPoint(
+                "TOPLEFT",
+                scroll.content,
+                "TOPLEFT",
+                8,
+                -12
+            )
+            empty:SetWidth(226)
+            empty:SetJustifyV("TOP")
             exactColumns[role] = {
                 panel = panel,
                 count = count,
                 add = add,
                 scroll = scroll,
+                empty = empty,
                 rows = {}
             }
             i = i + 1
@@ -5088,6 +5099,11 @@ function ____exports.createModernDashboard(self)
                 Model:remainingBotSlots(role) - Model:exactCount(role)
             ))) .. " Auto")
             column.add:setEnabled(Model:exactCount(role) < Model:remainingBotSlots(role))
+            if #rows == 0 then
+                column.empty:Show()
+            else
+                column.empty:Hide()
+            end
             local roleCopy = role
             column.add.frame:SetScript(
                 "OnMouseDown",
@@ -5221,12 +5237,12 @@ function ____exports.createModernDashboard(self)
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue183
+                    local __continue185
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue183 = true
+                            __continue185 = true
                             break
                         end
                         local column = g % columns
@@ -5285,9 +5301,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue183 = true
+                        __continue185 = true
                     until true
-                    if not __continue183 then
+                    if not __continue185 then
                         break
                     end
                 end
