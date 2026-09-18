@@ -8,6 +8,7 @@ export interface HumanAnchor {
     subgroup?: number;
     isPlayer?: boolean;
     online?: boolean;
+    level?: number;
 }
 
 export const ANY_SPEC_ID = -1;

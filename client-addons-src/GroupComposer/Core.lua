@@ -351,6 +351,7 @@ function GC:HandleProtocolMessage(message)
         GC.anchors[#GC.anchors + 1] = {
             name = fields[2] or "?", class = fields[3] or "UNKNOWN", role = fields[4] or "AUTO",
             online = fields[5] == "1", subgroup = ParseNumber(fields[6], 1), isPlayer = fields[7] == "1",
+            level = ParseNumber(fields[8], 1),
         }
     elseif kind == "ANCHORDONE" then
         GC.anchorsReady = true
@@ -444,7 +445,7 @@ function GC:ScanHumans()
         for _, anchor in ipairs(GC.anchors) do
             out[#out + 1] = {
                 name = anchor.name, class = anchor.class, subgroup = anchor.subgroup,
-                isPlayer = anchor.isPlayer, online = anchor.online,
+                isPlayer = anchor.isPlayer, online = anchor.online, level = anchor.level,
                 role = config.humanRoles[anchor.name] or anchor.role or "AUTO",
             }
         end
@@ -458,7 +459,7 @@ function GC:ScanHumans()
     if not name then return {} end
     return { {
         name = name, class = classToken or "UNKNOWN", subgroup = 1, isPlayer = true, online = true,
-        role = GC:GetConfig().humanRoles[name] or "AUTO",
+        level = UnitLevel("player") or 1, role = GC:GetConfig().humanRoles[name] or "AUTO",
     } }
 end
 

@@ -1175,6 +1175,7 @@ void SendAnchor(ChatHandler* handler, Player* master, ObjectGuid guid, uint8 sub
     Player* live = ObjectAccessor::FindConnectedPlayer(guid);
     std::string name;
     uint8 cls = 0;
+    uint8 level = 1;
     bool online = live != nullptr;
     char const* roleToken = "AUTO";
 
@@ -1182,6 +1183,7 @@ void SendAnchor(ChatHandler* handler, Player* master, ObjectGuid guid, uint8 sub
     {
         name = live->GetName();
         cls = live->getClass();
+        level = live->GetLevel();
         roleToken = RoleToken(Planner::InferRole(live));
     }
     else
@@ -1190,6 +1192,7 @@ void SendAnchor(ChatHandler* handler, Player* master, ObjectGuid guid, uint8 sub
         if (!cache) return;
         name = cache->Name;
         cls = cache->Class;
+        level = cache->Level;
 
         auto draft = s_drafts.find(master->GetGUID().GetCounter());
         if (draft != s_drafts.end())
@@ -1199,8 +1202,8 @@ void SendAnchor(ChatHandler* handler, Player* master, ObjectGuid guid, uint8 sub
         }
     }
 
-    handler->PSendSysMessage("[GC]|ANCHOR|{}|{}|{}|{}|{}|{}", Sanitize(name), ClassToken(cls), roleToken,
-        online ? 1 : 0, uint32(subgroup + 1), guid == master->GetGUID() ? 1 : 0);
+    handler->PSendSysMessage("[GC]|ANCHOR|{}|{}|{}|{}|{}|{}|{}", Sanitize(name), ClassToken(cls), roleToken,
+        online ? 1 : 0, uint32(subgroup + 1), guid == master->GetGUID() ? 1 : 0, uint32(level));
 }
 
 class GroupComposerWorld : public WorldScript

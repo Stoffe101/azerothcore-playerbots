@@ -1391,7 +1391,10 @@ export function createModernDashboard(): Dashboard {
         Native.setClassIcon(humanIcon, String(primary.class));
         humanBadge.outline.setColor(Native.classColor(String(primary.class)));
         humanName.SetText((primary.isPlayer ? "YOU  ·  " : "") + primary.name);
-        humanSub.SetText(Model.classLabel(String(primary.class)) + (list.length > 1 ? "  ·  +" + String(list.length - 1) + " more human anchor" + (list.length > 2 ? "s" : "") : ""));
+        humanSub.SetText(
+            "Level " + String(primary.level ?? "?") + " " + Model.classLabel(String(primary.class)) +
+            (list.length > 1 ? "  ·  +" + String(list.length - 1) + " more human anchor" + (list.length > 2 ? "s" : "") : "")
+        );
 
         const selected = Model.config().humanRoles?.[primary.name] as Role | undefined;
         for (const role of roleOrder) {

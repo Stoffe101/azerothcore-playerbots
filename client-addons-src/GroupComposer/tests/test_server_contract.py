@@ -614,3 +614,12 @@ assert '"TOTAL RAID SIZE"' in MODERN and "quickStatusTitle" in MODERN and "quick
 assert '"Human anchor"' in MODERN and "widgets.humanAnchor.frame.Show()" in MODERN
 assert "resetRoles.frame.SetPoint" in MODERN and 'resetRoles.frame.SetPoint("TOPRIGHT", raidView' in MODERN
 assert "backendGlow" in MODERN and "phaseGlow" in MODERN and "coverageGlyph" in MODERN
+
+
+# Human anchor presentation carries authoritative level for the premium party strip.
+assert 'uint8 level = 1;' in SERVER
+assert 'level = live->GetLevel();' in SERVER and 'level = cache->Level;' in SERVER
+assert '"[GC]|ANCHOR|{}|{}|{}|{}|{}|{}|{}"' in SERVER
+assert 'level = ParseNumber(fields[8], 1)' in CORE
+assert 'level?: number;' in MODEL
+assert '"Level " + String(primary.level ?? "?")' in MODERN
