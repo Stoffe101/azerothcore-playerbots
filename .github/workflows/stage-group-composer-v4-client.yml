@@ -1,73 +1,40 @@
-name: Stage Group Composer V4 client
+name: Group Composer client checks
 
 on:
   push:
     branches:
       - test/group-composer-v4
 
-permissions:
-  contents: write
-
 jobs:
-  stage:
+  validate:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: test/group-composer-v4
-
-      - name: Apply V4 client stages
-        run: |
-          set -euo pipefail
-          if ! grep -q '^DashboardV4.lua$' client-addons-src/GroupComposer/GroupComposer.toc; then
-            python3 .github/scripts/apply_group_composer_v4_client_core.py
-            python3 .github/scripts/apply_group_composer_v4_dashboard_compat2.py
-            python3 .github/scripts/apply_group_composer_v4_layout_polish.py
-            python3 .github/scripts/apply_group_composer_v4_ui_contract.py
-          fi
-          if ! grep -q 'function U:OpenBuildEditor' client-addons-src/GroupComposer/DashboardV4.lua; then
-            python3 .github/scripts/apply_group_composer_v4_exact_editor.py
-          fi
 
       - name: Install Lua 5.1
         run: |
           sudo apt-get update
           sudo apt-get install -y lua5.1
 
-      - name: Validate V4 client
+      - name: Validate client addon
         run: |
           set -euo pipefail
           find client-addons-src/GroupComposer -type f -name '*.lua' -print0 | xargs -0 -n1 luac5.1 -p
           lua5.1 client-addons-src/GroupComposer/tests/test_data_profiles.lua
           python3 client-addons-src/GroupComposer/tests/test_server_contract.py
           python3 client-addons-src/GroupComposer/tests/test_titan_bridge_contract.py
-          grep -q '^DashboardV4.lua$' client-addons-src/GroupComposer/GroupComposer.toc
-          ! grep -q '^DashboardV3.lua$' client-addons-src/GroupComposer/GroupComposer.toc
-          ! grep -R 'SetShown(' client-addons-src/GroupComposer/DashboardV4.lua
-          grep -q 'function U:OpenBuildEditor' client-addons-src/GroupComposer/DashboardV4.lua
-          grep -q 'SPECIALIZATION' client-addons-src/GroupComposer/DashboardV4.lua
-          grep -q 'Save Build' client-addons-src/GroupComposer/DashboardV4.lua
-          grep -q 'ENTER SELECTED ACTIVITY?' client-addons-src/GroupComposer/DashboardV4.lua
-          grep -q 'Auto travel after Assemble' client-addons-src/GroupComposer/DashboardV4.lua
-          grep -q 'Dungeon Finder selects destination' client-addons-src/GroupComposer/DashboardV4.lua
-          grep -q 'Ready to enter activity' client-addons-src/GroupComposer/DashboardV4.lua
-          git diff --check
 
-      - name: Commit generated client changes
-        run: |
-          set -euo pipefail
-          if git diff --quiet; then
-            echo 'V4 client stages already applied.'
-            exit 0
+          # During the migration the checked-in generated bundle may appear one bot commit
+          # after the TypeScript source commit. Once the new shell is activated in the TOC,
+          # require that generated output to exist and parse cleanly.
+          if grep -q '^generated/GroupComposerModernUI.lua$' client-addons-src/GroupComposer/GroupComposer.toc; then
+            test -f client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua
+            luac5.1 -p client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua
+            ! grep -q '^DashboardV4.lua$' client-addons-src/GroupComposer/GroupComposer.toc
           fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            client-addons-src/GroupComposer/Data.lua \
-            client-addons-src/GroupComposer/Core.lua \
-            client-addons-src/GroupComposer/RuntimeGuards.lua \
-            client-addons-src/GroupComposer/DashboardV4.lua \
-            client-addons-src/GroupComposer/tests/test_server_contract.py
-          git commit -m 'feat(group-composer): add exact build editor'
-          git push origin HEAD:test/group-composer-v4
+
+          ! grep -R 'SetShown(' client-addons-src/GroupComposer --include='*.lua'
+          git diff --check
