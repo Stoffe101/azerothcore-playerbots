@@ -154,10 +154,31 @@ jobs:
               exit 1
             }
           done
+          test -d /usr/lib/gcc/x86_64-linux-gnu/15 || {
+            echo "Missing GCC 15 runtime/development files required by local Clang 18." >&2
+            exit 1
+          }
+
           clang-18 --version | head -n 1
           cmake --version | head -n 1
           ninja --version
           ccache --version | head -n 1
+
+          cat >/tmp/ci-filesystem-test.cpp <<'EOF'
+          #include <filesystem>
+          int main()
+          {
+              std::filesystem::path p{"test"};
+              return p.empty() ? 1 : 0;
+          }
+          EOF
+
+          clang++-18 \
+            --gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/15 \
+            -std=c++20 \
+            /tmp/ci-filesystem-test.cpp \
+            -o /tmp/ci-filesystem-test
+          /tmp/ci-filesystem-test
 
       - name: Restore GitHub compiler cache
         if: needs.route.outputs.is_local != 'true'
@@ -248,6 +269,12 @@ jobs:
           set -euo pipefail
           rm -rf "$GITHUB_WORKSPACE/build" "$GITHUB_WORKSPACE/dist"
 
+          TOOLCHAIN_FLAGS=""
+          if [[ "$BUILD_IS_LOCAL" == "true" ]]; then
+            TOOLCHAIN_FLAGS="--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/15"
+            echo "Local Ubuntu 26.04 runner: pinning Clang 18 to GCC 15 libstdc++."
+          fi
+
           cmake -S "$GITHUB_WORKSPACE/azerothcore-wotlk" -B "$GITHUB_WORKSPACE/build" \
             -G Ninja \
             -DCMAKE_C_COMPILER=clang-18 \
@@ -261,8 +288,8 @@ jobs:
             -DMODULES=static \
             -DWITH_WARNINGS=ON \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_FLAGS="-Werror -ferror-limit=0" \
-            -DCMAKE_CXX_FLAGS="-Werror -ferror-limit=0"
+            -DCMAKE_C_FLAGS="$TOOLCHAIN_FLAGS -Werror -ferror-limit=0" \
+            -DCMAKE_CXX_FLAGS="$TOOLCHAIN_FLAGS -Werror -ferror-limit=0"
 
       - name: Compile
         shell: bash
