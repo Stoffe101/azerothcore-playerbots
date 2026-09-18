@@ -70,6 +70,8 @@ jobs:
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua
             git commit -m 'build(group-composer): refresh modern UI bundle'
+            git fetch origin test/group-composer-v4
+            git rebase origin/test/group-composer-v4
             git push origin HEAD:test/group-composer-v4
           fi
 
