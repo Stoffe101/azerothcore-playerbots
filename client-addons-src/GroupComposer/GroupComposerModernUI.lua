@@ -63,6 +63,7 @@ local ____exports = {}
 local ____Theme = require("theme.Theme")
 local theme = ____Theme.theme
 ____exports.CLASS_ICON_ATLAS = "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes"
+____exports.ROLE_ICON_ATLAS = "Interface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES"
 function ____exports.setTextureColor(self, texture, color)
     texture:SetTexture(color[1], color[2], color[3], color[4])
 end
@@ -476,6 +477,30 @@ function ____exports.createChrome(self, frame, accent)
     if #outer.textures == 0 then
         return
     end
+end
+function ____exports.setRoleIcon(self, texture, role)
+    texture:SetTexture(____exports.ROLE_ICON_ATLAS)
+    if role == "TANK" then
+        texture:SetTexCoord(0, 0.296875, 0.34375, 0.640625)
+    elseif role == "HEALER" then
+        texture:SetTexCoord(0.3125, 0.609375, 0.015625, 0.3125)
+    else
+        texture:SetTexCoord(0.3125, 0.609375, 0.34375, 0.640625)
+    end
+end
+function ____exports.createFramedRoleIcon(self, parent, role, size, borderColor)
+    if borderColor == nil then
+        borderColor = theme.colors.borderStrong
+    end
+    local framed = ____exports.createFramedIcon(
+        nil,
+        parent,
+        ____exports.ROLE_ICON_ATLAS,
+        size,
+        borderColor
+    )
+    ____exports.setRoleIcon(nil, framed.icon, role)
+    return framed
 end
 return ____exports
  end,
@@ -2382,6 +2407,7 @@ local createFramedIcon = ____Native.createFramedIcon
 local createPanel = ____Native.createPanel
 local createSolid = ____Native.createSolid
 local createText = ____Native.createText
+local setRoleIcon = ____Native.setRoleIcon
 local ____Theme = require("theme.Theme")
 local theme = ____Theme.theme
 local ____Button = require("widgets.Button")
@@ -2579,6 +2605,30 @@ function ____exports.createModal(self, parent, width, height)
                 74,
                 -12
             )
+        end,
+        setHeaderRole = function(self, role)
+            if role == nil or role == "" then
+                headerIcon.frame:Hide()
+                title:ClearAllPoints()
+                title:SetPoint(
+                    "TOPLEFT",
+                    panel.frame,
+                    "TOPLEFT",
+                    theme.spacing.lg,
+                    -12
+                )
+                return
+            end
+            setRoleIcon(nil, headerIcon.icon, role)
+            headerIcon.frame:Show()
+            title:ClearAllPoints()
+            title:SetPoint(
+                "TOPLEFT",
+                panel.frame,
+                "TOPLEFT",
+                74,
+                -12
+            )
         end
     }
 end
@@ -2710,11 +2760,13 @@ local ____exports = {}
 local ____Native = require("core.Native")
 local classColor = ____Native.classColor
 local createFramedIcon = ____Native.createFramedIcon
+local createFramedRoleIcon = ____Native.createFramedRoleIcon
 local createIcon = ____Native.createIcon
 local createPanel = ____Native.createPanel
 local createSolid = ____Native.createSolid
 local createText = ____Native.createText
 local setClassIcon = ____Native.setClassIcon
+local setRoleIcon = ____Native.setRoleIcon
 local ____WotlkBuilds = require("data.WotlkBuilds")
 local getClass = ____WotlkBuilds.getClass
 local getClassesForRole = ____WotlkBuilds.getClassesForRole
@@ -2784,15 +2836,14 @@ function ____exports.createBuildSelector(self, parent, options)
         local accent = roleAccent(nil, currentRole)
         modal:setTitle(("Add " .. roleLabel(nil, currentRole)) .. " Build")
         modal:setSubtitle(("Choose a class and specialization for this " .. roleLabel(nil, currentRole)) .. " build. Unspecified slots stay Auto-filled.")
-        modal:setHeaderIcon(roleIcon(nil, currentRole))
+        modal:setHeaderRole(currentRole)
         classSection.outline:setColor(accent)
         specSection.outline:setColor(accent)
         classStep.outline:setColor(accent)
         specStep.outline:setColor(accent)
         classStepText:SetTextColor(accent[1], accent[2], accent[3], 1)
         specStepText:SetTextColor(accent[1], accent[2], accent[3], 1)
-        summaryRoleBadge.icon:SetTexture(roleIcon(nil, currentRole))
-        summaryRoleBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        setRoleIcon(nil, summaryRoleBadge.icon, currentRole)
         summaryRoleBadge.outline:setColor(accent)
         summaryRoleText:SetText(roleLabel(nil, currentRole))
         summaryRoleText:SetTextColor(accent[1], accent[2], accent[3], 1)
@@ -3473,10 +3524,10 @@ function ____exports.createBuildSelector(self, parent, options)
         0,
         -4
     )
-    summaryRoleBadge = createFramedIcon(
+    summaryRoleBadge = createFramedRoleIcon(
         nil,
         summary.frame,
-        roleIcon(nil, "DPS"),
+        "DPS",
         46,
         theme.colors.dps
     )
@@ -4707,7 +4758,7 @@ function ____exports.createModernDashboard(self)
                 if row == nil then
                     local panel = Native:createPanel(pinScroll.content, theme.colors.surfaceRaised, theme.colors.border)
                     panel.frame:SetSize(892, 48)
-                    local roleBadge = Native:createFramedIcon(panel.frame, D.ROLE_ICON.DPS, 34, theme.colors.dps)
+                    local roleBadge = Native:createFramedRoleIcon(panel.frame, "DPS", 34, theme.colors.dps)
                     roleBadge.frame:SetPoint(
                         "LEFT",
                         panel.frame,
@@ -4760,8 +4811,7 @@ function ____exports.createModernDashboard(self)
                     -(i * 54)
                 )
                 local pinAccent = Model:roleAccent(pin.role)
-                row._roleIcon:SetTexture(D.ROLE_ICON[pin.role])
-                row._roleIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                Native:setRoleIcon(row._roleIcon, pin.role)
                 row._roleBadge.outline:setColor(pinAccent)
                 row._name:SetText(tostring(pin.name))
                 row._info:SetText((Model:roleLabel(pin.role) .. "  ·  ") .. (pin.required and "REQUIRED" or "Preferred companion"))
@@ -5427,7 +5477,8 @@ function ____exports.createModernDashboard(self)
     )
     for ____, role in ipairs({"TANK", "HEALER", "DPS"}) do
         local button = humanRoleButtons[role]
-        local icon = Native:createIcon(button.frame, D.ROLE_ICON[role], 18)
+        local icon = button.frame:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(18, 18)
         icon:SetPoint(
             "LEFT",
             button.frame,
@@ -5435,6 +5486,7 @@ function ____exports.createModernDashboard(self)
             10,
             0
         )
+        Native:setRoleIcon(icon, role)
         button.label:ClearAllPoints()
         button.label:SetPoint(
             "LEFT",
@@ -5570,7 +5622,7 @@ function ____exports.createModernDashboard(self)
                 0,
                 0
             )
-            local roleBadge = Native:createFramedIcon(row.frame, D.ROLE_ICON.DPS, 38, theme.colors.borderStrong)
+            local roleBadge = Native:createFramedRoleIcon(row.frame, "DPS", 38, theme.colors.borderStrong)
             roleBadge.frame:SetPoint(
                 "LEFT",
                 row.frame,
@@ -5800,9 +5852,9 @@ function ____exports.createModernDashboard(self)
                 i * 312,
                 -12
             )
-            local roleBadge = Native:createFramedIcon(
+            local roleBadge = Native:createFramedRoleIcon(
                 card.frame,
-                D.ROLE_ICON[role],
+                role,
                 54,
                 Model:roleAccent(role)
             )
@@ -6052,9 +6104,9 @@ function ____exports.createModernDashboard(self)
             "BACKGROUND"
         )
         roleTint:SetAllPoints(panel.frame)
-        local roleBadge = Native:createFramedIcon(
+        local roleBadge = Native:createFramedRoleIcon(
             panel.frame,
-            D.ROLE_ICON[role],
+            role,
             38,
             Model:roleAccent(role)
         )
@@ -6342,7 +6394,8 @@ function ____exports.createModernDashboard(self)
                 16 + i * 90,
                 -198
             )
-            local icon = Native:createIcon(chip.frame, D.ROLE_ICON[role], 17)
+            local icon = chip.frame:CreateTexture(nil, "ARTWORK")
+            icon:SetSize(17, 17)
             icon:SetPoint(
                 "LEFT",
                 chip.frame,
@@ -6350,6 +6403,7 @@ function ____exports.createModernDashboard(self)
                 6,
                 0
             )
+            Native:setRoleIcon(icon, role)
             local label = Native:createText(
                 chip.frame,
                 "",
@@ -7234,8 +7288,7 @@ function ____exports.createModernDashboard(self)
                         local accent = Model:roleAccent(slot.role)
                         Native:setTextureColor(widgets.accent, accent)
                         widgets.row.outline:setColor(theme.colors.borderStrong)
-                        widgets.roleIcon:SetTexture(D.ROLE_ICON[slot.role])
-                        widgets.roleIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                        Native:setRoleIcon(widgets.roleIcon, slot.role)
                         widgets.roleText:SetText(Model:roleLabel(slot.role))
                         widgets.roleText:SetTextColor(accent[1], accent[2], accent[3], 1)
                         widgets.slotText:SetText(slot.human ~= nil and "Human anchor" or "Bot slot " .. tostring(slot.botIndex or 1))
