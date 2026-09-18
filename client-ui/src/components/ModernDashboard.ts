@@ -1100,7 +1100,7 @@ export function createModernDashboard(): Dashboard {
                     classId: exact.classId,
                     specId: exact.specId,
                     count: 1,
-                });
+                }, false);
             });
             widgets.choose.frame.Show();
 
@@ -1129,7 +1129,7 @@ export function createModernDashboard(): Dashboard {
             column.add.frame.SetScript("OnMouseDown", () => {
                 if (Model.exactCount(roleCopy) >= Model.remainingBotSlots(roleCopy)) return;
                 selectorContext = { mode: "RAID_ADD", role: roleCopy, index: -1 };
-                buildSelector.open(roleCopy, { role: roleCopy, count: 1 });
+                buildSelector.open(roleCopy, { role: roleCopy, count: 1 }, true);
             });
 
             for (const old of column.rows) old.frame.Hide();
@@ -1175,7 +1175,7 @@ export function createModernDashboard(): Dashboard {
                         classId: build.classId,
                         specId: build.specId,
                         count: build.count,
-                    });
+                    }, true);
                 });
                 widgets.remove.frame.SetScript("OnMouseDown", () => Model.removeRequiredBuild(roleCopy, indexCopy));
                 widgets.panel.frame.Show();
