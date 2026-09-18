@@ -3367,6 +3367,22 @@ function ____exports.createModernDashboard(self)
                 if row == nil then
                     local panel = Native:createPanel(builtinScroll.content, theme.colors.surfaceRaised, theme.colors.border)
                     panel.frame:SetSize(438, 76)
+                    local accent = Native:createSolid(panel.frame, theme.colors.primary, "ARTWORK")
+                    accent:SetWidth(3)
+                    accent:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        0,
+                        0
+                    )
+                    accent:SetPoint(
+                        "BOTTOMLEFT",
+                        panel.frame,
+                        "BOTTOMLEFT",
+                        0,
+                        0
+                    )
                     local name = Native:createText(panel.frame, "", "GameFontHighlight")
                     name:SetPoint(
                         "TOPLEFT",
@@ -3432,6 +3448,22 @@ function ____exports.createModernDashboard(self)
                 if row == nil then
                     local panel = Native:createPanel(customScroll.content, theme.colors.surfaceRaised, theme.colors.border)
                     panel.frame:SetSize(438, 76)
+                    local accent = Native:createSolid(panel.frame, theme.colors.warning, "ARTWORK")
+                    accent:SetWidth(3)
+                    accent:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        0,
+                        0
+                    )
+                    accent:SetPoint(
+                        "BOTTOMLEFT",
+                        panel.frame,
+                        "BOTTOMLEFT",
+                        0,
+                        0
+                    )
                     local name = Native:createText(panel.frame, "", "GameFontHighlight")
                     name:SetPoint(
                         "TOPLEFT",
@@ -3730,6 +3762,22 @@ function ____exports.createModernDashboard(self)
         -1
     )
     header.frame:SetHeight(64)
+    local headerAccent = Native:createSolid(header.frame, theme.colors.primary, "OVERLAY")
+    headerAccent:SetPoint(
+        "TOPLEFT",
+        header.frame,
+        "TOPLEFT",
+        0,
+        0
+    )
+    headerAccent:SetPoint(
+        "TOPRIGHT",
+        header.frame,
+        "TOPRIGHT",
+        0,
+        0
+    )
+    headerAccent:SetHeight(2)
     local mark = Native:createPanel(header.frame, theme.colors.surfaceRaised, theme.colors.primary)
     mark.frame:SetSize(38, 38)
     mark.frame:SetPoint(
@@ -3814,7 +3862,7 @@ function ____exports.createModernDashboard(self)
         34
     )
     sidebar.frame:SetWidth(168)
-    local navTitle = Native:createText(sidebar.frame, "PLAN", "GameFontNormalSmall", theme.colors.muted)
+    local navTitle = Native:createText(sidebar.frame, "COMPOSE", "GameFontNormalSmall", theme.colors.muted)
     navTitle:SetPoint(
         "TOPLEFT",
         sidebar.frame,
@@ -3874,7 +3922,7 @@ function ____exports.createModernDashboard(self)
         0
     )
     navRaid.label:SetJustifyH("LEFT")
-    local manageTitle = Native:createText(sidebar.frame, "MANAGE", "GameFontNormalSmall", theme.colors.muted)
+    local manageTitle = Native:createText(sidebar.frame, "TOOLS", "GameFontNormalSmall", theme.colors.muted)
     manageTitle:SetPoint(
         "TOPLEFT",
         sidebar.frame,
@@ -3963,7 +4011,7 @@ function ____exports.createModernDashboard(self)
         0
     )
     navOptions.label:SetJustifyH("LEFT")
-    local sideHint = Native:createText(sidebar.frame, "Humans stay locked.\nExact builds only affect bot slots.", "GameFontHighlightSmall", theme.colors.muted)
+    local sideHint = Native:createText(sidebar.frame, "Humans stay locked.\nSpecific builds reserve bot slots; everything else stays Auto.", "GameFontHighlightSmall", theme.colors.muted)
     sideHint:SetPoint(
         "BOTTOMLEFT",
         sidebar.frame,
@@ -4913,7 +4961,7 @@ function ____exports.createModernDashboard(self)
             g = g + 1
         end
     end
-    local statusTitle = Native:createText(status.frame, "STATUS", "GameFontNormalSmall", theme.colors.muted)
+    local statusTitle = Native:createText(status.frame, "ROSTER STATUS", "GameFontNormalSmall", theme.colors.muted)
     statusTitle:SetPoint(
         "TOPLEFT",
         status.frame,
