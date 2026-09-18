@@ -3517,7 +3517,7 @@ function ____exports.createModernDashboard(self)
                 local row = humanRowsModal[i + 1]
                 if row == nil then
                     local panel = Native:createPanel(humanScroll.content, theme.colors.surfaceRaised, theme.colors.border)
-                    panel.frame:SetSize(812, 42)
+                    panel.frame:SetSize(892, 46)
                     local icon = panel.frame:CreateTexture(nil, "ARTWORK")
                     icon:SetSize(26, 26)
                     icon:SetPoint(
@@ -3578,7 +3578,7 @@ function ____exports.createModernDashboard(self)
                     humanScroll.content,
                     "TOPLEFT",
                     0,
-                    -(i * 48)
+                    -(i * 52)
                 )
                 Native:setClassIcon(
                     row._icon,
@@ -3615,7 +3615,7 @@ function ____exports.createModernDashboard(self)
                 i = i + 1
             end
         end
-        humanScroll:setContentHeight(math.max(220, #list * 48))
+        humanScroll:setContentHeight(math.max(210, #list * 52))
         for ____, role in ipairs(roleOrder) do
             pinRoleButtons[role]:setSelected(pinRole == role)
         end
@@ -3629,7 +3629,7 @@ function ____exports.createModernDashboard(self)
                 local row = pinRows[i + 1]
                 if row == nil then
                     local panel = Native:createPanel(pinScroll.content, theme.colors.surfaceRaised, theme.colors.border)
-                    panel.frame:SetSize(812, 40)
+                    panel.frame:SetSize(892, 44)
                     local name = Native:createText(panel.frame, "", "GameFontHighlightSmall")
                     name:SetPoint(
                         "LEFT",
@@ -3669,7 +3669,7 @@ function ____exports.createModernDashboard(self)
                     pinScroll.content,
                     "TOPLEFT",
                     0,
-                    -(i * 46)
+                    -(i * 50)
                 )
                 row._name:SetText(tostring(pin.name))
                 row._info:SetText((Model:roleLabel(pin.role) .. "  ·  ") .. (pin.required and "Required" or "Preferred"))
@@ -3685,7 +3685,7 @@ function ____exports.createModernDashboard(self)
                 i = i + 1
             end
         end
-        pinScroll:setContentHeight(math.max(170, #pins * 46))
+        pinScroll:setContentHeight(math.max(190, #pins * 50))
     end
     local frame = CreateFrame("Frame", "GroupComposerModernFrame", UIParent)
     frame:SetSize(1520, 900)
@@ -5292,7 +5292,7 @@ function ____exports.createModernDashboard(self)
         refreshTemplates(nil)
         templatesModal:show()
     end
-    local peopleModal = ModalUI:createModal(frame, 900, 650)
+    local peopleModal = ModalUI:createModal(frame, 980, 700)
     peopleModal:setTitle("Humans & Pins")
     peopleModal:setSubtitle("Real players stay locked. Pins request named companions without turning humans into disposable roster slots.")
     local peopleHumanTitle = Native:createText(peopleModal.content, "HUMAN ANCHORS", "GameFontNormalSmall", theme.colors.muted)
@@ -5303,7 +5303,7 @@ function ____exports.createModernDashboard(self)
         0,
         0
     )
-    humanScroll = ScrollUI:createScrollList(peopleModal.content, 820, 220)
+    humanScroll = ScrollUI:createScrollList(peopleModal.content, 900, 210)
     humanScroll.frame:SetPoint(
         "TOPLEFT",
         peopleModal.content,
@@ -5312,21 +5312,37 @@ function ____exports.createModernDashboard(self)
         -26
     )
     humanRowsModal = {}
+    local pinBuilder = Native:createPanel(peopleModal.content, theme.colors.surfaceRaised, theme.colors.border)
+    pinBuilder.frame:SetPoint(
+        "TOPLEFT",
+        peopleModal.content,
+        "TOPLEFT",
+        0,
+        -242
+    )
+    pinBuilder.frame:SetPoint(
+        "TOPRIGHT",
+        peopleModal.content,
+        "TOPRIGHT",
+        0,
+        -242
+    )
+    pinBuilder.frame:SetHeight(82)
     local pinTitle = Native:createText(peopleModal.content, "PIN COMPANION", "GameFontNormalSmall", theme.colors.muted)
     pinTitle:SetPoint(
         "TOPLEFT",
         peopleModal.content,
         "TOPLEFT",
-        0,
-        -266
+        12,
+        -250
     )
     local pinInput = InputUI:createTextInput(peopleModal.content, 230, 34)
     pinInput.frame:SetPoint(
         "TOPLEFT",
         peopleModal.content,
         "TOPLEFT",
-        0,
-        -292
+        12,
+        -278
     )
     pinRole = "DPS"
     local pinRequired = false
@@ -5403,8 +5419,8 @@ function ____exports.createModernDashboard(self)
         "TOPRIGHT",
         peopleModal.content,
         "TOPRIGHT",
-        0,
-        -292
+        -12,
+        -278
     )
     local pinListTitle = Native:createText(peopleModal.content, "PINNED MEMBERS", "GameFontNormalSmall", theme.colors.muted)
     pinListTitle:SetPoint(
@@ -5412,15 +5428,15 @@ function ____exports.createModernDashboard(self)
         peopleModal.content,
         "TOPLEFT",
         0,
-        -344
+        -338
     )
-    pinScroll = ScrollUI:createScrollList(peopleModal.content, 820, 170)
+    pinScroll = ScrollUI:createScrollList(peopleModal.content, 900, 190)
     pinScroll.frame:SetPoint(
         "TOPLEFT",
         peopleModal.content,
         "TOPLEFT",
         0,
-        -370
+        -364
     )
     pinRows = {}
     showPeople = function()
@@ -5428,7 +5444,7 @@ function ____exports.createModernDashboard(self)
         refreshPeople(nil)
         peopleModal:show()
     end
-    local optionsModal = ModalUI:createModal(frame, 720, 620)
+    local optionsModal = ModalUI:createModal(frame, 900, 650)
     optionsModal:setTitle("Composition Options")
     optionsModal:setSubtitle("Keep the common path simple. These controls tune how Composer fills unspecified slots.")
     local optionDefs = {
@@ -5445,22 +5461,17 @@ function ____exports.createModernDashboard(self)
         local i = 0
         while i < #optionDefs do
             local def = optionDefs[i + 1]
+            local column = i % 2
+            local rowIndex = math.floor(i / 2)
             local row = Native:createPanel(optionsModal.content, theme.colors.surfaceRaised, theme.colors.border)
             row.frame:SetPoint(
                 "TOPLEFT",
                 optionsModal.content,
                 "TOPLEFT",
-                0,
-                -(i * 62)
+                column * 430,
+                -(rowIndex * 84)
             )
-            row.frame:SetPoint(
-                "RIGHT",
-                optionsModal.content,
-                "RIGHT",
-                0,
-                0
-            )
-            row.frame:SetHeight(52)
+            row.frame:SetSize(414, 72)
             local toggle = ToggleUI:createToggle(
                 row.frame,
                 def.label,
@@ -5481,18 +5492,19 @@ function ____exports.createModernDashboard(self)
                 row.frame,
                 "TOPLEFT",
                 12,
-                -5
+                -8
             )
-            toggle.frame:SetWidth(280)
+            toggle.frame:SetWidth(360)
             local hint = Native:createText(row.frame, def.hint, "GameFontHighlightSmall", theme.colors.muted)
             hint:SetPoint(
                 "TOPLEFT",
                 row.frame,
                 "TOPLEFT",
                 42,
-                -31
+                -37
             )
-            hint:SetWidth(580)
+            hint:SetWidth(350)
+            hint:SetJustifyV("TOP")
             optionToggles[#optionToggles + 1] = toggle
             i = i + 1
         end
@@ -5503,33 +5515,33 @@ function ____exports.createModernDashboard(self)
         optionsModal.content,
         "TOPLEFT",
         0,
-        -(#optionDefs * 62)
+        -348
     )
     gearRow.frame:SetPoint(
-        "RIGHT",
+        "TOPRIGHT",
         optionsModal.content,
-        "RIGHT",
+        "TOPRIGHT",
         0,
-        0
+        -348
     )
-    gearRow.frame:SetHeight(58)
+    gearRow.frame:SetHeight(72)
     local gearTitle = Native:createText(gearRow.frame, "Minimum item level", "GameFontNormal")
     gearTitle:SetPoint(
         "TOPLEFT",
         gearRow.frame,
         "TOPLEFT",
-        12,
-        -9
+        14,
+        -12
     )
     local gearHint = Native:createText(gearRow.frame, "0 disables the floor. Guild/world bots below the configured value are rejected.", "GameFontHighlightSmall", theme.colors.muted)
     gearHint:SetPoint(
         "TOPLEFT",
         gearRow.frame,
         "TOPLEFT",
-        12,
-        -31
+        14,
+        -39
     )
-    gearHint:SetWidth(470)
+    gearHint:SetWidth(620)
     local ____StepperUI_17 = StepperUI
     local ____StepperUI_createNumberStepper_18 = StepperUI.createNumberStepper
     local ____gearRow_frame_16 = gearRow.frame
@@ -5553,7 +5565,7 @@ function ____exports.createModernDashboard(self)
         "RIGHT",
         gearRow.frame,
         "RIGHT",
-        -12,
+        -14,
         0
     )
     showOptions = function()
