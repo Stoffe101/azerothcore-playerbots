@@ -127,9 +127,9 @@ assert 'Build & Prepare' in MODERN and 'PROGRESS_CHANGED' in MODERN, (
 
 # Safety invariants. These are intentionally source-level contracts because removing any one of
 # them changes the destructive semantics even if the module still compiles.
-assert "ValidateAssemblySnapshot(master, plan, validationError)" in SERVER, "Assemble lost pre-prune revalidation"
-assert SERVER.index("ValidateAssemblySnapshot(master, plan, validationError)") < SERVER.index("PruneUnselectedBots(master, plan)"), (
-    "Destructive pruning must happen only after snapshot revalidation"
+assert "ValidateAssemblySnapshot(master, plan, validationError)" in SERVER, "Assemble lost authoritative pre-commit revalidation"
+assert "PruneUnselectedBots" not in SERVER, (
+    "Assembly must not contain an implicit destructive prune phase"
 )
 assert "group->SwapMembersGroup(member.guid, swap->guid)" in SERVER, "Full raid subgroup swaps are no longer applied atomically"
 assert "group->GetMembersCount() == plan.members.size()" in SERVER, "Assembly must require exact reviewed membership"
