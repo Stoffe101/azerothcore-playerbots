@@ -6,7 +6,18 @@ on:
       - main
       - integration/bot-ai-refresh-2026-09-14
       - test/runtime-hardening-group-composer
+      - test/group-composer-v4
   workflow_dispatch:
+    inputs:
+      runner:
+        description: Build runner
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - local
+          - github
 
 permissions:
   contents: read
@@ -16,26 +27,167 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  compile:
+  route:
+    name: Select build runner
     runs-on: ubuntu-24.04
-    timeout-minutes: 100
+    timeout-minutes: 5
+    outputs:
+      runs_on: ${{ steps.select.outputs.runs_on }}
+      is_local: ${{ steps.select.outputs.is_local }}
+      parallel_jobs: ${{ steps.select.outputs.parallel_jobs }}
     steps:
+      - name: Select local or GitHub-hosted runner
+        id: select
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RUNNER_STATUS_TOKEN }}
+          REQUESTED_RUNNER: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'auto' }}
+        run: |
+          set -euo pipefail
+
+          use_github() {
+            echo 'runs_on=["ubuntu-24.04"]' >> "$GITHUB_OUTPUT"
+            echo 'is_local=false' >> "$GITHUB_OUTPUT"
+            echo 'parallel_jobs=4' >> "$GITHUB_OUTPUT"
+            echo "Selected GitHub-hosted ubuntu-24.04 runner."
+          }
+
+          use_local() {
+            echo 'runs_on=["self-hosted","Linux","X64","wow-builder"]' >> "$GITHUB_OUTPUT"
+            echo 'is_local=true' >> "$GITHUB_OUTPUT"
+            echo 'parallel_jobs=8' >> "$GITHUB_OUTPUT"
+            echo "Selected local stoffes-pc runner."
+          }
+
+          case "$REQUESTED_RUNNER" in
+            github)
+              use_github
+              exit 0
+              ;;
+            local)
+              use_local
+              exit 0
+              ;;
+            auto)
+              ;;
+            *)
+              echo "Unknown runner selection: $REQUESTED_RUNNER" >&2
+              exit 1
+              ;;
+          esac
+
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "RUNNER_STATUS_TOKEN is unavailable; safely falling back to GitHub-hosted."
+            use_github
+            exit 0
+          fi
+
+          DATA="$(
+            curl -fsSL --retry 2 --retry-delay 1 \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners" \
+              || true
+          )"
+
+          AVAILABLE="$(
+            jq -r '
+              [.runners[]?
+                | select(
+                    .name == "stoffes-pc"
+                    and .status == "online"
+                    and .busy == false
+                  )
+              ] | length
+            ' <<< "$DATA" 2>/dev/null || echo 0
+          )"
+
+          if [[ "$AVAILABLE" =~ ^[0-9]+$ ]] && (( AVAILABLE > 0 )); then
+            use_local
+          else
+            echo "stoffes-pc is offline, busy, or runner status could not be read."
+            use_github
+          fi
+
+  compile:
+    name: Compile complete server stack
+    needs: route
+    runs-on: ${{ fromJSON(needs.route.outputs.runs_on) }}
+    timeout-minutes: 100
+    env:
+      BUILD_IS_LOCAL: ${{ needs.route.outputs.is_local }}
+      REQUESTED_PARALLEL_JOBS: ${{ needs.route.outputs.parallel_jobs }}
+
+    steps:
+      - name: Show selected runner
+        shell: bash
+        run: |
+          echo "Runner name: ${RUNNER_NAME:-unknown}"
+          echo "Runner OS:   ${RUNNER_OS:-unknown}"
+          echo "Local build: $BUILD_IS_LOCAL"
+          echo "Requested parallel jobs: $REQUESTED_PARALLEL_JOBS"
+          echo "CPU threads: $(nproc)"
+          free -h || true
+
       - name: Checkout server overlay
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Install build dependencies on GitHub-hosted runner
+        if: needs.route.outputs.is_local != 'true'
         run: |
           sudo apt-get update
           sudo apt-get remove -y needrestart || true
-          sudo apt-get install -y ccache clang-18 cmake make build-essential cmake-data \
+          sudo apt-get install -y \
+            ccache clang-18 cmake ninja-build make build-essential cmake-data \
             libboost-all-dev libbz2-dev libmysql++-dev libreadline-dev libssl-dev libtool \
-            openssl zlib1g-dev google-perftools libmysqlclient-dev libncurses-dev
+            openssl zlib1g-dev libgoogle-perftools-dev libmysqlclient-dev libncurses-dev
+
+      - name: Verify local build dependencies
+        if: needs.route.outputs.is_local == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for command in git curl ccache clang-18 clang++-18 cmake ninja; do
+            command -v "$command" >/dev/null || {
+              echo "Missing required local dependency: $command" >&2
+              exit 1
+            }
+          done
+          clang-18 --version | head -n 1
+          cmake --version | head -n 1
+          ninja --version
+          ccache --version | head -n 1
+
+      - name: Restore GitHub compiler cache
+        if: needs.route.outputs.is_local != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ac-clang18-ccache-${{ runner.os }}-${{ hashFiles('.github/workflows/integration-build.yml') }}
+          restore-keys: |
+            ac-clang18-ccache-${{ runner.os }}-
+
+      - name: Configure compiler cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          ccache --set-config=compression=true
+          if [[ "$BUILD_IS_LOCAL" == "true" ]]; then
+            ccache --max-size=10G
+          else
+            ccache --max-size=4G
+          fi
+          ccache --zero-stats
+          ccache --show-config | grep -E 'cache_dir|compression|max_size|direct_mode' || true
 
       - name: Assemble exact pinned AzerothCore tree
         shell: bash
         run: |
           set -euo pipefail
           CORE="$GITHUB_WORKSPACE/azerothcore-wotlk"
+          rm -rf "$CORE"
+
           git clone https://github.com/mod-playerbots/azerothcore-wotlk.git "$CORE"
           git -C "$CORE" checkout 06234df3d5ab26c93f4f1f06f3edb828b73ecd3c
 
@@ -94,9 +246,14 @@ jobs:
           CXX: clang++-18
         run: |
           set -euo pipefail
+          rm -rf "$GITHUB_WORKSPACE/build" "$GITHUB_WORKSPACE/dist"
+
           cmake -S "$GITHUB_WORKSPACE/azerothcore-wotlk" -B "$GITHUB_WORKSPACE/build" \
+            -G Ninja \
             -DCMAKE_C_COMPILER=clang-18 \
             -DCMAKE_CXX_COMPILER=clang++-18 \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/dist" \
             -DAPPS_BUILD=all \
             -DTOOLS_BUILD=none \
@@ -107,8 +264,26 @@ jobs:
             -DCMAKE_C_FLAGS="-Werror -ferror-limit=0" \
             -DCMAKE_CXX_FLAGS="-Werror -ferror-limit=0"
 
-      - name: Compile complete server stack
-        run: cmake --build "$GITHUB_WORKSPACE/build" --config Release -j 2
+      - name: Compile
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          CPU_JOBS="$(nproc)"
+          MEM_KB="$(awk '/MemTotal:/ { print $2 }' /proc/meminfo)"
+          MEM_JOBS=$(( MEM_KB / 2500000 ))
+
+          if (( MEM_JOBS < 2 )); then
+            MEM_JOBS=2
+          fi
+
+          JOBS="$REQUESTED_PARALLEL_JOBS"
+          if (( JOBS > CPU_JOBS )); then JOBS="$CPU_JOBS"; fi
+          if (( JOBS > MEM_JOBS )); then JOBS="$MEM_JOBS"; fi
+          if (( JOBS < 2 )); then JOBS=2; fi
+
+          echo "Building with $JOBS parallel jobs (CPU=$CPU_JOBS, memory-safe=$MEM_JOBS)."
+          cmake --build "$GITHUB_WORKSPACE/build" --config Release --parallel "$JOBS"
 
       - name: Install build
         run: cmake --install "$GITHUB_WORKSPACE/build" --config Release
@@ -135,3 +310,8 @@ jobs:
           test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_15_00_titan_rune_device.sql
           test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_15_01_titan_rune_titan_support.sql
           test -f modules/mod-titan-rune/data/sql/db-world/base/2026_09_15_03_titan_rune_gamma_signets.sql
+
+      - name: Show compiler cache statistics
+        if: always()
+        shell: bash
+        run: ccache --show-stats || true
