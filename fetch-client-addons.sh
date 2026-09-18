@@ -64,6 +64,14 @@ for entry in "${ADDONS[@]}"; do
   fi
 done
 
+# Typed Group Composer UI compilation is opt-in while DashboardV4 remains the visible shell.
+# Use GROUP_COMPOSER_UI_BUILD=1 when you want the TypeScriptToLua bundle generated and synced
+# into client-addons-src/GroupComposer/generated before packaging.
+if [[ "${GROUP_COMPOSER_UI_BUILD:-0}" == "1" ]]; then
+  echo "==> Building typed Group Composer UI layer"
+  "$ROOT/build-client-ui.sh" --sync
+fi
+
 # Locally-authored addons (version-controlled under client-addons-src/, not
 # downloaded). Staged into $DEST alongside the rest so they ship the same way.
 if [[ -d "$ROOT/client-addons-src" ]]; then

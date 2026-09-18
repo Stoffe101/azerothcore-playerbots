@@ -40,6 +40,9 @@ jobs:
       - name: Parse generated Lua with Lua 5.1
         run: luac5.1 -p client-ui/dist/GroupComposerModernUI.lua
 
+      - name: Run generated selector smoke test
+        run: lua5.1 client-ui/tests/smoke.lua client-ui/dist/GroupComposerModernUI.lua
+
       - name: Validate selector contracts
         run: |
           grep -q 'getClassesForRole(currentRole)' client-ui/src/components/BuildSelector.ts

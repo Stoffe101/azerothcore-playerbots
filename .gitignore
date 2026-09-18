@@ -23,3 +23,7 @@ webreg/acore-webreg
 lore-sidecar/.venv/
 **/__pycache__/
 *.pyc
+
+# Typed Group Composer UI toolchain
+client-ui/node_modules/
+client-ui/dist/
