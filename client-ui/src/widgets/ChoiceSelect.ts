@@ -75,6 +75,15 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
         refreshRows();
     }
 
+    function wheel(_frame: WoWFrame, delta: number): void {
+        move(Number(delta) > 0 ? -1 : 1);
+    }
+
+    function bindWheel(target: WoWFrame): void {
+        target.EnableMouseWheel(true);
+        target.SetScript("OnMouseWheel", wheel);
+    }
+
     const up = createButton(rail.frame, { text: "^", width: 20, height: 22, onClick: () => move(-1) });
     up.frame.SetPoint("TOP", rail.frame, "TOP", 0, -2);
     const down = createButton(rail.frame, { text: "v", width: 20, height: 22, onClick: () => move(1) });
@@ -136,6 +145,7 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
                 detail.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 10, -25);
                 detail.SetPoint("RIGHT", button.frame, "RIGHT", -8, 0);
                 detail.SetJustifyH("LEFT");
+                bindWheel(button.frame);
                 row = { button, detail };
                 rows[i] = row;
             }
@@ -197,9 +207,10 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
         else open();
     });
 
-    popup.frame.SetScript("OnMouseWheel", (_frame, delta) => {
-        move(Number(delta) > 0 ? -1 : 1);
-    });
+    bindWheel(popup.frame);
+    bindWheel(rail.frame);
+    bindWheel(up.frame);
+    bindWheel(down.frame);
 
     refresh();
 

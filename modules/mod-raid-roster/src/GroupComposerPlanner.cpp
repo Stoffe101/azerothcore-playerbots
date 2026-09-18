@@ -361,10 +361,19 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         if (!alreadyGrouped && bot->GetGroupInvite()) return;
         if (!alreadyGrouped && bot->IsBeingTeleported()) return;
         if (!alreadyGrouped && bot->GetInstanceId() != 0) return;
-        // Activity eligibility beats guild preference. A low-level guild bot must never win a
-        // roster slot simply because Prefer Guild is enabled.
-        if (bot->GetLevel() < config.requiredLevel) return;
         if (CrossFactionBlocked(master, bot)) return;
+
+        bool sameGuild = guildId && bot->GetGuildId() == guildId;
+        bool disposableWorld = !sameGuild && config.fillWorld &&
+            sPlayerbotAIConfig.IsInRandomAccountList(sCharacterCache->GetCharacterAccountIdByGuid(bot->GetGUID()));
+        bool underLevel = bot->GetLevel() < config.requiredLevel;
+        float liveItemLevel = bot->GetAverageItemLevel();
+        bool underGear = config.minimumItemLevel && liveItemLevel + 0.001f < config.minimumItemLevel;
+
+        // Persistent guild/world identities must already qualify. Ordinary RNDbots are Composer's
+        // elastic fallback capacity: if they are under-level or under-geared they can be selected
+        // and provisioned before the reviewed roster becomes READY.
+        if ((underLevel || underGear) && !disposableWorld) return;
 
         Candidate c;
         c.guid = bot->GetGUID();
@@ -372,14 +381,15 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         c.cls = bot->getClass();
         c.role = Planner::InferRole(bot);
         c.spec = Planner::InferSpec(bot);
-        c.level = bot->GetLevel();
-        c.guild = guildId && bot->GetGuildId() == guildId;
+        c.level = underLevel && disposableWorld ? config.requiredLevel : bot->GetLevel();
+        c.guild = sameGuild;
         c.online = true;
         c.alreadyGrouped = alreadyGrouped;
-        c.itemLevel = bot->GetAverageItemLevel();
+        c.itemLevel = liveItemLevel;
+        c.managed = disposableWorld && (underLevel || underGear);
+        c.needsPreparation = c.managed;
         c.utilityMask = Planner::UtilityMask(c.cls, c.spec, c.role);
         c.rangedDps = Planner::IsRangedDps(c.cls, c.spec, c.role);
-        if (config.minimumItemLevel && c.itemLevel + 0.001f < config.minimumItemLevel) return;
         if (!c.guild && !config.fillWorld && !alreadyGrouped) return;
         AddCandidate(out, seen, std::move(c));
     };
@@ -457,8 +467,8 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
                     c.guid = guid;
                     c.name = fields[1].Get<std::string>();
                     c.cls = fields[2].Get<uint8>();
-                    c.level = fields[3].Get<uint8>();
-                    if (c.level < config.requiredLevel) continue;
+                    uint8 storedLevel = fields[3].Get<uint8>();
+                    c.level = std::max<uint8>(storedLevel, config.requiredLevel);
                     c.role = ROLE_DPS;
                     c.spec = ANY_SPEC;
                     c.online = false;
@@ -506,18 +516,19 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
 
         bool alreadyGrouped = online ? (masterGroup && online->GetGroup() == masterGroup) : cachedWithMaster;
         if (online && !alreadyGrouped && (online->GetGroupInvite() || online->IsBeingTeleported() || online->GetInstanceId() != 0)) continue;
-        if (!online && config.minimumItemLevel) continue; // unknown gear may not satisfy an explicit floor
-
         uint8 candidateLevel = online ? online->GetLevel() : sCharacterCache->GetCharacterLevelByGuid(guid);
-        if (candidateLevel < config.requiredLevel) continue;
+        bool sameGuild = guildId && sCharacterCache->GetCharacterGuildIdByGuid(guid) == guildId;
+        if (sameGuild && candidateLevel < config.requiredLevel) continue;
+        if (sameGuild && !online && config.minimumItemLevel) continue; // unknown persistent-guild gear cannot satisfy an explicit floor
 
         Candidate c;
         c.guid = guid;
         c.cls = row.cls;
         c.role = row.role;
         c.spec = row.specTab;
-        c.level = candidateLevel;
-        c.guild = guildId && sCharacterCache->GetCharacterGuildIdByGuid(guid) == guildId;
+        c.level = sameGuild ? candidateLevel : std::max<uint8>(candidateLevel, config.requiredLevel);
+        c.guild = sameGuild;
+        c.needsPreparation = !sameGuild && candidateLevel < config.requiredLevel;
         c.online = online != nullptr;
         c.managed = true;
         c.alreadyGrouped = alreadyGrouped;
@@ -533,7 +544,11 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
                 c.spec = Planner::InferSpec(online);
             }
             c.itemLevel = online->GetAverageItemLevel();
-            if (config.minimumItemLevel && c.itemLevel + 0.001f < config.minimumItemLevel) continue;
+            if (config.minimumItemLevel && c.itemLevel + 0.001f < config.minimumItemLevel)
+            {
+                if (c.guild) continue;
+                c.needsPreparation = true;
+            }
         }
         else
         {

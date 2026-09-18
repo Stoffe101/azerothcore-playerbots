@@ -25,6 +25,8 @@ WOW_RUNTIME_SMOKE = (ROOT / "client-ui/tests/wow_runtime_smoke.lua").read_text(e
 SERVER = (ROOT / "modules/mod-raid-roster/src/GroupComposerCommand.cpp").read_text(encoding="utf-8")
 PLANNER = (ROOT / "modules/mod-raid-roster/src/GroupComposerPlanner.cpp").read_text(encoding="utf-8")
 TYPES = (ROOT / "modules/mod-raid-roster/src/GroupComposerTypes.h").read_text(encoding="utf-8")
+GEAR_H = (ROOT / "modules/mod-raid-roster/src/RaidRosterGear.h").read_text(encoding="utf-8")
+GEAR_CPP = (ROOT / "modules/mod-raid-roster/src/RaidRosterGear.cpp").read_text(encoding="utf-8")
 SILENT_LOGIN_PATCH = (ROOT / "patches/0035-playerbot-group-composer-silent-login.patch").read_text(encoding="utf-8")
 
 
@@ -97,7 +99,7 @@ for command in (
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
 assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
-assert '## Version: 0.7.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
+assert '## Version: 0.7.1' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
@@ -477,12 +479,25 @@ assert "uint8 level = 1;" in TYPES, "Candidate/member level snapshots disappeare
 assert "uint8 RequiredActivityLevel(Player* master, Config const& config)" in SERVER
 assert "GetLFGDungeon(mapId, difficulty)" in SERVER, "Named dungeon levels must come from Blizzard LFGDungeons.dbc data"
 assert "config.requiredLevel = RequiredActivityLevel(master, config);" in SERVER
-assert "if (bot->GetLevel() < config.requiredLevel) return;" in PLANNER, "Online bots can bypass activity level eligibility"
-assert "SELECT guid, name, class, level FROM characters" in PLANNER, "Offline reserve selection no longer checks persisted level"
-assert "if (c.level < config.requiredLevel) continue;" in PLANNER, "Offline reserve bots can bypass activity level eligibility"
-assert "sCharacterCache->GetCharacterLevelByGuid(guid)" in PLANNER, "Managed offline candidates lost their level gate"
+assert "bool disposableWorld" in PLANNER and "underLevel" in PLANNER and "underGear" in PLANNER, (
+    "Online RNDbot fallback lost elastic activity provisioning"
+)
+assert "SELECT guid, name, class, level FROM characters" in PLANNER, "Offline reserve selection lost persisted level metadata"
+assert "std::max<uint8>(storedLevel, config.requiredLevel)" in PLANNER, (
+    "Low-level offline reserve bodies must project to the selected activity level"
+)
+assert "bot->GiveLevel(targetLevel)" in SERVER, "Managed fallback no longer promotes low-level bodies before preparation"
+assert "PreparedMemberReady" in SERVER and "bot->GetLevel() < plan.config.requiredLevel" in SERVER, (
+    "Prepared rosters must revalidate level/spec/gear after provisioning"
+)
+assert "minimumItemLevel" in GEAR_H and "std::max<int32>" in GEAR_CPP, (
+    "Managed fallback gear provisioning lost the configured item-level floor"
+)
 assert "below the selected activity's required level" in SERVER, "Assembly no longer revalidates selected bot levels"
 assert "activityEligibilityText" in MODEL and "Minimum item level" in MODERN
 assert "const exactScroll = ScrollUI.createScrollList" in MODERN, "Specific Builds regressed to fixed clipping columns"
-assert "scrollBy(-92)" in SCROLL_LIST and "scrollBy(92)" in SCROLL_LIST, "Bidirectional scroll controls disappeared"
+assert "let contentHeight = height;" in SCROLL_LIST and "function maxOffset()" in SCROLL_LIST
+assert "GetVerticalScrollRange" not in SCROLL_LIST, "3.3.5 ScrollFrame range must not drive Composer scrolling"
+assert "bindWheel(target: WoWFrame)" in SCROLL_LIST and "exactScroll.bindWheel" in MODERN
+assert "bindWheel(button.frame)" in CHOICE_SELECT, "Dropdown rows can swallow mouse-wheel input again"
 assert 'detail?: string;' in CHOICE_SELECT, "Rich activity selector metadata disappeared"

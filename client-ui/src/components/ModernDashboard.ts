@@ -556,6 +556,8 @@ export function createModernDashboard(): Dashboard {
         empty.SetWidth(760);
         empty.SetJustifyV("TOP");
 
+        exactScroll.bindWheel(panel.frame);
+        exactScroll.bindWheel(add.frame);
         exactSections[role] = { panel, count, add, empty, rows: [] as any[] };
     }
 
@@ -756,6 +758,8 @@ export function createModernDashboard(): Dashboard {
                 (panel.frame as any)._name = name;
                 (panel.frame as any)._info = info;
                 (panel.frame as any)._load = load;
+                builtinScroll.bindWheel(panel.frame);
+                builtinScroll.bindWheel(load.frame);
                 row = panel.frame;
                 builtinRows[i] = row;
             }
@@ -792,6 +796,9 @@ export function createModernDashboard(): Dashboard {
                 (panel.frame as any)._info = info;
                 (panel.frame as any)._load = load;
                 (panel.frame as any)._remove = remove;
+                customScroll.bindWheel(panel.frame);
+                customScroll.bindWheel(load.frame);
+                customScroll.bindWheel(remove.frame);
                 row = panel.frame;
                 customRows[i] = row;
             }
@@ -913,6 +920,8 @@ export function createModernDashboard(): Dashboard {
                 (panel.frame as any)._icon = icon;
                 (panel.frame as any)._name = name;
                 (panel.frame as any)._buttons = buttons;
+                humanScroll.bindWheel(panel.frame);
+                for (const wheelRole of roleOrder) humanScroll.bindWheel(buttons[wheelRole].frame);
                 row = panel.frame;
                 humanRowsModal[i] = row;
             }
@@ -962,6 +971,8 @@ export function createModernDashboard(): Dashboard {
                 (panel.frame as any)._name = name;
                 (panel.frame as any)._info = info;
                 (panel.frame as any)._remove = remove;
+                pinScroll.bindWheel(panel.frame);
+                pinScroll.bindWheel(remove.frame);
                 row = panel.frame;
                 pinRows[i] = row;
             }
@@ -1320,6 +1331,9 @@ export function createModernDashboard(): Dashboard {
                     const remove = ButtonUI.createButton(panel.frame, { text: "X", width: 40, height: 30, accent: theme.colors.error });
                     remove.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
 
+                    exactScroll.bindWheel(panel.frame);
+                    exactScroll.bindWheel(edit.frame);
+                    exactScroll.bindWheel(remove.frame);
                     widgets = { panel, classIcon, specIcon, name, count, edit, remove };
                     section.rows[i] = widgets;
                 }

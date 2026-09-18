@@ -52,6 +52,8 @@ struct PendingSync
     uint32 ownerGuid = 0;
     uint8 role = ROLE_DPS;
     uint8 spec = ANY_SPEC;
+    uint8 targetLevel = 1;
+    uint16 minimumItemLevel = 0;
     bool fullRebuild = false;
     uint32 elapsed = 0;
 };
@@ -376,17 +378,27 @@ bool ConflictingInstances(Player* master, Player* other)
         && master->GetInstanceId() != other->GetInstanceId() && master->GetMapId() == other->GetMapId();
 }
 
-void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, bool fullRebuild)
+void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, uint8 targetLevel,
+    uint16 minimumItemLevel, bool fullRebuild)
 {
     if (!master || !bot) return;
     if (spec > 2) spec = Planner::InferSpec(bot);
     if (spec > 2) return;
 
-    // Disposable world/reserve bodies may be rebuilt for deterministic roster readiness.
+    // Disposable world/reserve bodies are elastic Composer capacity. They may begin life at
+    // level 1 or in a completely unrelated leveling build, so promote them to the selected
+    // activity floor before talents/gear are reconciled. Never down-level a bot that is already
+    // above the floor.
+    uint8 provisionLevel = std::max<uint8>(bot->GetLevel(), targetLevel);
+    if (fullRebuild && bot->GetLevel() < targetLevel)
+        bot->GiveLevel(targetLevel);
+
     // Persistent guild companions are different: Group Composer may retask their combat
     // build, but must not replace their earned gear, inventory, quests or progression.
-    PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_LEGENDARY, 0);
+    PlayerbotFactory factory(bot, provisionLevel, ITEM_QUALITY_LEGENDARY, 0);
     if (fullRebuild) factory.Randomize(false);
+    if (fullRebuild && bot->GetLevel() < targetLevel)
+        bot->GiveLevel(targetLevel);
 
     // Playerbots / Era Talents use pseudo-spec 3 for Feral Cat PvE. Keep the
     // public Composer spec as Feral (1) and use role only for build selection.
@@ -400,7 +412,7 @@ void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, bool fu
 
     if (fullRebuild)
     {
-        RaidRosterGear::EquipForSpec(bot, master, spec);
+        RaidRosterGear::EquipForSpec(bot, master, spec, minimumItemLevel);
         factory.ApplyEnchantAndGemsNew();
         factory.InitAmmo();
 
@@ -909,14 +921,30 @@ void ClearPendingSync(uint32 ownerLow)
     }
 }
 
+bool PreparedMemberReady(Plan const& plan, Member const& member)
+{
+    Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid);
+    if (!bot || !GET_PLAYERBOT_AI(bot) || BotHasPendingSync(member.guid)) return false;
+    if (bot->GetLevel() < plan.config.requiredLevel) return false;
+
+    uint8 liveRole = Planner::InferRole(bot);
+    if (liveRole != member.role) return false;
+    uint8 liveSpec = Planner::InferSpec(bot);
+    if (member.spec != ANY_SPEC && liveSpec != ANY_SPEC && liveSpec != member.spec) return false;
+
+    if (plan.config.minimumItemLevel &&
+        bot->GetAverageItemLevel() + 0.001f < plan.config.minimumItemLevel)
+        return false;
+    return true;
+}
+
 std::vector<uint32> UnreadyBotGuids(Plan const& plan)
 {
     std::vector<uint32> failed;
     for (Member const& member : plan.members)
     {
         if (member.human) continue;
-        Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid);
-        if (!bot || !GET_PLAYERBOT_AI(bot) || BotHasPendingSync(member.guid))
+        if (!PreparedMemberReady(plan, member))
             failed.push_back(member.guid.GetCounter());
     }
     return failed;
@@ -935,8 +963,7 @@ uint32 PreparedBotCount(Plan const& plan)
     for (Member const& member : plan.members)
     {
         if (member.human) continue;
-        Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid);
-        if (bot && GET_PLAYERBOT_AI(bot) && !BotHasPendingSync(member.guid)) ++ready;
+        if (PreparedMemberReady(plan, member)) ++ready;
     }
     return ready;
 }
@@ -968,7 +995,8 @@ bool PreparePlan(Player* master, Plan& plan, std::string& error)
             // Preserve persistent guild identity until the user actually commits the roster. They
             // are deliberately ranked below disposable fallbacks when a spec swap would be needed.
             if (!(member.guild && member.needsPreparation))
-                SyncManagedBot(master, bot, member.role, member.spec, FullProvisionFor(member));
+                SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel,
+                    plan.config.minimumItemLevel, FullProvisionFor(member));
             continue;
         }
 
@@ -977,13 +1005,16 @@ bool PreparePlan(Player* master, Plan& plan, std::string& error)
             // still gives the bot its normal master/AI, but skips the login greeting and automatic
             // group invite. Composer owns membership later, during the reviewed Assemble commit.
             mgr->AddPlayerBot(member.guid, account, true);
-        s_pendingSync[member.guid.GetCounter()] = { owner, member.role, member.spec, FullProvisionFor(member), 0 };
+        s_pendingSync[member.guid.GetCounter()] = {
+            owner, member.role, member.spec, plan.config.requiredLevel, plan.config.minimumItemLevel,
+            FullProvisionFor(member), 0
+        };
     }
 
     plan.prepareElapsed = 0;
     plan.prepareProgressElapsed = 0;
-    plan.preparing = OwnerHasPendingSync(owner);
-    plan.prepared = !plan.preparing;
+    plan.prepared = !OwnerHasPendingSync(owner) && PreparedBotCount(plan) == SelectedBotCount(plan);
+    plan.preparing = !plan.prepared;
     return true;
 }
 
@@ -1189,7 +1220,8 @@ public:
             Player* master = ObjectAccessor::FindConnectedPlayer(ownerGuid);
             if (bot && master)
             {
-                SyncManagedBot(master, bot, itr->second.role, itr->second.spec, itr->second.fullRebuild);
+                SyncManagedBot(master, bot, itr->second.role, itr->second.spec, itr->second.targetLevel,
+                    itr->second.minimumItemLevel, itr->second.fullRebuild);
                 itr = s_pendingSync.erase(itr);
             }
             else if (itr->second.elapsed > 60000) itr = s_pendingSync.erase(itr);

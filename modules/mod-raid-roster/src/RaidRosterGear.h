@@ -17,7 +17,7 @@ void EquipCatchup(Player* player, uint32 quality, uint32 itemLevel);
 // bands. Same inputs => same gear.
 // Returns false when the bot was skipped (not in world / below level 5) or gearing
 // was too incomplete to trust (< 8 pieces equipped).
-bool EquipForSpec(Player* bot, Player* master, int specTab);
+bool EquipForSpec(Player* bot, Player* master, int specTab, uint16 minimumItemLevel = 0);
 }
 
 #endif
