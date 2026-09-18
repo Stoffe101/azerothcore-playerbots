@@ -560,3 +560,10 @@ assert "modal.setHeaderIcon(roleIcon(currentRole))" in SELECTOR
 assert "createChrome(panel.frame)" in MODAL and "setHeaderIcon(path?: string)" in MODAL
 assert "topTint" in BUTTON and "activeTop" in BUTTON and "emphasis?: boolean" in BUTTON
 assert "createFramedIcon" in NATIVE and "createChrome" in NATIVE and "withAlpha" in NATIVE
+assert '" TANK"' in MODERN and '" HEALER"' in MODERN and '" DPS"' in MODERN, (
+    "Roster status chips regressed from full role labels"
+)
+assert "iconBadge = Native.createFramedIcon" in MODERN, "Prepared roster lost framed class icons"
+assert 'widgets.count.SetText("× " + String(build.count))' in MODERN, (
+    "Specific Builds count presentation regressed from the compact mockup treatment"
+)
