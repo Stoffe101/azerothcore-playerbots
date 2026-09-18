@@ -3946,7 +3946,7 @@ function ____exports.createModernDashboard(self)
         0,
         0
     )
-    local tabExact = ButtonUI:createButton(raidView, {text = "Exact Builds", width = 140, height = 32, accent = theme.colors.warning})
+    local tabExact = ButtonUI:createButton(raidView, {text = "Specific Builds", width = 150, height = 32, accent = theme.colors.warning})
     tabExact.frame:SetPoint(
         "LEFT",
         tabQuick.frame,
@@ -4144,7 +4144,7 @@ function ____exports.createModernDashboard(self)
         14,
         -34
     )
-    local quickHelp = Native:createText(quickSummary.frame, "All three role counts are editable. Exact Builds can then reserve specific class/spec slots.", "GameFontHighlightSmall", theme.colors.muted)
+    local quickHelp = Native:createText(quickSummary.frame, "All three role counts are editable. Specific Builds can reserve only the class/spec slots you care about.", "GameFontHighlightSmall", theme.colors.muted)
     quickHelp:SetPoint(
         "TOPLEFT",
         quickSummary.frame,
@@ -4236,8 +4236,8 @@ function ____exports.createModernDashboard(self)
             local add = ButtonUI:createButton(
                 panel.frame,
                 {
-                    text = "+ Add build",
-                    width = 112,
+                    text = "+ Add specific",
+                    width = 118,
                     height = 30,
                     accent = Model:roleAccent(role)
                 }
@@ -4257,7 +4257,7 @@ function ____exports.createModernDashboard(self)
                 12,
                 -66
             )
-            local empty = Native:createText(scroll.content, "No exact builds yet.\nUnspecified slots stay on Auto.", "GameFontHighlightSmall", theme.colors.muted)
+            local empty = Native:createText(scroll.content, "No specific builds yet.\nEvery unreserved slot stays on Auto.", "GameFontHighlightSmall", theme.colors.muted)
             empty:SetPoint(
                 "TOPLEFT",
                 scroll.content,
@@ -5330,7 +5330,7 @@ function ____exports.createModernDashboard(self)
         for ____, role in ipairs(roleOrder) do
             local column = exactColumns[role]
             local rows = Model:requiredBuilds(role)
-            column.count:SetText(((tostring(Model:exactCount(role)) .. " exact  ·  ") .. tostring(math.max(
+            column.count:SetText(((tostring(Model:exactCount(role)) .. " reserved  ·  ") .. tostring(math.max(
                 0,
                 Model:remainingBotSlots(role) - Model:exactCount(role)
             ))) .. " Auto")
