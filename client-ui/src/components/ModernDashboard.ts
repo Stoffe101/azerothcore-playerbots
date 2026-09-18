@@ -57,6 +57,12 @@ function colorForPhase(phase: string) {
     return theme.colors.primary;
 }
 
+function roleDescription(role: Role): string {
+    if (role === "TANK") return "Durable heroes who hold threat and keep danger away from the raid.";
+    if (role === "HEALER") return "Keep the raid alive with healing, dispels and support.";
+    return "Deal damage while Composer preserves the raid's class and utility needs.";
+}
+
 function classCanRole(classToken: string, role: Role): boolean {
     return D.CLASS_ROLE?.[role]?.[classToken] === true;
 }
@@ -187,7 +193,11 @@ export function createModernDashboard(): Dashboard {
     const subtitle = Native.createText(header.frame, "Build the team you want, then let Composer prepare it.", "GameFontHighlightSmall", theme.colors.muted);
     subtitle.SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4);
 
-    const backendDot = Native.createSolid(header.frame, theme.colors.muted, "ARTWORK");
+    const backendGlow = Native.createSolid(header.frame, Native.withAlpha(theme.colors.success, 0.18), "ARTWORK");
+    backendGlow.SetSize(18, 18);
+    backendGlow.SetPoint("RIGHT", header.frame, "RIGHT", -233, 0);
+    backendGlow.Hide();
+    const backendDot = Native.createSolid(header.frame, theme.colors.muted, "OVERLAY");
     backendDot.SetSize(8, 8);
     backendDot.SetPoint("RIGHT", header.frame, "RIGHT", -238, 0);
     const backendText = Native.createText(header.frame, "Checking backend", "GameFontHighlightSmall", theme.colors.muted);
@@ -243,9 +253,11 @@ export function createModernDashboard(): Dashboard {
     navOptions.label.SetJustifyH("LEFT");
 
     const sideHint = Native.createText(sidebar.frame, "Humans stay locked.\nSpecific builds reserve bot slots; everything else stays Auto.", "GameFontHighlightSmall", theme.colors.muted);
-    sideHint.SetPoint("BOTTOMLEFT", sidebar.frame, "BOTTOMLEFT", 16, 18);
+    sideHint.SetPoint("BOTTOMLEFT", sidebar.frame, "BOTTOMLEFT", 16, 42);
     sideHint.SetWidth(136);
     sideHint.SetJustifyV("TOP");
+    const versionText = Native.createText(sidebar.frame, "v" + String(D.VERSION ?? "0.10.0"), "GameFontHighlightSmall", theme.colors.muted);
+    versionText.SetPoint("BOTTOMLEFT", sidebar.frame, "BOTTOMLEFT", 16, 12);
 
     const center = CreateFrame("Frame", undefined, frame);
     center.SetPoint("TOPLEFT", frame, "TOPLEFT", 184, -80);
@@ -276,18 +288,18 @@ export function createModernDashboard(): Dashboard {
     const activityEyebrow = Native.createText(activity.frame, "ACTIVITY", "GameFontNormalSmall", theme.colors.muted);
     activityEyebrow.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 16, -12);
 
-    const activityBadge = Native.createFramedIcon(activity.frame, ICON_DUNGEON, 58, theme.colors.borderStrong);
+    const activityBadge = Native.createFramedIcon(activity.frame, ICON_DUNGEON, 64, theme.colors.borderStrong);
     activityBadge.frame.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 16, -38);
 
     const activityName = Native.createText(activity.frame, "Dungeon", "GameFontNormalLarge");
-    activityName.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 88, -38);
-    activityName.SetWidth(226);
+    activityName.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 96, -38);
+    activityName.SetWidth(218);
     const activitySub = Native.createText(activity.frame, "", "GameFontHighlightSmall", theme.colors.muted);
     activitySub.SetPoint("TOPLEFT", activityName, "BOTTOMLEFT", 0, -5);
-    activitySub.SetWidth(226);
+    activitySub.SetWidth(218);
     const activityEligibility = Native.createText(activity.frame, "", "GameFontHighlightSmall", theme.colors.success);
     activityEligibility.SetPoint("TOPLEFT", activitySub, "BOTTOMLEFT", 0, -7);
-    activityEligibility.SetWidth(226);
+    activityEligibility.SetWidth(218);
 
     const activityFieldLabel = Native.createText(activity.frame, "DUNGEON", "GameFontNormalSmall", theme.colors.muted);
     activityFieldLabel.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 330, -12);
@@ -457,7 +469,20 @@ export function createModernDashboard(): Dashboard {
         const auto = ButtonUI.createButton(row.frame, { text: "Auto", width: 66, height: 34 });
         auto.frame.SetPoint("RIGHT", row.frame, "RIGHT", -12, 0);
 
-        dungeonRows.push({ row, accent, roleIcon, roleText, slotText, classBadge, classIcon, specBadge, specIcon, name, sub, choose, auto });
+        const humanAnchor = ButtonUI.createButton(row.frame, {
+            text: "Human anchor",
+            width: 132,
+            height: 34,
+            accent: theme.colors.borderStrong,
+        });
+        humanAnchor.frame.SetPoint("RIGHT", row.frame, "RIGHT", -12, 0);
+        humanAnchor.setEnabled(false);
+        humanAnchor.frame.Hide();
+
+        dungeonRows.push({
+            row, accent, roleIcon, roleText, slotText, classBadge, classIcon, specBadge, specIcon,
+            name, sub, choose, auto, humanAnchor,
+        });
     }
 
     // Raid views -------------------------------------------------------------
@@ -473,6 +498,13 @@ export function createModernDashboard(): Dashboard {
     tabExact.frame.SetPoint("LEFT", tabQuick.frame, "RIGHT", 8, 0);
     const tabRoster = ButtonUI.createButton(raidView, { text: "Prepared Roster", width: 150, height: 34, accent: theme.colors.success });
     tabRoster.frame.SetPoint("LEFT", tabExact.frame, "RIGHT", 8, 0);
+    const resetRoles = ButtonUI.createButton(raidView, {
+        text: "Reset roles",
+        width: 100,
+        height: 34,
+        onClick: () => Model.resetRoleTargets(),
+    });
+    resetRoles.frame.SetPoint("TOPRIGHT", raidView, "TOPRIGHT", 0, 0);
 
     const quickView = CreateFrame("Frame", undefined, raidView);
     quickView.SetPoint("TOPLEFT", raidView, "TOPLEFT", 0, -46);
@@ -491,7 +523,7 @@ export function createModernDashboard(): Dashboard {
     for (let i = 0; i < roleOrder.length; i += 1) {
         const role = roleOrder[i];
         const card = Native.createPanel(quickView, theme.colors.surfaceDeep, theme.colors.borderStrong);
-        card.frame.SetSize(300, 170);
+        card.frame.SetSize(300, 226);
         const roleStrip = Native.createSolid(card.frame, Model.roleAccent(role), "ARTWORK");
         roleStrip.SetHeight(4);
         roleStrip.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 0, 0);
@@ -500,24 +532,34 @@ export function createModernDashboard(): Dashboard {
         roleTint.SetAllPoints(card.frame);
         card.frame.SetPoint("TOPLEFT", quickView, "TOPLEFT", i * 312, -12);
 
-        const roleBadge = Native.createFramedIcon(card.frame, D.ROLE_ICON[role], 48, Model.roleAccent(role));
-        roleBadge.frame.SetPoint("TOP", card.frame, "TOP", -44, -16);
+        const roleBadge = Native.createFramedIcon(card.frame, D.ROLE_ICON[role], 54, Model.roleAccent(role));
+        roleBadge.frame.SetPoint("TOP", card.frame, "TOP", -46, -16);
         const label = Native.createText(card.frame, Model.roleLabel(role).toUpperCase(), "GameFontNormalLarge", Model.roleAccent(role));
         label.SetPoint("LEFT", roleBadge.frame, "RIGHT", 12, 0);
 
-        const minus = ButtonUI.createButton(card.frame, { text: "-", width: 42, height: 38, accent: Model.roleAccent(role) });
-        minus.frame.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 44, -78);
-        const count = Native.createText(card.frame, "0", "GameFontNormalHuge");
-        count.SetPoint("CENTER", card.frame, "CENTER", 0, -9);
-        count.SetWidth(80);
+        const minus = ButtonUI.createButton(card.frame, { text: "-", width: 42, height: 40, accent: Model.roleAccent(role) });
+        minus.frame.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 32, -88);
+        const countPanel = Native.createPanel(card.frame, theme.colors.background, theme.colors.borderStrong);
+        countPanel.frame.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 86, -88);
+        countPanel.frame.SetSize(128, 40);
+        const count = Native.createText(countPanel.frame, "0", "GameFontNormalHuge");
+        count.SetPoint("CENTER", countPanel.frame, "CENTER", 0, 0);
+        count.SetWidth(100);
         count.SetJustifyH("CENTER");
-        const plus = ButtonUI.createButton(card.frame, { text: "+", width: 42, height: 38, accent: Model.roleAccent(role) });
-        plus.frame.SetPoint("TOPRIGHT", card.frame, "TOPRIGHT", -44, -78);
+        const plus = ButtonUI.createButton(card.frame, { text: "+", width: 42, height: 40, accent: Model.roleAccent(role) });
+        plus.frame.SetPoint("TOPRIGHT", card.frame, "TOPRIGHT", -32, -88);
 
         const botSlots = Native.createText(card.frame, "0 bot slots after humans", "GameFontHighlightSmall", theme.colors.muted);
-        botSlots.SetPoint("BOTTOM", card.frame, "BOTTOM", 0, 17);
+        botSlots.SetPoint("TOP", card.frame, "TOP", 0, -140);
         botSlots.SetWidth(260);
         botSlots.SetJustifyH("CENTER");
+        botSlots.SetJustifyV("TOP");
+
+        const roleHelp = Native.createText(card.frame, roleDescription(role), "GameFontHighlightSmall", theme.colors.muted);
+        roleHelp.SetPoint("BOTTOM", card.frame, "BOTTOM", 0, 17);
+        roleHelp.SetWidth(250);
+        roleHelp.SetJustifyH("CENTER");
+        roleHelp.SetJustifyV("TOP");
 
         const roleCopy = role;
         minus.frame.SetScript("OnMouseDown", () => Model.setRoleTarget(roleCopy, Model.targetForRole(roleCopy) - 1));
@@ -526,39 +568,43 @@ export function createModernDashboard(): Dashboard {
         quickCards[role] = { card, count, botSlots, minus, plus };
     }
 
-    const quickSummary = Native.createPanel(quickView, theme.colors.background, theme.colors.border);
-    quickSummary.frame.SetPoint("TOPLEFT", quickView, "TOPLEFT", 0, -198);
-    quickSummary.frame.SetPoint("TOPRIGHT", quickView, "TOPRIGHT", 0, -198);
-    quickSummary.frame.SetHeight(84);
+    const quickSummary = Native.createPanel(quickView, theme.colors.background, theme.colors.borderStrong);
+    quickSummary.frame.SetPoint("TOPLEFT", quickView, "TOPLEFT", 0, -252);
+    quickSummary.frame.SetPoint("TOPRIGHT", quickView, "TOPRIGHT", 0, -252);
+    quickSummary.frame.SetHeight(92);
 
-    const quickTotalLabel = Native.createText(quickSummary.frame, "ROLE TOTAL", "GameFontNormalSmall", theme.colors.muted);
-    quickTotalLabel.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 14, -12);
-    const quickTotal = Native.createText(quickSummary.frame, "25 / 25", "GameFontNormalLarge");
-    quickTotal.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 14, -34);
-    const quickCheck = Native.createPanel(quickSummary.frame, theme.colors.surfaceBlue, theme.colors.success);
-    quickCheck.frame.SetSize(28, 28);
-    quickCheck.frame.SetPoint("LEFT", quickSummary.frame, "LEFT", 116, 0);
-    const quickCheckText = Native.createText(quickCheck.frame, "✓", "GameFontNormal", theme.colors.success);
-    quickCheckText.SetPoint("CENTER", quickCheck.frame, "CENTER", 0, 0);
-    quickCheckText.SetJustifyH("CENTER");
+    const quickTotalLabel = Native.createText(quickSummary.frame, "TOTAL RAID SIZE", "GameFontNormalSmall", theme.colors.muted);
+    quickTotalLabel.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 18, -14);
+    const quickTotal = Native.createText(quickSummary.frame, "25 / 25", "GameFontNormalHuge");
+    quickTotal.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 18, -38);
 
-    const quickHelp = Native.createText(
+    const quickDivider = Native.createSolid(quickSummary.frame, theme.colors.borderStrong, "ARTWORK");
+    quickDivider.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 205, -12);
+    quickDivider.SetHeight(68);
+    quickDivider.SetWidth(1);
+
+    const quickCheck = Native.createPanel(quickSummary.frame, theme.colors.surfaceDeep, theme.colors.success);
+    quickCheck.frame.SetSize(34, 34);
+    quickCheck.frame.SetPoint("LEFT", quickSummary.frame, "LEFT", 232, 0);
+    const quickCheckIcon = quickCheck.frame.CreateTexture(undefined, "ARTWORK");
+    quickCheckIcon.SetTexture("Interface\\Buttons\\UI-CheckBox-Check");
+    quickCheckIcon.SetAllPoints(quickCheck.frame);
+    const quickCheckBang = Native.createText(quickCheck.frame, "!", "GameFontNormalLarge", theme.colors.warning);
+    quickCheckBang.SetPoint("CENTER", quickCheck.frame, "CENTER", 0, 0);
+    quickCheckBang.SetJustifyH("CENTER");
+    quickCheckBang.Hide();
+
+    const quickStatusTitle = Native.createText(quickSummary.frame, "Raid composition is complete!", "GameFontNormal", theme.colors.success);
+    quickStatusTitle.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 280, -24);
+    quickStatusTitle.SetWidth(360);
+    const quickStatusDetail = Native.createText(
         quickSummary.frame,
-        "All role counts are editable. Specific Builds reserve only the class/spec slots you care about.",
+        "This setup will create the selected raid size with your chosen role balance.",
         "GameFontHighlightSmall",
         theme.colors.muted,
     );
-    quickHelp.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 156, -27);
-    quickHelp.SetWidth(520);
-    quickHelp.SetJustifyV("TOP");
-
-    const resetRoles = ButtonUI.createButton(quickSummary.frame, {
-        text: "Reset Standard",
-        width: 132,
-        height: 34,
-        onClick: () => Model.resetRoleTargets(),
-    });
-    resetRoles.frame.SetPoint("RIGHT", quickSummary.frame, "RIGHT", -14, 0);
+    quickStatusDetail.SetPoint("TOPLEFT", quickStatusTitle, "BOTTOMLEFT", 0, -6);
+    quickStatusDetail.SetWidth(410);
 
     // One full-width, vertically scrollable surface replaces the three cramped fixed columns.
     const exactScroll = ScrollUI.createScrollList(exactView, 936, 386);
@@ -648,14 +694,21 @@ export function createModernDashboard(): Dashboard {
     const statusTitle = Native.createText(status.frame, "ROSTER STATUS", "GameFontNormalSmall", theme.colors.muted);
     statusTitle.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -16);
 
-    const phaseCard = Native.createPanel(status.frame, theme.colors.surfaceRaised, theme.colors.border);
+    const phaseCard = Native.createPanel(status.frame, theme.colors.surfaceBlue, theme.colors.borderStrong);
     phaseCard.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -40);
     phaseCard.frame.SetPoint("TOPRIGHT", status.frame, "TOPRIGHT", -16, -40);
     phaseCard.frame.SetHeight(84);
 
-    const phaseDot = Native.createSolid(phaseCard.frame, theme.colors.primary, "ARTWORK");
+    const phaseAccent = Native.createSolid(phaseCard.frame, theme.colors.primary, "ARTWORK");
+    phaseAccent.SetWidth(3);
+    phaseAccent.SetPoint("TOPLEFT", phaseCard.frame, "TOPLEFT", 0, 0);
+    phaseAccent.SetPoint("BOTTOMLEFT", phaseCard.frame, "BOTTOMLEFT", 0, 0);
+    const phaseGlow = Native.createSolid(phaseCard.frame, Native.withAlpha(theme.colors.primary, 0.16), "ARTWORK");
+    phaseGlow.SetSize(18, 18);
+    phaseGlow.SetPoint("TOPLEFT", phaseCard.frame, "TOPLEFT", 10, -11);
+    const phaseDot = Native.createSolid(phaseCard.frame, theme.colors.primary, "OVERLAY");
     phaseDot.SetSize(9, 9);
-    phaseDot.SetPoint("TOPLEFT", phaseCard.frame, "TOPLEFT", 12, -16);
+    phaseDot.SetPoint("TOPLEFT", phaseCard.frame, "TOPLEFT", 14, -15);
     const phaseText = Native.createText(phaseCard.frame, "Configure roster", "GameFontNormal");
     phaseText.SetPoint("LEFT", phaseDot, "RIGHT", 10, 3);
     const phaseDetail = Native.createText(phaseCard.frame, "", "GameFontHighlightSmall", theme.colors.muted);
@@ -683,7 +736,7 @@ export function createModernDashboard(): Dashboard {
 
     const progressBg = Native.createPanel(status.frame, theme.colors.background, theme.colors.border);
     progressBg.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -242);
-    progressBg.frame.SetSize(270, 10);
+    progressBg.frame.SetSize(270, 14);
     const progressFill = Native.createSolid(progressBg.frame, theme.colors.primary, "ARTWORK");
     progressFill.SetPoint("TOPLEFT", progressBg.frame, "TOPLEFT", 2, -2);
     progressFill.SetPoint("BOTTOMLEFT", progressBg.frame, "BOTTOMLEFT", 2, 2);
@@ -697,10 +750,17 @@ export function createModernDashboard(): Dashboard {
     coverageCard.frame.SetPoint("TOPRIGHT", status.frame, "TOPRIGHT", -16, -286);
     coverageCard.frame.SetHeight(120);
 
-    const coverageIcon = Native.createFramedIcon(coverageCard.frame, ICON_COVERAGE, 30, theme.colors.borderStrong);
-    coverageIcon.frame.SetPoint("TOPLEFT", coverageCard.frame, "TOPLEFT", 12, -12);
+    const coverageGlyph = Native.createPanel(coverageCard.frame, theme.colors.surfaceDeep, theme.colors.borderStrong);
+    coverageGlyph.frame.SetSize(32, 32);
+    coverageGlyph.frame.SetPoint("TOPLEFT", coverageCard.frame, "TOPLEFT", 12, -12);
+    for (let i = 0; i < 3; i += 1) {
+        const bar = Native.createSolid(coverageGlyph.frame, theme.colors.text, "ARTWORK");
+        bar.SetWidth(5);
+        bar.SetHeight(8 + i * 6);
+        bar.SetPoint("BOTTOMLEFT", coverageGlyph.frame, "BOTTOMLEFT", 6 + i * 8, 5);
+    }
     const coverageTitle = Native.createText(coverageCard.frame, "COVERAGE", "GameFontNormalSmall", theme.colors.muted);
-    coverageTitle.SetPoint("LEFT", coverageIcon.frame, "RIGHT", 9, 0);
+    coverageTitle.SetPoint("LEFT", coverageGlyph.frame, "RIGHT", 9, 0);
     const coverageText = Native.createText(coverageCard.frame, "Build a roster to inspect coverage.", "GameFontHighlightSmall", theme.colors.muted);
     coverageText.SetPoint("TOPLEFT", coverageCard.frame, "TOPLEFT", 12, -52);
     coverageText.SetWidth(246);
@@ -1369,6 +1429,7 @@ export function createModernDashboard(): Dashboard {
                 widgets.sub.SetText(Model.classLabel(String(slot.human.class)) + "  ·  Locked " + Model.roleLabel(slot.role));
                 widgets.choose.frame.Hide();
                 widgets.auto.frame.Hide();
+                widgets.humanAnchor.frame.Show();
                 continue;
             }
 
@@ -1408,6 +1469,7 @@ export function createModernDashboard(): Dashboard {
 
             const roleCopy = slot.role;
             const botIndex = slot.botIndex ?? 1;
+            widgets.humanAnchor.frame.Hide();
             widgets.choose.setText(exact !== undefined ? "Change build" : "Choose build");
             widgets.choose.frame.SetScript("OnMouseDown", () => {
                 selectorContext = { mode: "DUNGEON", role: roleCopy, index: botIndex };
@@ -1434,7 +1496,9 @@ export function createModernDashboard(): Dashboard {
         for (const role of roleOrder) {
             const target = Model.targetForRole(role);
             quickCards[role].count.SetText(String(target));
-            quickCards[role].botSlots.SetText(String(Model.remainingBotSlots(role)) + " bot slots after humans");
+            quickCards[role].botSlots.SetText(
+                String(Model.remainingBotSlots(role)) + " bot slots after humans\n(out of " + String(target) + ")"
+            );
             quickCards[role].minus.setEnabled(target > 0);
             quickCards[role].plus.setEnabled(target < size);
         }
@@ -1443,7 +1507,26 @@ export function createModernDashboard(): Dashboard {
         const valid = total === size;
         const color = valid ? theme.colors.success : theme.colors.warning;
         quickTotal.SetTextColor(color[0], color[1], color[2], 1);
-        quickSummary.outline.setColor(valid ? theme.colors.border : theme.colors.warning);
+        quickSummary.outline.setColor(valid ? theme.colors.borderStrong : theme.colors.warning);
+        quickCheck.outline.setColor(color);
+        if (valid) {
+            quickCheckIcon.Show();
+            quickCheckBang.Hide();
+            quickStatusTitle.SetText("Raid composition is complete!");
+            quickStatusTitle.SetTextColor(theme.colors.success[0], theme.colors.success[1], theme.colors.success[2], 1);
+            quickStatusDetail.SetText(
+                "This setup will create a " + String(size) + "-player raid with " +
+                String(Model.targetForRole("TANK")) + " tanks, " +
+                String(Model.targetForRole("HEALER")) + " healers, and " +
+                String(Model.targetForRole("DPS")) + " DPS."
+            );
+        } else {
+            quickCheckIcon.Hide();
+            quickCheckBang.Show();
+            quickStatusTitle.SetText("Role counts need attention");
+            quickStatusTitle.SetTextColor(theme.colors.warning[0], theme.colors.warning[1], theme.colors.warning[2], 1);
+            quickStatusDetail.SetText("Adjust Tank, Healer and DPS until the total matches " + String(size) + ".");
+        }
     }
 
     function refreshExactRaid(): void {
@@ -1506,13 +1589,15 @@ export function createModernDashboard(): Dashboard {
                     exactScroll.bindWheel(panel.frame);
                     exactScroll.bindWheel(edit.frame);
                     exactScroll.bindWheel(remove.frame);
-                    widgets = { panel, classIcon, specIcon, name, count, edit, remove };
+                    widgets = { panel, classBadge, classIcon, specBadge, specIcon, name, count, edit, remove };
                     section.rows[i] = widgets;
                 }
 
                 widgets.panel.frame.ClearAllPoints();
                 widgets.panel.frame.SetPoint("TOPLEFT", section.panel.frame, "TOPLEFT", 18, -(62 + i * 60));
                 Native.setClassIcon(widgets.classIcon, build.classId);
+                widgets.classBadge.outline.setColor(Native.classColor(build.classId));
+                widgets.specBadge.outline.setColor(theme.colors.primary);
                 widgets.specIcon.SetTexture(Model.getSpecIcon(build.classId, build.specId));
                 widgets.specIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
                 widgets.name.SetText(Model.getSpecLabel(build.classId, build.specId) + " " + Model.classLabel(build.classId));
@@ -1573,6 +1658,7 @@ export function createModernDashboard(): Dashboard {
                     Native.setTextureColor(rowWidgets.roleBar, theme.colors.borderStrong);
                 } else {
                     Native.setClassIcon(rowWidgets.icon, String(member.class));
+                    rowWidgets.iconBadge.outline.setColor(Native.classColor(String(member.class)));
                     rowWidgets.iconBadge.frame.Show();
                     rowWidgets.name.SetText((member.isPlayer ? "YOU  ·  " : "") + String(member.name));
                     rowWidgets.name.SetTextColor(theme.colors.text[0], theme.colors.text[1], theme.colors.text[2], 1);
@@ -1623,6 +1709,9 @@ export function createModernDashboard(): Dashboard {
         const phase = String(p.phase ?? "IDLE");
         const phaseColor = colorForPhase(phase);
         Native.setTextureColor(phaseDot, phaseColor);
+        Native.setTextureColor(phaseAccent, phaseColor);
+        Native.setTextureColor(phaseGlow, Native.withAlpha(phaseColor, 0.16));
+        phaseCard.outline.setColor(phase === "ERROR" ? theme.colors.error : theme.colors.borderStrong);
         phaseText.SetText(Model.isTravelRetry() ? "Ready to enter activity" : Model.phaseLabel(phase));
         phaseText.SetTextColor(phaseColor[0], phaseColor[1], phaseColor[2], 1);
         phaseDetail.SetText(String(p.detail ?? ""));
@@ -1712,6 +1801,8 @@ export function createModernDashboard(): Dashboard {
         navRaid.setSelected(raid);
         backendText.SetText(GC.backendSeen === true ? "Backend connected" : "Checking backend");
         Native.setTextureColor(backendDot, GC.backendSeen === true ? theme.colors.success : theme.colors.muted);
+        if (GC.backendSeen === true) backendGlow.Show();
+        else backendGlow.Hide();
 
         refreshActivity();
         refreshHumanPanel();

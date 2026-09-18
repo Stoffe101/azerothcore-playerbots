@@ -600,3 +600,17 @@ assert "sidebarDivider" in MODERN, "Sidebar hierarchy lost the Compose/Tools div
 assert "builtinEmpty" in MODERN and "customEmpty" in MODERN, "Template browser lost explicit empty states"
 assert "humanEmpty" in MODERN and "pinEmpty" in MODERN, "People browser lost explicit empty states"
 assert "activityTop" in MODERN and "compositionTop" in MODERN, "Main content lost premium section accents"
+
+
+# Mockup parity finishing contracts.
+assert "innerFrame" in BUTTON and "innerOutline" in BUTTON, "Premium buttons lost their double-line selected chrome"
+assert "classRoleSummary" in SELECTOR and '"Ranged DPS"' in SELECTOR and '"Melee DPS"' in SELECTOR
+assert 'const modal = createModal(parent, 1080, 790);' in SELECTOR
+assert 'height: 116' in SELECTOR and 'row * 122' in SELECTOR, "Class cards regressed from the target proportions"
+assert '"BUILD SUMMARY"' in SELECTOR and "summaryClassBadge" in SELECTOR and "summarySpecBadge" in SELECTOR
+assert "summaryRoleBadge" in SELECTOR and '"COUNT"' in SELECTOR
+assert "roleDescription" in MODERN and 'card.frame.SetSize(300, 226)' in MODERN
+assert '"TOTAL RAID SIZE"' in MODERN and "quickStatusTitle" in MODERN and "quickStatusDetail" in MODERN
+assert '"Human anchor"' in MODERN and "widgets.humanAnchor.frame.Show()" in MODERN
+assert "resetRoles.frame.SetPoint" in MODERN and 'resetRoles.frame.SetPoint("TOPRIGHT", raidView' in MODERN
+assert "backendGlow" in MODERN and "phaseGlow" in MODERN and "coverageGlyph" in MODERN

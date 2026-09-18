@@ -51,6 +51,12 @@ export function createButton(parent: WoWFrame, options: ButtonOptions): UIButton
     activeTop.SetHeight(1);
     activeTop.Hide();
 
+    const innerFrame = CreateFrame("Frame", undefined, frame);
+    innerFrame.SetPoint("TOPLEFT", frame, "TOPLEFT", 3, -3);
+    innerFrame.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -3, 3);
+    const innerOutline = createOutline(innerFrame, withAlpha(accent, 0.62));
+    innerFrame.Hide();
+
     const label = createText(frame, options.text, options.height >= 34 ? "GameFontHighlight" : "GameFontHighlightSmall");
     let icon: WoWTexture | undefined;
     if (options.icon !== undefined) {
@@ -84,6 +90,10 @@ export function createButton(parent: WoWFrame, options: ButtonOptions): UIButton
             activeEdge.Hide();
             activeTop.Hide();
         }
+        if (selected || emphasized) {
+            innerOutline.setColor(withAlpha(accent, selected ? 0.95 : 0.68));
+            innerFrame.Show();
+        } else innerFrame.Hide();
         const color = selected ? accent : theme.colors.text;
         label.SetTextColor(color[0], color[1], color[2], 1);
     }
@@ -93,6 +103,8 @@ export function createButton(parent: WoWFrame, options: ButtonOptions): UIButton
             setTextureColor(background, theme.colors.surfaceHover);
             setTextureColor(topTint, withAlpha(accent, 0.16));
             outline.setColor(options.emphasis === true ? accent : theme.colors.borderStrong);
+            innerOutline.setColor(withAlpha(accent, 0.58));
+            innerFrame.Show();
         }
     });
     frame.SetScript("OnLeave", () => render());
