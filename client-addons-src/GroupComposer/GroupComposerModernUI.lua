@@ -428,6 +428,51 @@ function ____exports.createChrome(self, frame, accent)
             i = i + 1
         end
     end
+    local cornerPath = "Interface\\DialogFrame\\UI-DialogBox-Gold-Corner"
+    local topLeft = frame:CreateTexture(nil, "OVERLAY")
+    topLeft:SetTexture(cornerPath)
+    topLeft:SetSize(26, 26)
+    topLeft:SetPoint(
+        "TOPLEFT",
+        frame,
+        "TOPLEFT",
+        -3,
+        3
+    )
+    topLeft:SetTexCoord(0, 1, 0, 1)
+    local topRight = frame:CreateTexture(nil, "OVERLAY")
+    topRight:SetTexture(cornerPath)
+    topRight:SetSize(26, 26)
+    topRight:SetPoint(
+        "TOPRIGHT",
+        frame,
+        "TOPRIGHT",
+        3,
+        3
+    )
+    topRight:SetTexCoord(1, 0, 0, 1)
+    local bottomLeft = frame:CreateTexture(nil, "OVERLAY")
+    bottomLeft:SetTexture(cornerPath)
+    bottomLeft:SetSize(26, 26)
+    bottomLeft:SetPoint(
+        "BOTTOMLEFT",
+        frame,
+        "BOTTOMLEFT",
+        -3,
+        -3
+    )
+    bottomLeft:SetTexCoord(0, 1, 1, 0)
+    local bottomRight = frame:CreateTexture(nil, "OVERLAY")
+    bottomRight:SetTexture(cornerPath)
+    bottomRight:SetSize(26, 26)
+    bottomRight:SetPoint(
+        "BOTTOMRIGHT",
+        frame,
+        "BOTTOMRIGHT",
+        3,
+        -3
+    )
+    bottomRight:SetTexCoord(1, 0, 1, 0)
     if #outer.textures == 0 then
         return
     end
@@ -4864,8 +4909,8 @@ function ____exports.createModernDashboard(self)
     local close = ButtonUI:createButton(
         header.frame,
         {
-            text = "Close",
-            width = 100,
+            text = "Close   X",
+            width = 108,
             height = 34,
             accent = theme.colors.error,
             emphasis = true,
