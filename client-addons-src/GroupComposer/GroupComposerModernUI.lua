@@ -5594,10 +5594,11 @@ function ____exports.createModernDashboard(self)
     local function applyScale(self)
         local width = UIParent:GetWidth() or 1920
         local height = UIParent:GetHeight() or 1080
-        local scale = math.min((width - 24) / 1480, (height - 24) / 880)
+        local available = math.min((width - 24) / 1480, (height - 24) / 880)
+        local maxScale = width >= 3000 and 1.22 or (width >= 2400 and 1.16 or 1.1)
         frame:SetScale(math.max(
             0.68,
-            math.min(1.1, scale)
+            math.min(maxScale, available)
         ))
     end
     local dashboard
