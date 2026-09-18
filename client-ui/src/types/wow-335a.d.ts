@@ -67,8 +67,8 @@ interface WoWEditBox extends WoWFrame {
     SetTextInsets(this: WoWEditBox, left: number, right: number, top: number, bottom: number): void;
 }
 
-declare function CreateFrame(frameType: "EditBox", name?: string, parent?: WoWFrame, template?: string): WoWEditBox;
-declare function CreateFrame(frameType: string, name?: string, parent?: WoWFrame, template?: string): WoWFrame;
+declare function CreateFrame(this: void, frameType: "EditBox", name?: string, parent?: WoWFrame, template?: string): WoWEditBox;
+declare function CreateFrame(this: void, frameType: string, name?: string, parent?: WoWFrame, template?: string): WoWFrame;
 declare const UIParent: WoWFrame;
 declare const CLASS_ICON_TCOORDS: Record<string, number[]>;
 declare const RAID_CLASS_COLORS: Record<string, { r: number; g: number; b: number }>;
