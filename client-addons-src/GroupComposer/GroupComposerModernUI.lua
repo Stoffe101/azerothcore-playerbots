@@ -1536,6 +1536,7 @@ function ____exports.roleLabel(self, role)
     end
     return "DPS"
 end
+____exports.ANY_SPEC_ID = -1
 local GC = _G.GroupComposer
 local D = _G.GroupComposerData
 local DataFns = _G.GroupComposerData
@@ -1748,8 +1749,18 @@ local function rawRequired(self, role)
     end
     local list = ____opt_17_19
     for ____, pref in __TS__Iterator(list) do
-        if pref.required == true and pref.class ~= nil and pref.class ~= "ANY" and type(pref.spec) == "number" then
-            result[#result + 1] = pref
+        if pref.required == true and pref.class ~= nil and pref.class ~= "ANY" then
+            if type(pref.spec) == "number" then
+                result[#result + 1] = pref
+            else
+                local ____pref_spec_20 = pref.spec
+                if ____pref_spec_20 == nil then
+                    ____pref_spec_20 = ""
+                end
+                if string.upper(tostring(____pref_spec_20)) == "ANY" then
+                    result[#result + 1] = {class = pref.class, spec = ____exports.ANY_SPEC_ID, required = true}
+                end
+            end
         end
     end
     return result
@@ -1799,15 +1810,15 @@ function ____exports.writeRequiredBuilds(self, role, rows, reason)
         reason = "Exact composition changed"
     end
     local cfg = ____exports.config(nil)
-    local ____opt_20 = cfg.preferences
-    if ____opt_20 ~= nil then
-        ____opt_20 = ____opt_20[role]
+    local ____opt_21 = cfg.preferences
+    if ____opt_21 ~= nil then
+        ____opt_21 = ____opt_21[role]
     end
-    local ____opt_20_22 = ____opt_20
-    if ____opt_20_22 == nil then
-        ____opt_20_22 = {}
+    local ____opt_21_23 = ____opt_21
+    if ____opt_21_23 == nil then
+        ____opt_21_23 = {}
     end
-    local existing = ____opt_20_22
+    local existing = ____opt_21_23
     local next = {}
     for ____, pref in __TS__Iterator(existing) do
         if pref.required ~= true then
@@ -1824,7 +1835,7 @@ function ____exports.writeRequiredBuilds(self, role, rows, reason)
         do
             local i = 0
             while i < count do
-                next[#next + 1] = {class = row.classId, spec = row.specId, required = true}
+                next[#next + 1] = {class = row.classId, spec = row.specId == ____exports.ANY_SPEC_ID and "ANY" or row.specId, required = true}
                 written = written + 1
                 i = i + 1
             end
@@ -1955,6 +1966,9 @@ function ____exports.clearDungeonExact(self, role, botIndex)
     ____exports.writeRequiredBuilds(nil, role, rows, "Dungeon build cleared")
 end
 function ____exports.getSpecLabel(self, classId, specId)
+    if specId == ____exports.ANY_SPEC_ID then
+        return "Any valid spec"
+    end
     local specs = __TS__ArrayConcat(
         __TS__ArrayConcat(
             getSpecsForRole(classId, "TANK"),
@@ -1970,6 +1984,9 @@ function ____exports.getSpecLabel(self, classId, specId)
     return "Unknown"
 end
 function ____exports.getSpecIcon(self, classId, specId)
+    if specId == ____exports.ANY_SPEC_ID then
+        return "Interface\\Icons\\INV_Misc_QuestionMark"
+    end
     local classDef = getClass(classId)
     if classDef ~= nil then
         for ____, spec in ipairs(classDef.specs) do
@@ -1992,37 +2009,37 @@ local function raidById(self, id)
 end
 function ____exports.pinnedMembers(self)
     local result = {}
-    local ____exports_config_result_pinned_25 = ____exports.config(nil).pinned
-    if ____exports_config_result_pinned_25 == nil then
-        ____exports_config_result_pinned_25 = {}
+    local ____exports_config_result_pinned_26 = ____exports.config(nil).pinned
+    if ____exports_config_result_pinned_26 == nil then
+        ____exports_config_result_pinned_26 = {}
     end
-    for ____, pin in ipairs(____exports_config_result_pinned_25) do
+    for ____, pin in ipairs(____exports_config_result_pinned_26) do
         result[#result + 1] = pin
     end
     return result
 end
 function ____exports.planWarnings(self)
     local result = {}
-    local ____exports_plan_result_warnings_26 = ____exports.plan(nil).warnings
-    if ____exports_plan_result_warnings_26 == nil then
-        ____exports_plan_result_warnings_26 = {}
+    local ____exports_plan_result_warnings_27 = ____exports.plan(nil).warnings
+    if ____exports_plan_result_warnings_27 == nil then
+        ____exports_plan_result_warnings_27 = {}
     end
-    for ____, warning in ipairs(____exports_plan_result_warnings_26) do
+    for ____, warning in ipairs(____exports_plan_result_warnings_27) do
         result[#result + 1] = tostring(warning)
     end
     return result
 end
 function ____exports.coverageDisplay(self)
-    local ____exports_plan_result_summary_27 = ____exports.plan(nil).summary
-    if ____exports_plan_result_summary_27 == nil then
-        ____exports_plan_result_summary_27 = {}
+    local ____exports_plan_result_summary_28 = ____exports.plan(nil).summary
+    if ____exports_plan_result_summary_28 == nil then
+        ____exports_plan_result_summary_28 = {}
     end
-    local summary = ____exports_plan_result_summary_27
-    local ____summary_utility_28 = summary.utility
-    if ____summary_utility_28 == nil then
-        ____summary_utility_28 = ""
+    local summary = ____exports_plan_result_summary_28
+    local ____summary_utility_29 = summary.utility
+    if ____summary_utility_29 == nil then
+        ____summary_utility_29 = ""
     end
-    local raw = tostring(____summary_utility_28)
+    local raw = tostring(____summary_utility_29)
     local labels = {}
     if (string.find(raw, "interrupt", nil, true) or 0) - 1 >= 0 then
         labels[#labels + 1] = "Interrupts"
@@ -2059,47 +2076,47 @@ function ____exports.coverageDisplay(self)
     if utility == "" then
         utility = "No utility coverage yet"
     end
-    local ____temp_30 = (utility .. "\n") .. "Ranged DPS  "
-    local ____summary_ranged_29 = summary.ranged
-    if ____summary_ranged_29 == nil then
-        ____summary_ranged_29 = 0
+    local ____temp_31 = (utility .. "\n") .. "Ranged DPS  "
+    local ____summary_ranged_30 = summary.ranged
+    if ____summary_ranged_30 == nil then
+        ____summary_ranged_30 = 0
     end
-    local ____temp_32 = (____temp_30 .. tostring(____summary_ranged_29)) .. "     Melee DPS  "
-    local ____summary_melee_31 = summary.melee
-    if ____summary_melee_31 == nil then
-        ____summary_melee_31 = 0
+    local ____temp_33 = (____temp_31 .. tostring(____summary_ranged_30)) .. "     Melee DPS  "
+    local ____summary_melee_32 = summary.melee
+    if ____summary_melee_32 == nil then
+        ____summary_melee_32 = 0
     end
-    return ____temp_32 .. tostring(____summary_melee_31)
+    return ____temp_33 .. tostring(____summary_melee_32)
 end
 function ____exports.dungeonItems(self)
     local result = {}
-    local ____D_DUNGEONS_33 = D.DUNGEONS
-    if ____D_DUNGEONS_33 == nil then
-        ____D_DUNGEONS_33 = {}
+    local ____D_DUNGEONS_34 = D.DUNGEONS
+    if ____D_DUNGEONS_34 == nil then
+        ____D_DUNGEONS_34 = {}
     end
-    for ____, dungeon in __TS__Iterator(____D_DUNGEONS_33) do
+    for ____, dungeon in __TS__Iterator(____D_DUNGEONS_34) do
         result[#result + 1] = {value = dungeon.id, label = dungeon.label}
     end
     return result
 end
 function ____exports.difficultyItems(self)
     local result = {}
-    local ____D_DUNGEON_DIFFICULTIES_34 = D.DUNGEON_DIFFICULTIES
-    if ____D_DUNGEON_DIFFICULTIES_34 == nil then
-        ____D_DUNGEON_DIFFICULTIES_34 = {}
+    local ____D_DUNGEON_DIFFICULTIES_35 = D.DUNGEON_DIFFICULTIES
+    if ____D_DUNGEON_DIFFICULTIES_35 == nil then
+        ____D_DUNGEON_DIFFICULTIES_35 = {}
     end
-    for ____, difficulty in __TS__Iterator(____D_DUNGEON_DIFFICULTIES_34) do
+    for ____, difficulty in __TS__Iterator(____D_DUNGEON_DIFFICULTIES_35) do
         result[#result + 1] = {value = difficulty.id, label = difficulty.label}
     end
     return result
 end
 function ____exports.raidItems(self)
     local result = {}
-    local ____D_RAIDS_35 = D.RAIDS
-    if ____D_RAIDS_35 == nil then
-        ____D_RAIDS_35 = {}
+    local ____D_RAIDS_36 = D.RAIDS
+    if ____D_RAIDS_36 == nil then
+        ____D_RAIDS_36 = {}
     end
-    for ____, raid in __TS__Iterator(____D_RAIDS_35) do
+    for ____, raid in __TS__Iterator(____D_RAIDS_36) do
         result[#result + 1] = {
             value = raid.id,
             label = (tostring(raid.era) .. "  ·  ") .. tostring(raid.label)
@@ -2113,11 +2130,11 @@ function ____exports.raidDifficultyItems(self)
         nil,
         ____exports.config(nil).activity
     )
-    local ____opt_result_38
+    local ____opt_result_39
     if raid ~= nil then
-        ____opt_result_38 = raid.heroic
+        ____opt_result_39 = raid.heroic
     end
-    if ____opt_result_38 == true then
+    if ____opt_result_39 == true then
         result[#result + 1] = {value = "heroic", label = "Heroic"}
     end
     return result
@@ -2126,26 +2143,26 @@ function ____exports.selectedActivityLabel(self)
     local cfg = ____exports.config(nil)
     if cfg.mode == "RAID" then
         local raid = raidById(nil, cfg.activity)
-        local ____opt_result_41
+        local ____opt_result_42
         if raid ~= nil then
-            ____opt_result_41 = raid.label
+            ____opt_result_42 = raid.label
         end
-        local ____opt_result_41_42 = ____opt_result_41
-        if ____opt_result_41_42 == nil then
-            ____opt_result_41_42 = "Raid"
+        local ____opt_result_42_43 = ____opt_result_42
+        if ____opt_result_42_43 == nil then
+            ____opt_result_42_43 = "Raid"
         end
-        return ____opt_result_41_42
+        return ____opt_result_42_43
     end
     local dungeon = dungeonById(nil, cfg.activity)
-    local ____opt_result_45
+    local ____opt_result_46
     if dungeon ~= nil then
-        ____opt_result_45 = dungeon.label
+        ____opt_result_46 = dungeon.label
     end
-    local ____opt_result_45_46 = ____opt_result_45
-    if ____opt_result_45_46 == nil then
-        ____opt_result_45_46 = "Dungeon"
+    local ____opt_result_46_47 = ____opt_result_46
+    if ____opt_result_46_47 == nil then
+        ____opt_result_46_47 = "Dungeon"
     end
-    return ____opt_result_45_46
+    return ____opt_result_46_47
 end
 function ____exports.supportedRaidSizes(self)
     local raid = raidById(
@@ -2153,15 +2170,15 @@ function ____exports.supportedRaidSizes(self)
         ____exports.config(nil).activity
     )
     local result = {}
-    local ____opt_result_49
+    local ____opt_result_50
     if raid ~= nil then
-        ____opt_result_49 = raid.sizes
+        ____opt_result_50 = raid.sizes
     end
-    local ____opt_result_49_50 = ____opt_result_49
-    if ____opt_result_49_50 == nil then
-        ____opt_result_49_50 = {}
+    local ____opt_result_50_51 = ____opt_result_50
+    if ____opt_result_50_51 == nil then
+        ____opt_result_50_51 = {}
     end
-    for ____, size in __TS__Iterator(____opt_result_49_50) do
+    for ____, size in __TS__Iterator(____opt_result_50_51) do
         result[#result + 1] = __TS__Number(size)
     end
     return result
@@ -2222,11 +2239,11 @@ function ____exports.removePin(self, index)
     GC:RemovePinnedMember(index)
 end
 function ____exports.planMembers(self)
-    local ____exports_plan_result_members_51 = ____exports.plan(nil).members
-    if ____exports_plan_result_members_51 == nil then
-        ____exports_plan_result_members_51 = {}
+    local ____exports_plan_result_members_52 = ____exports.plan(nil).members
+    if ____exports_plan_result_members_52 == nil then
+        ____exports_plan_result_members_52 = {}
     end
-    return ____exports_plan_result_members_51
+    return ____exports_plan_result_members_52
 end
 function ____exports.roleAccent(self, role)
     if role == "TANK" then
@@ -2262,29 +2279,29 @@ function ____exports.phaseLabel(self, phase)
     return "Configure roster"
 end
 function ____exports.isBusy(self)
-    local ____exports_progress_result_phase_52 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_52 == nil then
-        ____exports_progress_result_phase_52 = "IDLE"
+    local ____exports_progress_result_phase_53 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_53 == nil then
+        ____exports_progress_result_phase_53 = "IDLE"
     end
-    local phase = tostring(____exports_progress_result_phase_52)
+    local phase = tostring(____exports_progress_result_phase_53)
     return phase == "BUILDING" or phase == "PREPARING" or phase == "ASSEMBLING" or phase == "TRAVEL"
 end
 function ____exports.isTravelRetry(self)
     local p = ____exports.progress(nil)
-    local ____temp_54 = p.phase == "READY"
-    if ____temp_54 then
-        local ____p_detail_53 = p.detail
-        if ____p_detail_53 == nil then
-            ____p_detail_53 = ""
+    local ____temp_55 = p.phase == "READY"
+    if ____temp_55 then
+        local ____p_detail_54 = p.detail
+        if ____p_detail_54 == nil then
+            ____p_detail_54 = ""
         end
-        ____temp_54 = (string.find(
-            tostring(____p_detail_53),
+        ____temp_55 = (string.find(
+            tostring(____p_detail_54),
             "Enter Activity",
             nil,
             true
         ) or 0) - 1 >= 0
     end
-    return ____temp_54
+    return ____temp_55
 end
 return ____exports
  end,
