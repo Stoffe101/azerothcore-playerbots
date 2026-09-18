@@ -74,14 +74,14 @@ fi
 
 # Group Composer's modern TypeScript UI is committed as generated Lua so normal players/server
 # operators do not need Node.js. Refuse to package an old shell by accident.
-GC_MODERN="$ROOT/client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua"
+GC_MODERN="$ROOT/client-addons-src/GroupComposer/GroupComposerModernUI.lua"
 GC_TOC="$ROOT/client-addons-src/GroupComposer/GroupComposer.toc"
 if [[ ! -f "$GC_MODERN" ]]; then
   echo "ERROR: Modern Group Composer bundle is missing: $GC_MODERN" >&2
   echo "Pull the latest test/group-composer-v4 branch or run ./build-client-ui.sh --sync." >&2
   exit 1
 fi
-if ! grep -Fxq 'generated\\GroupComposerModernUI.lua' "$GC_TOC"; then
+if ! grep -Fxq 'GroupComposerModernUI.lua' "$GC_TOC"; then
   echo "ERROR: Group Composer TOC is not pointing at the modern generated UI." >&2
   exit 1
 fi
