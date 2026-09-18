@@ -60,13 +60,24 @@ export function humanReady(): boolean {
 export function humanRoleCounts(): Record<Role, number> {
     const result: Record<Role, number> = { TANK: 0, HEALER: 0, DPS: 0 };
     const roles = config().humanRoles ?? {};
+    const seen: Record<string, boolean> = {};
+
     for (const human of humans()) {
+        const key = String(human.name ?? "").toLowerCase();
         const role = roles[human.name] as Role | undefined;
-        if (role !== undefined) result[role] += 1;
+        if (key !== "" && role !== undefined && seen[key] !== true) {
+            seen[key] = true;
+            result[role] += 1;
+        }
     }
+
     for (const extra of config().extraHumans ?? []) {
+        const key = String(extra.name ?? "").toLowerCase();
         const role = extra.role as Role | undefined;
-        if (role !== undefined) result[role] += 1;
+        if (key !== "" && role !== undefined && seen[key] !== true) {
+            seen[key] = true;
+            result[role] += 1;
+        }
     }
     return result;
 }
