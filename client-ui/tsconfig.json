@@ -15,6 +15,7 @@
     "luaTarget": "5.1",
     "luaLibImport": "inline",
     "noImplicitGlobalVariables": true,
+    "noImplicitSelf": true,
     "luaBundle": "dist/GroupComposerModernUI.lua",
     "luaBundleEntry": "src/main.ts"
   }
