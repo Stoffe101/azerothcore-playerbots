@@ -251,7 +251,8 @@ local function CoveragePreferences(size)
             Pref("WARLOCK", 1),     -- Demonology: Demonic Pact
             Pref("DRUID", 0),       -- Balance: spell crit / hit coverage
             Pref("PALADIN", 2),     -- Retribution: blessings + replenishment
-            Pref("HUNTER", 2),      -- Survival: replenishment + ranged utility
+            -- Two DPS slots stay Auto in a fresh 10-player template. Ret already supplies
+            -- Replenishment, so Survival Hunter is useful but not mandatory for the coverage core.
             Pref("MAGE", 0),        -- Arcane: Arcane Brilliance + raid damage
             -- final DPS slot remains Auto
         }
