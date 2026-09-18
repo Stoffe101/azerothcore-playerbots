@@ -65,6 +65,8 @@ interface WoWEditBox extends WoWFrame {
     HighlightText(this: WoWEditBox, start?: number, finish?: number): void;
     ClearFocus(this: WoWEditBox): void;
     SetTextInsets(this: WoWEditBox, left: number, right: number, top: number, bottom: number): void;
+    SetFontObject(this: WoWEditBox, fontObject: any): void;
+    SetTextColor(this: WoWEditBox, red: number, green: number, blue: number, alpha?: number): void;
 }
 
 declare function CreateFrame(this: void, frameType: "EditBox", name?: string, parent?: WoWFrame, template?: string): WoWEditBox;
@@ -72,5 +74,6 @@ declare function CreateFrame(this: void, frameType: string, name?: string, paren
 declare const UIParent: WoWFrame;
 declare const CLASS_ICON_TCOORDS: Record<string, number[]>;
 declare const RAID_CLASS_COLORS: Record<string, { r: number; g: number; b: number }>;
+declare const GameFontHighlightSmall: any;
 declare const UISpecialFrames: string[] | undefined;
 declare const _G: Record<string, any>;
