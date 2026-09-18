@@ -383,6 +383,7 @@ end
 local ____exports = {}
 local ____Native = require("core.Native")
 local createPanel = ____Native.createPanel
+local createSolid = ____Native.createSolid
 local createText = ____Native.createText
 local ____Theme = require("theme.Theme")
 local theme = ____Theme.theme
@@ -399,54 +400,102 @@ function ____exports.closeChoicePopup(self)
     closeActive(nil)
 end
 function ____exports.createChoiceSelect(self, parent, options)
-    local refreshRows, refresh, trigger, popup, maxVisible, offset, rows, scrollHint
+    local refreshRail, refreshRows, refresh, trigger, popup, maxVisible, rowHeight, railWidth, offset, rows, rail, up, down, thumb
+    function refreshRail(self)
+        local items = options:getItems()
+        local maxOffset = math.max(0, #items - maxVisible)
+        local canScroll = maxOffset > 0
+        up:setEnabled(canScroll and offset > 0)
+        down:setEnabled(canScroll and offset < maxOffset)
+        if not canScroll then
+            rail.frame:Hide()
+            return
+        end
+        rail.frame:Show()
+        local popupHeight = popup.frame:GetHeight()
+        local trackHeight = math.max(36, popupHeight - 58)
+        local thumbHeight = math.max(
+            22,
+            math.floor(trackHeight * math.min(1, maxVisible / #items))
+        )
+        local travel = math.max(0, trackHeight - thumbHeight)
+        local ratio = maxOffset > 0 and offset / maxOffset or 0
+        thumb:SetHeight(thumbHeight)
+        thumb:ClearAllPoints()
+        thumb:SetPoint(
+            "TOP",
+            up.frame,
+            "BOTTOM",
+            0,
+            -(4 + travel * ratio)
+        )
+        thumb:Show()
+    end
     function refreshRows(self)
         local items = options:getItems()
         local visible = math.min(maxVisible, #items)
-        local hasMore = #items > maxVisible
-        popup.frame:SetHeight(math.max(12, visible * 32 + 8 + (hasMore and 22 or 0)))
-        if hasMore then
-            scrollHint:Show()
-        else
-            scrollHint:Hide()
-        end
+        popup.frame:SetHeight(math.max(16, visible * rowHeight + 8))
         do
             local i = 0
             while i < maxVisible do
                 local row = rows[i + 1]
                 if row == nil then
-                    row = createButton(nil, popup.frame, {text = "", width = options.width - 8, height = 28})
-                    row.frame:SetPoint(
+                    local button = createButton(nil, popup.frame, {text = "", width = options.width - railWidth - 12, height = rowHeight - 4})
+                    button.frame:SetPoint(
                         "TOPLEFT",
                         popup.frame,
                         "TOPLEFT",
                         4,
-                        -(4 + i * 32)
+                        -(4 + i * rowHeight)
                     )
-                    row.label:ClearAllPoints()
-                    row.label:SetPoint(
-                        "LEFT",
-                        row.frame,
-                        "LEFT",
+                    button.label:ClearAllPoints()
+                    button.label:SetPoint(
+                        "TOPLEFT",
+                        button.frame,
+                        "TOPLEFT",
                         10,
-                        0
+                        -7
                     )
-                    row.label:SetPoint(
+                    button.label:SetPoint(
                         "RIGHT",
-                        row.frame,
+                        button.frame,
+                        "RIGHT",
+                        -8,
+                        7
+                    )
+                    button.label:SetJustifyH("LEFT")
+                    local detail = createText(
+                        nil,
+                        button.frame,
+                        "",
+                        "GameFontHighlightSmall",
+                        theme.colors.muted
+                    )
+                    detail:SetPoint(
+                        "TOPLEFT",
+                        button.frame,
+                        "TOPLEFT",
+                        10,
+                        -25
+                    )
+                    detail:SetPoint(
+                        "RIGHT",
+                        button.frame,
                         "RIGHT",
                         -8,
                         0
                     )
-                    row.label:SetJustifyH("LEFT")
+                    detail:SetJustifyH("LEFT")
+                    row = {button = button, detail = detail}
                     rows[i + 1] = row
                 end
                 local item = items[offset + i + 1]
                 if item ~= nil then
-                    row:setText(item.label)
-                    row:setSelected(item.value == options:getValue())
+                    row.button:setText(item.label)
+                    row.detail:SetText(item.detail or "")
+                    row.button:setSelected(item.value == options:getValue())
                     local value = item.value
-                    row.frame:SetScript(
+                    row.button.frame:SetScript(
                         "OnMouseDown",
                         function()
                             options:onChange(value)
@@ -454,13 +503,14 @@ function ____exports.createChoiceSelect(self, parent, options)
                             refresh(nil)
                         end
                     )
-                    row.frame:Show()
+                    row.button.frame:Show()
                 else
-                    row.frame:Hide()
+                    row.button.frame:Hide()
                 end
                 i = i + 1
             end
         end
+        refreshRail(nil)
     end
     function refresh(self)
         local value = options:getValue()
@@ -474,7 +524,7 @@ function ____exports.createChoiceSelect(self, parent, options)
         trigger:setText(label)
         refreshRows(nil)
     end
-    trigger = createButton(nil, parent, {text = "Select", width = options.width, height = 34})
+    trigger = createButton(nil, parent, {text = "Select", width = options.width, height = 36})
     trigger.label:ClearAllPoints()
     trigger.label:SetPoint(
         "LEFT",
@@ -487,7 +537,7 @@ function ____exports.createChoiceSelect(self, parent, options)
         "RIGHT",
         trigger.frame,
         "RIGHT",
-        -28,
+        -32,
         0
     )
     trigger.label:SetJustifyH("LEFT")
@@ -502,7 +552,7 @@ function ____exports.createChoiceSelect(self, parent, options)
         "RIGHT",
         trigger.frame,
         "RIGHT",
-        -10,
+        -11,
         0
     )
     popup = createPanel(nil, trigger.frame, theme.colors.background, theme.colors.borderStrong)
@@ -510,27 +560,112 @@ function ____exports.createChoiceSelect(self, parent, options)
     popup.frame:SetWidth(options.width)
     popup.frame:EnableMouseWheel(true)
     popup.frame:Hide()
-    maxVisible = options.maxVisible or 9
+    maxVisible = options.maxVisible or 8
+    rowHeight = 48
+    railWidth = 24
     offset = 0
     rows = {}
-    scrollHint = createText(
+    rail = createPanel(nil, popup.frame, theme.colors.surface, theme.colors.border)
+    rail.frame:SetPoint(
+        "TOPRIGHT",
+        popup.frame,
+        "TOPRIGHT",
+        -4,
+        -4
+    )
+    rail.frame:SetPoint(
+        "BOTTOMRIGHT",
+        popup.frame,
+        "BOTTOMRIGHT",
+        -4,
+        4
+    )
+    rail.frame:SetWidth(railWidth)
+    local function move(self, delta)
+        local items = options:getItems()
+        local maxOffset = math.max(0, #items - maxVisible)
+        offset = math.max(
+            0,
+            math.min(maxOffset, offset + delta)
+        )
+        refreshRows(nil)
+    end
+    up = createButton(
         nil,
-        popup.frame,
-        "Mouse wheel for more",
-        "GameFontHighlightSmall",
-        theme.colors.muted
+        rail.frame,
+        {
+            text = "^",
+            width = 20,
+            height = 22,
+            onClick = function() return move(nil, -1) end
+        }
     )
-    scrollHint:SetPoint(
-        "BOTTOMLEFT",
-        popup.frame,
-        "BOTTOMLEFT",
-        10,
-        6
+    up.frame:SetPoint(
+        "TOP",
+        rail.frame,
+        "TOP",
+        0,
+        -2
     )
-    scrollHint:Hide()
+    down = createButton(
+        nil,
+        rail.frame,
+        {
+            text = "v",
+            width = 20,
+            height = 22,
+            onClick = function() return move(nil, 1) end
+        }
+    )
+    down.frame:SetPoint(
+        "BOTTOM",
+        rail.frame,
+        "BOTTOM",
+        0,
+        2
+    )
+    local track = createSolid(nil, rail.frame, theme.colors.borderStrong, "ARTWORK")
+    track:SetPoint(
+        "TOP",
+        up.frame,
+        "BOTTOM",
+        0,
+        -4
+    )
+    track:SetPoint(
+        "BOTTOM",
+        down.frame,
+        "TOP",
+        0,
+        4
+    )
+    track:SetWidth(4)
+    thumb = createSolid(nil, rail.frame, theme.colors.primary, "OVERLAY")
+    thumb:SetWidth(6)
+    thumb:SetHeight(22)
     local function open(self)
         closeActive(nil)
-        offset = 0
+        local items = options:getItems()
+        local selected = options:getValue()
+        local selectedIndex = 0
+        do
+            local i = 0
+            while i < #items do
+                if items[i + 1].value == selected then
+                    selectedIndex = i
+                    break
+                end
+                i = i + 1
+            end
+        end
+        local maxOffset = math.max(0, #items - maxVisible)
+        offset = math.max(
+            0,
+            math.min(
+                maxOffset,
+                selectedIndex - math.floor(maxVisible / 2)
+            )
+        )
         refreshRows(nil)
         popup.frame:ClearAllPoints()
         popup.frame:SetPoint(
@@ -556,16 +691,10 @@ function ____exports.createChoiceSelect(self, parent, options)
     popup.frame:SetScript(
         "OnMouseWheel",
         function(____, _frame, delta)
-            local items = options:getItems()
-            local maxOffset = math.max(0, #items - maxVisible)
-            offset = math.max(
-                0,
-                math.min(
-                    maxOffset,
-                    offset - __TS__Number(delta)
-                )
+            move(
+                nil,
+                __TS__Number(delta) > 0 and -1 or 1
             )
-            refreshRows(nil)
         end
     )
     refresh(nil)
@@ -1342,36 +1471,66 @@ function ____exports.coverageDisplay(self)
 end
 function ____exports.dungeonItems(self)
     local result = {}
-    local ____D_DUNGEONS_34 = D.DUNGEONS
-    if ____D_DUNGEONS_34 == nil then
-        ____D_DUNGEONS_34 = {}
+    local ____D_DUNGEONS_35 = D.DUNGEONS
+    if ____D_DUNGEONS_35 == nil then
+        ____D_DUNGEONS_35 = {}
     end
-    for ____, dungeon in __TS__Iterator(____D_DUNGEONS_34) do
-        result[#result + 1] = {value = dungeon.id, label = dungeon.label}
+    for ____, dungeon in __TS__Iterator(____D_DUNGEONS_35) do
+        local ____dungeon_minLevel_34 = dungeon.minLevel
+        if ____dungeon_minLevel_34 == nil then
+            ____dungeon_minLevel_34 = 68
+        end
+        local min = __TS__Number(____dungeon_minLevel_34)
+        result[#result + 1] = {
+            value = dungeon.id,
+            label = dungeon.label,
+            detail = dungeon.id == "random" and ("WotLK random · Normal Lv " .. tostring(min)) .. "+ · Heroic Lv 80" or ("Normal Lv " .. tostring(min)) .. "+ · Heroic Lv 80"
+        }
     end
     return result
 end
 function ____exports.difficultyItems(self)
     local result = {}
-    local ____D_DUNGEON_DIFFICULTIES_35 = D.DUNGEON_DIFFICULTIES
-    if ____D_DUNGEON_DIFFICULTIES_35 == nil then
-        ____D_DUNGEON_DIFFICULTIES_35 = {}
+    local ____D_DUNGEON_DIFFICULTIES_36 = D.DUNGEON_DIFFICULTIES
+    if ____D_DUNGEON_DIFFICULTIES_36 == nil then
+        ____D_DUNGEON_DIFFICULTIES_36 = {}
     end
-    for ____, difficulty in __TS__Iterator(____D_DUNGEON_DIFFICULTIES_35) do
+    for ____, difficulty in __TS__Iterator(____D_DUNGEON_DIFFICULTIES_36) do
         result[#result + 1] = {value = difficulty.id, label = difficulty.label}
     end
     return result
 end
 function ____exports.raidItems(self)
     local result = {}
-    local ____D_RAIDS_36 = D.RAIDS
-    if ____D_RAIDS_36 == nil then
-        ____D_RAIDS_36 = {}
+    local ____D_RAIDS_42 = D.RAIDS
+    if ____D_RAIDS_42 == nil then
+        ____D_RAIDS_42 = {}
     end
-    for ____, raid in __TS__Iterator(____D_RAIDS_36) do
+    for ____, raid in __TS__Iterator(____D_RAIDS_42) do
+        local sizes = ""
+        local firstSize = true
+        local ____raid_sizes_37 = raid.sizes
+        if ____raid_sizes_37 == nil then
+            ____raid_sizes_37 = {}
+        end
+        for ____, size in __TS__Iterator(____raid_sizes_37) do
+            if not firstSize then
+                sizes = sizes .. "/"
+            end
+            sizes = sizes .. tostring(size)
+            firstSize = false
+        end
+        local ____raid_id_40 = raid.id
+        local ____temp_41 = (tostring(raid.era) .. "  ·  ") .. tostring(raid.label)
+        local ____temp_39 = sizes .. " player · Level "
+        local ____raid_requiredLevel_38 = raid.requiredLevel
+        if ____raid_requiredLevel_38 == nil then
+            ____raid_requiredLevel_38 = 80
+        end
         result[#result + 1] = {
-            value = raid.id,
-            label = (tostring(raid.era) .. "  ·  ") .. tostring(raid.label)
+            value = ____raid_id_40,
+            label = ____temp_41,
+            detail = (____temp_39 .. tostring(____raid_requiredLevel_38)) .. "+"
         }
     end
     return result
@@ -1382,11 +1541,11 @@ function ____exports.raidDifficultyItems(self)
         nil,
         ____exports.config(nil).activity
     )
-    local ____opt_result_39
+    local ____opt_result_45
     if raid ~= nil then
-        ____opt_result_39 = raid.heroic
+        ____opt_result_45 = raid.heroic
     end
-    if ____opt_result_39 == true then
+    if ____opt_result_45 == true then
         result[#result + 1] = {value = "heroic", label = "Heroic"}
     end
     return result
@@ -1395,26 +1554,78 @@ function ____exports.selectedActivityLabel(self)
     local cfg = ____exports.config(nil)
     if cfg.mode == "RAID" then
         local raid = raidById(nil, cfg.activity)
-        local ____opt_result_42
+        local ____opt_result_48
         if raid ~= nil then
-            ____opt_result_42 = raid.label
+            ____opt_result_48 = raid.label
         end
-        local ____opt_result_42_43 = ____opt_result_42
-        if ____opt_result_42_43 == nil then
-            ____opt_result_42_43 = "Raid"
+        local ____opt_result_48_49 = ____opt_result_48
+        if ____opt_result_48_49 == nil then
+            ____opt_result_48_49 = "Raid"
         end
-        return ____opt_result_42_43
+        return ____opt_result_48_49
     end
     local dungeon = dungeonById(nil, cfg.activity)
-    local ____opt_result_46
+    local ____opt_result_52
     if dungeon ~= nil then
-        ____opt_result_46 = dungeon.label
+        ____opt_result_52 = dungeon.label
     end
-    local ____opt_result_46_47 = ____opt_result_46
-    if ____opt_result_46_47 == nil then
-        ____opt_result_46_47 = "Dungeon"
+    local ____opt_result_52_53 = ____opt_result_52
+    if ____opt_result_52_53 == nil then
+        ____opt_result_52_53 = "Dungeon"
     end
-    return ____opt_result_46_47
+    return ____opt_result_52_53
+end
+function ____exports.requiredActivityLevel(self)
+    local cfg = ____exports.config(nil)
+    if cfg.mode == "RAID" then
+        local raid = raidById(nil, cfg.activity)
+        local ____opt_result_56
+        if raid ~= nil then
+            ____opt_result_56 = raid.requiredLevel
+        end
+        local ____opt_result_56_57 = ____opt_result_56
+        if ____opt_result_56_57 == nil then
+            ____opt_result_56_57 = 80
+        end
+        return __TS__Number(____opt_result_56_57)
+    end
+    if cfg.difficulty ~= "normal" then
+        return 80
+    end
+    local dungeon = dungeonById(nil, cfg.activity)
+    local ____opt_result_60
+    if dungeon ~= nil then
+        ____opt_result_60 = dungeon.minLevel
+    end
+    local ____opt_result_60_61 = ____opt_result_60
+    if ____opt_result_60_61 == nil then
+        ____opt_result_60_61 = 68
+    end
+    return __TS__Number(____opt_result_60_61)
+end
+function ____exports.activityEligibilityText(self)
+    local level = ____exports.requiredActivityLevel(nil)
+    local ____opt_62 = ____exports.config(nil).options
+    if ____opt_62 ~= nil then
+        ____opt_62 = ____opt_62.minimumItemLevel
+    end
+    local ____opt_62_64 = ____opt_62
+    if ____opt_62_64 == nil then
+        ____opt_62_64 = 0
+    end
+    local floor = __TS__Number(____opt_62_64)
+    return (("Level " .. tostring(level)) .. "+ required · Item level floor ") .. (floor > 0 and tostring(floor) or "Off")
+end
+function ____exports.setMinimumItemLevel(self, value)
+    local next = math.max(
+        0,
+        math.min(
+            1000,
+            math.floor(value)
+        )
+    )
+    ____exports.config(nil).options.minimumItemLevel = next
+    ____exports.touch(nil, "Minimum item level changed")
 end
 function ____exports.supportedRaidSizes(self)
     local raid = raidById(
@@ -1422,15 +1633,15 @@ function ____exports.supportedRaidSizes(self)
         ____exports.config(nil).activity
     )
     local result = {}
-    local ____opt_result_50
+    local ____opt_result_67
     if raid ~= nil then
-        ____opt_result_50 = raid.sizes
+        ____opt_result_67 = raid.sizes
     end
-    local ____opt_result_50_51 = ____opt_result_50
-    if ____opt_result_50_51 == nil then
-        ____opt_result_50_51 = {}
+    local ____opt_result_67_68 = ____opt_result_67
+    if ____opt_result_67_68 == nil then
+        ____opt_result_67_68 = {}
     end
-    for ____, size in __TS__Iterator(____opt_result_50_51) do
+    for ____, size in __TS__Iterator(____opt_result_67_68) do
         result[#result + 1] = __TS__Number(size)
     end
     return result
@@ -1494,11 +1705,11 @@ function ____exports.removePin(self, index)
     GC:RemovePinnedMember(index)
 end
 function ____exports.planMembers(self)
-    local ____exports_plan_result_members_52 = ____exports.plan(nil).members
-    if ____exports_plan_result_members_52 == nil then
-        ____exports_plan_result_members_52 = {}
+    local ____exports_plan_result_members_69 = ____exports.plan(nil).members
+    if ____exports_plan_result_members_69 == nil then
+        ____exports_plan_result_members_69 = {}
     end
-    return ____exports_plan_result_members_52
+    return ____exports_plan_result_members_69
 end
 function ____exports.roleAccent(self, role)
     if role == "TANK" then
@@ -1534,29 +1745,29 @@ function ____exports.phaseLabel(self, phase)
     return "Configure roster"
 end
 function ____exports.isBusy(self)
-    local ____exports_progress_result_phase_53 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_53 == nil then
-        ____exports_progress_result_phase_53 = "IDLE"
+    local ____exports_progress_result_phase_70 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_70 == nil then
+        ____exports_progress_result_phase_70 = "IDLE"
     end
-    local phase = tostring(____exports_progress_result_phase_53)
+    local phase = tostring(____exports_progress_result_phase_70)
     return phase == "BUILDING" or phase == "PREPARING" or phase == "ASSEMBLING" or phase == "TRAVEL"
 end
 function ____exports.isTravelRetry(self)
     local p = ____exports.progress(nil)
-    local ____temp_55 = p.phase == "READY"
-    if ____temp_55 then
-        local ____p_detail_54 = p.detail
-        if ____p_detail_54 == nil then
-            ____p_detail_54 = ""
+    local ____temp_72 = p.phase == "READY"
+    if ____temp_72 then
+        local ____p_detail_71 = p.detail
+        if ____p_detail_71 == nil then
+            ____p_detail_71 = ""
         end
-        ____temp_55 = (string.find(
-            tostring(____p_detail_54),
+        ____temp_72 = (string.find(
+            tostring(____p_detail_71),
             "Enter Activity",
             nil,
             true
         ) or 0) - 1 >= 0
     end
-    return ____temp_55
+    return ____temp_72
 end
 return ____exports
  end,
@@ -2419,14 +2630,54 @@ local function __TS__Number(value)
 end
 -- End of Lua Library inline imports
 local ____exports = {}
+local ____Native = require("core.Native")
+local createPanel = ____Native.createPanel
+local createSolid = ____Native.createSolid
+local ____Theme = require("theme.Theme")
+local theme = ____Theme.theme
+local ____Button = require("widgets.Button")
+local createButton = ____Button.createButton
 function ____exports.createScrollList(self, parent, width, height)
-    local scroll = CreateFrame("ScrollFrame", nil, parent)
-    scroll:SetSize(width, height)
+    local up, down, thumb
+    local frame = CreateFrame("Frame", nil, parent)
+    frame:SetSize(width, height)
+    frame:EnableMouseWheel(true)
+    local scroll = CreateFrame("ScrollFrame", nil, frame)
+    scroll:SetPoint(
+        "TOPLEFT",
+        frame,
+        "TOPLEFT",
+        0,
+        0
+    )
+    scroll:SetPoint(
+        "BOTTOMRIGHT",
+        frame,
+        "BOTTOMRIGHT",
+        -20,
+        0
+    )
     scroll:EnableMouseWheel(true)
     local content = CreateFrame("Frame", nil, scroll)
-    content:SetWidth(width)
+    content:SetWidth(math.max(1, width - 20))
     content:SetHeight(height)
     scroll:SetScrollChild(content)
+    local rail = createPanel(nil, frame, theme.colors.background, theme.colors.border)
+    rail.frame:SetPoint(
+        "TOPRIGHT",
+        frame,
+        "TOPRIGHT",
+        0,
+        0
+    )
+    rail.frame:SetPoint(
+        "BOTTOMRIGHT",
+        frame,
+        "BOTTOMRIGHT",
+        0,
+        0
+    )
+    rail.frame:SetWidth(16)
     local function clamp(self, value)
         return math.max(
             0,
@@ -2436,21 +2687,107 @@ function ____exports.createScrollList(self, parent, width, height)
             )
         )
     end
+    local function refreshRail(self)
+        local range = scroll:GetVerticalScrollRange()
+        if range <= 0 then
+            rail.frame:Hide()
+            return
+        end
+        rail.frame:Show()
+        local current = clamp(
+            nil,
+            scroll:GetVerticalScroll()
+        )
+        local trackHeight = math.max(28, height - 48)
+        local contentHeight = height + range
+        local thumbHeight = math.max(
+            24,
+            math.floor(trackHeight * math.min(1, height / contentHeight))
+        )
+        local travel = math.max(0, trackHeight - thumbHeight)
+        local ratio = range > 0 and current / range or 0
+        thumb:SetHeight(thumbHeight)
+        thumb:ClearAllPoints()
+        thumb:SetPoint(
+            "TOP",
+            up.frame,
+            "BOTTOM",
+            0,
+            -(4 + travel * ratio)
+        )
+        up:setEnabled(current > 0)
+        down:setEnabled(current < range)
+    end
     local function scrollBy(self, delta)
         scroll:SetVerticalScroll(clamp(
             nil,
             scroll:GetVerticalScroll() + delta
         ))
+        refreshRail(nil)
     end
-    scroll:SetScript(
-        "OnMouseWheel",
-        function(____, _frame, delta)
-            local direction = __TS__Number(delta) > 0 and -1 or 1
-            scrollBy(nil, direction * 76)
-        end
+    up = createButton(
+        nil,
+        rail.frame,
+        {
+            text = "^",
+            width = 16,
+            height = 20,
+            onClick = function() return scrollBy(nil, -92) end
+        }
     )
+    up.frame:SetPoint(
+        "TOP",
+        rail.frame,
+        "TOP",
+        0,
+        0
+    )
+    down = createButton(
+        nil,
+        rail.frame,
+        {
+            text = "v",
+            width = 16,
+            height = 20,
+            onClick = function() return scrollBy(nil, 92) end
+        }
+    )
+    down.frame:SetPoint(
+        "BOTTOM",
+        rail.frame,
+        "BOTTOM",
+        0,
+        0
+    )
+    local track = createSolid(nil, rail.frame, theme.colors.borderStrong, "ARTWORK")
+    track:SetPoint(
+        "TOP",
+        up.frame,
+        "BOTTOM",
+        0,
+        -4
+    )
+    track:SetPoint(
+        "BOTTOM",
+        down.frame,
+        "TOP",
+        0,
+        4
+    )
+    track:SetWidth(3)
+    thumb = createSolid(nil, rail.frame, theme.colors.primary, "OVERLAY")
+    thumb:SetWidth(7)
+    thumb:SetHeight(24)
+    local function wheel(self, _frame, delta)
+        scrollBy(
+            nil,
+            __TS__Number(delta) > 0 and -92 or 92
+        )
+    end
+    frame:SetScript("OnMouseWheel", wheel)
+    scroll:SetScript("OnMouseWheel", wheel)
     return {
-        frame = scroll,
+        frame = frame,
         content = content,
         setContentHeight = function(self, value)
             content:SetHeight(math.max(height, value))
@@ -2458,16 +2795,20 @@ function ____exports.createScrollList(self, parent, width, height)
                 nil,
                 scroll:GetVerticalScroll()
             ))
+            refreshRail(nil)
         end,
         scrollBy = function(____, delta) return scrollBy(nil, delta) end,
         scrollToTop = function(self)
             scroll:SetVerticalScroll(0)
+            refreshRail(nil)
         end,
         scrollToBottom = function(self)
             scroll:SetVerticalScroll(scroll:GetVerticalScrollRange())
+            refreshRail(nil)
         end,
         reset = function(self)
             scroll:SetVerticalScroll(0)
+            refreshRail(nil)
         end
     }
 end
@@ -2670,6 +3011,7 @@ local ModalUI = require("widgets.Modal")
 local ScrollUI = require("widgets.ScrollList")
 local InputUI = require("widgets.TextInput")
 local ToggleUI = require("widgets.Toggle")
+local StepperUI = require("widgets.Stepper")
 local GC = Model:composer()
 local D = Model:data()
 local P = Model:profiles()
@@ -3536,6 +3878,15 @@ function ____exports.createModernDashboard(self)
         -4
     )
     activitySub:SetWidth(320)
+    local activityEligibility = Native:createText(activity.frame, "", "GameFontHighlightSmall", theme.colors.success)
+    activityEligibility:SetPoint(
+        "TOPLEFT",
+        activitySub,
+        "BOTTOMLEFT",
+        0,
+        -7
+    )
+    activityEligibility:SetWidth(320)
     local activityFieldLabel = Native:createText(activity.frame, "DUNGEON", "GameFontNormalSmall", theme.colors.muted)
     activityFieldLabel:SetPoint(
         "TOPLEFT",
@@ -4170,113 +4521,106 @@ function ____exports.createModernDashboard(self)
         -14,
         0
     )
-    local exactColumns = {}
-    do
-        local i = 0
-        while i < #roleOrder do
-            local role = roleOrder[i + 1]
-            local panel = Native:createPanel(exactView, theme.colors.surfaceRaised, theme.colors.border)
-            local roleStrip = Native:createSolid(
-                panel.frame,
-                Model:roleAccent(role),
-                "ARTWORK"
-            )
-            roleStrip:SetHeight(3)
-            roleStrip:SetPoint(
-                "TOPLEFT",
-                panel.frame,
-                "TOPLEFT",
-                0,
-                0
-            )
-            roleStrip:SetPoint(
-                "TOPRIGHT",
-                panel.frame,
-                "TOPRIGHT",
-                0,
-                0
-            )
-            panel.frame:SetPoint(
-                "TOPLEFT",
-                exactView,
-                "TOPLEFT",
-                i * 294,
-                -8
-            )
-            panel.frame:SetSize(282, 410)
-            local icon = Native:createIcon(panel.frame, D.ROLE_ICON[role], 28)
-            icon:SetPoint(
-                "TOPLEFT",
-                panel.frame,
-                "TOPLEFT",
-                12,
-                -12
-            )
-            local label = Native:createText(
-                panel.frame,
-                string.upper(Model:roleLabel(role)),
-                "GameFontNormal",
-                Model:roleAccent(role)
-            )
-            label:SetPoint(
-                "LEFT",
-                icon,
-                "RIGHT",
-                9,
-                5
-            )
-            local count = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
-            count:SetPoint(
-                "LEFT",
-                icon,
-                "RIGHT",
-                9,
-                -12
-            )
-            local add = ButtonUI:createButton(
-                panel.frame,
-                {
-                    text = "+ Add specific",
-                    width = 118,
-                    height = 30,
-                    accent = Model:roleAccent(role)
-                }
-            )
-            add.frame:SetPoint(
-                "TOPRIGHT",
-                panel.frame,
-                "TOPRIGHT",
-                -10,
-                -11
-            )
-            local scroll = ScrollUI:createScrollList(panel.frame, 258, 330)
-            scroll.frame:SetPoint(
-                "TOPLEFT",
-                panel.frame,
-                "TOPLEFT",
-                12,
-                -66
-            )
-            local empty = Native:createText(scroll.content, "No specific builds yet.\nEvery unreserved slot stays on Auto.", "GameFontHighlightSmall", theme.colors.muted)
-            empty:SetPoint(
-                "TOPLEFT",
-                scroll.content,
-                "TOPLEFT",
-                8,
-                -12
-            )
-            empty:SetWidth(226)
-            empty:SetJustifyV("TOP")
-            exactColumns[role] = {
-                panel = panel,
-                count = count,
-                add = add,
-                scroll = scroll,
-                empty = empty,
-                rows = {}
+    local exactScroll = ScrollUI:createScrollList(exactView, 882, 360)
+    exactScroll.frame:SetPoint(
+        "TOPLEFT",
+        exactView,
+        "TOPLEFT",
+        0,
+        -4
+    )
+    local exactSections = {}
+    for ____, role in ipairs(roleOrder) do
+        local panel = Native:createPanel(exactScroll.content, theme.colors.background, theme.colors.border)
+        panel.frame:SetWidth(852)
+        local roleStrip = Native:createSolid(
+            panel.frame,
+            Model:roleAccent(role),
+            "ARTWORK"
+        )
+        roleStrip:SetWidth(4)
+        roleStrip:SetPoint(
+            "TOPLEFT",
+            panel.frame,
+            "TOPLEFT",
+            0,
+            0
+        )
+        roleStrip:SetPoint(
+            "BOTTOMLEFT",
+            panel.frame,
+            "BOTTOMLEFT",
+            0,
+            0
+        )
+        local icon = Native:createIcon(panel.frame, D.ROLE_ICON[role], 30)
+        icon:SetPoint(
+            "TOPLEFT",
+            panel.frame,
+            "TOPLEFT",
+            16,
+            -14
+        )
+        local label = Native:createText(
+            panel.frame,
+            string.upper(Model:roleLabel(role)),
+            "GameFontNormal",
+            Model:roleAccent(role)
+        )
+        label:SetPoint(
+            "LEFT",
+            icon,
+            "RIGHT",
+            10,
+            5
+        )
+        local count = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
+        count:SetPoint(
+            "LEFT",
+            icon,
+            "RIGHT",
+            10,
+            -12
+        )
+        count:SetWidth(430)
+        local add = ButtonUI:createButton(
+            panel.frame,
+            {
+                text = "+ Add specific build",
+                width = 154,
+                height = 32,
+                accent = Model:roleAccent(role)
             }
-            i = i + 1
-        end
+        )
+        add.frame:SetPoint(
+            "TOPRIGHT",
+            panel.frame,
+            "TOPRIGHT",
+            -12,
+            -12
+        )
+        local empty = Native:createText(
+            panel.frame,
+            ("No reserved builds. Composer will Auto-fill every remaining " .. string.lower(Model:roleLabel(role))) .. " slot.",
+            "GameFontHighlightSmall",
+            theme.colors.muted
+        )
+        empty:SetPoint(
+            "TOPLEFT",
+            panel.frame,
+            "TOPLEFT",
+            18,
+            -68
+        )
+        empty:SetWidth(760)
+        empty:SetJustifyV("TOP")
+        exactSections[role] = {
+            panel = panel,
+            count = count,
+            add = add,
+            empty = empty,
+            rows = {}
+        }
     end
     local groupCards = {}
     do
@@ -4666,7 +5010,7 @@ function ____exports.createModernDashboard(self)
         8,
         0
     )
-    templatesModal = ModalUI:createModal(frame, 920, 650)
+    templatesModal = ModalUI:createModal(frame, 960, 680)
     templatesModal:setTitle("Raid Templates")
     templatesModal:setSubtitle("Coverage-first raid cores reserve key buffs; every unlisted slot stays Auto-filled.")
     local templateSaveLabel = Native:createText(templatesModal.content, "SAVE CURRENT", "GameFontNormalSmall", theme.colors.muted)
@@ -4744,70 +5088,6 @@ function ____exports.createModernDashboard(self)
         "TOPLEFT",
         440,
         -110
-    )
-    local builtinUp = ButtonUI:createButton(
-        templatesModal.content,
-        {
-            text = "Up",
-            width = 54,
-            height = 26,
-            onClick = function() return builtinScroll:scrollBy(-220) end
-        }
-    )
-    builtinUp.frame:SetPoint(
-        "TOPRIGHT",
-        templatesModal.content,
-        "TOPLEFT",
-        350,
-        -78
-    )
-    local builtinDown = ButtonUI:createButton(
-        templatesModal.content,
-        {
-            text = "Down",
-            width = 54,
-            height = 26,
-            onClick = function() return builtinScroll:scrollBy(220) end
-        }
-    )
-    builtinDown.frame:SetPoint(
-        "LEFT",
-        builtinUp.frame,
-        "RIGHT",
-        4,
-        0
-    )
-    local customUp = ButtonUI:createButton(
-        templatesModal.content,
-        {
-            text = "▲",
-            width = 54,
-            height = 26,
-            onClick = function() return customScroll:scrollBy(-220) end
-        }
-    )
-    customUp.frame:SetPoint(
-        "TOPRIGHT",
-        templatesModal.content,
-        "TOPLEFT",
-        790,
-        -78
-    )
-    local customDown = ButtonUI:createButton(
-        templatesModal.content,
-        {
-            text = "▼",
-            width = 54,
-            height = 26,
-            onClick = function() return customScroll:scrollBy(220) end
-        }
-    )
-    customDown.frame:SetPoint(
-        "LEFT",
-        customUp.frame,
-        "RIGHT",
-        4,
-        0
     )
     builtinRows = {}
     customRows = {}
@@ -4954,7 +5234,7 @@ function ____exports.createModernDashboard(self)
         refreshPeople(nil)
         peopleModal:show()
     end
-    local optionsModal = ModalUI:createModal(frame, 700, 560)
+    local optionsModal = ModalUI:createModal(frame, 720, 620)
     optionsModal:setTitle("Composition Options")
     optionsModal:setSubtitle("Keep the common path simple. These controls tune how Composer fills unspecified slots.")
     local optionDefs = {
@@ -5023,11 +5303,84 @@ function ____exports.createModernDashboard(self)
             i = i + 1
         end
     end
+    local gearRow = Native:createPanel(optionsModal.content, theme.colors.surfaceRaised, theme.colors.borderStrong)
+    gearRow.frame:SetPoint(
+        "TOPLEFT",
+        optionsModal.content,
+        "TOPLEFT",
+        0,
+        -(#optionDefs * 62)
+    )
+    gearRow.frame:SetPoint(
+        "RIGHT",
+        optionsModal.content,
+        "RIGHT",
+        0,
+        0
+    )
+    gearRow.frame:SetHeight(58)
+    local gearTitle = Native:createText(gearRow.frame, "Minimum item level", "GameFontNormal")
+    gearTitle:SetPoint(
+        "TOPLEFT",
+        gearRow.frame,
+        "TOPLEFT",
+        12,
+        -9
+    )
+    local gearHint = Native:createText(gearRow.frame, "0 disables the floor. Guild/world bots below the configured value are rejected.", "GameFontHighlightSmall", theme.colors.muted)
+    gearHint:SetPoint(
+        "TOPLEFT",
+        gearRow.frame,
+        "TOPLEFT",
+        12,
+        -31
+    )
+    gearHint:SetWidth(470)
+    local ____StepperUI_17 = StepperUI
+    local ____StepperUI_createNumberStepper_18 = StepperUI.createNumberStepper
+    local ____gearRow_frame_16 = gearRow.frame
+    local ____opt_13 = Model:config().options
+    if ____opt_13 ~= nil then
+        ____opt_13 = ____opt_13.minimumItemLevel
+    end
+    local ____opt_13_15 = ____opt_13
+    if ____opt_13_15 == nil then
+        ____opt_13_15 = 0
+    end
+    local gearStepper = ____StepperUI_createNumberStepper_18(
+        ____StepperUI_17,
+        ____gearRow_frame_16,
+        0,
+        300,
+        __TS__Number(____opt_13_15),
+        function(____, value) return Model:setMinimumItemLevel(value) end
+    )
+    gearStepper.frame:SetPoint(
+        "RIGHT",
+        gearRow.frame,
+        "RIGHT",
+        -12,
+        0
+    )
     showOptions = function()
         ChoiceUI:closeChoicePopup()
         for ____, toggle in ipairs(optionToggles) do
             toggle:refresh()
         end
+        local ____gearStepper_setValue_22 = gearStepper.setValue
+        local ____opt_19 = Model:config().options
+        if ____opt_19 ~= nil then
+            ____opt_19 = ____opt_19.minimumItemLevel
+        end
+        local ____opt_19_21 = ____opt_19
+        if ____opt_19_21 == nil then
+            ____opt_19_21 = 0
+        end
+        ____gearStepper_setValue_22(
+            gearStepper,
+            __TS__Number(____opt_19_21),
+            false
+        )
         optionsModal:show()
     end
     local confirmModal = ModalUI:createModal(frame, 560, 270)
@@ -5109,6 +5462,7 @@ function ____exports.createModernDashboard(self)
         local cfg = Model:config()
         activityName:SetText(Model:selectedActivityLabel())
         activitySub:SetText(activitySubtitle(nil))
+        activityEligibility:SetText("ELIGIBILITY  ·  " .. Model:activityEligibilityText())
         activityFieldLabel:SetText(Model:config().mode == "RAID" and "RAID" or "DUNGEON")
         activitySelect:refresh()
         difficultySelect:refresh()
@@ -5165,11 +5519,11 @@ function ____exports.createModernDashboard(self)
         )
         humanName:SetText((primary.isPlayer and "YOU  ·  " or "") .. primary.name)
         humanSub:SetText(Model:classLabel(tostring(primary.class)) .. (#list > 1 and (("  ·  +" .. tostring(#list - 1)) .. " more human anchor") .. (#list > 2 and "s" or "") or ""))
-        local ____opt_13 = Model:config().humanRoles
-        if ____opt_13 ~= nil then
-            ____opt_13 = ____opt_13[primary.name]
+        local ____opt_23 = Model:config().humanRoles
+        if ____opt_23 ~= nil then
+            ____opt_23 = ____opt_23[primary.name]
         end
-        local selected = ____opt_13
+        local selected = ____opt_23
         for ____, role in ipairs(roleOrder) do
             local allowed = classCanRole(
                 nil,
@@ -5196,7 +5550,7 @@ function ____exports.createModernDashboard(self)
             local i = 0
             while i < #dungeonRows do
                 do
-                    local __continue161
+                    local __continue158
                     repeat
                         local widgets = dungeonRows[i + 1]
                         local slot = slots[i + 1]
@@ -5219,7 +5573,7 @@ function ____exports.createModernDashboard(self)
                             widgets.sub:SetText((Model:classLabel(tostring(slot.human.class)) .. "  ·  Locked ") .. Model:roleLabel(slot.role))
                             widgets.choose.frame:Hide()
                             widgets.auto.frame:Hide()
-                            __continue161 = true
+                            __continue158 = true
                             break
                         end
                         local exact = slot.exact
@@ -5243,16 +5597,20 @@ function ____exports.createModernDashboard(self)
                                 widgets.specIcon:Hide()
                             end
                             widgets.name:SetText(tostring(prepared.name))
-                            local ____self_17 = widgets.sub
-                            local ____self_17_SetText_18 = ____self_17.SetText
-                            local ____temp_16 = tostring(prepared.spec or Model:classLabel(tostring(prepared.class))) .. "  ·  "
-                            local ____prepared_source_15 = prepared.source
-                            if ____prepared_source_15 == nil then
-                                ____prepared_source_15 = "Bot"
+                            local ____self_28 = widgets.sub
+                            local ____self_28_SetText_29 = ____self_28.SetText
+                            local ____prepared_level_25 = prepared.level
+                            if ____prepared_level_25 == nil then
+                                ____prepared_level_25 = "?"
                             end
-                            ____self_17_SetText_18(
-                                ____self_17,
-                                ____temp_16 .. tostring(____prepared_source_15)
+                            local ____temp_27 = ((("Lv " .. tostring(____prepared_level_25)) .. "  ·  ") .. tostring(prepared.spec or Model:classLabel(tostring(prepared.class)))) .. "  ·  "
+                            local ____prepared_source_26 = prepared.source
+                            if ____prepared_source_26 == nil then
+                                ____prepared_source_26 = "Bot"
+                            end
+                            ____self_28_SetText_29(
+                                ____self_28,
+                                ____temp_27 .. tostring(____prepared_source_26)
                             )
                         elseif exact ~= nil then
                             Native:setClassIcon(widgets.classIcon, exact.classId)
@@ -5275,14 +5633,14 @@ function ____exports.createModernDashboard(self)
                             "OnMouseDown",
                             function()
                                 selectorContext = {mode = "DUNGEON", role = roleCopy, index = botIndex}
-                                local ____buildSelector_open_20 = buildSelector.open
-                                local ____temp_19
+                                local ____buildSelector_open_31 = buildSelector.open
+                                local ____temp_30
                                 if exact == nil then
-                                    ____temp_19 = nil
+                                    ____temp_30 = nil
                                 else
-                                    ____temp_19 = {role = roleCopy, classId = exact.classId, specId = exact.specId, count = 1}
+                                    ____temp_30 = {role = roleCopy, classId = exact.classId, specId = exact.specId, count = 1}
                                 end
-                                ____buildSelector_open_20(buildSelector, roleCopy, ____temp_19, false)
+                                ____buildSelector_open_31(buildSelector, roleCopy, ____temp_30, false)
                             end
                         )
                         widgets.choose.frame:Show()
@@ -5296,9 +5654,9 @@ function ____exports.createModernDashboard(self)
                             end
                         )
                         widgets.auto.frame:Show()
-                        __continue161 = true
+                        __continue158 = true
                     until true
-                    if not __continue161 then
+                    if not __continue158 then
                         break
                     end
                 end
@@ -5307,11 +5665,11 @@ function ____exports.createModernDashboard(self)
         end
     end
     local function refreshQuickRaid(self)
-        local ____table_size_21 = Model:config().size
-        if ____table_size_21 == nil then
-            ____table_size_21 = 25
+        local ____table_size_32 = Model:config().size
+        if ____table_size_32 == nil then
+            ____table_size_32 = 25
         end
-        local size = __TS__Number(____table_size_21)
+        local size = __TS__Number(____table_size_32)
         local total = Model:roleTargetTotal()
         for ____, role in ipairs(roleOrder) do
             local target = Model:targetForRole(role)
@@ -5327,21 +5685,19 @@ function ____exports.createModernDashboard(self)
         quickSummary.outline:setColor(valid and theme.colors.border or theme.colors.warning)
     end
     local function refreshExactRaid(self)
+        local cursor = 0
         for ____, role in ipairs(roleOrder) do
-            local column = exactColumns[role]
+            local section = exactSections[role]
             local rows = Model:requiredBuilds(role)
-            column.count:SetText(((tostring(Model:exactCount(role)) .. " reserved  ·  ") .. tostring(math.max(
+            local reserved = Model:exactCount(role)
+            local auto = math.max(
                 0,
-                Model:remainingBotSlots(role) - Model:exactCount(role)
-            ))) .. " Auto")
-            column.add:setEnabled(Model:exactCount(role) < Model:remainingBotSlots(role))
-            if #rows == 0 then
-                column.empty:Show()
-            else
-                column.empty:Hide()
-            end
+                Model:remainingBotSlots(role) - reserved
+            )
+            section.count:SetText(((tostring(reserved) .. " reserved · ") .. tostring(auto)) .. " Auto")
+            section.add:setEnabled(reserved < Model:remainingBotSlots(role))
             local roleCopy = role
-            column.add.frame:SetScript(
+            section.add.frame:SetScript(
                 "OnMouseDown",
                 function()
                     if Model:exactCount(roleCopy) >= Model:remainingBotSlots(roleCopy) then
@@ -5351,53 +5707,68 @@ function ____exports.createModernDashboard(self)
                     buildSelector:open(roleCopy, {role = roleCopy, count = 1}, true)
                 end
             )
-            for ____, old in __TS__Iterator(column.rows) do
+            for ____, old in __TS__Iterator(section.rows) do
                 old.panel.frame:Hide()
+            end
+            local sectionHeight = #rows == 0 and 106 or 70 + #rows * 60
+            section.panel.frame:ClearAllPoints()
+            section.panel.frame:SetPoint(
+                "TOPLEFT",
+                exactScroll.content,
+                "TOPLEFT",
+                0,
+                -cursor
+            )
+            section.panel.frame:SetSize(852, sectionHeight)
+            if #rows == 0 then
+                section.empty:Show()
+            else
+                section.empty:Hide()
             end
             do
                 local i = 0
                 while i < #rows do
                     local build = rows[i + 1]
-                    local widgets = column.rows[i + 1]
+                    local widgets = section.rows[i]
                     if widgets == nil then
-                        local panel = Native:createPanel(column.scroll.content, theme.colors.surfaceRaised, theme.colors.border)
-                        panel.frame:SetSize(250, 52)
+                        local panel = Native:createPanel(section.panel.frame, theme.colors.surfaceRaised, theme.colors.border)
+                        panel.frame:SetSize(816, 52)
                         local classIcon = panel.frame:CreateTexture(nil, "ARTWORK")
-                        classIcon:SetSize(30, 30)
+                        classIcon:SetSize(32, 32)
                         classIcon:SetPoint(
                             "LEFT",
                             panel.frame,
                             "LEFT",
-                            8,
+                            12,
                             0
                         )
                         local specIcon = panel.frame:CreateTexture(nil, "ARTWORK")
-                        specIcon:SetSize(24, 24)
+                        specIcon:SetSize(28, 28)
                         specIcon:SetPoint(
                             "LEFT",
                             classIcon,
                             "RIGHT",
-                            6,
+                            7,
                             0
                         )
-                        local name = Native:createText(panel.frame, "", "GameFontHighlightSmall")
+                        local name = Native:createText(panel.frame, "", "GameFontNormal")
                         name:SetPoint(
-                            "LEFT",
+                            "TOPLEFT",
                             panel.frame,
-                            "LEFT",
-                            76,
-                            7
+                            "TOPLEFT",
+                            86,
+                            -11
                         )
-                        name:SetWidth(112)
+                        name:SetWidth(470)
                         local count = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
                         count:SetPoint(
-                            "LEFT",
-                            panel.frame,
-                            "LEFT",
-                            76,
-                            -10
+                            "TOPLEFT",
+                            name,
+                            "BOTTOMLEFT",
+                            0,
+                            -4
                         )
-                        local edit = ButtonUI:createButton(panel.frame, {text = "Edit", width = 46, height = 26, accent = theme.colors.primary})
+                        local edit = ButtonUI:createButton(panel.frame, {text = "Edit", width = 72, height = 30, accent = theme.colors.primary})
                         edit.frame:SetPoint(
                             "RIGHT",
                             panel.frame,
@@ -5405,7 +5776,7 @@ function ____exports.createModernDashboard(self)
                             -54,
                             0
                         )
-                        local remove = ButtonUI:createButton(panel.frame, {text = "X", width = 40, height = 26, accent = theme.colors.error})
+                        local remove = ButtonUI:createButton(panel.frame, {text = "X", width = 40, height = 30, accent = theme.colors.error})
                         remove.frame:SetPoint(
                             "RIGHT",
                             panel.frame,
@@ -5422,21 +5793,21 @@ function ____exports.createModernDashboard(self)
                             edit = edit,
                             remove = remove
                         }
-                        column.rows[i + 1] = widgets
+                        section.rows[i] = widgets
                     end
                     widgets.panel.frame:ClearAllPoints()
                     widgets.panel.frame:SetPoint(
                         "TOPLEFT",
-                        column.scroll.content,
+                        section.panel.frame,
                         "TOPLEFT",
-                        0,
-                        -(i * 58)
+                        18,
+                        -(62 + i * 60)
                     )
                     Native:setClassIcon(widgets.classIcon, build.classId)
                     widgets.specIcon:SetTexture(Model:getSpecIcon(build.classId, build.specId))
                     widgets.specIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
                     widgets.name:SetText((Model:getSpecLabel(build.classId, build.specId) .. " ") .. Model:classLabel(build.classId))
-                    widgets.count:SetText("×" .. tostring(build.count))
+                    widgets.count:SetText(("Reserved ×" .. tostring(build.count)) .. " · remaining role slots stay Auto")
                     local indexCopy = i
                     widgets.edit.frame:SetScript(
                         "OnMouseDown",
@@ -5453,18 +5824,19 @@ function ____exports.createModernDashboard(self)
                     i = i + 1
                 end
             end
-            column.scroll:setContentHeight(math.max(330, #rows * 58))
+            cursor = cursor + (sectionHeight + 12)
         end
+        exactScroll:setContentHeight(math.max(360, cursor))
     end
     local function refreshRoster(self)
         local cfg = Model:config()
-        local ____cfg_size_22 = cfg.size
-        if ____cfg_size_22 == nil then
-            ____cfg_size_22 = 5
+        local ____cfg_size_33 = cfg.size
+        if ____cfg_size_33 == nil then
+            ____cfg_size_33 = 5
         end
         local totalGroups = math.max(
             1,
-            math.ceil(__TS__Number(____cfg_size_22) / 5)
+            math.ceil(__TS__Number(____cfg_size_33) / 5)
         )
         local columns = totalGroups <= 3 and totalGroups or (totalGroups <= 5 and 3 or 4)
         local cardWidth = math.floor((880 - (columns - 1) * 10) / columns)
@@ -5473,12 +5845,12 @@ function ____exports.createModernDashboard(self)
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue190
+                    local __continue187
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue190 = true
+                            __continue187 = true
                             break
                         end
                         local column = g % columns
@@ -5518,15 +5890,20 @@ function ____exports.createModernDashboard(self)
                                     rowWidgets.icon:Show()
                                     rowWidgets.name:SetText((member.isPlayer and "YOU  ·  " or "") .. tostring(member.name))
                                     rowWidgets.name:SetTextColor(theme.colors.text[1], theme.colors.text[2], theme.colors.text[3], 1)
-                                    local ____self_24 = rowWidgets.spec
-                                    local ____self_24_SetText_25 = ____self_24.SetText
-                                    local ____member_spec_23 = member.spec
-                                    if ____member_spec_23 == nil then
-                                        ____member_spec_23 = Model:classLabel(tostring(member.class))
+                                    local ____self_37 = rowWidgets.spec
+                                    local ____self_37_SetText_38 = ____self_37.SetText
+                                    local ____member_level_34 = member.level
+                                    if ____member_level_34 == nil then
+                                        ____member_level_34 = "?"
                                     end
-                                    ____self_24_SetText_25(
-                                        ____self_24,
-                                        tostring(____member_spec_23)
+                                    local ____temp_36 = ("Lv " .. tostring(____member_level_34)) .. " · "
+                                    local ____member_spec_35 = member.spec
+                                    if ____member_spec_35 == nil then
+                                        ____member_spec_35 = Model:classLabel(tostring(member.class))
+                                    end
+                                    ____self_37_SetText_38(
+                                        ____self_37,
+                                        ____temp_36 .. tostring(____member_spec_35)
                                     )
                                     Native:setTextureColor(
                                         rowWidgets.roleBar,
@@ -5537,9 +5914,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue190 = true
+                        __continue187 = true
                     until true
-                    if not __continue190 then
+                    if not __continue187 then
                         break
                     end
                 end
@@ -5595,152 +5972,152 @@ function ____exports.createModernDashboard(self)
     )
     local function refreshStatus(self)
         local p = Model:progress()
-        local ____p_phase_26 = p.phase
-        if ____p_phase_26 == nil then
-            ____p_phase_26 = "IDLE"
+        local ____p_phase_39 = p.phase
+        if ____p_phase_39 == nil then
+            ____p_phase_39 = "IDLE"
         end
-        local phase = tostring(____p_phase_26)
+        local phase = tostring(____p_phase_39)
         local phaseColor = colorForPhase(nil, phase)
         Native:setTextureColor(phaseDot, phaseColor)
         phaseText:SetText(Model:isTravelRetry() and "Ready to enter activity" or Model:phaseLabel(phase))
         phaseText:SetTextColor(phaseColor[1], phaseColor[2], phaseColor[3], 1)
-        local ____phaseDetail_SetText_28 = phaseDetail.SetText
-        local ____p_detail_27 = p.detail
-        if ____p_detail_27 == nil then
-            ____p_detail_27 = ""
+        local ____phaseDetail_SetText_41 = phaseDetail.SetText
+        local ____p_detail_40 = p.detail
+        if ____p_detail_40 == nil then
+            ____p_detail_40 = ""
         end
-        ____phaseDetail_SetText_28(
+        ____phaseDetail_SetText_41(
             phaseDetail,
-            tostring(____p_detail_27)
+            tostring(____p_detail_40)
         )
         local humanCount = #Model:humans()
-        local ____table_size_29 = Model:config().size
-        if ____table_size_29 == nil then
-            ____table_size_29 = 5
+        local ____table_size_42 = Model:config().size
+        if ____table_size_42 == nil then
+            ____table_size_42 = 5
         end
-        local target = __TS__Number(____table_size_29)
-        local ____temp_33
+        local target = __TS__Number(____table_size_42)
+        local ____temp_46
         if Model:plan().ready == true then
-            local ____opt_30 = Model:plan().summary
-            if ____opt_30 ~= nil then
-                ____opt_30 = ____opt_30.total
+            local ____opt_43 = Model:plan().summary
+            if ____opt_43 ~= nil then
+                ____opt_43 = ____opt_43.total
             end
-            local ____opt_30_32 = ____opt_30
-            if ____opt_30_32 == nil then
-                ____opt_30_32 = #Model:planMembers()
+            local ____opt_43_45 = ____opt_43
+            if ____opt_43_45 == nil then
+                ____opt_43_45 = #Model:planMembers()
             end
-            ____temp_33 = __TS__Number(____opt_30_32)
+            ____temp_46 = __TS__Number(____opt_43_45)
         else
-            ____temp_33 = humanCount
+            ____temp_46 = humanCount
         end
-        local total = ____temp_33
+        local total = ____temp_46
         rosterCount:SetText((tostring(total) .. " / ") .. tostring(target))
         if Model:plan().ready == true then
-            local ____sourceText_SetText_42 = sourceText.SetText
-            local ____temp_37 = ((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  "
-            local ____opt_34 = Model:plan().summary
-            if ____opt_34 ~= nil then
-                ____opt_34 = ____opt_34.guild
+            local ____sourceText_SetText_55 = sourceText.SetText
+            local ____temp_50 = ((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  "
+            local ____opt_47 = Model:plan().summary
+            if ____opt_47 ~= nil then
+                ____opt_47 = ____opt_47.guild
             end
-            local ____opt_34_36 = ____opt_34
-            if ____opt_34_36 == nil then
-                ____opt_34_36 = 0
+            local ____opt_47_49 = ____opt_47
+            if ____opt_47_49 == nil then
+                ____opt_47_49 = 0
             end
-            local ____temp_41 = (____temp_37 .. tostring(____opt_34_36)) .. " guild  ·  "
-            local ____opt_38 = Model:plan().summary
-            if ____opt_38 ~= nil then
-                ____opt_38 = ____opt_38.world
+            local ____temp_54 = (____temp_50 .. tostring(____opt_47_49)) .. " guild  ·  "
+            local ____opt_51 = Model:plan().summary
+            if ____opt_51 ~= nil then
+                ____opt_51 = ____opt_51.world
             end
-            local ____opt_38_40 = ____opt_38
-            if ____opt_38_40 == nil then
-                ____opt_38_40 = 0
+            local ____opt_51_53 = ____opt_51
+            if ____opt_51_53 == nil then
+                ____opt_51_53 = 0
             end
-            ____sourceText_SetText_42(
+            ____sourceText_SetText_55(
                 sourceText,
-                (____temp_41 .. tostring(____opt_38_40)) .. " fallback"
+                (____temp_54 .. tostring(____opt_51_53)) .. " fallback"
             )
         else
             sourceText:SetText(((((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  ") .. tostring(math.max(0, target - humanCount))) .. " bot slots")
         end
-        local ____self_44 = statusRoleChips.TANK.label
-        local ____self_44_SetText_45 = ____self_44.SetText
-        local ____table_tanks_43 = Model:config().tanks
-        if ____table_tanks_43 == nil then
-            ____table_tanks_43 = 0
+        local ____self_57 = statusRoleChips.TANK.label
+        local ____self_57_SetText_58 = ____self_57.SetText
+        local ____table_tanks_56 = Model:config().tanks
+        if ____table_tanks_56 == nil then
+            ____table_tanks_56 = 0
         end
-        ____self_44_SetText_45(
-            ____self_44,
-            tostring(____table_tanks_43) .. " T"
+        ____self_57_SetText_58(
+            ____self_57,
+            tostring(____table_tanks_56) .. " T"
         )
-        local ____self_47 = statusRoleChips.HEALER.label
-        local ____self_47_SetText_48 = ____self_47.SetText
-        local ____table_healers_46 = Model:config().healers
-        if ____table_healers_46 == nil then
-            ____table_healers_46 = 0
+        local ____self_60 = statusRoleChips.HEALER.label
+        local ____self_60_SetText_61 = ____self_60.SetText
+        local ____table_healers_59 = Model:config().healers
+        if ____table_healers_59 == nil then
+            ____table_healers_59 = 0
         end
-        ____self_47_SetText_48(
-            ____self_47,
-            tostring(____table_healers_46) .. " H"
+        ____self_60_SetText_61(
+            ____self_60,
+            tostring(____table_healers_59) .. " H"
         )
-        local ____self_50 = statusRoleChips.DPS.label
-        local ____self_50_SetText_51 = ____self_50.SetText
-        local ____table_dps_49 = Model:config().dps
-        if ____table_dps_49 == nil then
-            ____table_dps_49 = 0
+        local ____self_63 = statusRoleChips.DPS.label
+        local ____self_63_SetText_64 = ____self_63.SetText
+        local ____table_dps_62 = Model:config().dps
+        if ____table_dps_62 == nil then
+            ____table_dps_62 = 0
         end
-        ____self_50_SetText_51(
-            ____self_50,
-            tostring(____table_dps_49) .. " D"
+        ____self_63_SetText_64(
+            ____self_63,
+            tostring(____table_dps_62) .. " D"
         )
         local ratio = 0
-        local ____p_total_52 = p.total
-        if ____p_total_52 == nil then
-            ____p_total_52 = 0
+        local ____p_total_65 = p.total
+        if ____p_total_65 == nil then
+            ____p_total_65 = 0
         end
-        if __TS__Number(____p_total_52) > 0 then
-            local ____p_current_53 = p.current
-            if ____p_current_53 == nil then
-                ____p_current_53 = 0
+        if __TS__Number(____p_total_65) > 0 then
+            local ____p_current_66 = p.current
+            if ____p_current_66 == nil then
+                ____p_current_66 = 0
             end
             ratio = math.min(
                 1,
-                __TS__Number(____p_current_53) / __TS__Number(p.total)
+                __TS__Number(____p_current_66) / __TS__Number(p.total)
             )
         elseif phase == "READY" or phase == "DONE" then
             ratio = 1
         end
         progressFill:SetWidth(math.max(1, 282 * ratio))
         Native:setTextureColor(progressFill, phaseColor)
-        local ____progressText_SetText_60 = progressText.SetText
-        local ____temp_59
+        local ____progressText_SetText_73 = progressText.SetText
+        local ____temp_72
         if phase == "PREPARING" or phase == "ASSEMBLING" or phase == "READY" or phase == "DONE" then
-            local ____p_current_54 = p.current
-            if ____p_current_54 == nil then
-                ____p_current_54 = 0
+            local ____p_current_67 = p.current
+            if ____p_current_67 == nil then
+                ____p_current_67 = 0
             end
-            local ____temp_56 = tostring(____p_current_54) .. " / "
-            local ____p_total_55 = p.total
-            if ____p_total_55 == nil then
-                ____p_total_55 = 0
+            local ____temp_69 = tostring(____p_current_67) .. " / "
+            local ____p_total_68 = p.total
+            if ____p_total_68 == nil then
+                ____p_total_68 = 0
             end
-            local ____temp_58 = (____temp_56 .. tostring(____p_total_55)) .. "  ·  "
-            local ____p_detail_57 = p.detail
-            if ____p_detail_57 == nil then
-                ____p_detail_57 = ""
+            local ____temp_71 = (____temp_69 .. tostring(____p_total_68)) .. "  ·  "
+            local ____p_detail_70 = p.detail
+            if ____p_detail_70 == nil then
+                ____p_detail_70 = ""
             end
-            ____temp_59 = ____temp_58 .. tostring(____p_detail_57)
+            ____temp_72 = ____temp_71 .. tostring(____p_detail_70)
         else
-            ____temp_59 = ""
+            ____temp_72 = ""
         end
-        ____progressText_SetText_60(progressText, ____temp_59)
-        local ____coverageText_SetText_63 = coverageText.SetText
-        local ____opt_61 = Model:plan().summary
-        if ____opt_61 ~= nil then
-            ____opt_61 = ____opt_61.utility
+        ____progressText_SetText_73(progressText, ____temp_72)
+        local ____coverageText_SetText_76 = coverageText.SetText
+        local ____opt_74 = Model:plan().summary
+        if ____opt_74 ~= nil then
+            ____opt_74 = ____opt_74.utility
         end
-        ____coverageText_SetText_63(
+        ____coverageText_SetText_76(
             coverageText,
-            ____opt_61 ~= nil and Model:coverageDisplay() or "Build a roster to inspect utility coverage."
+            ____opt_74 ~= nil and Model:coverageDisplay() or "Build a roster to inspect utility coverage."
         )
         local seen = {}
         local iconIndex = 0
@@ -5773,21 +6150,21 @@ function ____exports.createModernDashboard(self)
                     elseif not Model:humanReady() then
                         text = "Choose a legal role for every real player."
                     else
-                        local ____temp_66 = Model:config().mode == "RAID"
-                        if ____temp_66 then
-                            local ____temp_65 = Model:roleTargetTotal()
-                            local ____table_size_64 = Model:config().size
-                            if ____table_size_64 == nil then
-                                ____table_size_64 = 25
+                        local ____temp_79 = Model:config().mode == "RAID"
+                        if ____temp_79 then
+                            local ____temp_78 = Model:roleTargetTotal()
+                            local ____table_size_77 = Model:config().size
+                            if ____table_size_77 == nil then
+                                ____table_size_77 = 25
                             end
-                            ____temp_66 = ____temp_65 ~= __TS__Number(____table_size_64)
+                            ____temp_79 = ____temp_78 ~= __TS__Number(____table_size_77)
                         end
-                        if ____temp_66 then
-                            local ____table_size_67 = Model:config().size
-                            if ____table_size_67 == nil then
-                                ____table_size_67 = 25
+                        if ____temp_79 then
+                            local ____table_size_80 = Model:config().size
+                            if ____table_size_80 == nil then
+                                ____table_size_80 = 25
                             end
-                            text = ("Role counts must total " .. tostring(____table_size_67)) .. " before preparing."
+                            text = ("Role counts must total " .. tostring(____table_size_80)) .. " before preparing."
                         else
                             text = "Build & Prepare when the composition looks right."
                         end
@@ -5797,21 +6174,21 @@ function ____exports.createModernDashboard(self)
                 i = i + 1
             end
         end
-        local ____buildButton_setEnabled_72 = buildButton.setEnabled
-        local ____temp_71 = Model:humanReady() and not Model:isBusy()
-        if ____temp_71 then
-            local ____temp_70 = Model:config().mode ~= "RAID"
-            if not ____temp_70 then
-                local ____temp_69 = Model:roleTargetTotal()
-                local ____table_size_68 = Model:config().size
-                if ____table_size_68 == nil then
-                    ____table_size_68 = 25
+        local ____buildButton_setEnabled_85 = buildButton.setEnabled
+        local ____temp_84 = Model:humanReady() and not Model:isBusy()
+        if ____temp_84 then
+            local ____temp_83 = Model:config().mode ~= "RAID"
+            if not ____temp_83 then
+                local ____temp_82 = Model:roleTargetTotal()
+                local ____table_size_81 = Model:config().size
+                if ____table_size_81 == nil then
+                    ____table_size_81 = 25
                 end
-                ____temp_70 = ____temp_69 == __TS__Number(____table_size_68)
+                ____temp_83 = ____temp_82 == __TS__Number(____table_size_81)
             end
-            ____temp_71 = ____temp_70
+            ____temp_84 = ____temp_83
         end
-        ____buildButton_setEnabled_72(buildButton, ____temp_71)
+        ____buildButton_setEnabled_85(buildButton, ____temp_84)
         assembleButton:setEnabled(Model:plan().ready == true and Model:plan().valid == true and phase == "READY")
         assembleButton:setText(Model:isTravelRetry() and "Enter Activity" or (Model:config().mode == "RAID" and "Assemble Raid" or "Assemble Party"))
         assembleButton:setSelected(Model:plan().ready == true and Model:plan().valid == true and phase == "READY")
@@ -5948,7 +6325,7 @@ local function ensureDashboard()
     return dashboard
 end
 _G.GroupComposerModernUI = {
-    version = "0.3.0",
+    version = "0.4.0",
     dashboard = nil,
     ensureDashboard = function() return ensureDashboard() end,
     createBuildSelector = function(...) return createBuildSelector(nil, ...) end,
