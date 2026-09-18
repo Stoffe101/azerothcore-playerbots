@@ -4150,7 +4150,7 @@ local function activitySubtitle(self)
     return (mode .. "  ·  5 player  ·  ") .. (cfg.activity == "random" and "Dungeon Finder chooses destination" or "Auto-enter after assembly")
 end
 function ____exports.createModernDashboard(self)
-    local clearDynamicRows, refreshTemplates, refreshPeople, roleOrder, templatesModal, templateSave, builtinScroll, customScroll, builtinRows, customRows, humanScroll, humanRowsModal, pinRole, pinRoleButtons, pinToggle, pinScroll, pinRows
+    local clearDynamicRows, refreshTemplates, refreshPeople, roleOrder, templatesModal, templateSave, builtinScroll, customScroll, builtinRows, customRows, builtinEmpty, customEmpty, humanScroll, humanRowsModal, humanEmpty, pinRole, pinRoleButtons, pinToggle, pinScroll, pinRows, pinEmpty
     function clearDynamicRows(self, rows)
         for ____, row in ipairs(rows) do
             row:Hide()
@@ -4161,6 +4161,11 @@ function ____exports.createModernDashboard(self)
         clearDynamicRows(nil, customRows)
         templateSave:setEnabled(Model:config().mode == "RAID")
         local builtins = Model:listBuiltinProfiles()
+        if #builtins == 0 then
+            builtinEmpty:Show()
+        else
+            builtinEmpty:Hide()
+        end
         do
             local i = 0
             while i < #builtins do
@@ -4258,6 +4263,11 @@ function ____exports.createModernDashboard(self)
         end
         builtinScroll:setContentHeight(math.max(460, #builtins * 84))
         local customs = Model:listCustomProfiles()
+        if #customs == 0 then
+            customEmpty:Show()
+        else
+            customEmpty:Hide()
+        end
         do
             local i = 0
             while i < #customs do
@@ -4375,6 +4385,11 @@ function ____exports.createModernDashboard(self)
     function refreshPeople(self)
         clearDynamicRows(nil, humanRowsModal)
         local list = Model:humans()
+        if #list == 0 then
+            humanEmpty:Show()
+        else
+            humanEmpty:Hide()
+        end
         do
             local i = 0
             while i < #list do
@@ -4497,6 +4512,11 @@ function ____exports.createModernDashboard(self)
         pinToggle:refresh()
         clearDynamicRows(nil, pinRows)
         local pins = Model:pinnedMembers()
+        if #pins == 0 then
+            pinEmpty:Show()
+        else
+            pinEmpty:Hide()
+        end
         do
             local i = 0
             while i < #pins do
@@ -4772,13 +4792,29 @@ function ____exports.createModernDashboard(self)
         -102
     )
     navRaid.label:SetJustifyH("LEFT")
+    local sidebarDivider = Native:createSolid(sidebar.frame, theme.colors.borderStrong, "ARTWORK")
+    sidebarDivider:SetPoint(
+        "TOPLEFT",
+        sidebar.frame,
+        "TOPLEFT",
+        14,
+        -160
+    )
+    sidebarDivider:SetPoint(
+        "TOPRIGHT",
+        sidebar.frame,
+        "TOPRIGHT",
+        -14,
+        -160
+    )
+    sidebarDivider:SetHeight(1)
     local manageTitle = Native:createText(sidebar.frame, "TOOLS", "GameFontNormalSmall", theme.colors.muted)
     manageTitle:SetPoint(
         "TOPLEFT",
         sidebar.frame,
         "TOPLEFT",
         14,
-        -170
+        -174
     )
     local function showTemplates()
     end
@@ -4923,7 +4959,27 @@ function ____exports.createModernDashboard(self)
         0,
         0
     )
-    activity.frame:SetHeight(116)
+    activity.frame:SetHeight(124)
+    local activityTop = Native:createSolid(
+        activity.frame,
+        Native:withAlpha(theme.colors.primary, 0.65),
+        "ARTWORK"
+    )
+    activityTop:SetPoint(
+        "TOPLEFT",
+        activity.frame,
+        "TOPLEFT",
+        0,
+        0
+    )
+    activityTop:SetPoint(
+        "TOPRIGHT",
+        activity.frame,
+        "TOPRIGHT",
+        0,
+        0
+    )
+    activityTop:SetHeight(2)
     local activityEyebrow = Native:createText(activity.frame, "ACTIVITY", "GameFontNormalSmall", theme.colors.muted)
     activityEyebrow:SetPoint(
         "TOPLEFT",
@@ -5052,16 +5108,36 @@ function ____exports.createModernDashboard(self)
         center,
         "TOPLEFT",
         0,
-        -128
+        -136
     )
     humanPanel.frame:SetPoint(
         "TOPRIGHT",
         center,
         "TOPRIGHT",
         0,
-        -128
+        -136
     )
     humanPanel.frame:SetHeight(78)
+    local humanTop = Native:createSolid(
+        humanPanel.frame,
+        Native:withAlpha(theme.colors.chromeBright, 0.38),
+        "ARTWORK"
+    )
+    humanTop:SetPoint(
+        "TOPLEFT",
+        humanPanel.frame,
+        "TOPLEFT",
+        0,
+        0
+    )
+    humanTop:SetPoint(
+        "TOPRIGHT",
+        humanPanel.frame,
+        "TOPRIGHT",
+        0,
+        0
+    )
+    humanTop:SetHeight(1)
     local humanTitle = Native:createText(humanPanel.frame, "YOUR PARTY", "GameFontNormalSmall", theme.colors.muted)
     humanTitle:SetPoint(
         "TOPLEFT",
@@ -5158,7 +5234,7 @@ function ____exports.createModernDashboard(self)
         center,
         "TOPLEFT",
         0,
-        -218
+        -226
     )
     composition.frame:SetPoint(
         "BOTTOMRIGHT",
@@ -5167,6 +5243,26 @@ function ____exports.createModernDashboard(self)
         0,
         0
     )
+    local compositionTop = Native:createSolid(
+        composition.frame,
+        Native:withAlpha(theme.colors.primary, 0.34),
+        "ARTWORK"
+    )
+    compositionTop:SetPoint(
+        "TOPLEFT",
+        composition.frame,
+        "TOPLEFT",
+        0,
+        0
+    )
+    compositionTop:SetPoint(
+        "TOPRIGHT",
+        composition.frame,
+        "TOPRIGHT",
+        0,
+        0
+    )
+    compositionTop:SetHeight(2)
     local compositionTitle = Native:createText(composition.frame, "PARTY COMPOSITION", "GameFontNormal")
     compositionTitle:SetPoint(
         "TOPLEFT",
@@ -6257,6 +6353,29 @@ function ____exports.createModernDashboard(self)
     )
     builtinRows = {}
     customRows = {}
+    builtinEmpty = Native:createText(builtinScroll.content, "Built-in raid compositions will appear here.", "GameFontHighlight", theme.colors.muted)
+    builtinEmpty:SetPoint(
+        "TOPLEFT",
+        builtinScroll.content,
+        "TOPLEFT",
+        18,
+        -22
+    )
+    builtinEmpty:SetWidth(360)
+    builtinEmpty:SetJustifyH("CENTER")
+    builtinEmpty:Hide()
+    customEmpty = Native:createText(customScroll.content, "No custom templates yet. Configure a raid, name it above, then Save Current.", "GameFontHighlight", theme.colors.muted)
+    customEmpty:SetPoint(
+        "TOPLEFT",
+        customScroll.content,
+        "TOPLEFT",
+        22,
+        -22
+    )
+    customEmpty:SetWidth(350)
+    customEmpty:SetJustifyH("CENTER")
+    customEmpty:SetJustifyV("TOP")
+    customEmpty:Hide()
     showTemplates = function()
         ChoiceUI:closeChoicePopup()
         builtinScroll:scrollToTop()
@@ -6285,6 +6404,17 @@ function ____exports.createModernDashboard(self)
         -26
     )
     humanRowsModal = {}
+    humanEmpty = Native:createText(humanScroll.content, "No additional human anchors detected.", "GameFontHighlight", theme.colors.muted)
+    humanEmpty:SetPoint(
+        "TOPLEFT",
+        humanScroll.content,
+        "TOPLEFT",
+        18,
+        -20
+    )
+    humanEmpty:SetWidth(820)
+    humanEmpty:SetJustifyH("CENTER")
+    humanEmpty:Hide()
     local pinBuilder = Native:createPanel(peopleModal.content, theme.colors.surfaceRaised, theme.colors.border)
     pinBuilder.frame:SetPoint(
         "TOPLEFT",
@@ -6413,6 +6543,17 @@ function ____exports.createModernDashboard(self)
         -364
     )
     pinRows = {}
+    pinEmpty = Native:createText(pinScroll.content, "No companions pinned. Add a name above to keep a familiar bot in mind.", "GameFontHighlight", theme.colors.muted)
+    pinEmpty:SetPoint(
+        "TOPLEFT",
+        pinScroll.content,
+        "TOPLEFT",
+        18,
+        -20
+    )
+    pinEmpty:SetWidth(820)
+    pinEmpty:SetJustifyH("CENTER")
+    pinEmpty:Hide()
     showPeople = function()
         ChoiceUI:closeChoicePopup()
         refreshPeople(nil)
@@ -6764,7 +6905,7 @@ function ____exports.createModernDashboard(self)
             local i = 0
             while i < #dungeonRows do
                 do
-                    local __continue160
+                    local __continue168
                     repeat
                         local widgets = dungeonRows[i + 1]
                         local slot = slots[i + 1]
@@ -6788,7 +6929,7 @@ function ____exports.createModernDashboard(self)
                             widgets.sub:SetText((Model:classLabel(tostring(slot.human.class)) .. "  ·  Locked ") .. Model:roleLabel(slot.role))
                             widgets.choose.frame:Hide()
                             widgets.auto.frame:Hide()
-                            __continue160 = true
+                            __continue168 = true
                             break
                         end
                         local exact = slot.exact
@@ -6871,9 +7012,9 @@ function ____exports.createModernDashboard(self)
                             end
                         )
                         widgets.auto.frame:Show()
-                        __continue160 = true
+                        __continue168 = true
                     until true
-                    if not __continue160 then
+                    if not __continue168 then
                         break
                     end
                 end
@@ -7065,12 +7206,12 @@ function ____exports.createModernDashboard(self)
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue189
+                    local __continue197
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue189 = true
+                            __continue197 = true
                             break
                         end
                         local column = g % columns
@@ -7134,9 +7275,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue189 = true
+                        __continue197 = true
                     until true
-                    if not __continue189 then
+                    if not __continue197 then
                         break
                     end
                 end
