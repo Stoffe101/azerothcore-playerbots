@@ -10,8 +10,8 @@ export interface ChoiceItem {
 
 export interface ChoiceSelect {
     readonly frame: WoWFrame;
-    refresh(): void;
-    close(): void;
+    refresh: () => void;
+    close: () => void;
 }
 
 export interface ChoiceSelectOptions {
@@ -128,8 +128,8 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
 
     return {
         frame: trigger.frame,
-        refresh,
-        close(): void {
+        refresh: () => refresh(),
+        close: (): void => {
             if (popup.frame.IsShown()) closeActive();
         },
     };
