@@ -241,7 +241,10 @@ function P.Describe(name)
 
     local prefix = tostring(profile.size or "?") .. "-player · " ..
         tostring(profile.tanks or 0) .. "T / " .. tostring(profile.healers or 0) .. "H / " .. tostring(profile.dps or 0) .. "D"
-    local detail = profile.description or (exact > 0 and (tostring(exact) .. " reserved builds + Auto remainder") or "Role targets + Auto fill")
+    local auto = math.max(0, (tonumber(profile.size) or 0) - exact)
+    local detail = exact > 0
+        and ("Coverage core: " .. tostring(exact) .. " specific · " .. tostring(auto) .. " Auto")
+        or "Role targets + Auto fill"
     return prefix .. " · " .. detail
 end
 
