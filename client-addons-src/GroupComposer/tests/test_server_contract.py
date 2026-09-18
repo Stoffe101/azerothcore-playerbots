@@ -662,3 +662,13 @@ assert '"SHAMAN", "MAGE", "WARLOCK", "DRUID", "PRIEST"' in SELECTOR
 assert "selectorClassesForRole" in SELECTOR
 assert 'marker.SetTexture("Interface\\\\Buttons\\\\UI-RadioButton")' in SELECTOR
 assert "selected ? 0.25 : 0" in SELECTOR
+
+
+# Final target proportions and selector copy.
+assert 'header.frame.SetHeight(72)' in MODERN and 'mark.frame.SetSize(48, 48)' in MODERN
+assert 'sidebar.frame.SetWidth(184)' in MODERN and 'center.SetSize(970, 768)' in MODERN
+assert 'center.SetPoint("TOPLEFT", frame, "TOPLEFT", 200, -88)' in MODERN
+assert '"CHOOSE A CLASS"' in SELECTOR and '"CHOOSE A SPECIALIZATION"' in SELECTOR
+assert "UI-ActionButton-Border" in SELECTOR and "classStepGlow" in SELECTOR and "specStepGlow" in SELECTOR
+assert '"Let Composer choose for me"' in SELECTOR
+assert '"Select a specialization for your " + (selectedClass?.label ?? "selected class") + " build."' in SELECTOR

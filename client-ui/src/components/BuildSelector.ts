@@ -55,12 +55,6 @@ function roleAccent(role: Role) {
     return theme.colors.dps;
 }
 
-function roleIcon(role: Role): string {
-    if (role === "TANK") return "Interface\\Icons\\Ability_Warrior_DefensiveStance";
-    if (role === "HEALER") return "Interface\\Icons\\Spell_Holy_FlashHeal";
-    return "Interface\\Icons\\INV_Sword_04";
-}
-
 function specSummary(classId: ClassId, role: Role): string {
     const labels: string[] = [];
     for (const spec of getSpecsForRole(classId, role)) labels.push(spec.label);
@@ -125,12 +119,17 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     const classStep = createPanel(classSection.frame, theme.colors.surfaceRaised, theme.colors.borderStrong);
     classStep.frame.SetSize(34, 34);
     classStep.frame.SetPoint("TOPLEFT", classSection.frame, "TOPLEFT", 14, -14);
+    const classStepGlow = classStep.frame.CreateTexture(undefined, "OVERLAY");
+    classStepGlow.SetTexture("Interface\\Buttons\\UI-ActionButton-Border");
+    classStepGlow.SetSize(54, 54);
+    classStepGlow.SetPoint("CENTER", classStep.frame, "CENTER", 0, 0);
+    classStepGlow.SetVertexColor(theme.colors.primary[0], theme.colors.primary[1], theme.colors.primary[2], 0.65);
     const classStepText = createText(classStep.frame, "1", "GameFontNormal", theme.colors.primary);
     classStepText.SetPoint("CENTER", classStep.frame, "CENTER", 0, 0);
 
-    const classTitle = createText(classSection.frame, "Choose a class", "GameFontNormalLarge");
+    const classTitle = createText(classSection.frame, "CHOOSE A CLASS", "GameFontNormalLarge");
     classTitle.SetPoint("TOPLEFT", classSection.frame, "TOPLEFT", 60, -13);
-    const classHint = createText(classSection.frame, "Only classes that can perform the selected role are shown.", "GameFontHighlightSmall", theme.colors.muted);
+    const classHint = createText(classSection.frame, "Select a class that can fulfill this role.", "GameFontHighlightSmall", theme.colors.muted);
     classHint.SetPoint("TOPLEFT", classTitle, "BOTTOMLEFT", 0, -4);
 
     const classTiles: ClassTile[] = [];
@@ -187,10 +186,15 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     const specStep = createPanel(specSection.frame, theme.colors.surfaceRaised, theme.colors.borderStrong);
     specStep.frame.SetSize(34, 34);
     specStep.frame.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 14, -14);
+    const specStepGlow = specStep.frame.CreateTexture(undefined, "OVERLAY");
+    specStepGlow.SetTexture("Interface\\Buttons\\UI-ActionButton-Border");
+    specStepGlow.SetSize(54, 54);
+    specStepGlow.SetPoint("CENTER", specStep.frame, "CENTER", 0, 0);
+    specStepGlow.SetVertexColor(theme.colors.primary[0], theme.colors.primary[1], theme.colors.primary[2], 0.65);
     const specStepText = createText(specStep.frame, "2", "GameFontNormal", theme.colors.primary);
     specStepText.SetPoint("CENTER", specStep.frame, "CENTER", 0, 0);
 
-    const specTitle = createText(specSection.frame, "Choose a specialization", "GameFontNormalLarge");
+    const specTitle = createText(specSection.frame, "CHOOSE A SPECIALIZATION", "GameFontNormalLarge");
     specTitle.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 60, -13);
     const specHint = createText(specSection.frame, "Pick a class first.", "GameFontHighlightSmall", theme.colors.muted);
     specHint.SetPoint("TOPLEFT", specTitle, "BOTTOMLEFT", 0, -4);
@@ -222,7 +226,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     anySpecButton.label.SetPoint("TOPLEFT", anySpecButton.frame, "TOPLEFT", 70, -20);
     anySpecButton.label.SetPoint("RIGHT", anySpecButton.frame, "RIGHT", -10, 10);
     anySpecButton.label.SetJustifyH("LEFT");
-    const anySpecSub = createText(anySpecButton.frame, "Lock class, let Composer pick spec", "GameFontHighlightSmall", theme.colors.muted);
+    const anySpecSub = createText(anySpecButton.frame, "Let Composer choose for me", "GameFontHighlightSmall", theme.colors.muted);
     anySpecSub.SetPoint("TOPLEFT", anySpecButton.frame, "TOPLEFT", 70, -49);
     anySpecSub.SetWidth(136);
     anySpecSub.SetJustifyV("TOP");
@@ -336,6 +340,9 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         specStep.outline.setColor(accent);
         classStepText.SetTextColor(accent[0], accent[1], accent[2], 1);
         specStepText.SetTextColor(accent[0], accent[1], accent[2], 1);
+        classStepGlow.SetVertexColor(accent[0], accent[1], accent[2], 0.65);
+        specStepGlow.SetVertexColor(accent[0], accent[1], accent[2], 0.65);
+        classHint.SetText("Select a class that can fulfill the " + roleLabel(currentRole) + " role.");
         setRoleIcon(summaryRoleBadge.icon, currentRole);
         summaryRoleBadge.outline.setColor(accent);
         summaryRoleText.SetText(roleLabel(currentRole));
@@ -375,7 +382,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             emptySpec.Show();
         } else {
             const selectedClass = getClass(currentClass);
-            specHint.SetText((selectedClass?.label ?? "Selected class") + " options for " + roleLabel(currentRole) + ".");
+            specHint.SetText("Select a specialization for your " + (selectedClass?.label ?? "selected class") + " build.");
             emptySpec.Hide();
 
             let specIndex = 0;
@@ -393,7 +400,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
                 if (visible) {
                     tile.button.frame.ClearAllPoints();
                     tile.button.frame.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 14 + specIndex * 248, -78);
-                    tile.sub.SetText(tile.classLabel + " · " + roleLabel(currentRole));
+                    tile.sub.SetText(classRoleSummary(tile.classId, currentRole));
                     const selected = tile.spec.id === currentSpec;
                     tile.button.setSelected(selected);
                     setRadioSelected(tile.marker, selected);

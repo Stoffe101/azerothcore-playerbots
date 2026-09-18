@@ -174,14 +174,14 @@ export function createModernDashboard(): Dashboard {
     const header = Native.createPanel(frame, theme.colors.surface, theme.colors.border);
     header.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1);
     header.frame.SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -1);
-    header.frame.SetHeight(64);
+    header.frame.SetHeight(72);
     const headerAccent = Native.createSolid(header.frame, theme.colors.primary, "OVERLAY");
     headerAccent.SetPoint("TOPLEFT", header.frame, "TOPLEFT", 0, 0);
     headerAccent.SetPoint("TOPRIGHT", header.frame, "TOPRIGHT", 0, 0);
     headerAccent.SetHeight(2);
 
     const mark = Native.createPanel(header.frame, theme.colors.surfaceBlue, theme.colors.primary);
-    mark.frame.SetSize(40, 40);
+    mark.frame.SetSize(48, 48);
     Native.createChrome(mark.frame, theme.colors.primary);
     mark.frame.SetPoint("LEFT", header.frame, "LEFT", 18, 0);
     const markText = Native.createText(mark.frame, "GC", "GameFontNormalLarge", theme.colors.primary);
@@ -189,7 +189,7 @@ export function createModernDashboard(): Dashboard {
     markText.SetJustifyH("CENTER");
 
     const title = Native.createText(header.frame, "GROUP COMPOSER", "GameFontNormalLarge");
-    title.SetPoint("TOPLEFT", header.frame, "TOPLEFT", 70, -12);
+    title.SetPoint("TOPLEFT", header.frame, "TOPLEFT", 82, -14);
     const subtitle = Native.createText(header.frame, "Build the team you want, then let Composer prepare it.", "GameFontHighlightSmall", theme.colors.muted);
     subtitle.SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4);
 
@@ -210,21 +210,21 @@ export function createModernDashboard(): Dashboard {
     close.frame.SetPoint("RIGHT", header.frame, "RIGHT", -16, 0);
 
     const sidebar = Native.createPanel(frame, theme.colors.surface, theme.colors.border);
-    sidebar.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -65);
+    sidebar.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -73);
     sidebar.frame.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 34);
-    sidebar.frame.SetWidth(168);
+    sidebar.frame.SetWidth(184);
 
     const navTitle = Native.createText(sidebar.frame, "COMPOSE", "GameFontNormalSmall", theme.colors.muted);
     navTitle.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -20);
 
     const navDungeon = ButtonUI.createButton(sidebar.frame, {
-        text: "Dungeon", width: 136, height: 46, accent: theme.colors.primary, icon: ICON_DUNGEON, iconSize: 24,
+        text: "Dungeon", width: 152, height: 46, accent: theme.colors.primary, icon: ICON_DUNGEON, iconSize: 24,
         onClick: () => Model.setMode("DUNGEON"),
     });
     navDungeon.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -48);
     navDungeon.label.SetJustifyH("LEFT");
     const navRaid = ButtonUI.createButton(sidebar.frame, {
-        text: "Raid", width: 136, height: 46, accent: theme.colors.warning, icon: ICON_RAID, iconSize: 24,
+        text: "Raid", width: 152, height: 46, accent: theme.colors.warning, icon: ICON_RAID, iconSize: 24,
         onClick: () => Model.setMode("RAID"),
     });
     navRaid.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -102);
@@ -242,33 +242,33 @@ export function createModernDashboard(): Dashboard {
     let showPeople = () => {};
     let showOptions = () => {};
 
-    const navTemplates = ButtonUI.createButton(sidebar.frame, { text: "Templates", width: 136, height: 42, icon: ICON_TEMPLATES, iconSize: 22, onClick: () => showTemplates() });
+    const navTemplates = ButtonUI.createButton(sidebar.frame, { text: "Templates", width: 152, height: 42, icon: ICON_TEMPLATES, iconSize: 22, onClick: () => showTemplates() });
     navTemplates.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -198);
     navTemplates.label.SetJustifyH("LEFT");
-    const navPeople = ButtonUI.createButton(sidebar.frame, { text: "Humans & Pins", width: 136, height: 42, icon: ICON_PEOPLE, iconSize: 22, onClick: () => showPeople() });
+    const navPeople = ButtonUI.createButton(sidebar.frame, { text: "Humans & Pins", width: 152, height: 42, icon: ICON_PEOPLE, iconSize: 22, onClick: () => showPeople() });
     navPeople.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -248);
     navPeople.label.SetJustifyH("LEFT");
-    const navOptions = ButtonUI.createButton(sidebar.frame, { text: "Options", width: 136, height: 42, icon: ICON_OPTIONS, iconSize: 22, onClick: () => showOptions() });
+    const navOptions = ButtonUI.createButton(sidebar.frame, { text: "Options", width: 152, height: 42, icon: ICON_OPTIONS, iconSize: 22, onClick: () => showOptions() });
     navOptions.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -298);
     navOptions.label.SetJustifyH("LEFT");
 
     const sideHint = Native.createText(sidebar.frame, "Humans stay locked.\nSpecific builds reserve bot slots; everything else stays Auto.", "GameFontHighlightSmall", theme.colors.muted);
     sideHint.SetPoint("BOTTOMLEFT", sidebar.frame, "BOTTOMLEFT", 16, 42);
-    sideHint.SetWidth(136);
+    sideHint.SetWidth(152);
     sideHint.SetJustifyV("TOP");
     const versionText = Native.createText(sidebar.frame, "v" + String(D.VERSION ?? "0.10.0"), "GameFontHighlightSmall", theme.colors.muted);
     versionText.SetPoint("BOTTOMLEFT", sidebar.frame, "BOTTOMLEFT", 16, 12);
 
     const center = CreateFrame("Frame", undefined, frame);
-    center.SetPoint("TOPLEFT", frame, "TOPLEFT", 184, -80);
-    center.SetSize(986, 776);
+    center.SetPoint("TOPLEFT", frame, "TOPLEFT", 200, -88);
+    center.SetSize(970, 768);
 
     const status = Native.createPanel(frame, theme.colors.surface, theme.colors.borderStrong);
-    status.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1186, -80);
+    status.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1186, -88);
     status.frame.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -16, 48);
 
     const footer = Native.createPanel(frame, theme.colors.surface, theme.colors.border);
-    footer.frame.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 184, 10);
+    footer.frame.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 200, 10);
     footer.frame.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -16, 10);
     footer.frame.SetHeight(26);
     const footerText = Native.createText(footer.frame, "Ready.", "GameFontHighlightSmall", theme.colors.muted);
