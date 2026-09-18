@@ -195,6 +195,13 @@ function ____exports.setClassIcon(self, texture, classToken)
         texture:SetTexCoord(0, 1, 0, 1)
     end
 end
+function ____exports.classColor(self, classToken)
+    local color = RAID_CLASS_COLORS[classToken]
+    if color ~= nil then
+        return {color.r, color.g, color.b, 1}
+    end
+    return theme.colors.primary
+end
 return ____exports
  end,
 ["data.WotlkBuilds"] = function(...) 
