@@ -7150,7 +7150,7 @@ function ____exports.createModernDashboard(self)
         )
         humanBadge.outline:setColor(Native:classColor(tostring(primary.class)))
         humanName:SetText((primary.isPlayer and "YOU  ·  " or "") .. primary.name)
-        humanSub:SetText(Model:classLabel(tostring(primary.class)) .. (#list > 1 and (("  ·  +" .. tostring(#list - 1)) .. " more human anchor") .. (#list > 2 and "s" or "") or ""))
+        humanSub:SetText(((("Level " .. tostring(primary.level or "?")) .. " ") .. Model:classLabel(tostring(primary.class))) .. (#list > 1 and (("  ·  +" .. tostring(#list - 1)) .. " more human anchor") .. (#list > 2 and "s" or "") or ""))
         local ____opt_27 = Model:config().humanRoles
         if ____opt_27 ~= nil then
             ____opt_27 = ____opt_27[primary.name]
