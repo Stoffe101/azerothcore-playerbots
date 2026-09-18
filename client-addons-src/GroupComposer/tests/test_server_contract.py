@@ -332,14 +332,14 @@ sync = section(SERVER, "void SyncManagedBot(", "void ApplyGroupSettings(")
 assert "bool fullRebuild" in sync, "Managed preparation lost the reserve-only full rebuild boundary"
 assert "if (fullRebuild) factory.Randomize(false);" in sync
 assert sync.count("factory.Randomize(false)") == 1, "Full randomization must have one guarded call site"
-assert "if (fullRebuild)" in sync and "RaidRosterGear::EquipForSpec(bot, master, spec);" in sync
+assert "if (fullRebuild)" in sync and "RaidRosterGear::EquipForSpec(bot, master, spec, minimumItemLevel);" in sync
 assert "bool FullProvisionFor(Member const& member)" in SERVER
 provision = section(SERVER, "bool FullProvisionFor(Member const& member)", "void ApplyGroupSettings(")
 assert "member.reserve" in provision and "!member.guild" in provision and "member.needsPreparation" in provision, (
     "Persistent guild companions can no longer be distinguished from disposable full-provision bodies"
 )
-assert "SyncManagedBot(master, bot, member.role, member.spec, FullProvisionFor(member));" in SERVER
-assert "{ owner, member.role, member.spec, FullProvisionFor(member), 0 }" in SERVER
+assert "SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel" in SERVER
+assert "owner, member.role, member.spec, plan.config.requiredLevel, plan.config.minimumItemLevel" in SERVER
 assert "CLASS_DRUID" in sync and "role == ROLE_DPS" in sync and "buildSpec = 3" in sync, (
     "Feral DPS no longer maps to Playerbots/Era Talents Cat pseudo-spec 3"
 )
