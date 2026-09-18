@@ -228,51 +228,115 @@ function D.DefaultRolesForActivity(mode, activity, size)
     return D.DefaultRolesForSize(size)
 end
 
-local function Profile(name, mode, activity, difficulty, size, tanks, healers, dps)
+local function Pref(classToken, spec, required)
+    return { class = classToken, spec = spec, required = required ~= false }
+end
+
+local function CoveragePreferences(size)
+    local p = { TANK = {}, HEALER = {}, DPS = {} }
+
+    -- Coverage-first WotLK cores. These intentionally reserve only the high-impact class/spec
+    -- pieces; every slot not listed here stays Auto so Composer can adapt to the live player,
+    -- available guild bots, range balance and encounter needs.
+    if size == 10 then
+        p.TANK = {
+            Pref("PALADIN", 1),      -- Protection
+            Pref("DEATHKNIGHT", 0), -- Blood
+        }
+        p.HEALER = {
+            Pref("PRIEST", 0),      -- Discipline: Fortitude + mitigation
+            Pref("SHAMAN", 2),      -- Restoration: Heroism/Bloodlust + totems
+        }
+        p.DPS = {
+            Pref("WARLOCK", 1),     -- Demonology: Demonic Pact
+            Pref("DRUID", 0),       -- Balance: spell crit / hit coverage
+            Pref("PALADIN", 2),     -- Retribution: blessings + replenishment
+            Pref("HUNTER", 2),      -- Survival: replenishment + ranged utility
+            Pref("MAGE", 0),        -- Arcane: Arcane Brilliance + raid damage
+            -- final DPS slot remains Auto
+        }
+    else
+        p.TANK = {
+            Pref("PALADIN", 1),
+            Pref("DEATHKNIGHT", 0),
+        }
+        p.HEALER = {
+            Pref("PALADIN", 0),
+            Pref("PRIEST", 0),
+            Pref("SHAMAN", 2),
+            Pref("DRUID", 2),
+        }
+        p.DPS = {
+            Pref("DEATHKNIGHT", 2), -- Unholy: magic-damage debuff
+            Pref("MAGE", 0),        -- Arcane Brilliance + 3% raid damage
+            Pref("PALADIN", 2),     -- blessings / haste / replenishment
+            Pref("HUNTER", 2),      -- replenishment / ranged utility
+            Pref("SHAMAN", 1),      -- melee haste / AP / totems
+            Pref("WARRIOR", 0),     -- armor / bleed / physical debuffs
+            Pref("WARLOCK", 1),     -- Demonic Pact
+            Pref("DRUID", 0),       -- Balance utility
+            Pref("DRUID", 1),       -- Feral crit / physical utility
+        }
+    end
+    return p
+end
+
+local function RaidProfile(name, activity, difficulty, size)
+    local tanks, healers, dps = D.DefaultRolesForSize(size)
+    -- WotLK 25-player raid composition guides generally run 4-5 healers; use five for the built-in
+    -- coverage template while keeping the ordinary quick-composition defaults conservative.
+    if size == 25 then tanks, healers, dps = 2, 5, 18 end
+
     return {
         name = name,
-        mode = mode,
+        description = "Coverage-first core + Auto remainder",
+        mode = "RAID",
         activity = activity,
         difficulty = difficulty,
         size = size,
         tanks = tanks,
         healers = healers,
         dps = dps,
+        preferences = CoveragePreferences(size),
+        options = {
+            preferGuild = true,
+            fillWorld = true,
+            keepMe = true,
+            balanceClasses = true,
+            balanceUtility = true,
+            balanceRange = true,
+            avoidDuplicateClasses = false,
+            minimumItemLevel = 0,
+            queueAfterAssemble = true,
+        },
     }
 end
 
 D.BUILTIN_PROFILES = {
-    Profile("Dungeon - Standard 5", "DUNGEON", "random", "heroic", 5, 1, 1, 3),
-    Profile("Dungeon - Normal 5", "DUNGEON", "random", "normal", 5, 1, 1, 3),
-    Profile("Dungeon - Titan Rune Alpha", "DUNGEON", "random", "alpha", 5, 1, 1, 3),
-    Profile("Dungeon - Titan Rune Beta", "DUNGEON", "random", "beta", 5, 1, 1, 3),
-    Profile("Dungeon - Titan Rune Gamma", "DUNGEON", "random", "gamma", 5, 1, 1, 3),
+    RaidProfile("Naxxramas 10 - Coverage", "naxxramas", "normal", 10),
+    RaidProfile("Naxxramas 25 - Coverage", "naxxramas", "normal", 25),
+    RaidProfile("Ulduar 10 - Coverage", "ulduar", "normal", 10),
+    RaidProfile("Ulduar 25 - Coverage", "ulduar", "normal", 25),
+    RaidProfile("Trial of the Crusader 10 - Coverage", "trial_crusader", "normal", 10),
+    RaidProfile("Trial of the Crusader 10 Heroic - Coverage", "trial_crusader", "heroic", 10),
+    RaidProfile("Trial of the Crusader 25 - Coverage", "trial_crusader", "normal", 25),
+    RaidProfile("Trial of the Crusader 25 Heroic - Coverage", "trial_crusader", "heroic", 25),
+    RaidProfile("ICC 10 - Coverage", "icecrown", "normal", 10),
+    RaidProfile("ICC 10 Heroic - Coverage", "icecrown", "heroic", 10),
+    RaidProfile("ICC 25 - Coverage", "icecrown", "normal", 25),
+    RaidProfile("ICC 25 Heroic - Coverage", "icecrown", "heroic", 25),
+    RaidProfile("Ruby Sanctum 10 Heroic - Coverage", "ruby_sanctum", "heroic", 10),
+    RaidProfile("Ruby Sanctum 25 Heroic - Coverage", "ruby_sanctum", "heroic", 25),
 
-    Profile("Naxxramas 10 - Standard", "RAID", "naxxramas", "normal", 10, 2, 2, 6),
-    Profile("Naxxramas 25 - Standard", "RAID", "naxxramas", "normal", 25, 2, 6, 17),
-    Profile("Ulduar 10 - Standard", "RAID", "ulduar", "normal", 10, 2, 2, 6),
-    Profile("Ulduar 25 - Standard", "RAID", "ulduar", "normal", 25, 2, 6, 17),
-    Profile("Trial of the Crusader 10 - Standard", "RAID", "trial_crusader", "normal", 10, 2, 2, 6),
-    Profile("Trial of the Crusader 10 Heroic", "RAID", "trial_crusader", "heroic", 10, 2, 2, 6),
-    Profile("Trial of the Crusader 25 - Standard", "RAID", "trial_crusader", "normal", 25, 2, 6, 17),
-    Profile("Trial of the Crusader 25 Heroic", "RAID", "trial_crusader", "heroic", 25, 2, 6, 17),
-    Profile("ICC 10 - Standard", "RAID", "icecrown", "normal", 10, 2, 2, 6),
-    Profile("ICC 10 Heroic - Standard", "RAID", "icecrown", "heroic", 10, 2, 2, 6),
-    Profile("ICC 25 - Standard", "RAID", "icecrown", "normal", 25, 2, 6, 17),
-    Profile("ICC 25 - Extra Heals", "RAID", "icecrown", "normal", 25, 2, 7, 16),
-    Profile("ICC 25 Heroic - Standard", "RAID", "icecrown", "heroic", 25, 2, 6, 17),
-    Profile("Ruby Sanctum 10 Heroic", "RAID", "ruby_sanctum", "heroic", 10, 2, 2, 6),
-    Profile("Ruby Sanctum 25 Heroic", "RAID", "ruby_sanctum", "heroic", 25, 2, 6, 17),
+    RaidProfile("Karazhan 10 - Coverage", "karazhan", "normal", 10),
+    RaidProfile("Zul'Aman 10 - Coverage", "zulaman", "normal", 10),
+    RaidProfile("Serpentshrine 25 - Coverage", "serpentshrine", "normal", 25),
+    RaidProfile("Black Temple 25 - Coverage", "black_temple", "normal", 25),
+    RaidProfile("Sunwell 25 - Coverage", "sunwell", "normal", 25),
 
-    Profile("Karazhan 10 - Standard", "RAID", "karazhan", "normal", 10, 2, 2, 6),
-    Profile("Zul'Aman 10 - Standard", "RAID", "zulaman", "normal", 10, 2, 2, 6),
-    Profile("Serpentshrine 25 - Standard", "RAID", "serpentshrine", "normal", 25, 2, 6, 17),
-    Profile("Black Temple 25 - Standard", "RAID", "black_temple", "normal", 25, 2, 6, 17),
-    Profile("Sunwell 25 - Standard", "RAID", "sunwell", "normal", 25, 2, 6, 17),
-
-    Profile("Zul'Gurub 20 - Standard", "RAID", "zul_gurub", "normal", 20, 3, 5, 12),
-    Profile("Ruins of Ahn'Qiraj 20 - Standard", "RAID", "aq20", "normal", 20, 3, 5, 12),
-    Profile("Molten Core 40 - Standard", "RAID", "molten_core", "normal", 40, 5, 10, 25),
-    Profile("Blackwing Lair 40 - Standard", "RAID", "blackwing_lair", "normal", 40, 5, 10, 25),
-    Profile("Temple of Ahn'Qiraj 40 - Standard", "RAID", "aq40", "normal", 40, 5, 10, 25),
+    RaidProfile("Zul'Gurub 20 - Coverage", "zul_gurub", "normal", 20),
+    RaidProfile("Ruins of Ahn'Qiraj 20 - Coverage", "aq20", "normal", 20),
+    RaidProfile("Molten Core 40 - Coverage", "molten_core", "normal", 40),
+    RaidProfile("Blackwing Lair 40 - Coverage", "blackwing_lair", "normal", 40),
+    RaidProfile("Temple of Ahn'Qiraj 40 - Coverage", "aq40", "normal", 40),
 }
