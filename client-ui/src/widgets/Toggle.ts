@@ -3,7 +3,7 @@ import { theme } from "../theme/Theme";
 
 export interface ToggleControl {
     readonly frame: WoWFrame;
-    refresh(): void;
+    refresh: () => void;
 }
 
 export function createToggle(
@@ -43,5 +43,5 @@ export function createToggle(
     });
 
     refresh();
-    return { frame, refresh };
+    return { frame, refresh: () => refresh() };
 }
