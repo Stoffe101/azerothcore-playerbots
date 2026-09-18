@@ -5186,12 +5186,10 @@ function ____exports.createModernDashboard(self)
     }
     GC.Toggle = function() return dashboard:toggle() end
     GC:RegisterCallback(
-        GC,
         "CONFIG_CHANGED",
         function() return refresh(nil) end
     )
     GC:RegisterCallback(
-        GC,
         "PLAN_CHANGED",
         function()
             if Model:config().mode == "RAID" and Model:plan().ready == true and Model:plan().valid == true then
@@ -5201,17 +5199,14 @@ function ____exports.createModernDashboard(self)
         end
     )
     GC:RegisterCallback(
-        GC,
         "PROGRESS_CHANGED",
         function() return refresh(nil) end
     )
     GC:RegisterCallback(
-        GC,
         "HUMANS_CHANGED",
         function() return refresh(nil) end
     )
     GC:RegisterCallback(
-        GC,
         "PROFILES_CHANGED",
         function()
             if templatesModal.frame:IsShown() then
@@ -5221,7 +5216,6 @@ function ____exports.createModernDashboard(self)
         end
     )
     GC:RegisterCallback(
-        GC,
         "STATUS",
         function(____, text)
             footerText:SetText(tostring(text or "Ready."))
@@ -5229,7 +5223,6 @@ function ____exports.createModernDashboard(self)
         end
     )
     GC:RegisterCallback(
-        GC,
         "DISPLAY_CHANGED",
         function() return applyScale(nil) end
     )
