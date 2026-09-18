@@ -27,7 +27,7 @@ export function createModal(parent: WoWFrame, width: number, height: number): Mo
     panel.frame.SetPoint("CENTER", parent, "CENTER", 0, 0);
     panel.frame.SetFrameStrata("DIALOG");
     panel.frame.SetFrameLevel(scrim.GetFrameLevel() + 1);
-    createChrome(panel.frame);
+    createChrome(panel.frame, theme.colors.chrome, true);
 
     function hideModal(): void {
         panel.frame.Hide();

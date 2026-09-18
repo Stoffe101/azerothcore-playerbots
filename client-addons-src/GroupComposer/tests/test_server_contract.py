@@ -639,3 +639,10 @@ assert "setHeaderRole(role?: string)" in MODAL
 assert "modal.setHeaderRole(currentRole)" in SELECTOR and "summaryRoleBadge = createFramedRoleIcon" in SELECTOR
 assert MODERN.count("createFramedRoleIcon") >= 4
 assert "Native.setRoleIcon(widgets.roleIcon, slot.role)" in MODERN
+
+
+# Ornate chrome is reserved for major windows, not tiny controls.
+assert "ornate = false" in NATIVE and "if (ornate)" in NATIVE
+assert "createChrome(panel.frame, theme.colors.chrome, true)" in MODAL
+assert "Native.createChrome(frame, theme.colors.chrome, true)" in MODERN
+assert "Native.createChrome(mark.frame, theme.colors.primary)" in MODERN

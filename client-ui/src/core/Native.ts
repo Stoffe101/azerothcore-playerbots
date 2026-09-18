@@ -158,7 +158,7 @@ export function createFramedIcon(
     return { frame, icon, outline };
 }
 
-export function createChrome(frame: WoWFrame, accent: Color = theme.colors.chrome): void {
+export function createChrome(frame: WoWFrame, accent: Color = theme.colors.chrome, ornate = false): void {
     // Double-line gold/blue chrome with L-shaped corners. No custom art files required.
     const outer = createOutline(frame, accent);
     const innerTop = createSolid(frame, withAlpha(theme.colors.highlight, 0.28), "BORDER");
@@ -189,32 +189,36 @@ export function createChrome(frame: WoWFrame, accent: Color = theme.colors.chrom
         piece.SetPoint(item[0], frame, item[0], item[1], item[2]);
     }
 
-    // Reuse Blizzard's own Wrath-era gold dialog ornament. Mirroring one native
-    // corner texture keeps the shell ornate without shipping custom art.
-    const cornerPath = "Interface\\DialogFrame\\UI-DialogBox-Gold-Corner";
-    const topLeft = frame.CreateTexture(undefined, "OVERLAY");
-    topLeft.SetTexture(cornerPath);
-    topLeft.SetSize(26, 26);
-    topLeft.SetPoint("TOPLEFT", frame, "TOPLEFT", -3, 3);
-    topLeft.SetTexCoord(0, 1, 0, 1);
-
-    const topRight = frame.CreateTexture(undefined, "OVERLAY");
-    topRight.SetTexture(cornerPath);
-    topRight.SetSize(26, 26);
-    topRight.SetPoint("TOPRIGHT", frame, "TOPRIGHT", 3, 3);
-    topRight.SetTexCoord(1, 0, 0, 1);
-
-    const bottomLeft = frame.CreateTexture(undefined, "OVERLAY");
-    bottomLeft.SetTexture(cornerPath);
-    bottomLeft.SetSize(26, 26);
-    bottomLeft.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", -3, -3);
-    bottomLeft.SetTexCoord(0, 1, 1, 0);
-
-    const bottomRight = frame.CreateTexture(undefined, "OVERLAY");
-    bottomRight.SetTexture(cornerPath);
-    bottomRight.SetSize(26, 26);
-    bottomRight.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 3, -3);
-    bottomRight.SetTexCoord(1, 0, 1, 0);
+    if (ornate) {
+        // Reuse Blizzard's own Wrath-era gold dialog ornament. Mirroring one native
+        // corner texture keeps the shell ornate without shipping custom art.
+        const cornerPath = "Interface\\DialogFrame\\UI-DialogBox-Gold-Corner";
+        const topLeft = frame.CreateTexture(undefined, "OVERLAY");
+        topLeft.SetTexture(cornerPath);
+        topLeft.SetSize(26, 26);
+        topLeft.SetPoint("TOPLEFT", frame, "TOPLEFT", -3, 3);
+        topLeft.SetTexCoord(0, 1, 0, 1);
+    
+        const topRight = frame.CreateTexture(undefined, "OVERLAY");
+        topRight.SetTexture(cornerPath);
+        topRight.SetSize(26, 26);
+        topRight.SetPoint("TOPRIGHT", frame, "TOPRIGHT", 3, 3);
+        topRight.SetTexCoord(1, 0, 0, 1);
+    
+        const bottomLeft = frame.CreateTexture(undefined, "OVERLAY");
+        bottomLeft.SetTexture(cornerPath);
+        bottomLeft.SetSize(26, 26);
+        bottomLeft.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", -3, -3);
+        bottomLeft.SetTexCoord(0, 1, 1, 0);
+    
+        const bottomRight = frame.CreateTexture(undefined, "OVERLAY");
+        bottomRight.SetTexture(cornerPath);
+        bottomRight.SetSize(26, 26);
+        bottomRight.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 3, -3);
+        bottomRight.SetTexCoord(1, 0, 1, 0);
+    
+    
+    }
 
     // Keep the outer outline referenced so TypeScriptToLua does not optimize the call away.
     if (outer.textures.length === 0) return;

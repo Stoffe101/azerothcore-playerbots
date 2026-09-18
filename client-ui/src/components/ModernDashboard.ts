@@ -169,7 +169,7 @@ export function createModernDashboard(): Dashboard {
     root.SetAllPoints(frame);
     const rootOutline = Native.createPanel(frame, theme.colors.background, theme.colors.borderStrong);
     rootOutline.frame.SetAllPoints(frame);
-    Native.createChrome(frame);
+    Native.createChrome(frame, theme.colors.chrome, true);
 
     const header = Native.createPanel(frame, theme.colors.surface, theme.colors.border);
     header.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1);
