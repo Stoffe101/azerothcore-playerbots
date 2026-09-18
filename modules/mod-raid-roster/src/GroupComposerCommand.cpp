@@ -385,28 +385,42 @@ void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, uint8 t
     if (spec > 2) spec = Planner::InferSpec(bot);
     if (spec > 2) return;
 
-    // Disposable world/reserve bodies are elastic Composer capacity. They may begin life at
-    // level 1 or in a completely unrelated leveling build, so promote them to the selected
-    // activity floor before talents/gear are reconciled. Never down-level a bot that is already
-    // above the floor.
+    // Disposable world/AddClass/reserve bodies are elastic Composer capacity. Preparation must be
+    // deterministic and bounded: do not call PlayerbotFactory::Randomize(false), which resets a
+    // character's whole life history and was the main source of long 25-player preparation stalls.
+    // Instead touch only combat-readiness state that Composer owns.
     uint8 provisionLevel = std::max<uint8>(bot->GetLevel(), targetLevel);
-    if (fullRebuild && bot->GetLevel() < targetLevel)
-        bot->GiveLevel(targetLevel);
+    PlayerbotFactory factory(bot, provisionLevel, ITEM_QUALITY_EPIC, 0);
 
-    // Persistent guild companions are different: Group Composer may retask their combat
-    // build, but must not replace their earned gear, inventory, quests or progression.
-    PlayerbotFactory factory(bot, provisionLevel, ITEM_QUALITY_LEGENDARY, 0);
-    if (fullRebuild) factory.Randomize(false);
-    if (fullRebuild && bot->GetLevel() < targetLevel)
-        bot->GiveLevel(targetLevel);
+    if (fullRebuild)
+    {
+        if (bot->isDead()) bot->ResurrectPlayer(1.0f, false);
+        bot->CombatStop(true);
 
-    // Playerbots / Era Talents use pseudo-spec 3 for Feral Cat PvE. Keep the
-    // public Composer spec as Feral (1) and use role only for build selection.
+        if (bot->GetLevel() < targetLevel)
+        {
+            bot->GiveLevel(targetLevel);
+            bot->InitStatsForLevel(true);
+        }
+
+        factory.UnbindInstance();
+        bot->LearnDefaultSkills();
+        factory.InitSkills();
+        factory.InitClassSpells();
+        factory.InitAvailableSpells();
+        factory.InitSpecialSpells();
+    }
+
+    // Playerbots / Era Talents use pseudo-spec 3 for Feral Cat PvE. Keep the public Composer spec
+    // as Feral (1) and use the requested role only to select Bear (1) versus Cat (3) behavior.
     uint8 buildSpec = spec;
     if (bot->IsClass(CLASS_DRUID) && spec == 1 && role == ROLE_DPS) buildSpec = 3;
 
     if (!EraTalentBots::FactoryReconcile(bot, buildSpec))
         PlayerbotFactory::InitTalentsBySpecNo(bot, buildSpec, true);
+
+    // Rebuild AI only after the final talents exist so Tank/Heal/DPS strategies match the requested
+    // job when PreparedMemberReady() validates the bot.
     if (PlayerbotAI* ai = GET_PLAYERBOT_AI(bot)) ai->ResetStrategies(false);
     factory.InitGlyphs(false);
 
@@ -415,13 +429,25 @@ void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, uint8 t
         RaidRosterGear::EquipForSpec(bot, master, spec, minimumItemLevel);
         factory.ApplyEnchantAndGemsNew();
         factory.InitAmmo();
+        factory.CleanupConsumables();
+        factory.InitReagents();
+        factory.InitConsumables();
+        factory.InitPotions();
+        factory.InitFood();
+        factory.InitPet();
+        factory.InitPetTalents();
+        bot->DurabilityRepairAll(false, 1.0f, false);
 
         if (bot->IsClass(CLASS_DEATH_KNIGHT))
         {
             uint32 quest = bot->GetTeamId(true) == TEAM_ALLIANCE ? 13188 : 13189;
             if (!bot->IsQuestRewarded(quest)) bot->SetRewardedQuest(quest);
         }
+
         RaidRosterEra::SyncBotToMaster(master, bot);
+        bot->SetHealth(bot->GetMaxHealth());
+        if (bot->GetMaxPower(POWER_MANA) > 0)
+            bot->SetPower(POWER_MANA, bot->GetMaxPower(POWER_MANA));
     }
 }
 
@@ -691,21 +717,6 @@ bool TeleportCompletedPlan(Player* master, Plan const& plan, std::string& detail
     return true;
 }
 
-void PruneUnselectedBots(Player* master, Plan const& plan)
-{
-    Group* group = master ? master->GetGroup() : nullptr;
-    if (!group) return;
-    std::vector<ObjectGuid> remove;
-    for (Group::MemberSlot const& slot : group->GetMemberSlots())
-    {
-        if (Selected(plan, slot.guid) || !IsBotGuid(slot.guid)) continue;
-        if (Player* bot = ObjectAccessor::FindConnectedPlayer(slot.guid))
-            if (BotHasOtherGameClientMaster(master, bot)) continue;
-        remove.push_back(slot.guid);
-    }
-    for (ObjectGuid guid : remove) group->RemoveMember(guid);
-}
-
 bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& error)
 {
     if (!master || !plan.valid || plan.members.size() != plan.config.size)
@@ -736,25 +747,23 @@ bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& err
             return false;
         }
 
-        // Humans are never silently pruned. Playerbots actively controlled by another real client
-        // are protected for the same reason: they belong to that player's current play session, not
-        // to this composer's disposable candidate pool.
+        // Nothing already in a live group is disposable. Humans and Playerbots are sticky roster
+        // anchors; if membership changed after preview, force a new plan instead of silently pruning
+        // somebody's companion. This is the multi-user ownership boundary.
         for (Group::MemberSlot const& slot : group->GetMemberSlots())
         {
             if (Selected(plan, slot.guid)) continue;
             if (!IsBotGuid(slot.guid))
             {
-                error = "The group gained a real player after the preview. Run Find Roster again so every human is locked into the composition.";
+                error = "The group gained a real player after the preview. Run Build & Prepare again so every human is locked into the composition.";
                 return false;
             }
-            if (Player* bot = ObjectAccessor::FindConnectedPlayer(slot.guid))
-            {
-                if (BotHasOtherGameClientMaster(master, bot))
-                {
-                    error = "Playerbot '" + bot->GetName() + "' is controlled by another active player and cannot be silently removed. Reform the party or let that player manage their bot, then Find Roster again.";
-                    return false;
-                }
-            }
+
+            std::string name = "Playerbot";
+            sCharacterCache->GetCharacterNameByGuid(slot.guid, name);
+            error = "Playerbot '" + name +
+                "' joined the group after the preview. Group Composer never removes existing party/raid bots automatically; rebuild the roster or kick that bot explicitly.";
+            return false;
         }
     }
 
@@ -1227,7 +1236,7 @@ public:
                     itr->second.minimumItemLevel, itr->second.fullRebuild);
                 itr = s_pendingSync.erase(itr);
             }
-            else if (itr->second.elapsed > 60000) itr = s_pendingSync.erase(itr);
+            else if (itr->second.elapsed > 45000) itr = s_pendingSync.erase(itr);
             else ++itr;
         }
 
@@ -1257,19 +1266,32 @@ public:
                     plan.prepared = true;
                     if (master) SendProgress(master, "READY", readyBots, totalBots, "All selected bots are online and ready to assemble.");
                 }
-                else if (plan.prepareElapsed > 12000 && master)
+                else if (plan.prepareElapsed > 50000 && master)
                 {
-                    std::string replacementDetail;
-                    if (!ReplaceUnreadyCandidates(master, plan, replacementDetail))
+                    // Do not throw away and rebuild an otherwise-ready 25-player roster because one
+                    // asynchronous login stalled. Whole-plan replacement multiplied login/provision
+                    // work and caused the observed "three automatic replacement attempts" loop.
+                    // Keep the failure precise; a new explicit Build & Prepare gets a fresh candidate
+                    // snapshot while every currently grouped member remains protected.
+                    std::string failed = "a selected bot";
+                    for (Member const& member : plan.members)
                     {
-                        plan.preparing = false;
-                        plan.prepared = false;
-                        Reserve::ReleaseUnjoined(master);
-                        ClearPendingSync(ownerLow);
-                        SendProgress(master, "ERROR", readyBots, totalBots, replacementDetail);
-                        SendProtocol(master, "ERROR", replacementDetail);
+                        if (!member.human && !PreparedMemberReady(plan, member))
+                        {
+                            failed = "'" + member.name + "'";
+                            break;
+                        }
                     }
-                    // Successful replacement resets the new plan's preparation timers internally.
+
+                    std::string detail = "Preparation timed out waiting for " + failed + " (" +
+                        std::to_string(readyBots) + "/" + std::to_string(totalBots) +
+                        " bots ready). No live group member was removed; press Build & Prepare to retry with fresh capacity.";
+                    plan.preparing = false;
+                    plan.prepared = false;
+                    Reserve::ReleaseUnjoined(master);
+                    ClearPendingSync(ownerLow);
+                    SendProgress(master, "ERROR", readyBots, totalBots, detail);
+                    SendProtocol(master, "ERROR", detail);
                     continue;
                 }
             }
@@ -1670,9 +1692,9 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
 
     plan.humanInvitesSent.clear();
 
-    // First destructive step: remove only unselected Playerbots. Real humans are protected by
-    // ValidateAssemblySnapshot. All disposable bot preparation happened during Build & Prepare.
-    PruneUnselectedBots(master, plan);
+    // Build & Prepare already locked every live group member into the reviewed plan. Assembly never
+    // removes an existing Playerbot implicitly; it only attaches prepared missing members and sends
+    // one normal invitation to each missing real human.
 
     // A specifically pinned persistent guild companion can still require a deliberate spec retask.
     // Apply that narrow combat-build change at commit time, preserving its gear/inventory/history.

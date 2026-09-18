@@ -1,4 +1,5 @@
 #include "GroupComposerPlanner.h"
+#include "GroupComposerReserve.h"
 
 #include "RaidRosterComp.h"
 #include "RaidRosterStore.h"
@@ -83,7 +84,10 @@ uint8 PopCount(uint32 value)
 
 bool MemberIsStable(Member const& member)
 {
-    return member.human || member.pinned;
+    // Existing live-group bots are sticky roster anchors just like humans/pins. Their subgroup
+    // placement should remain stable and, more importantly, a fresh composition must never treat
+    // them as disposable capacity that can be silently swapped out from under the player.
+    return member.human || member.pinned || member.locked;
 }
 
 bool CrossFactionBlocked(Player* master, Player* other)
@@ -127,6 +131,7 @@ void AddSelectedMember(Plan& plan, Candidate const& candidate, bool pinned,
     member.reserve = candidate.reserve;
     member.needsPreparation = candidate.needsPreparation;
     member.pinned = pinned;
+    member.locked = candidate.alreadyGrouped;
     member.online = candidate.online;
     member.utilityMask = candidate.utilityMask;
     member.rangedDps = candidate.rangedDps;
@@ -364,16 +369,20 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         if (CrossFactionBlocked(master, bot)) return;
 
         bool sameGuild = guildId && bot->GetGuildId() == guildId;
-        bool disposableWorld = !sameGuild && config.fillWorld &&
+        bool addClassCapacity = sRandomPlayerbotMgr.IsAddclassBot(bot);
+        bool randomCapacity =
             sPlayerbotAIConfig.IsInRandomAccountList(sCharacterCache->GetCharacterAccountIdByGuid(bot->GetGUID()));
+        bool disposableCapacity = !sameGuild && (config.fillWorld || alreadyGrouped) &&
+            (randomCapacity || addClassCapacity);
         bool underLevel = bot->GetLevel() < config.requiredLevel;
         float liveItemLevel = bot->GetAverageItemLevel();
         bool underGear = config.minimumItemLevel && liveItemLevel + 0.001f < config.minimumItemLevel;
 
-        // Persistent guild/world identities must already qualify. Ordinary RNDbots are Composer's
-        // elastic fallback capacity: if they are under-level or under-geared they can be selected
-        // and provisioned before the reviewed roster becomes READY.
-        if ((underLevel || underGear) && !disposableWorld) return;
+        // Persistent guild identities must already qualify. RNDbots and AddClass bodies are
+        // Composer-owned elastic capacity and may be repaired during Build & Prepare. Existing
+        // group members remain eligible even when Fill World is off because the live party is a
+        // hard ownership boundary, not a candidate preference.
+        if ((underLevel || underGear) && !disposableCapacity) return;
 
         Candidate c;
         c.guid = bot->GetGUID();
@@ -381,12 +390,12 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         c.cls = bot->getClass();
         c.role = Planner::InferRole(bot);
         c.spec = Planner::InferSpec(bot);
-        c.level = underLevel && disposableWorld ? config.requiredLevel : bot->GetLevel();
+        c.level = underLevel && disposableCapacity ? config.requiredLevel : bot->GetLevel();
         c.guild = sameGuild;
         c.online = true;
         c.alreadyGrouped = alreadyGrouped;
         c.itemLevel = liveItemLevel;
-        c.managed = disposableWorld && (underLevel || underGear);
+        c.managed = disposableCapacity && (addClassCapacity || underLevel || underGear);
         c.needsPreparation = c.managed;
         c.utilityMask = Planner::UtilityMask(c.cls, c.spec, c.role);
         c.rangedDps = Planner::IsRangedDps(c.cls, c.spec, c.role);
@@ -394,9 +403,9 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         AddCandidate(out, seen, std::move(c));
     };
 
-    // Existing group bots remain eligible so an otherwise equal composition does not churn for no
-    // reason. They are not locked anchors, however; Prefer Guild must still be able to replace an
-    // ordinary world bot with a suitable persistent guild companion.
+    // Existing group bots are hard/sticky anchors. Build() selects them before any optional
+    // candidate so another composition request cannot silently evict a bot the player is already
+    // adventuring with. The player can still deliberately change the roster by kicking that bot.
     if (masterGroup)
     {
         for (Group::MemberSlot const& slot : masterGroup->GetMemberSlots())
@@ -425,6 +434,63 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         {
             if (!bot || sRandomPlayerbotMgr.IsAddclassBot(bot)) continue;
             makeOnline(bot, masterGroup && bot->GetGroup() == masterGroup);
+        }
+    }
+
+    // Dedicated quick-capacity pool. Upstream Playerbots creates AddClass accounts specifically
+    // for fast, class-addressable party formation. Prefer those safe disposable identities over
+    // waking arbitrary offline world RNDbots: they have no persistent guild/progression contract,
+    // can be silently logged in through the owner's PlayerbotMgr, and can be deterministically
+    // provisioned to the requested role/spec during Build & Prepare.
+    if (config.fillWorld)
+    {
+        static constexpr uint8 classes[] = {
+            CLASS_WARRIOR, CLASS_PALADIN, CLASS_HUNTER, CLASS_ROGUE, CLASS_PRIEST,
+            CLASS_DEATH_KNIGHT, CLASS_SHAMAN, CLASS_MAGE, CLASS_WARLOCK, CLASS_DRUID
+        };
+        bool alliance = master->GetTeamId(true) == TEAM_ALLIANCE;
+
+        for (uint8 cls : classes)
+        {
+            uint8 key = RandomPlayerbotMgr::GetTeamClassIdx(alliance, cls);
+            auto cacheItr = sRandomPlayerbotMgr.addclassCache.find(key);
+            if (cacheItr == sRandomPlayerbotMgr.addclassCache.end()) continue;
+
+            for (ObjectGuid guid : cacheItr->second)
+            {
+                uint32 low = guid.GetCounter();
+                if (seen.count(low)) continue;
+
+                if (Player* online = ObjectAccessor::FindConnectedPlayer(guid))
+                {
+                    makeOnline(online, masterGroup && online->GetGroup() == masterGroup);
+                    continue;
+                }
+
+                // Never wake a capacity identity that still belongs to a different persisted group
+                // or a real guild. Those identities are somebody else's live/persistent context.
+                if (!sCharacterCache->GetCharacterGroupGuidByGuid(guid).IsEmpty()) continue;
+                if (sCharacterCache->GetCharacterGuildIdByGuid(guid)) continue;
+                if (!Reserve::AvailableTo(master->GetGUID().GetCounter(), guid)) continue;
+
+                std::string name;
+                if (!sCharacterCache->GetCharacterNameByGuid(guid, name)) continue;
+
+                Candidate c;
+                c.guid = guid;
+                c.name = name;
+                c.cls = cls;
+                c.role = ROLE_DPS;
+                c.spec = ANY_SPEC;
+                c.level = std::max<uint8>(sCharacterCache->GetCharacterLevelByGuid(guid), config.requiredLevel);
+                c.online = false;
+                c.managed = true;
+                c.reserve = false; // AddClass logs in through the owner's silent PlayerbotMgr path.
+                c.needsPreparation = true;
+                c.utilityMask = Planner::UtilityMask(c.cls, c.spec, c.role);
+                c.rangedDps = Planner::IsRangedDps(c.cls, c.spec, c.role);
+                AddCandidate(out, seen, std::move(c));
+            }
         }
     }
 
@@ -577,6 +643,9 @@ int CandidateScore(Candidate const& candidate, Config const& config,
     if (config.preferGuild && candidate.guild) score += 5000;
     if (candidate.alreadyGrouped) score += 1200;
     if (candidate.online) score += 250;
+    // Offline AddClass capacity is intentionally preferred over arbitrary offline RNDbot rotation,
+    // while an already-online suitable world/guild bot remains cheaper than either.
+    if (candidate.managed && !candidate.reserve && sRandomPlayerbotMgr.IsAddclassBot(candidate.guid.GetCounter())) score += 180;
     if (candidate.managed) score += 80;
 
     if (config.balanceClasses && candidate.cls < classCounts.size())
@@ -919,8 +988,51 @@ bool Planner::Build(Player* master, Config const& config, Plan& out, std::string
             if (candidate.managed) ++out.managedCandidates;
         }
     }
+    // A plan must never select capacity leased by a different Composer owner. This is checked
+    // before scoring as well as atomically in AcquirePlan(), so simultaneous players get a fresh
+    // candidate instead of discovering the conflict after an expensive preview was already built.
+    candidates.erase(std::remove_if(candidates.begin(), candidates.end(), [&](Candidate const& candidate)
+    {
+        return !Reserve::AvailableTo(master->GetGUID().GetCounter(), candidate.guid);
+    }), candidates.end());
+
     std::unordered_set<uint32> used;
     for (Member const& member : out.members) used.insert(member.guid.GetCounter());
+
+    // Existing live-group Playerbots are sticky anchors. They are selected in their current role
+    // before pins/preferences/Auto fill. If they make the requested role shape impossible, fail
+    // transparently and ask the player to change the role totals or kick the bot themselves.
+    for (Candidate const& candidate : candidates)
+    {
+        if (!candidate.alreadyGrouped || used.count(candidate.guid.GetCounter())) continue;
+        if (candidate.role > ROLE_DPS || roleCounts[candidate.role] >= targets[candidate.role])
+        {
+            error = "Existing group bot '" + candidate.name +
+                "' cannot fit the requested role totals. Group Composer will not remove existing party/raid bots automatically; change the role counts or kick that bot explicitly.";
+            return false;
+        }
+        AddSelectedMember(out, candidate, false, roleCounts, classCounts, used);
+    }
+    if (out.members.size() > config.size)
+    {
+        error = "The existing human/bot group already exceeds the requested roster size. Group Composer never prunes live members automatically.";
+        return false;
+    }
+
+    // If a live group contains an offline/unavailable Playerbot it will not appear in the candidate
+    // snapshot above. Treat that as a hard blocker rather than quietly replacing the identity.
+    if (Group* group = master->GetGroup())
+    {
+        for (Group::MemberSlot const& slot : group->GetMemberSlots())
+        {
+            if (!IsBotCharacter(slot.guid) || used.count(slot.guid.GetCounter())) continue;
+            std::string name = "Playerbot";
+            sCharacterCache->GetCharacterNameByGuid(slot.guid, name);
+            error = "Existing group bot '" + name +
+                "' is not currently Composer-ready. Group Composer keeps live group bots reserved; bring it online/available or kick it explicitly before rebuilding.";
+            return false;
+        }
+    }
 
     // Required pins are hard constraints and are resolved before any soft preferences. Preferred
     // pins are deliberately deferred until required class/spec rows are satisfied so a familiar
@@ -928,6 +1040,19 @@ bool Planner::Build(Player* master, Config const& config, Plan& out, std::string
     for (Pin const& pin : config.pins)
     {
         if (!pin.required) continue;
+
+        bool alreadySelected = false;
+        for (Member& member : out.members)
+        {
+            if (member.role == pin.role && Lower(member.name) == Lower(pin.name))
+            {
+                member.pinned = true;
+                alreadySelected = true;
+                break;
+            }
+        }
+        if (alreadySelected) continue;
+
         Candidate candidate;
         if (!FindNamedCandidate(candidates, pin.name, pin.role, used, candidate))
         {

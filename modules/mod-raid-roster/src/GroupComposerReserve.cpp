@@ -66,6 +66,12 @@ uint32 OwnerLeased(uint32 ownerGuidLow)
     return itr == s_byOwner.end() ? 0u : static_cast<uint32>(itr->second.size());
 }
 
+bool AvailableTo(uint32 ownerGuidLow, ObjectGuid guid)
+{
+    auto itr = s_leases.find(guid.GetCounter());
+    return itr == s_leases.end() || itr->second.owner == ownerGuidLow;
+}
+
 bool AcquirePlan(Player* owner, Plan const& plan, std::string& error)
 {
     if (!owner)
@@ -180,16 +186,27 @@ void Update(uint32 diff)
         Lease const& lease = entry.second;
         if (now - lease.acquired < 180) continue; // prepared previews stay reserved for three minutes
 
-        Player* owner = ObjectAccessor::FindConnectedPlayer(ObjectGuid::Create<HighGuid::Player>(lease.owner));
-        if (!owner)
+        ObjectGuid ownerGuid = ObjectGuid::Create<HighGuid::Player>(lease.owner);
+        ObjectGuid botGuid = ObjectGuid::Create<HighGuid::Player>(botLow);
+        Player* owner = ObjectAccessor::FindConnectedPlayer(ownerGuid);
+
+        // A committed bot belongs to the live group, not merely to the owner's current network
+        // session. Preserve that lease through a temporary disconnect as long as CharacterCache
+        // still says owner and bot share the same persisted group. Once the owner actually leaves
+        // the group (or the bot is kicked), the lease naturally becomes releasable.
+        if (owner)
         {
-            release.push_back(botLow);
-            continue;
+            Group* group = owner->GetGroup();
+            if (group && group->IsMember(botGuid)) continue;
+        }
+        else
+        {
+            ObjectGuid ownerGroup = sCharacterCache->GetCharacterGroupGuidByGuid(ownerGuid);
+            ObjectGuid botGroup = sCharacterCache->GetCharacterGroupGuidByGuid(botGuid);
+            if (!ownerGroup.IsEmpty() && ownerGroup == botGroup) continue;
         }
 
-        Group* group = owner->GetGroup();
-        ObjectGuid botGuid = ObjectGuid::Create<HighGuid::Player>(botLow);
-        if (!group || !group->IsMember(botGuid)) release.push_back(botLow);
+        release.push_back(botLow);
     }
 
     for (uint32 botLow : release) ReleaseBot(botLow);

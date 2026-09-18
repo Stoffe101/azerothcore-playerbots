@@ -192,12 +192,11 @@ assert "onlineAI->HasGameClientMaster() && onlineAI->GetMaster() != master" in b
 assert "bool BotHasOtherGameClientMaster(Player* master, Player* bot)" in SERVER, (
     "Server lost the shared active-player bot ownership guard"
 )
-prune = section(SERVER, "void PruneUnselectedBots(", "bool ValidateAssemblySnapshot(")
-assert "BotHasOtherGameClientMaster(master, bot)" in prune, (
-    "Pruning can silently remove a bot actively controlled by another player"
+assert "PruneUnselectedBots" not in SERVER, (
+    "Composer must never silently prune an existing live-group Playerbot"
 )
-assert "controlled by another active player and cannot be silently removed" in validation, (
-    "A late human-owned Playerbot no longer blocks destructive assembly"
+assert "never removes existing party/raid bots automatically" in validation, (
+    "Late Playerbot membership changes must block assembly instead of becoming destructive pruning"
 )
 assert "Selected bot '" in validation and "is now controlled by another active player" in validation, (
     "Selected Playerbot ownership changes are not revalidated at Assemble"
@@ -239,6 +238,19 @@ assert "cachedGroup == masterGroup->GetGUID()" in build_candidates, (
 )
 assert "if (!online && !cachedGroup.IsEmpty() && !cachedWithMaster) continue;" in build_candidates, (
     "Offline managed bot from another persisted group can be force-logged into this roster"
+)
+
+# Fast capacity and live-group ownership are first-class V4 invariants. AddClass is upstream's
+# quick class-addressable pool; current group bots are hard anchors rather than high-score suggestions.
+assert "sRandomPlayerbotMgr.addclassCache" in build_candidates, (
+    "Composer no longer exposes dedicated AddClass quick capacity"
+)
+assert "c.managed = true;" in build_candidates and "c.needsPreparation = true;" in build_candidates
+assert "Reserve::AvailableTo(master->GetGUID().GetCounter(), candidate.guid)" in build, (
+    "Planner can still select a bot leased to another Composer owner"
+)
+assert "candidate.alreadyGrouped" in build and "Group Composer will not remove existing party/raid bots automatically" in build, (
+    "Existing live-group bots are no longer sticky hard anchors"
 )
 
 # Instance conflicts mirror the stock invite rule: different instance IDs are incompatible only
@@ -313,7 +325,7 @@ assert "ProjectCandidateForRole(candidate, role, required, projected)" in retask
 assert 'export const ANY_SPEC_ID = -1' in MODEL
 assert 'spec: row.specId === ANY_SPEC_ID ? "ANY" : row.specId' in MODEL
 assert 'Any valid spec' in SELECTOR
-assert 'Unspecified slots stay Auto-filled.' in SELECTOR
+assert 'Every unreserved slot stays Auto.' in SELECTOR
 preference_handler = section(SERVER, "bool GroupComposerCommand::HandlePreference", "bool GroupComposerCommand::HandleHumanRole")
 assert "spec == ANY_SPEC && !Planner::CanClassFillRole(cls, role)" in preference_handler
 assert "spec != ANY_SPEC && !SpecCanFillRole(cls, spec, role)" in preference_handler
@@ -332,14 +344,17 @@ assert 'Profile("Dungeon' not in builtin_profile_tail, "Dungeon presets must not
 assert 'Templates are raid-only' in (ROOT / "client-addons-src/GroupComposer/Profiles.lua").read_text(encoding="utf-8")
 assert 'profileDescription' in MODEL and 'BUILT-IN RAID COMPS' in MODERN
 assert 'builtinScroll.scrollToTop()' in MODERN and 'createScrollList(templatesModal.content' in MODERN
-assert 'scrollBy(-72)' in SCROLL_LIST and 'scrollBy(72)' in SCROLL_LIST
+assert 'scrollBy(-64)' in SCROLL_LIST and 'scrollBy(64)' in SCROLL_LIST
 
 # Preparation is allowed to rebuild combat state, not a persistent companion's life history.
 sync = section(SERVER, "void SyncManagedBot(", "void ApplyGroupSettings(")
 assert "bool fullRebuild" in sync, "Managed preparation lost the reserve-only full rebuild boundary"
-assert "if (fullRebuild) factory.Randomize(false);" in sync
-assert sync.count("factory.Randomize(false)") == 1, "Full randomization must have one guarded call site"
-assert "if (fullRebuild)" in sync and "RaidRosterGear::EquipForSpec(bot, master, spec, minimumItemLevel);" in sync
+assert "factory.Randomize(false)" not in sync, "Composer capacity must not use whole-character randomization"
+for token in ("factory.InitSkills()", "factory.InitClassSpells()", "factory.InitAvailableSpells()",
+              "factory.InitSpecialSpells()", "factory.InitGlyphs(false)",
+              "RaidRosterGear::EquipForSpec(bot, master, spec, minimumItemLevel)",
+              "factory.ApplyEnchantAndGemsNew()", "factory.InitAmmo()"):
+    assert token in sync, f"Targeted Composer provisioning lost {token}"
 assert "bool FullProvisionFor(Member const& member)" in SERVER
 provision = section(SERVER, "bool FullProvisionFor(Member const& member)", "void ApplyGroupSettings(")
 assert "member.reserve" in provision and "!member.guild" in provision and "member.needsPreparation" in provision, (
@@ -356,12 +371,16 @@ assert "s_pendingSync[member.guid.GetCounter()]" in prepare, "Offline prepared b
 assert "bool preparing = false;" in TYPES and "bool prepared = false;" in TYPES, (
     "Plan lost the explicit V4 preparation state"
 )
+assert "plan.prepareElapsed > 50000" in SERVER, "Preparation timeout must allow bulk async login/provisioning to settle"
+assert "three automatic replacement attempts" not in world_update, (
+    "World update regressed to whole-roster replacement churn"
+)
 assert 'PSendSysMessage("[GC]|PROGRESS|' in SERVER, "Server no longer publishes granular V4 progress"
 assemble = section(SERVER, "bool GroupComposerCommand::HandleAssemble", "bool GroupComposerCommand::HandleQueue")
 assert "!plan.prepared || plan.preparing || OwnerHasPendingSync(owner)" in assemble, (
     "Assemble can commit before Build & Prepare is complete"
 )
-assert "PruneUnselectedBots(master, plan)" in assemble, "Destructive commit boundary disappeared"
+assert "PruneUnselectedBots" not in assemble, "Assembly must not silently remove live group bots"
 assert "bool fullRebuild = false;" in SERVER and "itr->second.fullRebuild" in SERVER
 assert 'if (member.reserve) return "RESERVE";' in SERVER
 assert 'needsPreparation = fields[11] == "1"' in CORE and 'reserve = fields[12] == "1"' in CORE
@@ -406,7 +425,7 @@ assert "IsGroupComposerReserved(guid)" in RESERVE_PATCH, (
 # V4 selected-activity travel. A named dungeon/raid is entered only after the exact reviewed roster
 # is complete and subgroup application succeeds. Runtime coordinates come from AzerothCore's
 # canonical map entrance trigger; Random Dungeon remains queue-selected and is never guessed here.
-travel = section(SERVER, "bool TeleportCompletedPlan(", "void PruneUnselectedBots(")
+travel = section(SERVER, "bool TeleportCompletedPlan(", "bool ValidateAssemblySnapshot(")
 assert "sObjectMgr->GetMapEntranceTrigger(mapId)" in travel, "Selected activity travel must use canonical instance entrance data"
 assert "sMapMgr->PlayerCannotEnter(mapId, player)" in travel, "Every member must pass authoritative instance-entry preflight"
 assert "player->IsInCombat()" in travel and "player->IsBeingTeleported()" in travel, "Travel lost combat/teleport safety guards"
