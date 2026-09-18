@@ -37,7 +37,6 @@ const GC: any = _G.GroupComposer;
 interface DataFunctions {
     GetDungeonById(id: string): any;
     GetRaidById(id: string): any;
-    DefaultRolesForActivity(mode: string, activity: string, size: number): LuaMultiReturn<[number, number, number]>;
 }
 
 /** @noSelf */
@@ -121,14 +120,18 @@ export function setRoleTarget(role: Role, value: number): void {
 
 export function resetRoleTargets(): void {
     const cfg = config();
-    const [tanks, healers, dps] = DataFns.DefaultRolesForActivity(
-        String(cfg.mode ?? "RAID"),
-        String(cfg.activity ?? ""),
-        Number(cfg.size ?? 25),
-    );
-    cfg.tanks = tanks;
-    cfg.healers = healers;
-    cfg.dps = dps;
+    const size = Number(cfg.size ?? 25);
+    if (size === 10) {
+        cfg.tanks = 2; cfg.healers = 2; cfg.dps = 6;
+    } else if (size === 20) {
+        cfg.tanks = 3; cfg.healers = 5; cfg.dps = 12;
+    } else if (size === 40) {
+        cfg.tanks = 5; cfg.healers = 10; cfg.dps = 25;
+    } else if (size === 5) {
+        cfg.tanks = 1; cfg.healers = 1; cfg.dps = 3;
+    } else {
+        cfg.tanks = 2; cfg.healers = 6; cfg.dps = Math.max(0, size - 8);
+    }
     touch("Role composition reset");
 }
 
