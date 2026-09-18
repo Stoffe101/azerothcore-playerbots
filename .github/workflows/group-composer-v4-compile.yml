@@ -66,6 +66,24 @@ jobs:
             fi
           done
           "$CORE/modules/mod-era-talents/apply-patches.sh" "$CORE"
+
+      - name: Verify EraTalents relog persistence guard
+        run: |
+          set -euo pipefail
+          ERA="$GITHUB_WORKSPACE/azerothcore-wotlk/modules/mod-era-talents/src"
+          grep -q 'thread_local uint32 g_internalTalentResetDepth = 0' "$ERA/EraTransition.cpp"
+          grep -q 'InternalTalentResetScope internalReset' "$ERA/EraTransition.cpp"
+          grep -q 'bool IsInternalTalentReset()' "$ERA/EraTransition.cpp"
+          grep -q 'if (EraTransition::IsInternalTalentReset())' "$ERA/EraTalentPin.cpp"
+          # Internal native-spec cleanup must never delete the custom era talent rows.
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path("azerothcore-wotlk/modules/mod-era-talents/src/EraTalentPin.cpp").read_text()
+          hook = text[text.index("void OnPlayerTalentsReset"):text.index("private:", text.index("void OnPlayerTalentsReset"))]
+          assert hook.index("IsInternalTalentReset") < hook.index("EraTalents::Reset"), hook
+          print("EraTalents relog persistence guard contract passed")
+          PY
+
       - name: Configure
         env:
           CC: clang-18
