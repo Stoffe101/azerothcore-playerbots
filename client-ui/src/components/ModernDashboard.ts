@@ -249,7 +249,7 @@ export function createModernDashboard(): Dashboard {
     const activity = Native.createPanel(center, theme.colors.surface, theme.colors.borderStrong);
     activity.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, 0);
     activity.frame.SetPoint("TOPRIGHT", center, "TOPRIGHT", 0, 0);
-    activity.frame.SetHeight(108);
+    activity.frame.SetHeight(132);
 
     const activityEyebrow = Native.createText(activity.frame, "ACTIVITY", "GameFontNormalSmall", theme.colors.muted);
     activityEyebrow.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 16, -12);
@@ -259,12 +259,12 @@ export function createModernDashboard(): Dashboard {
     activitySub.SetPoint("TOPLEFT", activityName, "BOTTOMLEFT", 0, -4);
 
     const activityFieldLabel = Native.createText(activity.frame, "DUNGEON", "GameFontNormalSmall", theme.colors.muted);
-    activityFieldLabel.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 380, -12);
+    activityFieldLabel.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 360, -12);
     const difficultyFieldLabel = Native.createText(activity.frame, "DIFFICULTY", "GameFontNormalSmall", theme.colors.muted);
-    difficultyFieldLabel.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 700, -12);
+    difficultyFieldLabel.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 680, -12);
 
     const activitySelect = ChoiceUI.createChoiceSelect(activity.frame, {
-        width: 310,
+        width: 290,
         maxVisible: 10,
         getItems: () => Model.config().mode === "RAID" ? Model.raidItems() : Model.dungeonItems(),
         getValue: () => Model.config().activity,
@@ -273,16 +273,20 @@ export function createModernDashboard(): Dashboard {
             else Model.setDungeonActivity(String(value));
         },
     });
-    activitySelect.frame.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 380, -36);
+    activitySelect.frame.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 360, -36);
 
     const difficultySelect = ChoiceUI.createChoiceSelect(activity.frame, {
-        width: 180,
+        width: 170,
         maxVisible: 7,
         getItems: () => Model.config().mode === "RAID" ? Model.raidDifficultyItems() : Model.difficultyItems(),
         getValue: () => Model.config().difficulty,
         onChange: (value) => Model.setDifficulty(String(value)),
     });
-    difficultySelect.frame.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 700, -36);
+    difficultySelect.frame.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 680, -36);
+
+    const raidSizeLabel = Native.createText(activity.frame, "RAID SIZE", "GameFontNormalSmall", theme.colors.muted);
+    raidSizeLabel.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 680, -78);
+    raidSizeLabel.Hide();
 
     const raidSizeButtons: Record<number, UIButton> = {};
     for (const size of [10, 20, 25, 40]) {
@@ -298,8 +302,8 @@ export function createModernDashboard(): Dashboard {
 
     // Human anchor -----------------------------------------------------------
     const humanPanel = Native.createPanel(center, theme.colors.surface, theme.colors.border);
-    humanPanel.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -120);
-    humanPanel.frame.SetPoint("TOPRIGHT", center, "TOPRIGHT", 0, -120);
+    humanPanel.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -144);
+    humanPanel.frame.SetPoint("TOPRIGHT", center, "TOPRIGHT", 0, -144);
     humanPanel.frame.SetHeight(92);
 
     const humanTitle = Native.createText(humanPanel.frame, "YOUR PARTY", "GameFontNormalSmall", theme.colors.muted);
@@ -339,7 +343,7 @@ export function createModernDashboard(): Dashboard {
 
     // Composition shell ------------------------------------------------------
     const composition = Native.createPanel(center, theme.colors.surface, theme.colors.border);
-    composition.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -224);
+    composition.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -248);
     composition.frame.SetPoint("BOTTOMRIGHT", center, "BOTTOMRIGHT", 0, 0);
 
     const compositionTitle = Native.createText(composition.frame, "PARTY COMPOSITION", "GameFontNormal");
@@ -1048,6 +1052,9 @@ export function createModernDashboard(): Dashboard {
 
         const sizes = Model.supportedRaidSizes();
         let sizeIndex = 0;
+        if (cfg.mode === "RAID") raidSizeLabel.Show();
+        else raidSizeLabel.Hide();
+
         for (const size of [10, 20, 25, 40]) {
             const button = raidSizeButtons[size];
             let supported = false;
@@ -1055,7 +1062,7 @@ export function createModernDashboard(): Dashboard {
 
             if (cfg.mode === "RAID" && supported) {
                 button.frame.ClearAllPoints();
-                button.frame.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 380 + sizeIndex * 58, -58);
+                button.frame.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 680 + sizeIndex * 58, -92);
                 button.setSelected(Number(cfg.size) === size);
                 button.setEnabled(true);
                 button.frame.Show();
