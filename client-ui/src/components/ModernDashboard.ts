@@ -1136,7 +1136,7 @@ export function createModernDashboard(): Dashboard {
 
             for (let i = 0; i < rows.length; i += 1) {
                 const build = rows[i];
-                let widgets = column.rows[i];
+                let widgets = column.rows[i + 1];
                 if (widgets === undefined) {
                     const panel = Native.createPanel(column.scroll.content, theme.colors.surfaceRaised, theme.colors.border);
                     panel.frame.SetSize(250, 52);
@@ -1156,7 +1156,7 @@ export function createModernDashboard(): Dashboard {
                     const remove = ButtonUI.createButton(panel.frame, { text: "X", width: 40, height: 26, accent: theme.colors.error });
                     remove.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
                     widgets = { panel, classIcon, specIcon, name, count, edit, remove };
-                    column.rows[i] = widgets;
+                    column.rows[i + 1] = widgets;
                 }
 
                 widgets.panel.frame.ClearAllPoints();
@@ -1211,7 +1211,7 @@ export function createModernDashboard(): Dashboard {
             for (const member of Model.planMembers()) if (Number(member.subgroup) === g + 1) members.push(member);
 
             for (let r = 0; r < 5; r += 1) {
-                const rowWidgets = widgets.rows[r];
+                const rowWidgets = widgets.rows[r + 1];
                 const member = members[r];
                 if (member === undefined) {
                     rowWidgets.icon.Hide();
