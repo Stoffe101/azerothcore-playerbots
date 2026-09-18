@@ -37,6 +37,7 @@ const GC: any = _G.GroupComposer;
 interface DataFunctions {
     GetDungeonById(id: string): any;
     GetRaidById(id: string): any;
+    DefaultRolesForActivity(mode: string, activity: string, size: number): LuaMultiReturn<[number, number, number]>;
 }
 
 /** @noSelf */
@@ -102,6 +103,33 @@ export function targetForRole(role: Role): number {
     if (role === "TANK") return Number(cfg.tanks ?? 0);
     if (role === "HEALER") return Number(cfg.healers ?? 0);
     return Number(cfg.dps ?? 0);
+}
+
+export function roleTargetTotal(): number {
+    const cfg = config();
+    return Number(cfg.tanks ?? 0) + Number(cfg.healers ?? 0) + Number(cfg.dps ?? 0);
+}
+
+export function setRoleTarget(role: Role, value: number): void {
+    const cfg = config();
+    const next = Math.max(0, Math.min(Number(cfg.size ?? 40), Math.floor(value)));
+    if (role === "TANK") cfg.tanks = next;
+    else if (role === "HEALER") cfg.healers = next;
+    else cfg.dps = next;
+    touch("Role composition changed");
+}
+
+export function resetRoleTargets(): void {
+    const cfg = config();
+    const [tanks, healers, dps] = DataFns.DefaultRolesForActivity(
+        String(cfg.mode ?? "RAID"),
+        String(cfg.activity ?? ""),
+        Number(cfg.size ?? 25),
+    );
+    cfg.tanks = tanks;
+    cfg.healers = healers;
+    cfg.dps = dps;
+    touch("Role composition reset");
 }
 
 export function remainingBotSlots(role: Role): number {
@@ -297,6 +325,30 @@ export function planWarnings(): string[] {
     const result: string[] = [];
     for (const warning of (plan().warnings ?? []) as any[]) result.push(String(warning));
     return result;
+}
+
+export function coverageDisplay(): string {
+    const summary = plan().summary ?? {};
+    const raw = String(summary.utility ?? "");
+    const labels: string[] = [];
+    if (raw.indexOf("interrupt") >= 0) labels.push("Interrupts");
+    if (raw.indexOf("dispel") >= 0) labels.push("Dispels");
+    if (raw.indexOf("buffs") >= 0) labels.push("Raid buffs");
+    if (raw.indexOf("heroism") >= 0) labels.push("Heroism");
+    if (raw.indexOf("battle-rez") >= 0) labels.push("Battle rez");
+    if (raw.indexOf("cc") >= 0) labels.push("Crowd control");
+    if (raw.indexOf("threat") >= 0) labels.push("Threat support");
+
+    let utility = "";
+    for (let i = 0; i < labels.length; i += 1) {
+        if (i > 0) utility += "  ·  ";
+        utility += labels[i];
+    }
+    if (utility === "") utility = "No utility coverage yet";
+
+    return utility + "\n" +
+        "Ranged DPS  " + String(summary.ranged ?? 0) +
+        "     Melee DPS  " + String(summary.melee ?? 0);
 }
 
 export function dungeonItems(): ChoiceItem[] {
