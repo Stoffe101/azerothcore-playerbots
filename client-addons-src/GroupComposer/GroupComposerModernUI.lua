@@ -1930,7 +1930,7 @@ function ____exports.createBuildSelector(self, parent, options)
             summarySpecIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
             summarySpecIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
             summaryText:SetText(selectedClass.label .. " · Any valid spec")
-            summarySub:SetText(("Class locked; Composer auto-selects the best " .. string.lower(roleLabel(nil, currentRole))) .. " spec.")
+            summarySub:SetText(("Class locked; Composer auto-selects a suitable " .. string.lower(roleLabel(nil, currentRole))) .. " spec.")
             apply:setEnabled(true)
         elseif selectedClass ~= nil and selectedSpec ~= nil then
             summarySpecIcon:SetTexture(selectedSpec.icon)
@@ -2218,7 +2218,7 @@ function ____exports.createBuildSelector(self, parent, options)
     local anySpecSub = createText(
         nil,
         anySpecButton.frame,
-        "Lock this class and let Composer choose its best valid spec.",
+        "Lock this class and let Composer choose a suitable valid spec.",
         "GameFontHighlightSmall",
         theme.colors.muted
     )
