@@ -1484,6 +1484,9 @@ end
 function ____exports.listCustomProfiles(self)
     return ProfileFns.ListCustom() or ({})
 end
+function ____exports.profileDescription(self, name)
+    return ProfileFns.Describe(name) or ""
+end
 function ____exports.addPin(self, name, role, required)
     GC:AddPinnedMember(name, role, required)
 end
