@@ -1677,7 +1677,7 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
     {
         if (member.human || !member.guild || !member.needsPreparation) continue;
         if (Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid))
-            SyncManagedBot(master, bot, member.role, member.spec, false);
+            SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel, 0, false);
     }
 
     plan.travelPending = false;

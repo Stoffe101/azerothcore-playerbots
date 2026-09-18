@@ -501,3 +501,22 @@ assert "GetVerticalScrollRange" not in SCROLL_LIST, "3.3.5 ScrollFrame range mus
 assert "bindWheel(target: WoWFrame)" in SCROLL_LIST and "exactScroll.bindWheel" in MODERN
 assert "bindWheel(button.frame)" in CHOICE_SELECT, "Dropdown rows can swallow mouse-wheel input again"
 assert 'detail?: string;' in CHOICE_SELECT, "Rich activity selector metadata disappeared"
+
+# Human anchors obey only the selected activity's level gate. Composer's configurable item-level
+# floor is strictly a bot eligibility/provisioning rule and must never reject or rewrite a real player.
+human_build = section(PLANNER, "bool AddHumanMembers(", "void AddCandidate(")
+assert "GetLevel() < config.requiredLevel" in human_build and "cache->Level < config.requiredLevel" in human_build, (
+    "Live/offline human anchors lost the selected-activity level requirement"
+)
+assert "minimumItemLevel" not in human_build, "Composer item-level floor leaked into human roster selection"
+
+assembly_snapshot = section(SERVER, "bool ValidateAssemblySnapshot(", "void InviteHuman(")
+human_snapshot = section(assembly_snapshot, "if (member.human)", "if (!live)")
+assert human_snapshot.count("GetLevel() < plan.config.requiredLevel") >= 2, (
+    "Assembly must revalidate the composing player and additional real humans against the activity level floor"
+)
+assert "minimumItemLevel" not in human_snapshot, "Assembly item-level validation must never apply to real humans"
+
+assert "SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel, 0, false);" in SERVER, (
+    "Persistent guild spec retask lost the expanded managed-sync contract"
+)
