@@ -829,20 +829,25 @@ export function createModernDashboard(): Dashboard {
     };
 
     // Humans & Pins modal ----------------------------------------------------
-    const peopleModal = ModalUI.createModal(frame, 900, 650);
+    const peopleModal = ModalUI.createModal(frame, 980, 700);
     peopleModal.setTitle("Humans & Pins");
     peopleModal.setSubtitle("Real players stay locked. Pins request named companions without turning humans into disposable roster slots.");
 
     const peopleHumanTitle = Native.createText(peopleModal.content, "HUMAN ANCHORS", "GameFontNormalSmall", theme.colors.muted);
     peopleHumanTitle.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, 0);
-    const humanScroll = ScrollUI.createScrollList(peopleModal.content, 820, 220);
+    const humanScroll = ScrollUI.createScrollList(peopleModal.content, 900, 210);
     humanScroll.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -26);
     const humanRowsModal: WoWFrame[] = [];
 
+    const pinBuilder = Native.createPanel(peopleModal.content, theme.colors.surfaceRaised, theme.colors.border);
+    pinBuilder.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -242);
+    pinBuilder.frame.SetPoint("TOPRIGHT", peopleModal.content, "TOPRIGHT", 0, -242);
+    pinBuilder.frame.SetHeight(82);
+
     const pinTitle = Native.createText(peopleModal.content, "PIN COMPANION", "GameFontNormalSmall", theme.colors.muted);
-    pinTitle.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -266);
+    pinTitle.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 12, -250);
     const pinInput = InputUI.createTextInput(peopleModal.content, 230, 34);
-    pinInput.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -292);
+    pinInput.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 12, -278);
 
     let pinRole: Role = "DPS";
     let pinRequired = false;
@@ -885,12 +890,12 @@ export function createModernDashboard(): Dashboard {
             }
         },
     });
-    addPinButton.frame.SetPoint("TOPRIGHT", peopleModal.content, "TOPRIGHT", 0, -292);
+    addPinButton.frame.SetPoint("TOPRIGHT", peopleModal.content, "TOPRIGHT", -12, -278);
 
     const pinListTitle = Native.createText(peopleModal.content, "PINNED MEMBERS", "GameFontNormalSmall", theme.colors.muted);
-    pinListTitle.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -344);
-    const pinScroll = ScrollUI.createScrollList(peopleModal.content, 820, 170);
-    pinScroll.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -370);
+    pinListTitle.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -338);
+    const pinScroll = ScrollUI.createScrollList(peopleModal.content, 900, 190);
+    pinScroll.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -364);
     const pinRows: WoWFrame[] = [];
 
     function refreshPeople(): void {
@@ -902,7 +907,7 @@ export function createModernDashboard(): Dashboard {
             let row = humanRowsModal[i];
             if (row === undefined) {
                 const panel = Native.createPanel(humanScroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                panel.frame.SetSize(812, 42);
+                panel.frame.SetSize(892, 46);
                 const icon = panel.frame.CreateTexture(undefined, "ARTWORK");
                 icon.SetSize(26, 26);
                 icon.SetPoint("LEFT", panel.frame, "LEFT", 8, 0);
@@ -927,7 +932,7 @@ export function createModernDashboard(): Dashboard {
             }
 
             row.ClearAllPoints();
-            row.SetPoint("TOPLEFT", humanScroll.content, "TOPLEFT", 0, -(i * 48));
+            row.SetPoint("TOPLEFT", humanScroll.content, "TOPLEFT", 0, -(i * 52));
             Native.setClassIcon((row as any)._icon, String(human.class));
             (row as any)._name.SetText((human.isPlayer ? "YOU  ·  " : "") + human.name + "  ·  " + Model.classLabel(String(human.class)));
             const selected = Model.config().humanRoles?.[human.name] as Role | undefined;
@@ -948,7 +953,7 @@ export function createModernDashboard(): Dashboard {
             }
             row.Show();
         }
-        humanScroll.setContentHeight(Math.max(220, list.length * 48));
+        humanScroll.setContentHeight(Math.max(210, list.length * 52));
 
         for (const role of roleOrder) pinRoleButtons[role].setSelected(pinRole === role);
         pinToggle.refresh();
@@ -960,7 +965,7 @@ export function createModernDashboard(): Dashboard {
             let row = pinRows[i];
             if (row === undefined) {
                 const panel = Native.createPanel(pinScroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                panel.frame.SetSize(812, 40);
+                panel.frame.SetSize(892, 44);
                 const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
                 name.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
                 name.SetWidth(260);
@@ -977,7 +982,7 @@ export function createModernDashboard(): Dashboard {
                 pinRows[i] = row;
             }
             row.ClearAllPoints();
-            row.SetPoint("TOPLEFT", pinScroll.content, "TOPLEFT", 0, -(i * 46));
+            row.SetPoint("TOPLEFT", pinScroll.content, "TOPLEFT", 0, -(i * 50));
             (row as any)._name.SetText(String(pin.name));
             (row as any)._info.SetText(Model.roleLabel(pin.role as Role) + "  ·  " + (pin.required ? "Required" : "Preferred"));
             const indexCopy = i + 1;
@@ -987,7 +992,7 @@ export function createModernDashboard(): Dashboard {
             });
             row.Show();
         }
-        pinScroll.setContentHeight(Math.max(170, pins.length * 46));
+        pinScroll.setContentHeight(Math.max(190, pins.length * 50));
     }
 
     showPeople = () => {
@@ -997,7 +1002,7 @@ export function createModernDashboard(): Dashboard {
     };
 
     // Options modal ----------------------------------------------------------
-    const optionsModal = ModalUI.createModal(frame, 720, 620);
+    const optionsModal = ModalUI.createModal(frame, 900, 650);
     optionsModal.setTitle("Composition Options");
     optionsModal.setSubtitle("Keep the common path simple. These controls tune how Composer fills unspecified slots.");
 
@@ -1014,10 +1019,11 @@ export function createModernDashboard(): Dashboard {
 
     for (let i = 0; i < optionDefs.length; i += 1) {
         const def = optionDefs[i];
+        const column = i % 2;
+        const rowIndex = Math.floor(i / 2);
         const row = Native.createPanel(optionsModal.content, theme.colors.surfaceRaised, theme.colors.border);
-        row.frame.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", 0, -(i * 62));
-        row.frame.SetPoint("RIGHT", optionsModal.content, "RIGHT", 0, 0);
-        row.frame.SetHeight(52);
+        row.frame.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", column * 430, -(rowIndex * 84));
+        row.frame.SetSize(414, 72);
 
         const toggle = ToggleUI.createToggle(
             row.frame,
@@ -1028,25 +1034,26 @@ export function createModernDashboard(): Dashboard {
                 Model.touch("Composition option changed");
             },
         );
-        toggle.frame.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 12, -5);
-        toggle.frame.SetWidth(280);
+        toggle.frame.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 12, -8);
+        toggle.frame.SetWidth(360);
 
         const hint = Native.createText(row.frame, def.hint, "GameFontHighlightSmall", theme.colors.muted);
-        hint.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 42, -31);
-        hint.SetWidth(580);
+        hint.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 42, -37);
+        hint.SetWidth(350);
+        hint.SetJustifyV("TOP");
         optionToggles.push(toggle);
     }
 
     const gearRow = Native.createPanel(optionsModal.content, theme.colors.surfaceRaised, theme.colors.borderStrong);
-    gearRow.frame.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", 0, -(optionDefs.length * 62));
-    gearRow.frame.SetPoint("RIGHT", optionsModal.content, "RIGHT", 0, 0);
-    gearRow.frame.SetHeight(58);
+    gearRow.frame.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", 0, -348);
+    gearRow.frame.SetPoint("TOPRIGHT", optionsModal.content, "TOPRIGHT", 0, -348);
+    gearRow.frame.SetHeight(72);
 
     const gearTitle = Native.createText(gearRow.frame, "Minimum item level", "GameFontNormal");
-    gearTitle.SetPoint("TOPLEFT", gearRow.frame, "TOPLEFT", 12, -9);
+    gearTitle.SetPoint("TOPLEFT", gearRow.frame, "TOPLEFT", 14, -12);
     const gearHint = Native.createText(gearRow.frame, "0 disables the floor. Guild/world bots below the configured value are rejected.", "GameFontHighlightSmall", theme.colors.muted);
-    gearHint.SetPoint("TOPLEFT", gearRow.frame, "TOPLEFT", 12, -31);
-    gearHint.SetWidth(470);
+    gearHint.SetPoint("TOPLEFT", gearRow.frame, "TOPLEFT", 14, -39);
+    gearHint.SetWidth(620);
 
     const gearStepper = StepperUI.createNumberStepper(
         gearRow.frame,
@@ -1055,7 +1062,7 @@ export function createModernDashboard(): Dashboard {
         Number(Model.config().options?.minimumItemLevel ?? 0),
         (value) => Model.setMinimumItemLevel(value),
     );
-    gearStepper.frame.SetPoint("RIGHT", gearRow.frame, "RIGHT", -12, 0);
+    gearStepper.frame.SetPoint("RIGHT", gearRow.frame, "RIGHT", -14, 0);
 
     showOptions = () => {
         ChoiceUI.closeChoicePopup();
