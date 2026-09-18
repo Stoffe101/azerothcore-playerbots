@@ -10,6 +10,9 @@ on:
       - ".github/workflows/group-composer-ui-toolchain.yml"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   compile-ui:
     runs-on: ubuntu-24.04
@@ -55,6 +58,20 @@ jobs:
         run: |
           bash client-ui/scripts/sync-generated.sh
           luac5.1 -p client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua
+
+      - name: Publish generated addon bundle
+        if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua; then
+            echo 'Generated Group Composer UI is already current.'
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua
+            git commit -m 'build(group-composer): refresh modern UI bundle'
+            git push origin HEAD:test/group-composer-v4
+          fi
 
       - name: Upload generated prototype
         uses: actions/upload-artifact@v4
