@@ -535,7 +535,7 @@ assert 'center.SetSize(970, 768)' in MODERN, "Composition workspace lost its exp
 assert 'Adjust the highlighted requirement, then Build & Prepare again.' in MODERN, (
     "Status rail regressed to repeating backend errors instead of giving an actionable next step"
 )
-assert 'Choose a class' in SELECTOR and 'Choose a specialization' in SELECTOR
+assert '"CHOOSE A CLASS"' in SELECTOR and '"CHOOSE A SPECIALIZATION"' in SELECTOR
 assert 'column = classIndex % 5' in SELECTOR, "Build selector lost its class-card grid"
 assert 'Any valid spec' in SELECTOR and 'Use this build' in SELECTOR
 assert 'activeEdge' in BUTTON, "Buttons lost the modern selected-state edge"
