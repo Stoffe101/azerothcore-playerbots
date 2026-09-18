@@ -297,6 +297,32 @@ assert "ProjectCandidateForRole(candidate, role, required, projected)" in retask
     "Required class/spec selection bypasses the same deterministic role projection path"
 )
 
+# Exact composition is deliberately partial: players can reserve only the class/spec slots they care
+# about and leave every other role slot to Composer's normal score/coverage-based Auto fill. A class
+# may also be locked with spec ANY so, for example, "bring a Warlock" does not force one spec.
+assert 'export const ANY_SPEC_ID = -1' in MODEL
+assert 'spec: row.specId === ANY_SPEC_ID ? "ANY" : row.specId' in MODEL
+assert 'Any valid specialization' in SELECTOR
+assert 'Unspecified slots remain Auto-filled.' in SELECTOR
+preference_handler = section(SERVER, "bool GroupComposerCommand::HandlePreference", "bool GroupComposerCommand::HandleHumanRole")
+assert "spec == ANY_SPEC && !Planner::CanClassFillRole(cls, role)" in preference_handler
+assert "spec != ANY_SPEC && !SpecCanFillRole(cls, spec, role)" in preference_handler
+assert "if (required && required->cls && candidate.cls != required->cls) return false;" in retask
+assert "if (required && required->spec != ANY_SPEC)" in retask
+
+# Built-in templates are raid-only coverage cores, never rigid 25-character prescriptions. Their
+# source data reserves high-impact buff/debuff classes and leaves an Auto remainder for the player,
+# live humans, guild preference, encounter needs, and candidate availability.
+assert 'CoveragePreferences(size)' in DATA
+assert 'Coverage-first core + Auto remainder' in DATA
+assert 'D.BUILTIN_PROFILES = {}' in DATA and 'for _, raid in ipairs(D.RAIDS)' in DATA
+builtin_profile_tail = DATA[DATA.index("D.BUILTIN_PROFILES = {}"):]
+assert 'RaidProfile(' in builtin_profile_tail
+assert 'Profile("Dungeon' not in builtin_profile_tail, "Dungeon presets must not return to the raid template library"
+assert 'Templates are raid-only' in (ROOT / "client-addons-src/GroupComposer/Profiles.lua").read_text(encoding="utf-8")
+assert 'profileDescription' in MODEL and 'BUILT-IN RAID COMPS' in MODERN
+assert 'builtinScroll.scrollToTop()' in MODERN and 'builtinScroll.scrollBy(-220)' in MODERN
+
 # Preparation is allowed to rebuild combat state, not a persistent companion's life history.
 sync = section(SERVER, "void SyncManagedBot(", "void ApplyGroupSettings(")
 assert "bool fullRebuild" in sync, "Managed preparation lost the reserve-only full rebuild boundary"
@@ -387,29 +413,37 @@ assert 'plan.config.activity == "random"' in travel, "Random Dungeon must remain
 for map_id in (533, 615, 616, 603, 649, 249, 624, 631, 724, 532, 568, 565, 544, 548, 550, 534, 564, 580, 309, 509, 409, 469, 531):
     assert str(map_id) in SERVER, f"Raid map {map_id} disappeared from Group Composer travel mapping"
 world_update = section(SERVER, "class GroupComposerWorld", "ChatCommandTable GroupComposerCommand::GetCommands")
-assert world_update.index("ApplyArrangement(master, plan, arrangementError)") < world_update.index("TeleportCompletedPlan(master, plan, travelDetail, travelError)"), (
-    "Automatic activity travel must happen only after subgroup layout has been committed"
+assert "bool travelPending = false;" in TYPES and "uint8 travelAttempts = 0;" in TYPES, (
+    "Plan lost delayed post-assembly instance entry state"
 )
+assert "plan.travelPending = true;" in world_update, (
+    "Successful subgroup application must schedule selected-activity travel"
+)
+schedule_pos = world_update.index("ApplyArrangement(master, plan, arrangementError)")
+pending_pos = world_update.index("plan.travelPending = true;", schedule_pos)
+assert schedule_pos < pending_pos, "Automatic travel may only be scheduled after subgroup layout is committed"
+travel_loop = section(world_update, "if (plan.travelPending)", "if (!plan.assembling) continue;")
+assert "plan.travelElapsed < 450" in travel_loop, "Travel must wait for group state to settle before entry"
+assert "plan.travelAttempts >= 8" in travel_loop, "Transient instance-entry failures need a bounded retry window"
+assert "TeleportCompletedPlan(master, plan, travelDetail, travelError)" in travel_loop
 assert 'SendProgress(master, "TRAVEL"' in world_update, "Client no longer receives selected-activity travel progress"
 assert 'GC:GetConfig().activity == "random"' in CORE, "Named dungeons must not queue again after direct travel"
 assert 'if (phase === "TRAVEL") return "Entering activity";' in MODEL, "Modern dashboard lost the explicit automatic travel phase"
 
 
 # A travel-only failure happens after the exact roster is already live. It must preserve that valid
-# plan and return the UI to READY after surfacing the blocker, so combat/teleport-state failures are
-# retryable without rebuilding 5/25/40 members. It is status, not a roster ERROR, otherwise the
-# client carries a stale red warning after the temporary blocker is gone.
-travel_update = section(SERVER, "if (ApplyArrangement(master, plan, arrangementError))", "else if (plan.assembleElapsed > 45000)")
-assert 'SendProtocol(master, "STATUS", travelError);' in travel_update
-assert 'SendProtocol(master, "ERROR", travelError);' not in travel_update
-assert 'SendProgress(master, "READY"' in travel_update
-assert travel_update.index('SendProtocol(master, "STATUS", travelError);') < travel_update.index('SendProgress(master, "READY"'), (
+# plan and return the UI to READY only after bounded automatic retries. It remains STATUS rather than
+# roster ERROR so a transient combat/teleport/instance-state blocker never invalidates the roster.
+assert 'SendProtocol(master, "STATUS", travelError);' in travel_loop
+assert 'SendProtocol(master, "ERROR", travelError);' not in travel_loop
+assert 'SendProgress(master, "READY"' in travel_loop
+assert travel_loop.index('SendProtocol(master, "STATUS", travelError);') < travel_loop.index('SendProgress(master, "READY"'), (
     "Travel blocker status must be surfaced before the valid assembled roster returns to READY"
 )
 assert 'GC.pendingCommand == "assemble"' in CORE and '"Enter Activity"' in CORE, (
     "Retryable travel must release the client assembly action lock"
 )
-assert 'press Enter Activity to retry' in travel_update
+assert 'press Enter Activity to retry' in travel_loop
 assert 'Ready to enter activity' in MODERN and 'Enter selected activity?' in MODERN
 assert 'Auto-enter after assembly' in MODERN and 'Dungeon Finder chooses destination' in MODERN
 
