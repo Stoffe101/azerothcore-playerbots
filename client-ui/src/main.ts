@@ -29,16 +29,12 @@ _G.GroupComposerModernUI = {
     ) => getSpecsForRole(classId, role),
 };
 
-// Core.lua registers /gc before this generated file is loaded. Install a lazy toggle now,
-// then construct the heavy dashboard only after ADDON_LOADED has initialized GC.config.
+// Core.lua registers /gc before this generated file is loaded. Keep bootstrap intentionally lazy:
+// ADDON_LOADED initializes GC.config after every TOC file has loaded, and the first /gc invocation
+// then constructs the modern dashboard with valid configuration state.
 if (GC !== undefined) {
     GC.Toggle = () => {
         const ui = ensureDashboard();
         if (ui !== undefined) ui.toggle();
     };
-
-    GC.RegisterCallback(GC, "CONFIG_CHANGED", () => {
-        const ui = ensureDashboard();
-        if (ui !== undefined && ui.frame.IsShown()) ui.refresh();
-    });
 }
