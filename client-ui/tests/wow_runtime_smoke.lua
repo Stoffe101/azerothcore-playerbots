@@ -202,13 +202,15 @@ assert(type(GroupComposerModernUI) == "table", "modern UI API missing")
 assert(GroupComposerModernUI.dashboard == nil, "dashboard must defer creation until Core initializes config")
 assert(type(GroupComposer.Toggle) == "function", "lazy /gc toggle was not installed")
 
--- Reproduce the real Core.lua ADDON_LOADED order: config becomes available only after every TOC file
--- has loaded, then CONFIG_CHANGED is fired.
+-- Reproduce the real Core.lua order: config becomes available only after every TOC file
+-- has loaded. The slash command then calls GC:Toggle(), which lazily creates the dashboard.
 GroupComposer.config = cfg
 GroupComposer:Fire("CONFIG_CHANGED", cfg)
+assert(GroupComposerModernUI.dashboard == nil, "dashboard should remain lazy until /gc is invoked")
 
-assert(type(GroupComposerModernUI.dashboard) == "table", "modern dashboard did not initialize after CONFIG_CHANGED")
-GroupComposerModernUI.dashboard.show()
+GroupComposer:Toggle()
+assert(type(GroupComposerModernUI.dashboard) == "table", "modern dashboard did not initialize from lazy /gc toggle")
+assert(GroupComposerModernUI.dashboard.frame:IsShown(), "lazy /gc toggle did not show the dashboard")
 assert(GroupComposerModernUI.dashboard.frame:IsShown(), "dashboard should be visible after show")
 
 cfg.humanRoles.RuntimeTest = "DPS"
