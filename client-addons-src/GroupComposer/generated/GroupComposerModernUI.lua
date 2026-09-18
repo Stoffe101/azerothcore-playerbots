@@ -1407,19 +1407,28 @@ function ____exports.humanRoleCounts(self)
         ____exports_config_result_humanRoles_4 = {}
     end
     local roles = ____exports_config_result_humanRoles_4
+    local seen = {}
     for ____, human in ipairs(____exports.humans(nil)) do
+        local key = string.lower(tostring(human.name or ""))
         local role = roles[human.name]
-        if role ~= nil then
+        if key ~= "" and role ~= nil and seen[key] ~= true then
+            seen[key] = true
             result[role] = result[role] + 1
         end
     end
-    local ____exports_config_result_extraHumans_5 = ____exports.config(nil).extraHumans
-    if ____exports_config_result_extraHumans_5 == nil then
-        ____exports_config_result_extraHumans_5 = {}
+    local ____exports_config_result_extraHumans_6 = ____exports.config(nil).extraHumans
+    if ____exports_config_result_extraHumans_6 == nil then
+        ____exports_config_result_extraHumans_6 = {}
     end
-    for ____, extra in __TS__Iterator(____exports_config_result_extraHumans_5) do
+    for ____, extra in __TS__Iterator(____exports_config_result_extraHumans_6) do
+        local ____extra_name_5 = extra.name
+        if ____extra_name_5 == nil then
+            ____extra_name_5 = ""
+        end
+        local key = string.lower(tostring(____extra_name_5))
         local role = extra.role
-        if role ~= nil then
+        if key ~= "" and role ~= nil and seen[key] ~= true then
+            seen[key] = true
             result[role] = result[role] + 1
         end
     end
@@ -1428,24 +1437,24 @@ end
 function ____exports.targetForRole(self, role)
     local cfg = ____exports.config(nil)
     if role == "TANK" then
-        local ____cfg_tanks_6 = cfg.tanks
-        if ____cfg_tanks_6 == nil then
-            ____cfg_tanks_6 = 0
+        local ____cfg_tanks_7 = cfg.tanks
+        if ____cfg_tanks_7 == nil then
+            ____cfg_tanks_7 = 0
         end
-        return __TS__Number(____cfg_tanks_6)
+        return __TS__Number(____cfg_tanks_7)
     end
     if role == "HEALER" then
-        local ____cfg_healers_7 = cfg.healers
-        if ____cfg_healers_7 == nil then
-            ____cfg_healers_7 = 0
+        local ____cfg_healers_8 = cfg.healers
+        if ____cfg_healers_8 == nil then
+            ____cfg_healers_8 = 0
         end
-        return __TS__Number(____cfg_healers_7)
+        return __TS__Number(____cfg_healers_8)
     end
-    local ____cfg_dps_8 = cfg.dps
-    if ____cfg_dps_8 == nil then
-        ____cfg_dps_8 = 0
+    local ____cfg_dps_9 = cfg.dps
+    if ____cfg_dps_9 == nil then
+        ____cfg_dps_9 = 0
     end
-    return __TS__Number(____cfg_dps_8)
+    return __TS__Number(____cfg_dps_9)
 end
 function ____exports.remainingBotSlots(self, role)
     local counts = ____exports.humanRoleCounts(nil)
@@ -1456,15 +1465,15 @@ function ____exports.remainingBotSlots(self, role)
 end
 local function rawRequired(self, role)
     local result = {}
-    local ____opt_9 = ____exports.config(nil).preferences
-    if ____opt_9 ~= nil then
-        ____opt_9 = ____opt_9[role]
+    local ____opt_10 = ____exports.config(nil).preferences
+    if ____opt_10 ~= nil then
+        ____opt_10 = ____opt_10[role]
     end
-    local ____opt_9_11 = ____opt_9
-    if ____opt_9_11 == nil then
-        ____opt_9_11 = {}
+    local ____opt_10_12 = ____opt_10
+    if ____opt_10_12 == nil then
+        ____opt_10_12 = {}
     end
-    local list = ____opt_9_11
+    local list = ____opt_10_12
     for ____, pref in __TS__Iterator(list) do
         if pref.required == true and pref.class ~= nil and pref.class ~= "ANY" and type(pref.spec) == "number" then
             result[#result + 1] = pref
@@ -1517,15 +1526,15 @@ function ____exports.writeRequiredBuilds(self, role, rows, reason)
         reason = "Exact composition changed"
     end
     local cfg = ____exports.config(nil)
-    local ____opt_12 = cfg.preferences
-    if ____opt_12 ~= nil then
-        ____opt_12 = ____opt_12[role]
+    local ____opt_13 = cfg.preferences
+    if ____opt_13 ~= nil then
+        ____opt_13 = ____opt_13[role]
     end
-    local ____opt_12_14 = ____opt_12
-    if ____opt_12_14 == nil then
-        ____opt_12_14 = {}
+    local ____opt_13_15 = ____opt_13
+    if ____opt_13_15 == nil then
+        ____opt_13_15 = {}
     end
-    local existing = ____opt_12_14
+    local existing = ____opt_13_15
     local next = {}
     for ____, pref in __TS__Iterator(existing) do
         if pref.required ~= true then
@@ -1704,33 +1713,33 @@ function ____exports.classLabel(self, classId)
 end
 function ____exports.dungeonItems(self)
     local result = {}
-    local ____D_DUNGEONS_17 = D.DUNGEONS
-    if ____D_DUNGEONS_17 == nil then
-        ____D_DUNGEONS_17 = {}
+    local ____D_DUNGEONS_18 = D.DUNGEONS
+    if ____D_DUNGEONS_18 == nil then
+        ____D_DUNGEONS_18 = {}
     end
-    for ____, dungeon in __TS__Iterator(____D_DUNGEONS_17) do
+    for ____, dungeon in __TS__Iterator(____D_DUNGEONS_18) do
         result[#result + 1] = {value = dungeon.id, label = dungeon.label}
     end
     return result
 end
 function ____exports.difficultyItems(self)
     local result = {}
-    local ____D_DUNGEON_DIFFICULTIES_18 = D.DUNGEON_DIFFICULTIES
-    if ____D_DUNGEON_DIFFICULTIES_18 == nil then
-        ____D_DUNGEON_DIFFICULTIES_18 = {}
+    local ____D_DUNGEON_DIFFICULTIES_19 = D.DUNGEON_DIFFICULTIES
+    if ____D_DUNGEON_DIFFICULTIES_19 == nil then
+        ____D_DUNGEON_DIFFICULTIES_19 = {}
     end
-    for ____, difficulty in __TS__Iterator(____D_DUNGEON_DIFFICULTIES_18) do
+    for ____, difficulty in __TS__Iterator(____D_DUNGEON_DIFFICULTIES_19) do
         result[#result + 1] = {value = difficulty.id, label = difficulty.label}
     end
     return result
 end
 function ____exports.raidItems(self)
     local result = {}
-    local ____D_RAIDS_19 = D.RAIDS
-    if ____D_RAIDS_19 == nil then
-        ____D_RAIDS_19 = {}
+    local ____D_RAIDS_20 = D.RAIDS
+    if ____D_RAIDS_20 == nil then
+        ____D_RAIDS_20 = {}
     end
-    for ____, raid in __TS__Iterator(____D_RAIDS_19) do
+    for ____, raid in __TS__Iterator(____D_RAIDS_20) do
         result[#result + 1] = {
             value = raid.id,
             label = (tostring(raid.era) .. "  ·  ") .. tostring(raid.label)
@@ -1741,11 +1750,11 @@ end
 function ____exports.raidDifficultyItems(self)
     local result = {{value = "normal", label = "Normal"}}
     local raid = D:GetRaidById(____exports.config(nil).activity)
-    local ____opt_result_22
+    local ____opt_result_23
     if raid ~= nil then
-        ____opt_result_22 = raid.heroic
+        ____opt_result_23 = raid.heroic
     end
-    if ____opt_result_22 == true then
+    if ____opt_result_23 == true then
         result[#result + 1] = {value = "heroic", label = "Heroic"}
     end
     return result
@@ -1754,39 +1763,39 @@ function ____exports.selectedActivityLabel(self)
     local cfg = ____exports.config(nil)
     if cfg.mode == "RAID" then
         local raid = D:GetRaidById(cfg.activity)
-        local ____opt_result_25
+        local ____opt_result_26
         if raid ~= nil then
-            ____opt_result_25 = raid.label
+            ____opt_result_26 = raid.label
         end
-        local ____opt_result_25_26 = ____opt_result_25
-        if ____opt_result_25_26 == nil then
-            ____opt_result_25_26 = "Raid"
+        local ____opt_result_26_27 = ____opt_result_26
+        if ____opt_result_26_27 == nil then
+            ____opt_result_26_27 = "Raid"
         end
-        return ____opt_result_25_26
+        return ____opt_result_26_27
     end
     local dungeon = D:GetDungeonById(cfg.activity)
-    local ____opt_result_29
+    local ____opt_result_30
     if dungeon ~= nil then
-        ____opt_result_29 = dungeon.label
+        ____opt_result_30 = dungeon.label
     end
-    local ____opt_result_29_30 = ____opt_result_29
-    if ____opt_result_29_30 == nil then
-        ____opt_result_29_30 = "Dungeon"
+    local ____opt_result_30_31 = ____opt_result_30
+    if ____opt_result_30_31 == nil then
+        ____opt_result_30_31 = "Dungeon"
     end
-    return ____opt_result_29_30
+    return ____opt_result_30_31
 end
 function ____exports.supportedRaidSizes(self)
     local raid = D:GetRaidById(____exports.config(nil).activity)
     local result = {}
-    local ____opt_result_33
+    local ____opt_result_34
     if raid ~= nil then
-        ____opt_result_33 = raid.sizes
+        ____opt_result_34 = raid.sizes
     end
-    local ____opt_result_33_34 = ____opt_result_33
-    if ____opt_result_33_34 == nil then
-        ____opt_result_33_34 = {}
+    local ____opt_result_34_35 = ____opt_result_34
+    if ____opt_result_34_35 == nil then
+        ____opt_result_34_35 = {}
     end
-    for ____, size in __TS__Iterator(____opt_result_33_34) do
+    for ____, size in __TS__Iterator(____opt_result_34_35) do
         result[#result + 1] = __TS__Number(size)
     end
     return result
@@ -1835,18 +1844,18 @@ function ____exports.deleteProfile(self, name)
     GC:DeleteProfile(GC, name)
 end
 function ____exports.listBuiltinProfiles(self)
-    local ____temp_35 = P:ListBuiltins()
-    if ____temp_35 == nil then
-        ____temp_35 = {}
-    end
-    return ____temp_35
-end
-function ____exports.listCustomProfiles(self)
-    local ____temp_36 = P:ListCustom()
+    local ____temp_36 = P:ListBuiltins()
     if ____temp_36 == nil then
         ____temp_36 = {}
     end
     return ____temp_36
+end
+function ____exports.listCustomProfiles(self)
+    local ____temp_37 = P:ListCustom()
+    if ____temp_37 == nil then
+        ____temp_37 = {}
+    end
+    return ____temp_37
 end
 function ____exports.addPin(self, name, role, required)
     GC:AddPinnedMember(GC, name, role, required)
@@ -1855,11 +1864,11 @@ function ____exports.removePin(self, index)
     GC:RemovePinnedMember(GC, index)
 end
 function ____exports.planMembers(self)
-    local ____exports_plan_result_members_37 = ____exports.plan(nil).members
-    if ____exports_plan_result_members_37 == nil then
-        ____exports_plan_result_members_37 = {}
+    local ____exports_plan_result_members_38 = ____exports.plan(nil).members
+    if ____exports_plan_result_members_38 == nil then
+        ____exports_plan_result_members_38 = {}
     end
-    return ____exports_plan_result_members_37
+    return ____exports_plan_result_members_38
 end
 function ____exports.roleAccent(self, role)
     if role == "TANK" then
@@ -1895,29 +1904,29 @@ function ____exports.phaseLabel(self, phase)
     return "Configure roster"
 end
 function ____exports.isBusy(self)
-    local ____exports_progress_result_phase_38 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_38 == nil then
-        ____exports_progress_result_phase_38 = "IDLE"
+    local ____exports_progress_result_phase_39 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_39 == nil then
+        ____exports_progress_result_phase_39 = "IDLE"
     end
-    local phase = tostring(____exports_progress_result_phase_38)
+    local phase = tostring(____exports_progress_result_phase_39)
     return phase == "BUILDING" or phase == "PREPARING" or phase == "ASSEMBLING" or phase == "TRAVEL"
 end
 function ____exports.isTravelRetry(self)
     local p = ____exports.progress(nil)
-    local ____temp_40 = p.phase == "READY"
-    if ____temp_40 then
-        local ____p_detail_39 = p.detail
-        if ____p_detail_39 == nil then
-            ____p_detail_39 = ""
+    local ____temp_41 = p.phase == "READY"
+    if ____temp_41 then
+        local ____p_detail_40 = p.detail
+        if ____p_detail_40 == nil then
+            ____p_detail_40 = ""
         end
-        ____temp_40 = (string.find(
-            tostring(____p_detail_39),
+        ____temp_41 = (string.find(
+            tostring(____p_detail_40),
             "Enter Activity",
             nil,
             true
         ) or 0) - 1 >= 0
     end
-    return ____temp_40
+    return ____temp_41
 end
 return ____exports
  end,
