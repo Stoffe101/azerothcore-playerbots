@@ -32,9 +32,9 @@ jobs:
           # During the migration the checked-in generated bundle may appear one bot commit
           # after the TypeScript source commit. Once the new shell is activated in the TOC,
           # require that generated output to exist and parse cleanly.
-          if grep -Fxq 'generated\\GroupComposerModernUI.lua' client-addons-src/GroupComposer/GroupComposer.toc; then
-            test -f client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua
-            luac5.1 -p client-addons-src/GroupComposer/generated/GroupComposerModernUI.lua
+          if grep -Fxq 'GroupComposerModernUI.lua' client-addons-src/GroupComposer/GroupComposer.toc; then
+            test -f client-addons-src/GroupComposer/GroupComposerModernUI.lua
+            luac5.1 -p client-addons-src/GroupComposer/GroupComposerModernUI.lua
             ! grep -q '^DashboardV4.lua$' client-addons-src/GroupComposer/GroupComposer.toc
           fi
 
