@@ -94,7 +94,7 @@ for command in (
 
 # Client safety and architecture contracts. The live shell is generated from typed TypeScript,
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
-assert 'generated\\\\GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
+assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
 assert '## Version: 0.6.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
