@@ -10,6 +10,8 @@ export interface HumanAnchor {
     online?: boolean;
 }
 
+export const ANY_SPEC_ID = -1;
+
 export interface RequiredBuild {
     classId: ClassId;
     specId: number;
@@ -144,8 +146,11 @@ function rawRequired(role: Role): any[] {
     const result: any[] = [];
     const list = config().preferences?.[role] ?? [];
     for (const pref of list) {
-        if (pref.required === true && pref.class !== undefined && pref.class !== "ANY" && typeof pref.spec === "number") {
-            result.push(pref);
+        if (pref.required === true && pref.class !== undefined && pref.class !== "ANY") {
+            if (typeof pref.spec === "number") result.push(pref);
+            else if (String(pref.spec ?? "").toUpperCase() === "ANY") {
+                result.push({ class: pref.class, spec: ANY_SPEC_ID, required: true });
+            }
         }
     }
     return result;
@@ -197,7 +202,7 @@ export function writeRequiredBuilds(role: Role, rows: RequiredBuild[], reason = 
     for (const row of rows) {
         const count = Math.max(0, Math.min(row.count, max - written));
         for (let i = 0; i < count; i += 1) {
-            next.push({ class: row.classId, spec: row.specId, required: true });
+            next.push({ class: row.classId, spec: row.specId === ANY_SPEC_ID ? "ANY" : row.specId, required: true });
             written += 1;
         }
         if (written >= max) break;
@@ -284,6 +289,7 @@ export function clearDungeonExact(role: Role, botIndex: number): void {
 }
 
 export function getSpecLabel(classId: ClassId, specId: number): string {
+    if (specId === ANY_SPEC_ID) return "Any valid spec";
     const specs = getSpecsForRole(classId, "TANK")
         .concat(getSpecsForRole(classId, "HEALER"))
         .concat(getSpecsForRole(classId, "DPS"));
@@ -292,6 +298,7 @@ export function getSpecLabel(classId: ClassId, specId: number): string {
 }
 
 export function getSpecIcon(classId: ClassId, specId: number): string {
+    if (specId === ANY_SPEC_ID) return "Interface\\Icons\\INV_Misc_QuestionMark";
     const classDef = getClass(classId);
     if (classDef !== undefined) {
         for (const spec of classDef.specs) if (spec.id === specId) return spec.icon;
