@@ -1,5 +1,6 @@
 import { classColor, createIcon, createPanel, createText, setClassIcon } from "../core/Native";
 import { ClassDefinition, ClassId, getClass, getClassesForRole, getSpecsForRole, Role, SpecDefinition } from "../data/WotlkBuilds";
+import { ANY_SPEC_ID } from "../model/ComposerModel";
 import { theme } from "../theme/Theme";
 import { createButton, UIButton } from "../widgets/Button";
 import { createModal } from "../widgets/Modal";
@@ -140,6 +141,28 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     const classTiles: ClassTile[] = [];
     const specTiles: SpecTile[] = [];
 
+    const anySpecButton = createButton(rightPanel.frame, {
+        text: "Any valid specialization",
+        width: 398,
+        height: 58,
+        accent: theme.colors.primary,
+        onClick: () => {
+            if (currentClass === undefined) return;
+            currentSpec = ANY_SPEC_ID;
+            refresh();
+        },
+    });
+    const anySpecIcon = createIcon(anySpecButton.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 34);
+    anySpecIcon.SetPoint("LEFT", anySpecButton.frame, "LEFT", 12, 0);
+    anySpecButton.label.ClearAllPoints();
+    anySpecButton.label.SetPoint("LEFT", anySpecButton.frame, "LEFT", 58, 7);
+    anySpecButton.label.SetPoint("RIGHT", anySpecButton.frame, "RIGHT", -12, 7);
+    anySpecButton.label.SetJustifyH("LEFT");
+    const anySpecSub = createText(anySpecButton.frame, "Lock this class and let Composer choose its best valid spec.", "GameFontHighlightSmall", theme.colors.muted);
+    anySpecSub.SetPoint("LEFT", anySpecButton.frame, "LEFT", 58, -11);
+    anySpecSub.SetWidth(320);
+    anySpecButton.frame.Hide();
+
     function selectClass(classId: ClassId): void {
         if (currentClass !== classId) currentSpec = undefined;
         currentClass = classId;
@@ -207,7 +230,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     function refresh(): void {
         const accent = roleAccent(currentRole);
         modal.setTitle("Choose " + roleLabel(currentRole) + " Build");
-        modal.setSubtitle("Class first, specialization second. Invalid choices for this role are hidden.");
+        modal.setSubtitle("Reserve only what you care about. Unspecified slots remain Auto-filled.");
 
         leftPanel.outline.setColor(accent);
         rightPanel.outline.setColor(accent);
@@ -237,6 +260,16 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         }
 
         let specIndex = 0;
+        if (currentClass !== undefined) {
+            anySpecButton.frame.ClearAllPoints();
+            anySpecButton.frame.SetPoint("TOPLEFT", rightPanel.frame, "TOPLEFT", 18, -64);
+            anySpecButton.setSelected(currentSpec === ANY_SPEC_ID);
+            anySpecButton.frame.Show();
+            specIndex = 1;
+        } else {
+            anySpecButton.frame.Hide();
+        }
+
         for (const tile of specTiles) {
             let visible = false;
             if (currentClass !== undefined && tile.classId === currentClass) {
@@ -271,7 +304,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
 
         const selectedClass = currentClass === undefined ? undefined : getClass(currentClass);
         let selectedSpec: SpecDefinition | undefined;
-        if (currentClass !== undefined && currentSpec !== undefined) {
+        if (currentClass !== undefined && currentSpec !== undefined && currentSpec !== ANY_SPEC_ID) {
             for (const spec of getSpecsForRole(currentClass, currentRole)) {
                 if (spec.id === currentSpec) {
                     selectedSpec = spec;
@@ -287,17 +320,23 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             summaryClassIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
         }
 
-        if (selectedClass !== undefined && selectedSpec !== undefined) {
+        if (selectedClass !== undefined && currentSpec === ANY_SPEC_ID) {
+            summarySpecIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
+            summarySpecIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+            summaryText.SetText(selectedClass.label + " · Any valid spec");
+            summarySub.SetText("Class locked; Composer auto-selects the best " + roleLabel(currentRole).toLowerCase() + " spec.");
+            apply.setEnabled(true);
+        } else if (selectedClass !== undefined && selectedSpec !== undefined) {
             summarySpecIcon.SetTexture(selectedSpec.icon);
             summarySpecIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
             summaryText.SetText(selectedSpec.label + " " + selectedClass.label);
             summarySub.SetText(roleLabel(currentRole) + " build selected");
             apply.setEnabled(true);
         } else {
-            summarySpecIcon.SetTexture("Interface\Icons\INV_Misc_QuestionMark");
+            summarySpecIcon.SetTexture("Interface\\Icons\\INV_Misc_QuestionMark");
             summarySpecIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
             summaryText.SetText(currentClass === undefined ? "Choose a class" : "Choose a specialization");
-            summarySub.SetText("Only legal " + roleLabel(currentRole).toLowerCase() + " builds are shown.");
+            summarySub.SetText("Pick an exact spec, or use Any valid specialization to lock only the class.");
             apply.setEnabled(false);
         }
     }
@@ -327,7 +366,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
                         break;
                     }
                 }
-                if (!validCurrent) currentSpec = undefined;
+                if (!validCurrent && currentSpec !== ANY_SPEC_ID) currentSpec = undefined;
             }
 
             refresh();
