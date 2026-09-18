@@ -1,6 +1,7 @@
 import { Color, theme } from "../theme/Theme";
 
 export const CLASS_ICON_ATLAS = "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes";
+export const ROLE_ICON_ATLAS = "Interface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES";
 
 export function setTextureColor(texture: WoWTexture, color: Color): void {
     texture.SetTexture(color[0], color[1], color[2], color[3]);
@@ -217,4 +218,27 @@ export function createChrome(frame: WoWFrame, accent: Color = theme.colors.chrom
 
     // Keep the outer outline referenced so TypeScriptToLua does not optimize the call away.
     if (outer.textures.length === 0) return;
+}
+
+
+export function setRoleIcon(texture: WoWTexture, role: string): void {
+    texture.SetTexture(ROLE_ICON_ATLAS);
+    if (role === "TANK") {
+        texture.SetTexCoord(0, 0.296875, 0.34375, 0.640625);
+    } else if (role === "HEALER") {
+        texture.SetTexCoord(0.3125, 0.609375, 0.015625, 0.3125);
+    } else {
+        texture.SetTexCoord(0.3125, 0.609375, 0.34375, 0.640625);
+    }
+}
+
+export function createFramedRoleIcon(
+    parent: WoWFrame,
+    role: string,
+    size: number,
+    borderColor: Color = theme.colors.borderStrong,
+): FramedIcon {
+    const framed = createFramedIcon(parent, ROLE_ICON_ATLAS, size, borderColor);
+    setRoleIcon(framed.icon, role);
+    return framed;
 }

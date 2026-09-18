@@ -1,4 +1,4 @@
-import { createChrome, createFramedIcon, createPanel, createSolid, createText } from "../core/Native";
+import { createChrome, createFramedIcon, createPanel, createSolid, createText, setRoleIcon } from "../core/Native";
 import { theme } from "../theme/Theme";
 import { createButton } from "./Button";
 
@@ -10,6 +10,7 @@ export interface Modal {
     setTitle(title: string): void;
     setSubtitle(subtitle: string): void;
     setHeaderIcon(path?: string): void;
+    setHeaderRole(role?: string): void;
 }
 
 export function createModal(parent: WoWFrame, width: number, height: number): Modal {
@@ -96,6 +97,18 @@ export function createModal(parent: WoWFrame, width: number, height: number): Mo
             }
             headerIcon.icon.SetTexture(path);
             headerIcon.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+            headerIcon.frame.Show();
+            title.ClearAllPoints();
+            title.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 74, -12);
+        },
+        setHeaderRole(role?: string): void {
+            if (role === undefined || role === "") {
+                headerIcon.frame.Hide();
+                title.ClearAllPoints();
+                title.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", theme.spacing.lg, -12);
+                return;
+            }
+            setRoleIcon(headerIcon.icon, role);
             headerIcon.frame.Show();
             title.ClearAllPoints();
             title.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 74, -12);

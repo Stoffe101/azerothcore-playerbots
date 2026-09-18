@@ -1,4 +1,4 @@
-import { classColor, createFramedIcon, createIcon, createPanel, createSolid, createText, setClassIcon } from "../core/Native";
+import { classColor, createFramedIcon, createFramedRoleIcon, createIcon, createPanel, createSolid, createText, setClassIcon, setRoleIcon } from "../core/Native";
 import { ClassDefinition, ClassId, getClass, getClassesForRole, getSpecsForRole, Role, SpecDefinition } from "../data/WotlkBuilds";
 import { ANY_SPEC_ID } from "../model/ComposerModel";
 import { theme } from "../theme/Theme";
@@ -273,7 +273,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     const summarySpecSub = createText(summary.frame, "Specialization", "GameFontHighlightSmall", theme.colors.muted);
     summarySpecSub.SetPoint("TOPLEFT", summarySpecText, "BOTTOMLEFT", 0, -4);
 
-    const summaryRoleBadge = createFramedIcon(summary.frame, roleIcon("DPS"), 46, theme.colors.dps);
+    const summaryRoleBadge = createFramedRoleIcon(summary.frame, "DPS", 46, theme.colors.dps);
     summaryRoleBadge.frame.SetPoint("BOTTOMLEFT", summary.frame, "BOTTOMLEFT", 372, 12);
     const summaryRoleText = createText(summary.frame, "DPS", "GameFontNormal");
     summaryRoleText.SetPoint("TOPLEFT", summary.frame, "TOPLEFT", 428, -48);
@@ -314,7 +314,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         const accent = roleAccent(currentRole);
         modal.setTitle("Add " + roleLabel(currentRole) + " Build");
         modal.setSubtitle("Choose a class and specialization for this " + roleLabel(currentRole) + " build. Unspecified slots stay Auto-filled.");
-        modal.setHeaderIcon(roleIcon(currentRole));
+        modal.setHeaderRole(currentRole);
 
         classSection.outline.setColor(accent);
         specSection.outline.setColor(accent);
@@ -322,8 +322,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         specStep.outline.setColor(accent);
         classStepText.SetTextColor(accent[0], accent[1], accent[2], 1);
         specStepText.SetTextColor(accent[0], accent[1], accent[2], 1);
-        summaryRoleBadge.icon.SetTexture(roleIcon(currentRole));
-        summaryRoleBadge.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+        setRoleIcon(summaryRoleBadge.icon, currentRole);
         summaryRoleBadge.outline.setColor(accent);
         summaryRoleText.SetText(roleLabel(currentRole));
         summaryRoleText.SetTextColor(accent[0], accent[1], accent[2], 1);

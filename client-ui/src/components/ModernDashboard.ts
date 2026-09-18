@@ -382,8 +382,10 @@ export function createModernDashboard(): Dashboard {
 
     for (const role of ["TANK", "HEALER", "DPS"] as Role[]) {
         const button = humanRoleButtons[role];
-        const icon = Native.createIcon(button.frame, D.ROLE_ICON[role], 18);
+        const icon = button.frame.CreateTexture(undefined, "ARTWORK");
+        icon.SetSize(18, 18);
         icon.SetPoint("LEFT", button.frame, "LEFT", 10, 0);
+        Native.setRoleIcon(icon, role);
         button.label.ClearAllPoints();
         button.label.SetPoint("LEFT", button.frame, "LEFT", 34, 0);
         button.label.SetJustifyH("LEFT");
@@ -438,7 +440,7 @@ export function createModernDashboard(): Dashboard {
         accent.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 0, 0);
         accent.SetPoint("BOTTOMLEFT", row.frame, "BOTTOMLEFT", 0, 0);
 
-        const roleBadge = Native.createFramedIcon(row.frame, D.ROLE_ICON.DPS, 38, theme.colors.borderStrong);
+        const roleBadge = Native.createFramedRoleIcon(row.frame, "DPS", 38, theme.colors.borderStrong);
         roleBadge.frame.SetPoint("LEFT", row.frame, "LEFT", 12, 0);
         const roleIcon = roleBadge.icon;
 
@@ -532,7 +534,7 @@ export function createModernDashboard(): Dashboard {
         roleTint.SetAllPoints(card.frame);
         card.frame.SetPoint("TOPLEFT", quickView, "TOPLEFT", i * 312, -12);
 
-        const roleBadge = Native.createFramedIcon(card.frame, D.ROLE_ICON[role], 54, Model.roleAccent(role));
+        const roleBadge = Native.createFramedRoleIcon(card.frame, role, 54, Model.roleAccent(role));
         roleBadge.frame.SetPoint("TOP", card.frame, "TOP", -46, -16);
         const label = Native.createText(card.frame, Model.roleLabel(role).toUpperCase(), "GameFontNormalLarge", Model.roleAccent(role));
         label.SetPoint("LEFT", roleBadge.frame, "RIGHT", 12, 0);
@@ -622,7 +624,7 @@ export function createModernDashboard(): Dashboard {
         const roleTint = Native.createSolid(panel.frame, Native.withAlpha(Model.roleAccent(role), 0.045), "BACKGROUND");
         roleTint.SetAllPoints(panel.frame);
 
-        const roleBadge = Native.createFramedIcon(panel.frame, D.ROLE_ICON[role], 38, Model.roleAccent(role));
+        const roleBadge = Native.createFramedRoleIcon(panel.frame, role, 38, Model.roleAccent(role));
         roleBadge.frame.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 14, -12);
         const icon = roleBadge.icon;
         const label = Native.createText(panel.frame, Model.roleLabel(role).toUpperCase(), "GameFontNormal", Model.roleAccent(role));
@@ -727,8 +729,10 @@ export function createModernDashboard(): Dashboard {
         const chip = Native.createPanel(status.frame, theme.colors.background, Model.roleAccent(role));
         chip.frame.SetSize(86, 34);
         chip.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16 + i * 90, -198);
-        const icon = Native.createIcon(chip.frame, D.ROLE_ICON[role], 17);
+        const icon = chip.frame.CreateTexture(undefined, "ARTWORK");
+        icon.SetSize(17, 17);
         icon.SetPoint("LEFT", chip.frame, "LEFT", 6, 0);
+        Native.setRoleIcon(icon, role);
         const label = Native.createText(chip.frame, "", "GameFontHighlightSmall", Model.roleAccent(role));
         label.SetPoint("LEFT", icon, "RIGHT", 5, 0);
         statusRoleChips[role] = { chip, label };
@@ -1160,7 +1164,7 @@ export function createModernDashboard(): Dashboard {
             if (row === undefined) {
                 const panel = Native.createPanel(pinScroll.content, theme.colors.surfaceRaised, theme.colors.border);
                 panel.frame.SetSize(892, 48);
-                const roleBadge = Native.createFramedIcon(panel.frame, D.ROLE_ICON.DPS, 34, theme.colors.dps);
+                const roleBadge = Native.createFramedRoleIcon(panel.frame, "DPS", 34, theme.colors.dps);
                 roleBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 8, 0);
                 const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
                 name.SetPoint("LEFT", panel.frame, "LEFT", 52, 7);
@@ -1183,8 +1187,7 @@ export function createModernDashboard(): Dashboard {
             row.ClearAllPoints();
             row.SetPoint("TOPLEFT", pinScroll.content, "TOPLEFT", 0, -(i * 54));
             const pinAccent = Model.roleAccent(pin.role as Role);
-            (row as any)._roleIcon.SetTexture(D.ROLE_ICON[pin.role]);
-            (row as any)._roleIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+            Native.setRoleIcon((row as any)._roleIcon, pin.role);
             (row as any)._roleBadge.outline.setColor(pinAccent);
             (row as any)._name.SetText(String(pin.name));
             (row as any)._info.SetText(Model.roleLabel(pin.role as Role) + "  ·  " + (pin.required ? "REQUIRED" : "Preferred companion"));
@@ -1417,8 +1420,7 @@ export function createModernDashboard(): Dashboard {
             const accent = Model.roleAccent(slot.role);
             Native.setTextureColor(widgets.accent, accent);
             widgets.row.outline.setColor(theme.colors.borderStrong);
-            widgets.roleIcon.SetTexture(D.ROLE_ICON[slot.role]);
-            widgets.roleIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+            Native.setRoleIcon(widgets.roleIcon, slot.role);
             widgets.roleText.SetText(Model.roleLabel(slot.role));
             widgets.roleText.SetTextColor(accent[0], accent[1], accent[2], 1);
             widgets.slotText.SetText(slot.human !== undefined ? "Human anchor" : "Bot slot " + String(slot.botIndex ?? 1));

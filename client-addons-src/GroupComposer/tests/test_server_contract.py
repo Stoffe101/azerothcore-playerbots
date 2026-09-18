@@ -629,3 +629,13 @@ assert '"Level " + String(primary.level ?? "?")' in MODERN
 assert "UI-DialogBox-Gold-Corner" in NATIVE, "Premium chrome lost Blizzard's native gold corner ornament"
 assert "topLeft.SetTexCoord(0, 1, 0, 1)" in NATIVE and "bottomRight.SetTexCoord(1, 0, 1, 0)" in NATIVE
 assert '"Close   X"' in MODERN
+
+
+# Wrath LFG role-art parity.
+assert "UI-LFG-ICON-PORTRAITROLES" in NATIVE
+assert "setRoleIcon" in NATIVE and "createFramedRoleIcon" in NATIVE
+assert "0.296875" in NATIVE and "0.609375" in NATIVE, "Wrath role atlas coordinates disappeared"
+assert "setHeaderRole(role?: string)" in MODAL
+assert "modal.setHeaderRole(currentRole)" in SELECTOR and "summaryRoleBadge = createFramedRoleIcon" in SELECTOR
+assert MODERN.count("createFramedRoleIcon") >= 4
+assert "Native.setRoleIcon(widgets.roleIcon, slot.role)" in MODERN
