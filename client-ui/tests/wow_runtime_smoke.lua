@@ -28,6 +28,7 @@ function Region:SetJustifyH(v) self.justifyH = v end
 function Region:SetJustifyV(v) self.justifyV = v end
 function Region:SetAutoFocus(v) self.autofocus = v end
 function Region:SetTextInsets(...) self.insets = {...} end
+function Region:SetFontObject(font) self.fontObject = font end
 function Region:ClearFocus() end
 function Region:HighlightText(...) end
 function Region:EnableMouse(v) self.mouse = v end
@@ -80,6 +81,7 @@ CLASS_ICON_TCOORDS = {
 }
 
 RAID_CLASS_COLORS = {}
+GameFontHighlightSmall = {}
 
 local cfg = {
     mode = "DUNGEON",
