@@ -57,6 +57,17 @@ jobs:
           grep -q '"luaTarget": "5.1"' client-ui/tsconfig.json
           ! grep -R -E 'from "react"|from '\''react'\''|virtual.?dom|reconciler' client-ui/src
 
+      - name: Validate generated Lua interop contracts
+        run: |
+          set -euo pipefail
+          OUT=client-ui/dist/GroupComposerModernUI.lua
+          ! grep -Eq 'GC:[A-Za-z_]+\(GC[,)]' "$OUT"
+          ! grep -q 'D:GetRaidById' "$OUT"
+          ! grep -q 'D:GetDungeonById' "$OUT"
+          ! grep -q '\.length' "$OUT"
+          grep -q 'GC:SetHumanRole(name, role)' "$OUT"
+          grep -q 'GC:SetMode(mode)' "$OUT"
+
       - name: Validate sync path
         run: |
           bash client-ui/scripts/sync-generated.sh
