@@ -78,6 +78,10 @@ for _, raid in ipairs(D.RAIDS) do
     end
 end
 
+local firstDescription = P.Describe(D.BUILTIN_PROFILES[1].name)
+truth(string.find(firstDescription, "Coverage core:", 1, true), "template description must expose its preconfigured core")
+truth(string.find(firstDescription, "Auto", 1, true), "template description must expose Auto remainder")
+
 local migrated = P.Normalize({
     mode = "RAID", activity = "icecrown", difficulty = "normal", size = 25,
     tanks = 2, healers = 6, dps = 17,
