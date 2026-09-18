@@ -11,7 +11,7 @@ titan_h = (root / "modules/mod-titan-rune/src/TitanRuneSystem.h").read_text()
 titan_cpp = (root / "modules/mod-titan-rune/src/TitanRuneSystem.cpp").read_text()
 
 assert "RuntimeGuards.lua" in toc, "Runtime guard layer is not loaded by the addon manifest"
-assert "generated/GroupComposerModernUI.lua" in toc, "Modern generated dashboard is not loaded by the addon manifest"
+assert "generated\\\\GroupComposerModernUI.lua" in toc, "Modern generated dashboard is not loaded by the addon manifest"
 assert "DashboardV4.lua" not in toc and "DashboardV3.lua" not in toc, "Legacy dashboard unexpectedly returned to the addon manifest"
 assert "\nPolish.lua\n" not in toc, "Legacy Polish.lua unexpectedly returned to the addon manifest"
 
