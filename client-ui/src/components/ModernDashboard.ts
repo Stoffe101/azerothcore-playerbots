@@ -1535,7 +1535,7 @@ export function createModernDashboard(): Dashboard {
             }
 
             if (text === undefined && i === 0) {
-                if (phase === "READY") text = Model.isTravelRetry() ? "Clear the travel blocker, then enter the activity." : "Review the prepared roster, then assemble.";
+                if (phase === "READY") text = Model.isTravelRetry() ? "Clear the travel blocker, then enter the activity." : "Prepared roster is ready for review. Assemble when it looks right.";
                 else if (phase === "PREPARING") text = "Composer is provisioning and validating the selected bots.";
                 else if (!Model.humanReady()) text = "Choose a legal role for every real player.";
                 else if (Model.config().mode === "RAID" && Model.roleTargetTotal() !== Number(Model.config().size ?? 25)) {
