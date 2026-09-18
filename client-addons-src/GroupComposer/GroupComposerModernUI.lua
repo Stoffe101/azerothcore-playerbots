@@ -749,9 +749,12 @@ end
 -- End of Lua Library inline imports
 local ____exports = {}
 local ____Native = require("core.Native")
+local createChrome = ____Native.createChrome
+local createFramedIcon = ____Native.createFramedIcon
 local createPanel = ____Native.createPanel
 local createSolid = ____Native.createSolid
 local createText = ____Native.createText
+local withAlpha = ____Native.withAlpha
 local ____Theme = require("theme.Theme")
 local theme = ____Theme.theme
 local ____Button = require("widgets.Button")
@@ -767,7 +770,7 @@ function ____exports.closeChoicePopup(self)
     closeActive(nil)
 end
 function ____exports.createChoiceSelect(self, parent, options)
-    local move, wheel, bindWheel, refreshRail, refreshRows, refresh, trigger, popup, maxVisible, rowHeight, railWidth, offset, rows, rail, up, down, thumb
+    local move, wheel, bindWheel, refreshRail, positionRowLabel, refreshRows, refresh, trigger, triggerIcon, popup, maxVisible, rowHeight, railWidth, offset, rows, rail, up, down, thumb, thumbCore
     function move(self, delta)
         local items = options:getItems()
         local maxOffset = math.max(0, #items - maxVisible)
@@ -815,7 +818,51 @@ function ____exports.createChoiceSelect(self, parent, options)
             0,
             -(4 + travel * ratio)
         )
+        thumbCore:SetHeight(math.max(12, thumbHeight - 4))
+        thumbCore:ClearAllPoints()
+        thumbCore:SetPoint(
+            "CENTER",
+            thumb,
+            "CENTER",
+            0,
+            0
+        )
         thumb:Show()
+        thumbCore:Show()
+    end
+    function positionRowLabel(self, row, hasIcon)
+        row.button.label:ClearAllPoints()
+        row.button.label:SetPoint(
+            "TOPLEFT",
+            row.button.frame,
+            "TOPLEFT",
+            hasIcon and 50 or 10,
+            -8
+        )
+        row.button.label:SetPoint(
+            "RIGHT",
+            row.button.frame,
+            "RIGHT",
+            -8,
+            7
+        )
+        row.button.label:SetJustifyH("LEFT")
+        row.detail:ClearAllPoints()
+        row.detail:SetPoint(
+            "TOPLEFT",
+            row.button.frame,
+            "TOPLEFT",
+            hasIcon and 50 or 10,
+            -29
+        )
+        row.detail:SetPoint(
+            "RIGHT",
+            row.button.frame,
+            "RIGHT",
+            -8,
+            0
+        )
+        row.detail:SetJustifyH("LEFT")
     end
     function refreshRows(self)
         local items = options:getItems()
@@ -826,7 +873,7 @@ function ____exports.createChoiceSelect(self, parent, options)
             while i < maxVisible do
                 local row = rows[i + 1]
                 if row == nil then
-                    local button = createButton(nil, popup.frame, {text = "", width = options.width - railWidth - 12, height = rowHeight - 4})
+                    local button = createButton(nil, popup.frame, {text = "", width = options.width - railWidth - 12, height = rowHeight - 4, accent = theme.colors.primary})
                     button.frame:SetPoint(
                         "TOPLEFT",
                         popup.frame,
@@ -834,22 +881,21 @@ function ____exports.createChoiceSelect(self, parent, options)
                         4,
                         -(4 + i * rowHeight)
                     )
-                    button.label:ClearAllPoints()
-                    button.label:SetPoint(
-                        "TOPLEFT",
+                    local iconFrame = createFramedIcon(
+                        nil,
                         button.frame,
-                        "TOPLEFT",
-                        10,
-                        -7
+                        "Interface\\Icons\\INV_Misc_QuestionMark",
+                        34,
+                        theme.colors.borderStrong
                     )
-                    button.label:SetPoint(
-                        "RIGHT",
+                    iconFrame.frame:SetPoint(
+                        "LEFT",
                         button.frame,
-                        "RIGHT",
-                        -8,
-                        7
+                        "LEFT",
+                        8,
+                        0
                     )
-                    button.label:SetJustifyH("LEFT")
+                    iconFrame.frame:Hide()
                     local detail = createText(
                         nil,
                         button.frame,
@@ -857,30 +903,24 @@ function ____exports.createChoiceSelect(self, parent, options)
                         "GameFontHighlightSmall",
                         theme.colors.muted
                     )
-                    detail:SetPoint(
-                        "TOPLEFT",
-                        button.frame,
-                        "TOPLEFT",
-                        10,
-                        -25
-                    )
-                    detail:SetPoint(
-                        "RIGHT",
-                        button.frame,
-                        "RIGHT",
-                        -8,
-                        0
-                    )
-                    detail:SetJustifyH("LEFT")
                     bindWheel(nil, button.frame)
-                    row = {button = button, detail = detail}
+                    row = {button = button, detail = detail, iconFrame = iconFrame.frame, icon = iconFrame.icon}
                     rows[i + 1] = row
                 end
                 local item = items[offset + i + 1]
                 if item ~= nil then
+                    local hasIcon = item.icon ~= nil and item.icon ~= ""
                     row.button:setText(item.label)
                     row.detail:SetText(item.detail or "")
                     row.button:setSelected(item.value == options:getValue())
+                    positionRowLabel(nil, row, hasIcon)
+                    if hasIcon then
+                        row.icon:SetTexture(tostring(item.icon))
+                        row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                        row.iconFrame:Show()
+                    else
+                        row.iconFrame:Hide()
+                    end
                     local value = item.value
                     row.button.frame:SetScript(
                         "OnMouseDown",
@@ -901,58 +941,92 @@ function ____exports.createChoiceSelect(self, parent, options)
     end
     function refresh(self)
         local value = options:getValue()
-        local label = "Select"
+        local selectedItem
         for ____, item in ipairs(options:getItems()) do
             if item.value == value then
-                label = item.label
+                selectedItem = item
                 break
             end
         end
-        trigger:setText(label)
+        trigger:setText(selectedItem and selectedItem.label or "Select")
+        local hasIcon = (selectedItem and selectedItem.icon) ~= nil and selectedItem.icon ~= ""
+        trigger.label:ClearAllPoints()
+        trigger.label:SetPoint(
+            "LEFT",
+            trigger.frame,
+            "LEFT",
+            hasIcon and 44 or 12,
+            0
+        )
+        trigger.label:SetPoint(
+            "RIGHT",
+            trigger.frame,
+            "RIGHT",
+            -42,
+            0
+        )
+        trigger.label:SetJustifyH("LEFT")
+        if hasIcon then
+            triggerIcon.icon:SetTexture(tostring(selectedItem and selectedItem.icon))
+            triggerIcon.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            triggerIcon.frame:Show()
+        else
+            triggerIcon.frame:Hide()
+        end
         refreshRows(nil)
     end
-    trigger = createButton(nil, parent, {text = "Select", width = options.width, height = 36})
-    trigger.label:ClearAllPoints()
-    trigger.label:SetPoint(
-        "LEFT",
-        trigger.frame,
-        "LEFT",
-        12,
-        0
-    )
-    trigger.label:SetPoint(
-        "RIGHT",
-        trigger.frame,
-        "RIGHT",
-        -32,
-        0
-    )
-    trigger.label:SetJustifyH("LEFT")
-    local arrow = createText(
+    trigger = createButton(nil, parent, {text = "Select", width = options.width, height = 40, accent = theme.colors.primary})
+    triggerIcon = createFramedIcon(
         nil,
         trigger.frame,
-        "v",
-        "GameFontHighlightSmall",
-        theme.colors.muted
+        "Interface\\Icons\\INV_Misc_QuestionMark",
+        28,
+        theme.colors.borderStrong
     )
-    arrow:SetPoint(
+    triggerIcon.frame:SetPoint(
+        "LEFT",
+        trigger.frame,
+        "LEFT",
+        8,
+        0
+    )
+    triggerIcon.frame:Hide()
+    local arrowBox = createPanel(nil, trigger.frame, theme.colors.surfaceDeep, theme.colors.border)
+    arrowBox.frame:SetSize(28, 28)
+    arrowBox.frame:SetPoint(
         "RIGHT",
         trigger.frame,
         "RIGHT",
-        -11,
+        -6,
         0
     )
+    local arrow = createText(
+        nil,
+        arrowBox.frame,
+        "v",
+        "GameFontHighlightSmall",
+        theme.colors.primary
+    )
+    arrow:SetPoint(
+        "CENTER",
+        arrowBox.frame,
+        "CENTER",
+        0,
+        0
+    )
+    arrow:SetJustifyH("CENTER")
     popup = createPanel(nil, trigger.frame, theme.colors.background, theme.colors.borderStrong)
     popup.frame:SetFrameStrata("TOOLTIP")
     popup.frame:SetWidth(options.width)
     popup.frame:EnableMouseWheel(true)
+    createChrome(nil, popup.frame, theme.colors.borderStrong)
     popup.frame:Hide()
     maxVisible = options.maxVisible or 8
-    rowHeight = 48
-    railWidth = 24
+    rowHeight = 54
+    railWidth = 26
     offset = 0
     rows = {}
-    rail = createPanel(nil, popup.frame, theme.colors.surface, theme.colors.border)
+    rail = createPanel(nil, popup.frame, theme.colors.surfaceDeep, theme.colors.border)
     rail.frame:SetPoint(
         "TOPRIGHT",
         popup.frame,
@@ -975,6 +1049,7 @@ function ____exports.createChoiceSelect(self, parent, options)
             text = "^",
             width = 20,
             height = 22,
+            accent = theme.colors.primary,
             onClick = function() return move(nil, -1) end
         }
     )
@@ -992,6 +1067,7 @@ function ____exports.createChoiceSelect(self, parent, options)
             text = "v",
             width = 20,
             height = 22,
+            accent = theme.colors.primary,
             onClick = function() return move(nil, 1) end
         }
     )
@@ -1017,10 +1093,34 @@ function ____exports.createChoiceSelect(self, parent, options)
         0,
         4
     )
-    track:SetWidth(4)
+    track:SetWidth(3)
+    local trackGlow = createSolid(
+        nil,
+        rail.frame,
+        withAlpha(nil, theme.colors.primary, 0.12),
+        "ARTWORK"
+    )
+    trackGlow:SetPoint(
+        "TOP",
+        up.frame,
+        "BOTTOM",
+        0,
+        -4
+    )
+    trackGlow:SetPoint(
+        "BOTTOM",
+        down.frame,
+        "TOP",
+        0,
+        4
+    )
+    trackGlow:SetWidth(7)
     thumb = createSolid(nil, rail.frame, theme.colors.primary, "OVERLAY")
-    thumb:SetWidth(6)
+    thumb:SetWidth(7)
     thumb:SetHeight(22)
+    thumbCore = createSolid(nil, rail.frame, theme.colors.highlight, "OVERLAY")
+    thumbCore:SetWidth(3)
+    thumbCore:SetHeight(18)
     local function open(self)
         closeActive(nil)
         local items = options:getItems()
@@ -1051,7 +1151,7 @@ function ____exports.createChoiceSelect(self, parent, options)
             trigger.frame,
             "BOTTOMLEFT",
             0,
-            -4
+            -5
         )
         popup.frame:Show()
         activePopup = popup.frame
@@ -1296,6 +1396,50 @@ local D = _G.GroupComposerData
 local DataFns = _G.GroupComposerData
 local P = _G.GroupComposerProfiles
 local ProfileFns = _G.GroupComposerProfiles
+local ACTIVITY_ICONS = {
+    random = "Interface\\Icons\\INV_Misc_Dice_02",
+    utgarde_keep = "Interface\\Icons\\INV_Misc_Bone_10",
+    nexus = "Interface\\Icons\\Spell_Arcane_PortalDalaran",
+    azjol_nerub = "Interface\\Icons\\Ability_Hunter_Pet_Spider",
+    ahnkahet = "Interface\\Icons\\Spell_Shadow_Twilight",
+    drak_tharon = "Interface\\Icons\\INV_Misc_Head_Troll_01",
+    violet_hold = "Interface\\Icons\\Spell_Arcane_PortalDalaran",
+    gundrak = "Interface\\Icons\\INV_Misc_Head_Troll_01",
+    halls_of_stone = "Interface\\Icons\\INV_Stone_14",
+    halls_of_lightning = "Interface\\Icons\\Spell_Nature_Lightning",
+    oculus = "Interface\\Icons\\INV_Misc_Head_Dragon_Blue",
+    culling = "Interface\\Icons\\Spell_Holy_Excorcism_02",
+    utgarde_pinnacle = "Interface\\Icons\\INV_Misc_Bone_10",
+    trial_champion = "Interface\\Icons\\INV_Sword_04",
+    forge_souls = "Interface\\Icons\\Spell_Shadow_SoulLeech_3",
+    pit_saron = "Interface\\Icons\\INV_Pick_02",
+    halls_reflection = "Interface\\Icons\\Spell_Deathknight_FrostPresence",
+    naxxramas = "Interface\\Icons\\Spell_Shadow_AnimateDead",
+    obsidian_sanctum = "Interface\\Icons\\INV_Misc_Head_Dragon_Black",
+    eye_of_eternity = "Interface\\Icons\\INV_Misc_Head_Dragon_Blue",
+    ulduar = "Interface\\Icons\\INV_Gizmo_02",
+    trial_crusader = "Interface\\Icons\\INV_Misc_Head_Nerubian_01",
+    onyxia = "Interface\\Icons\\INV_Misc_Head_Dragon_Black",
+    vault_archavon = "Interface\\Icons\\INV_Elemental_Primal_Earth",
+    icecrown = "Interface\\Icons\\Spell_Deathknight_FrostPresence",
+    ruby_sanctum = "Interface\\Icons\\INV_Misc_Head_Dragon_Red",
+    karazhan = "Interface\\Icons\\Spell_Arcane_PortalDalaran",
+    zulaman = "Interface\\Icons\\INV_Misc_Head_Troll_01",
+    gruul = "Interface\\Icons\\Ability_Warrior_Charge",
+    magtheridon = "Interface\\Icons\\Spell_Shadow_SummonFelGuard",
+    serpentshrine = "Interface\\Icons\\Spell_Frost_SummonWaterElemental_2",
+    tempest_keep = "Interface\\Icons\\Spell_Arcane_PortalDalaran",
+    hyjal = "Interface\\Icons\\Spell_Nature_NatureGuardian",
+    black_temple = "Interface\\Icons\\Spell_Shadow_Metamorphosis",
+    sunwell = "Interface\\Icons\\Spell_Holy_SummonLightwell",
+    zul_gurub = "Interface\\Icons\\INV_Misc_Head_Troll_01",
+    aq20 = "Interface\\Icons\\INV_Misc_Head_Qiraji_01",
+    molten_core = "Interface\\Icons\\Spell_Fire_FlameBolt",
+    blackwing_lair = "Interface\\Icons\\INV_Misc_Head_Dragon_Black",
+    aq40 = "Interface\\Icons\\INV_Misc_Head_Qiraji_01"
+}
+local DEFAULT_DUNGEON_ICON = "Interface\\Icons\\Spell_Arcane_PortalDalaran"
+local DEFAULT_RAID_ICON = "Interface\\Icons\\Achievement_Boss_LichKing"
 function ____exports.composer(self)
     return GC
 end
@@ -1857,7 +2001,8 @@ function ____exports.dungeonItems(self)
         result[#result + 1] = {
             value = dungeon.id,
             label = dungeon.label,
-            detail = dungeon.id == "random" and ("WotLK random · Normal Lv " .. tostring(min)) .. "+ · Heroic Lv 80" or ("Normal Lv " .. tostring(min)) .. "+ · Heroic Lv 80"
+            detail = dungeon.id == "random" and ("WotLK random · Normal Lv " .. tostring(min)) .. "+ · Heroic Lv 80" or ("Normal Lv " .. tostring(min)) .. "+ · Heroic Lv 80",
+            icon = ACTIVITY_ICONS[tostring(dungeon.id)] or DEFAULT_DUNGEON_ICON
         }
     end
     return result
@@ -1903,7 +2048,8 @@ function ____exports.raidItems(self)
         result[#result + 1] = {
             value = ____raid_id_40,
             label = ____temp_41,
-            detail = (____temp_39 .. tostring(____raid_requiredLevel_38)) .. "+"
+            detail = (____temp_39 .. tostring(____raid_requiredLevel_38)) .. "+",
+            icon = ACTIVITY_ICONS[tostring(raid.id)] or DEFAULT_RAID_ICON
         }
     end
     return result
@@ -1948,45 +2094,54 @@ function ____exports.selectedActivityLabel(self)
     end
     return ____opt_result_52_53
 end
+function ____exports.selectedActivityIcon(self)
+    local cfg = ____exports.config(nil)
+    local ____cfg_activity_54 = cfg.activity
+    if ____cfg_activity_54 == nil then
+        ____cfg_activity_54 = ""
+    end
+    local key = tostring(____cfg_activity_54)
+    return ACTIVITY_ICONS[key] or (cfg.mode == "RAID" and DEFAULT_RAID_ICON or DEFAULT_DUNGEON_ICON)
+end
 function ____exports.requiredActivityLevel(self)
     local cfg = ____exports.config(nil)
     if cfg.mode == "RAID" then
         local raid = raidById(nil, cfg.activity)
-        local ____opt_result_56
+        local ____opt_result_57
         if raid ~= nil then
-            ____opt_result_56 = raid.requiredLevel
+            ____opt_result_57 = raid.requiredLevel
         end
-        local ____opt_result_56_57 = ____opt_result_56
-        if ____opt_result_56_57 == nil then
-            ____opt_result_56_57 = 80
+        local ____opt_result_57_58 = ____opt_result_57
+        if ____opt_result_57_58 == nil then
+            ____opt_result_57_58 = 80
         end
-        return __TS__Number(____opt_result_56_57)
+        return __TS__Number(____opt_result_57_58)
     end
     if cfg.difficulty ~= "normal" then
         return 80
     end
     local dungeon = dungeonById(nil, cfg.activity)
-    local ____opt_result_60
+    local ____opt_result_61
     if dungeon ~= nil then
-        ____opt_result_60 = dungeon.minLevel
+        ____opt_result_61 = dungeon.minLevel
     end
-    local ____opt_result_60_61 = ____opt_result_60
-    if ____opt_result_60_61 == nil then
-        ____opt_result_60_61 = 68
+    local ____opt_result_61_62 = ____opt_result_61
+    if ____opt_result_61_62 == nil then
+        ____opt_result_61_62 = 68
     end
-    return __TS__Number(____opt_result_60_61)
+    return __TS__Number(____opt_result_61_62)
 end
 function ____exports.activityEligibilityText(self)
     local level = ____exports.requiredActivityLevel(nil)
-    local ____opt_62 = ____exports.config(nil).options
-    if ____opt_62 ~= nil then
-        ____opt_62 = ____opt_62.minimumItemLevel
+    local ____opt_63 = ____exports.config(nil).options
+    if ____opt_63 ~= nil then
+        ____opt_63 = ____opt_63.minimumItemLevel
     end
-    local ____opt_62_64 = ____opt_62
-    if ____opt_62_64 == nil then
-        ____opt_62_64 = 0
+    local ____opt_63_65 = ____opt_63
+    if ____opt_63_65 == nil then
+        ____opt_63_65 = 0
     end
-    local floor = __TS__Number(____opt_62_64)
+    local floor = __TS__Number(____opt_63_65)
     return (("Level " .. tostring(level)) .. "+ required · Item level floor ") .. (floor > 0 and tostring(floor) or "Off")
 end
 function ____exports.setMinimumItemLevel(self, value)
@@ -2006,15 +2161,15 @@ function ____exports.supportedRaidSizes(self)
         ____exports.config(nil).activity
     )
     local result = {}
-    local ____opt_result_67
+    local ____opt_result_68
     if raid ~= nil then
-        ____opt_result_67 = raid.sizes
+        ____opt_result_68 = raid.sizes
     end
-    local ____opt_result_67_68 = ____opt_result_67
-    if ____opt_result_67_68 == nil then
-        ____opt_result_67_68 = {}
+    local ____opt_result_68_69 = ____opt_result_68
+    if ____opt_result_68_69 == nil then
+        ____opt_result_68_69 = {}
     end
-    for ____, size in __TS__Iterator(____opt_result_67_68) do
+    for ____, size in __TS__Iterator(____opt_result_68_69) do
         result[#result + 1] = __TS__Number(size)
     end
     return result
@@ -2078,11 +2233,11 @@ function ____exports.removePin(self, index)
     GC:RemovePinnedMember(index)
 end
 function ____exports.planMembers(self)
-    local ____exports_plan_result_members_69 = ____exports.plan(nil).members
-    if ____exports_plan_result_members_69 == nil then
-        ____exports_plan_result_members_69 = {}
+    local ____exports_plan_result_members_70 = ____exports.plan(nil).members
+    if ____exports_plan_result_members_70 == nil then
+        ____exports_plan_result_members_70 = {}
     end
-    return ____exports_plan_result_members_69
+    return ____exports_plan_result_members_70
 end
 function ____exports.roleAccent(self, role)
     if role == "TANK" then
@@ -2118,29 +2273,29 @@ function ____exports.phaseLabel(self, phase)
     return "Configure roster"
 end
 function ____exports.isBusy(self)
-    local ____exports_progress_result_phase_70 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_70 == nil then
-        ____exports_progress_result_phase_70 = "IDLE"
+    local ____exports_progress_result_phase_71 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_71 == nil then
+        ____exports_progress_result_phase_71 = "IDLE"
     end
-    local phase = tostring(____exports_progress_result_phase_70)
+    local phase = tostring(____exports_progress_result_phase_71)
     return phase == "BUILDING" or phase == "PREPARING" or phase == "ASSEMBLING" or phase == "TRAVEL"
 end
 function ____exports.isTravelRetry(self)
     local p = ____exports.progress(nil)
-    local ____temp_72 = p.phase == "READY"
-    if ____temp_72 then
-        local ____p_detail_71 = p.detail
-        if ____p_detail_71 == nil then
-            ____p_detail_71 = ""
+    local ____temp_73 = p.phase == "READY"
+    if ____temp_73 then
+        local ____p_detail_72 = p.detail
+        if ____p_detail_72 == nil then
+            ____p_detail_72 = ""
         end
-        ____temp_72 = (string.find(
-            tostring(____p_detail_71),
+        ____temp_73 = (string.find(
+            tostring(____p_detail_72),
             "Enter Activity",
             nil,
             true
         ) or 0) - 1 >= 0
     end
-    return ____temp_72
+    return ____temp_73
 end
 return ____exports
  end,
@@ -2359,32 +2514,15 @@ return ____exports
 --[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
 local ____exports = {}
 local ____Native = require("core.Native")
+local createPanel = ____Native.createPanel
 local createText = ____Native.createText
 local ____Theme = require("theme.Theme")
 local theme = ____Theme.theme
 local ____Button = require("widgets.Button")
 local createButton = ____Button.createButton
 function ____exports.createNumberStepper(self, parent, initialMin, initialMax, initial, onChange)
-    local frame = CreateFrame("Frame", nil, parent)
-    frame:SetSize(126, theme.control.md)
-    local min = initialMin
-    local max = initialMax
-    local value = initial
-    local valueText = createText(
-        nil,
-        frame,
-        tostring(value),
-        "GameFontNormal"
-    )
-    valueText:SetPoint(
-        "CENTER",
-        frame,
-        "CENTER",
-        0,
-        0
-    )
-    valueText:SetJustifyH("CENTER")
-    local function update(self, next, notify)
+    local update, min, max, value, valueText, minus, plus
+    function update(self, next, notify)
         if notify == nil then
             notify = true
         end
@@ -2393,17 +2531,56 @@ function ____exports.createNumberStepper(self, parent, initialMin, initialMax, i
             math.min(max, next)
         )
         valueText:SetText(tostring(value))
+        minus:setEnabled(value > min)
+        plus:setEnabled(value < max)
         if notify and onChange ~= nil then
             onChange(nil, value)
         end
     end
-    local minus = createButton(
+    local frame = CreateFrame("Frame", nil, parent)
+    frame:SetSize(136, 40)
+    min = initialMin
+    max = initialMax
+    value = initial
+    local center = createPanel(nil, frame, theme.colors.surfaceDeep, theme.colors.borderStrong)
+    center.frame:SetPoint(
+        "LEFT",
+        frame,
+        "LEFT",
+        42,
+        0
+    )
+    center.frame:SetPoint(
+        "RIGHT",
+        frame,
+        "RIGHT",
+        -42,
+        0
+    )
+    center.frame:SetHeight(40)
+    valueText = createText(
+        nil,
+        center.frame,
+        tostring(value),
+        "GameFontNormalLarge",
+        theme.colors.primary
+    )
+    valueText:SetPoint(
+        "CENTER",
+        center.frame,
+        "CENTER",
+        0,
+        0
+    )
+    valueText:SetJustifyH("CENTER")
+    minus = createButton(
         nil,
         frame,
         {
             text = "-",
-            width = theme.control.md,
-            height = theme.control.md,
+            width = 36,
+            height = 40,
+            accent = theme.colors.primary,
             onClick = function() return update(nil, value - 1) end
         }
     )
@@ -2414,13 +2591,14 @@ function ____exports.createNumberStepper(self, parent, initialMin, initialMax, i
         0,
         0
     )
-    local plus = createButton(
+    plus = createButton(
         nil,
         frame,
         {
             text = "+",
-            width = theme.control.md,
-            height = theme.control.md,
+            width = 36,
+            height = 40,
+            accent = theme.colors.primary,
             onClick = function() return update(nil, value + 1) end
         }
     )
@@ -2511,7 +2689,7 @@ local function specSummary(self, classId, role)
     return table.concat(labels, "  ·  ")
 end
 function ____exports.createBuildSelector(self, parent, options)
-    local refresh, modal, currentRole, currentClass, currentSpec, classSection, classStep, classStepText, classTiles, specSection, specStep, specStepText, specHint, emptySpec, anySpecButton, specTiles, summaryClassIcon, summarySpecIcon, summaryText, summarySub, apply
+    local refresh, modal, currentRole, currentClass, currentSpec, classSection, classStep, classStepText, classTiles, specSection, specStep, specStepText, specHint, emptySpec, anySpecButton, anySpecMarker, specTiles, summaryClassIcon, summarySpecIcon, summaryText, summarySub, apply
     function refresh(self)
         local accent = roleAccent(nil, currentRole)
         modal:setTitle(("Add " .. roleLabel(nil, currentRole)) .. " Build")
@@ -2554,7 +2732,13 @@ function ____exports.createBuildSelector(self, parent, options)
                     local validSpecs = getSpecsForRole(tile.classDef.id, currentRole)
                     tile.sub:SetText(((tostring(#validSpecs) .. " ") .. roleLabel(nil, currentRole)) .. (#validSpecs == 1 and " spec" or " specs"))
                     tile.specs:SetText(specSummary(nil, tile.classDef.id, currentRole))
-                    tile.button:setSelected(tile.classDef.id == currentClass)
+                    local selected = tile.classDef.id == currentClass
+                    tile.button:setSelected(selected)
+                    if selected then
+                        tile.marker:Show()
+                    else
+                        tile.marker:Hide()
+                    end
                     tile.button.frame:Show()
                     classIndex = classIndex + 1
                     __continue29 = true
@@ -2566,7 +2750,9 @@ function ____exports.createBuildSelector(self, parent, options)
         end
         if currentClass == nil then
             anySpecButton.frame:Hide()
+            anySpecMarker.frame:Hide()
             for ____, tile in ipairs(specTiles) do
+                tile.marker:Hide()
                 tile.button.frame:Hide()
             end
             specHint:SetText("Pick a class first.")
@@ -2596,10 +2782,17 @@ function ____exports.createBuildSelector(self, parent, options)
                         -78
                     )
                     tile.sub:SetText((tile.classLabel .. " · ") .. roleLabel(nil, currentRole))
-                    tile.button:setSelected(tile.spec.id == currentSpec)
+                    local selected = tile.spec.id == currentSpec
+                    tile.button:setSelected(selected)
+                    if selected then
+                        tile.marker:Show()
+                    else
+                        tile.marker:Hide()
+                    end
                     tile.button.frame:Show()
                     specIndex = specIndex + 1
                 else
+                    tile.marker:Hide()
                     tile.button.frame:Hide()
                 end
             end
@@ -2611,7 +2804,13 @@ function ____exports.createBuildSelector(self, parent, options)
                 14 + specIndex * 248,
                 -78
             )
-            anySpecButton:setSelected(currentSpec == ANY_SPEC_ID)
+            local anySelected = currentSpec == ANY_SPEC_ID
+            anySpecButton:setSelected(anySelected)
+            if anySelected then
+                anySpecMarker.frame:Show()
+            else
+                anySpecMarker.frame:Hide()
+            end
             anySpecButton.frame:Show()
         end
         local ____temp_2
@@ -2816,6 +3015,19 @@ function ____exports.createBuildSelector(self, parent, options)
         )
         specs:SetWidth(174)
         specs:SetJustifyH("CENTER")
+        local marker = createPanel(nil, button.frame, theme.colors.surfaceBlue, theme.colors.primary)
+        marker.frame:SetSize(22, 22)
+        marker.frame:SetPoint(
+            "TOPRIGHT",
+            button.frame,
+            "TOPRIGHT",
+            -6,
+            -6
+        )
+        local markerCheck = marker.frame:CreateTexture(nil, "ARTWORK")
+        markerCheck:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+        markerCheck:SetAllPoints(marker.frame)
+        marker.frame:Hide()
         button.frame:SetScript(
             "OnMouseDown",
             function()
@@ -2831,7 +3043,8 @@ function ____exports.createBuildSelector(self, parent, options)
             button = button,
             icon = icon,
             sub = sub,
-            specs = specs
+            specs = specs,
+            marker = marker.frame
         }
     end
     specSection = createPanel(nil, modal.content, theme.colors.surface, theme.colors.border)
@@ -2968,6 +3181,19 @@ function ____exports.createBuildSelector(self, parent, options)
     )
     anySpecSub:SetWidth(136)
     anySpecSub:SetJustifyV("TOP")
+    anySpecMarker = createPanel(nil, anySpecButton.frame, theme.colors.surfaceBlue, theme.colors.primary)
+    anySpecMarker.frame:SetSize(22, 22)
+    anySpecMarker.frame:SetPoint(
+        "TOPRIGHT",
+        anySpecButton.frame,
+        "TOPRIGHT",
+        -7,
+        -7
+    )
+    local anySpecCheck = anySpecMarker.frame:CreateTexture(nil, "ARTWORK")
+    anySpecCheck:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+    anySpecCheck:SetAllPoints(anySpecMarker.frame)
+    anySpecMarker.frame:Hide()
     anySpecButton.frame:Hide()
     specTiles = {}
     for ____, classDef in ipairs(getClassesForRole("DPS")) do
@@ -3012,6 +3238,19 @@ function ____exports.createBuildSelector(self, parent, options)
                 -49
             )
             sub:SetWidth(136)
+            local marker = createPanel(nil, button.frame, theme.colors.surfaceBlue, theme.colors.primary)
+            marker.frame:SetSize(22, 22)
+            marker.frame:SetPoint(
+                "TOPRIGHT",
+                button.frame,
+                "TOPRIGHT",
+                -7,
+                -7
+            )
+            local markerCheck = marker.frame:CreateTexture(nil, "ARTWORK")
+            markerCheck:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+            markerCheck:SetAllPoints(marker.frame)
+            marker.frame:Hide()
             button.frame:SetScript(
                 "OnMouseDown",
                 function()
@@ -3027,7 +3266,8 @@ function ____exports.createBuildSelector(self, parent, options)
                 spec = spec,
                 button = button,
                 icon = icon,
-                sub = sub
+                sub = sub,
+                marker = marker.frame
             }
         end
     end
@@ -3239,12 +3479,13 @@ local ____exports = {}
 local ____Native = require("core.Native")
 local createPanel = ____Native.createPanel
 local createSolid = ____Native.createSolid
+local withAlpha = ____Native.withAlpha
 local ____Theme = require("theme.Theme")
 local theme = ____Theme.theme
 local ____Button = require("widgets.Button")
 local createButton = ____Button.createButton
 function ____exports.createScrollList(self, parent, width, height)
-    local maxOffset, clamp, refreshRail, scroll, rail, contentHeight, offset, up, down, thumb
+    local maxOffset, clamp, refreshRail, scroll, rail, contentHeight, offset, up, down, thumb, thumbCore
     function maxOffset(self)
         return math.max(0, contentHeight - height)
     end
@@ -3268,7 +3509,7 @@ function ____exports.createScrollList(self, parent, width, height)
         rail.frame:Show()
         offset = clamp(nil, offset)
         scroll:SetVerticalScroll(offset)
-        local trackHeight = math.max(28, height - 48)
+        local trackHeight = math.max(28, height - 52)
         local thumbHeight = math.max(
             24,
             math.floor(trackHeight * math.min(1, height / contentHeight))
@@ -3283,6 +3524,15 @@ function ____exports.createScrollList(self, parent, width, height)
             "BOTTOM",
             0,
             -(4 + travel * ratio)
+        )
+        thumbCore:SetHeight(math.max(14, thumbHeight - 4))
+        thumbCore:ClearAllPoints()
+        thumbCore:SetPoint(
+            "CENTER",
+            thumb,
+            "CENTER",
+            0,
+            0
         )
         up:setEnabled(offset > 0)
         down:setEnabled(offset < range)
@@ -3302,20 +3552,20 @@ function ____exports.createScrollList(self, parent, width, height)
         "BOTTOMRIGHT",
         frame,
         "BOTTOMRIGHT",
-        -20,
+        -22,
         0
     )
     scroll:SetSize(
-        math.max(1, width - 20),
+        math.max(1, width - 22),
         height
     )
     scroll:EnableMouseWheel(true)
     local content = CreateFrame("Frame", nil, scroll)
-    content:SetWidth(math.max(1, width - 20))
+    content:SetWidth(math.max(1, width - 22))
     content:SetHeight(height)
     content:EnableMouseWheel(true)
     scroll:SetScrollChild(content)
-    rail = createPanel(nil, frame, theme.colors.background, theme.colors.border)
+    rail = createPanel(nil, frame, theme.colors.surfaceDeep, theme.colors.border)
     rail.frame:SetPoint(
         "TOPRIGHT",
         frame,
@@ -3330,7 +3580,7 @@ function ____exports.createScrollList(self, parent, width, height)
         0,
         0
     )
-    rail.frame:SetWidth(16)
+    rail.frame:SetWidth(18)
     rail.frame:EnableMouseWheel(true)
     contentHeight = height
     offset = 0
@@ -3354,8 +3604,9 @@ function ____exports.createScrollList(self, parent, width, height)
         rail.frame,
         {
             text = "^",
-            width = 16,
-            height = 20,
+            width = 18,
+            height = 22,
+            accent = theme.colors.primary,
             onClick = function() return scrollBy(nil, -72) end
         }
     )
@@ -3371,8 +3622,9 @@ function ____exports.createScrollList(self, parent, width, height)
         rail.frame,
         {
             text = "v",
-            width = 16,
-            height = 20,
+            width = 18,
+            height = 22,
+            accent = theme.colors.primary,
             onClick = function() return scrollBy(nil, 72) end
         }
     )
@@ -3383,6 +3635,27 @@ function ____exports.createScrollList(self, parent, width, height)
         0,
         0
     )
+    local trackGlow = createSolid(
+        nil,
+        rail.frame,
+        withAlpha(nil, theme.colors.primary, 0.11),
+        "ARTWORK"
+    )
+    trackGlow:SetPoint(
+        "TOP",
+        up.frame,
+        "BOTTOM",
+        0,
+        -4
+    )
+    trackGlow:SetPoint(
+        "BOTTOM",
+        down.frame,
+        "TOP",
+        0,
+        4
+    )
+    trackGlow:SetWidth(7)
     local track = createSolid(nil, rail.frame, theme.colors.borderStrong, "ARTWORK")
     track:SetPoint(
         "TOP",
@@ -3400,8 +3673,11 @@ function ____exports.createScrollList(self, parent, width, height)
     )
     track:SetWidth(3)
     thumb = createSolid(nil, rail.frame, theme.colors.primary, "OVERLAY")
-    thumb:SetWidth(7)
+    thumb:SetWidth(8)
     thumb:SetHeight(24)
+    thumbCore = createSolid(nil, rail.frame, theme.colors.highlight, "OVERLAY")
+    thumbCore:SetWidth(3)
+    thumbCore:SetHeight(20)
     bindWheel(nil, frame)
     bindWheel(nil, scroll)
     bindWheel(nil, content)
@@ -3444,20 +3720,57 @@ return ____exports
 local ____exports = {}
 local ____Native = require("core.Native")
 local createPanel = ____Native.createPanel
+local createSolid = ____Native.createSolid
+local withAlpha = ____Native.withAlpha
 local ____Theme = require("theme.Theme")
 local theme = ____Theme.theme
 function ____exports.createTextInput(self, parent, width, height)
     if height == nil then
-        height = 34
+        height = 36
     end
-    local panel = createPanel(nil, parent, theme.colors.background, theme.colors.borderStrong)
+    local panel = createPanel(nil, parent, theme.colors.surfaceDeep, theme.colors.borderStrong)
     panel.frame:SetSize(width, height)
+    local focusGlow = createSolid(
+        nil,
+        panel.frame,
+        withAlpha(nil, theme.colors.primary, 0.1),
+        "ARTWORK"
+    )
+    focusGlow:SetAllPoints(panel.frame)
+    focusGlow:Hide()
     local edit = CreateFrame("EditBox", nil, panel.frame)
-    edit:SetAllPoints(panel.frame)
+    edit:SetPoint(
+        "TOPLEFT",
+        panel.frame,
+        "TOPLEFT",
+        1,
+        -1
+    )
+    edit:SetPoint(
+        "BOTTOMRIGHT",
+        panel.frame,
+        "BOTTOMRIGHT",
+        -1,
+        1
+    )
     edit:SetAutoFocus(false)
     edit:SetFontObject(GameFontHighlightSmall)
     edit:SetTextColor(theme.colors.text[1], theme.colors.text[2], theme.colors.text[3], 1)
     edit:SetTextInsets(10, 10, 0, 0)
+    edit:SetScript(
+        "OnEditFocusGained",
+        function()
+            panel.outline:setColor(theme.colors.primary)
+            focusGlow:Show()
+        end
+    )
+    edit:SetScript(
+        "OnEditFocusLost",
+        function()
+            panel.outline:setColor(theme.colors.borderStrong)
+            focusGlow:Hide()
+        end
+    )
     return {
         frame = panel.frame,
         editBox = edit,
@@ -3480,40 +3793,78 @@ return ____exports
 local ____exports = {}
 local ____Native = require("core.Native")
 local createPanel = ____Native.createPanel
+local createSolid = ____Native.createSolid
 local createText = ____Native.createText
+local withAlpha = ____Native.withAlpha
 local ____Theme = require("theme.Theme")
 local theme = ____Theme.theme
 function ____exports.createToggle(self, parent, label, getValue, setValue)
     local frame = CreateFrame("Frame", nil, parent)
-    frame:SetHeight(30)
+    frame:SetHeight(32)
     frame:EnableMouse(true)
-    local box = createPanel(nil, frame, theme.colors.background, theme.colors.borderStrong)
-    box.frame:SetSize(20, 20)
-    box.frame:SetPoint(
+    local track = createPanel(nil, frame, theme.colors.surfaceDeep, theme.colors.borderStrong)
+    track.frame:SetSize(42, 22)
+    track.frame:SetPoint(
         "LEFT",
         frame,
         "LEFT",
         0,
         0
     )
-    local check = box.frame:CreateTexture(nil, "ARTWORK")
-    check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
-    check:SetAllPoints(box.frame)
+    local trackGlow = createSolid(
+        nil,
+        track.frame,
+        withAlpha(nil, theme.colors.success, 0.12),
+        "ARTWORK"
+    )
+    trackGlow:SetAllPoints(track.frame)
+    trackGlow:Hide()
+    local knob = createPanel(nil, track.frame, theme.colors.muted, theme.colors.borderStrong)
+    knob.frame:SetSize(16, 16)
+    knob.frame:SetPoint(
+        "LEFT",
+        track.frame,
+        "LEFT",
+        3,
+        0
+    )
     local text = createText(nil, frame, label, "GameFontHighlightSmall")
     text:SetPoint(
         "LEFT",
-        box.frame,
+        track.frame,
         "RIGHT",
-        9,
+        10,
         0
     )
     local function refresh(self)
-        if getValue(nil) then
-            check:Show()
-            box.outline:setColor(theme.colors.success)
+        local enabled = getValue(nil)
+        knob.frame:ClearAllPoints()
+        if enabled then
+            knob.frame:SetPoint(
+                "RIGHT",
+                track.frame,
+                "RIGHT",
+                -3,
+                0
+            )
+            knob:setBackground(theme.colors.success)
+            knob.outline:setColor(theme.colors.success)
+            track.outline:setColor(theme.colors.success)
+            trackGlow:Show()
+            text:SetTextColor(theme.colors.text[1], theme.colors.text[2], theme.colors.text[3], 1)
         else
-            check:Hide()
-            box.outline:setColor(theme.colors.borderStrong)
+            knob.frame:SetPoint(
+                "LEFT",
+                track.frame,
+                "LEFT",
+                3,
+                0
+            )
+            knob:setBackground(theme.colors.muted)
+            knob.outline:setColor(theme.colors.borderStrong)
+            track.outline:setColor(theme.colors.borderStrong)
+            trackGlow:Hide()
+            text:SetTextColor(theme.colors.muted[1], theme.colors.muted[2], theme.colors.muted[3], 1)
         end
     end
     frame:SetScript(
@@ -3833,24 +4184,40 @@ function ____exports.createModernDashboard(self)
                         0,
                         0
                     )
+                    local iconBadge = Native:createFramedIcon(panel.frame, ICON_RAID, 42, theme.colors.primary)
+                    iconBadge.frame:SetPoint(
+                        "LEFT",
+                        panel.frame,
+                        "LEFT",
+                        10,
+                        0
+                    )
                     local name = Native:createText(panel.frame, "", "GameFontHighlight")
                     name:SetPoint(
                         "TOPLEFT",
                         panel.frame,
                         "TOPLEFT",
-                        10,
+                        62,
                         -10
                     )
-                    name:SetWidth(310)
+                    name:SetWidth(258)
+                    local builtinTag = Native:createText(panel.frame, "BUILT-IN", "GameFontNormalSmall", theme.colors.primary)
+                    builtinTag:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        62,
+                        -31
+                    )
                     local info = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
                     info:SetPoint(
                         "TOPLEFT",
                         panel.frame,
                         "TOPLEFT",
-                        10,
-                        -38
+                        122,
+                        -31
                     )
-                    info:SetWidth(318)
+                    info:SetWidth(200)
                     local load = ButtonUI:createButton(panel.frame, {text = "Load", width = 82, height = 32, accent = theme.colors.primary})
                     load.frame:SetPoint(
                         "RIGHT",
@@ -3914,24 +4281,40 @@ function ____exports.createModernDashboard(self)
                         0,
                         0
                     )
+                    local iconBadge = Native:createFramedIcon(panel.frame, ICON_TEMPLATES, 42, theme.colors.warning)
+                    iconBadge.frame:SetPoint(
+                        "LEFT",
+                        panel.frame,
+                        "LEFT",
+                        10,
+                        0
+                    )
                     local name = Native:createText(panel.frame, "", "GameFontHighlight")
                     name:SetPoint(
                         "TOPLEFT",
                         panel.frame,
                         "TOPLEFT",
-                        10,
+                        62,
                         -10
                     )
-                    name:SetWidth(250)
+                    name:SetWidth(190)
+                    local customTag = Native:createText(panel.frame, "CUSTOM", "GameFontNormalSmall", theme.colors.warning)
+                    customTag:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        62,
+                        -31
+                    )
                     local info = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
                     info:SetPoint(
                         "TOPLEFT",
                         panel.frame,
                         "TOPLEFT",
-                        10,
-                        -34
+                        115,
+                        -31
                     )
-                    info:SetWidth(270)
+                    info:SetWidth(142)
                     local load = ButtonUI:createButton(panel.frame, {text = "Load", width = 68, height = 30, accent = theme.colors.primary})
                     load.frame:SetPoint(
                         "RIGHT",
@@ -3999,25 +4382,33 @@ function ____exports.createModernDashboard(self)
                 local row = humanRowsModal[i + 1]
                 if row == nil then
                     local panel = Native:createPanel(humanScroll.content, theme.colors.surfaceRaised, theme.colors.border)
-                    panel.frame:SetSize(892, 46)
-                    local icon = panel.frame:CreateTexture(nil, "ARTWORK")
-                    icon:SetSize(26, 26)
-                    icon:SetPoint(
+                    panel.frame:SetSize(892, 50)
+                    local classBadge = Native:createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 34, theme.colors.borderStrong)
+                    classBadge.frame:SetPoint(
                         "LEFT",
                         panel.frame,
                         "LEFT",
                         8,
                         0
                     )
+                    local icon = classBadge.icon
                     local name = Native:createText(panel.frame, "", "GameFontHighlightSmall")
                     name:SetPoint(
                         "LEFT",
                         panel.frame,
                         "LEFT",
-                        44,
-                        0
+                        52,
+                        7
                     )
                     name:SetWidth(250)
+                    local identity = Native:createText(panel.frame, "REAL PLAYER", "GameFontNormalSmall", theme.colors.primary)
+                    identity:SetPoint(
+                        "LEFT",
+                        panel.frame,
+                        "LEFT",
+                        52,
+                        -10
+                    )
                     local buttons = {
                         TANK = ButtonUI:createButton(panel.frame, {text = "Tank", width = 78, height = 28, accent = theme.colors.tank}),
                         HEALER = ButtonUI:createButton(panel.frame, {text = "Healer", width = 78, height = 28, accent = theme.colors.healer}),
@@ -4044,6 +4435,7 @@ function ____exports.createModernDashboard(self)
                         -6,
                         0
                     )
+                    panel.frame._classBadge = classBadge
                     panel.frame._icon = icon
                     panel.frame._name = name
                     panel.frame._buttons = buttons
@@ -4060,12 +4452,13 @@ function ____exports.createModernDashboard(self)
                     humanScroll.content,
                     "TOPLEFT",
                     0,
-                    -(i * 52)
+                    -(i * 56)
                 )
                 Native:setClassIcon(
                     row._icon,
                     tostring(human.class)
                 )
+                row._classBadge.outline:setColor(Native:classColor(tostring(human.class)))
                 row._name:SetText((((human.isPlayer and "YOU  ·  " or "") .. human.name) .. "  ·  ") .. Model:classLabel(tostring(human.class)))
                 local ____opt_9 = Model:config().humanRoles
                 if ____opt_9 ~= nil then
@@ -4097,7 +4490,7 @@ function ____exports.createModernDashboard(self)
                 i = i + 1
             end
         end
-        humanScroll:setContentHeight(math.max(210, #list * 52))
+        humanScroll:setContentHeight(math.max(210, #list * 56))
         for ____, role in ipairs(roleOrder) do
             pinRoleButtons[role]:setSelected(pinRole == role)
         end
@@ -4111,24 +4504,33 @@ function ____exports.createModernDashboard(self)
                 local row = pinRows[i + 1]
                 if row == nil then
                     local panel = Native:createPanel(pinScroll.content, theme.colors.surfaceRaised, theme.colors.border)
-                    panel.frame:SetSize(892, 44)
+                    panel.frame:SetSize(892, 48)
+                    local roleBadge = Native:createFramedIcon(panel.frame, D.ROLE_ICON.DPS, 34, theme.colors.dps)
+                    roleBadge.frame:SetPoint(
+                        "LEFT",
+                        panel.frame,
+                        "LEFT",
+                        8,
+                        0
+                    )
                     local name = Native:createText(panel.frame, "", "GameFontHighlightSmall")
                     name:SetPoint(
                         "LEFT",
                         panel.frame,
                         "LEFT",
-                        10,
-                        0
+                        52,
+                        7
                     )
-                    name:SetWidth(260)
+                    name:SetWidth(250)
                     local info = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
                     info:SetPoint(
                         "LEFT",
                         panel.frame,
                         "LEFT",
-                        280,
-                        0
+                        52,
+                        -10
                     )
+                    info:SetWidth(330)
                     local remove = ButtonUI:createButton(panel.frame, {text = "Remove", width = 78, height = 28, accent = theme.colors.error})
                     remove.frame:SetPoint(
                         "RIGHT",
@@ -4137,6 +4539,8 @@ function ____exports.createModernDashboard(self)
                         -6,
                         0
                     )
+                    panel.frame._roleBadge = roleBadge
+                    panel.frame._roleIcon = roleBadge.icon
                     panel.frame._name = name
                     panel.frame._info = info
                     panel.frame._remove = remove
@@ -4151,10 +4555,15 @@ function ____exports.createModernDashboard(self)
                     pinScroll.content,
                     "TOPLEFT",
                     0,
-                    -(i * 50)
+                    -(i * 54)
                 )
+                local pinAccent = Model:roleAccent(pin.role)
+                row._roleIcon:SetTexture(D.ROLE_ICON[pin.role])
+                row._roleIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                row._roleBadge.outline:setColor(pinAccent)
                 row._name:SetText(tostring(pin.name))
-                row._info:SetText((Model:roleLabel(pin.role) .. "  ·  ") .. (pin.required and "Required" or "Preferred"))
+                row._info:SetText((Model:roleLabel(pin.role) .. "  ·  ") .. (pin.required and "REQUIRED" or "Preferred companion"))
+                row._info:SetTextColor(pin.required and theme.colors.warning[1] or theme.colors.muted[1], pin.required and theme.colors.warning[2] or theme.colors.muted[2], pin.required and theme.colors.warning[3] or theme.colors.muted[3], 1)
                 local indexCopy = i + 1
                 row._remove.frame:SetScript(
                     "OnMouseDown",
@@ -4167,7 +4576,7 @@ function ____exports.createModernDashboard(self)
                 i = i + 1
             end
         end
-        pinScroll:setContentHeight(math.max(190, #pins * 50))
+        pinScroll:setContentHeight(math.max(190, #pins * 54))
     end
     local frame = CreateFrame("Frame", "GroupComposerModernFrame", UIParent)
     frame:SetSize(1520, 900)
@@ -4661,23 +5070,23 @@ function ____exports.createModernDashboard(self)
         16,
         -12
     )
-    local humanIcon = humanPanel.frame:CreateTexture(nil, "ARTWORK")
-    humanIcon:SetSize(34, 34)
-    humanIcon:SetPoint(
+    local humanBadge = Native:createFramedIcon(humanPanel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 42, theme.colors.borderStrong)
+    humanBadge.frame:SetPoint(
         "BOTTOMLEFT",
         humanPanel.frame,
         "BOTTOMLEFT",
-        16,
-        9
+        14,
+        8
     )
+    local humanIcon = humanBadge.icon
     Native:setClassIcon(humanIcon, "WARRIOR")
     local humanName = Native:createText(humanPanel.frame, "Choose your role", "GameFontNormal")
     humanName:SetPoint(
         "TOPLEFT",
-        humanIcon,
+        humanBadge.frame,
         "TOPRIGHT",
         10,
-        0
+        -1
     )
     humanName:SetWidth(360)
     local humanSub = Native:createText(humanPanel.frame, "Real players are locked anchors.", "GameFontHighlightSmall", theme.colors.muted)
@@ -4873,32 +5282,32 @@ function ____exports.createModernDashboard(self)
                 10,
                 -10
             )
-            local classIcon = row.frame:CreateTexture(nil, "ARTWORK")
-            classIcon:SetSize(36, 36)
-            classIcon:SetPoint(
+            local classBadge = Native:createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 42, theme.colors.borderStrong)
+            classBadge.frame:SetPoint(
                 "LEFT",
                 row.frame,
                 "LEFT",
-                174,
+                170,
                 0
             )
-            classIcon:Hide()
-            local specIcon = row.frame:CreateTexture(nil, "ARTWORK")
-            specIcon:SetSize(28, 28)
-            specIcon:SetPoint(
+            classBadge.frame:Hide()
+            local classIcon = classBadge.icon
+            local specBadge = Native:createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 36, theme.colors.borderStrong)
+            specBadge.frame:SetPoint(
                 "LEFT",
-                classIcon,
+                classBadge.frame,
                 "RIGHT",
-                8,
+                7,
                 0
             )
-            specIcon:Hide()
+            specBadge.frame:Hide()
+            local specIcon = specBadge.icon
             local name = Native:createText(row.frame, "Auto-fill bot", "GameFontNormal")
             name:SetPoint(
                 "TOPLEFT",
                 row.frame,
                 "TOPLEFT",
-                252,
+                262,
                 -15
             )
             name:SetWidth(350)
@@ -4933,7 +5342,9 @@ function ____exports.createModernDashboard(self)
                 roleIcon = roleIcon,
                 roleText = roleText,
                 slotText = slotText,
+                classBadge = classBadge,
                 classIcon = classIcon,
+                specBadge = specBadge,
                 specIcon = specIcon,
                 name = name,
                 sub = sub,
@@ -5787,9 +6198,10 @@ function ____exports.createModernDashboard(self)
         templatesModal.content,
         {
             text = "Save Current",
-            width = 120,
-            height = 34,
+            width = 124,
+            height = 36,
             accent = theme.colors.primary,
+            emphasis = true,
             onClick = function()
                 if Model:config().mode ~= "RAID" then
                     Model:fireStatus("Templates are raid-only. Configure dungeon bot slots directly.")
@@ -5963,9 +6375,10 @@ function ____exports.createModernDashboard(self)
         peopleModal.content,
         {
             text = "Pin Member",
-            width = 110,
-            height = 34,
+            width = 116,
+            height = 36,
             accent = theme.colors.primary,
+            emphasis = true,
             onClick = function()
                 local name = pinInput:getText()
                 if name ~= "" then
@@ -6034,6 +6447,26 @@ function ____exports.createModernDashboard(self)
                 -(rowIndex * 84)
             )
             row.frame:SetSize(414, 72)
+            local optionAccent = Native:createSolid(
+                row.frame,
+                Native:withAlpha(theme.colors.primary, 0.42),
+                "ARTWORK"
+            )
+            optionAccent:SetPoint(
+                "TOPLEFT",
+                row.frame,
+                "TOPLEFT",
+                0,
+                0
+            )
+            optionAccent:SetPoint(
+                "TOPRIGHT",
+                row.frame,
+                "TOPRIGHT",
+                0,
+                0
+            )
+            optionAccent:SetHeight(2)
             local toggle = ToggleUI:createToggle(
                 row.frame,
                 def.label,
@@ -6087,12 +6520,20 @@ function ____exports.createModernDashboard(self)
         -348
     )
     gearRow.frame:SetHeight(72)
+    local gearIcon = Native:createFramedIcon(gearRow.frame, "Interface\\Icons\\INV_Chest_Plate04", 40, theme.colors.primary)
+    gearIcon.frame:SetPoint(
+        "LEFT",
+        gearRow.frame,
+        "LEFT",
+        12,
+        0
+    )
     local gearTitle = Native:createText(gearRow.frame, "Minimum item level", "GameFontNormal")
     gearTitle:SetPoint(
         "TOPLEFT",
         gearRow.frame,
         "TOPLEFT",
-        14,
+        64,
         -12
     )
     local gearHint = Native:createText(gearRow.frame, "0 disables the floor. Guild/world bots below the configured value are rejected.", "GameFontHighlightSmall", theme.colors.muted)
@@ -6100,10 +6541,10 @@ function ____exports.createModernDashboard(self)
         "TOPLEFT",
         gearRow.frame,
         "TOPLEFT",
-        14,
+        64,
         -39
     )
-    gearHint:SetWidth(620)
+    gearHint:SetWidth(560)
     local ____StepperUI_17 = StepperUI
     local ____StepperUI_createNumberStepper_18 = StepperUI.createNumberStepper
     local ____gearRow_frame_16 = gearRow.frame
@@ -6184,8 +6625,9 @@ function ____exports.createModernDashboard(self)
         {
             text = "Assemble",
             width = 120,
-            height = 36,
+            height = 38,
             accent = theme.colors.success,
+            emphasis = true,
             onClick = function()
                 confirmModal:hide()
                 Model:assemble()
@@ -6208,6 +6650,7 @@ function ____exports.createModernDashboard(self)
         local retry = Model:isTravelRetry()
         local cfg = Model:config()
         local activity = Model:selectedActivityLabel()
+        confirmModal:setHeaderIcon(Model:selectedActivityIcon())
         if retry then
             confirmModal:setTitle("Enter selected activity?")
             confirmModal:setSubtitle("The reviewed roster is already assembled.")
@@ -6231,7 +6674,7 @@ function ____exports.createModernDashboard(self)
         activityName:SetText(Model:selectedActivityLabel())
         activitySub:SetText(activitySubtitle(nil))
         activityEligibility:SetText("ELIGIBILITY  ·  " .. Model:activityEligibilityText())
-        activityBadge.icon:SetTexture(Model:config().mode == "RAID" and ICON_RAID or ICON_DUNGEON)
+        activityBadge.icon:SetTexture(Model:selectedActivityIcon())
         activityBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         activityFieldLabel:SetText(Model:config().mode == "RAID" and "RAID" or "DUNGEON")
         activitySelect:refresh()
@@ -6276,17 +6719,18 @@ function ____exports.createModernDashboard(self)
         if primary == nil then
             humanName:SetText("Waiting for player...")
             humanSub:SetText("Composer is refreshing human anchors.")
-            humanIcon:Hide()
+            humanBadge.frame:Hide()
             for ____, role in ipairs(roleOrder) do
                 humanRoleButtons[role]:setEnabled(false)
             end
             return
         end
-        humanIcon:Show()
+        humanBadge.frame:Show()
         Native:setClassIcon(
             humanIcon,
             tostring(primary.class)
         )
+        humanBadge.outline:setColor(Native:classColor(tostring(primary.class)))
         humanName:SetText((primary.isPlayer and "YOU  ·  " or "") .. primary.name)
         humanSub:SetText(Model:classLabel(tostring(primary.class)) .. (#list > 1 and (("  ·  +" .. tostring(#list - 1)) .. " more human anchor") .. (#list > 2 and "s" or "") or ""))
         local ____opt_23 = Model:config().humanRoles
@@ -6337,8 +6781,9 @@ function ____exports.createModernDashboard(self)
                                 widgets.classIcon,
                                 tostring(slot.human.class)
                             )
-                            widgets.classIcon:Show()
-                            widgets.specIcon:Hide()
+                            widgets.classBadge.frame:Show()
+                            widgets.classBadge.outline:setColor(Native:classColor(tostring(slot.human.class)))
+                            widgets.specBadge.frame:Hide()
                             widgets.name:SetText((slot.human.isPlayer and "YOU  ·  " or "") .. tostring(slot.human.name))
                             widgets.sub:SetText((Model:classLabel(tostring(slot.human.class)) .. "  ·  Locked ") .. Model:roleLabel(slot.role))
                             widgets.choose.frame:Hide()
@@ -6353,7 +6798,8 @@ function ____exports.createModernDashboard(self)
                                 widgets.classIcon,
                                 tostring(prepared.class)
                             )
-                            widgets.classIcon:Show()
+                            widgets.classBadge.frame:Show()
+                            widgets.classBadge.outline:setColor(Native:classColor(tostring(prepared.class)))
                             local specId = specIdFromLabel(
                                 nil,
                                 tostring(prepared.class),
@@ -6362,9 +6808,9 @@ function ____exports.createModernDashboard(self)
                             if specId ~= nil then
                                 widgets.specIcon:SetTexture(Model:getSpecIcon(prepared.class, specId))
                                 widgets.specIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-                                widgets.specIcon:Show()
+                                widgets.specBadge.frame:Show()
                             else
-                                widgets.specIcon:Hide()
+                                widgets.specBadge.frame:Hide()
                             end
                             widgets.name:SetText(tostring(prepared.name))
                             local ____self_28 = widgets.sub
@@ -6384,15 +6830,16 @@ function ____exports.createModernDashboard(self)
                             )
                         elseif exact ~= nil then
                             Native:setClassIcon(widgets.classIcon, exact.classId)
-                            widgets.classIcon:Show()
+                            widgets.classBadge.frame:Show()
+                            widgets.classBadge.outline:setColor(Native:classColor(exact.classId))
                             widgets.specIcon:SetTexture(Model:getSpecIcon(exact.classId, exact.specId))
                             widgets.specIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-                            widgets.specIcon:Show()
+                            widgets.specBadge.frame:Show()
                             widgets.name:SetText((Model:getSpecLabel(exact.classId, exact.specId) .. " ") .. Model:classLabel(exact.classId))
                             widgets.sub:SetText("Exact build  ·  Composer will preserve this requirement")
                         else
-                            widgets.classIcon:Hide()
-                            widgets.specIcon:Hide()
+                            widgets.classBadge.frame:Hide()
+                            widgets.specBadge.frame:Hide()
                             widgets.name:SetText("Auto-fill bot")
                             widgets.sub:SetText(("Composer chooses a suitable " .. string.lower(Model:roleLabel(slot.role))) .. " build")
                         end
@@ -7105,7 +7552,7 @@ local function ensureDashboard()
     return dashboard
 end
 _G.GroupComposerModernUI = {
-    version = "0.6.0",
+    version = "0.7.0",
     dashboard = nil,
     ensureDashboard = function() return ensureDashboard() end,
     createBuildSelector = function(...) return createBuildSelector(nil, ...) end,
