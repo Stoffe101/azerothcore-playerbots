@@ -1195,6 +1195,42 @@ public:
                 }
             }
 
+            if (plan.travelPending)
+            {
+                if (!master)
+                {
+                    plan.travelElapsed += diff;
+                    if (plan.travelElapsed > 10000) plan.travelPending = false;
+                    continue;
+                }
+
+                plan.travelElapsed += diff;
+                if (plan.travelElapsed < 450) continue;
+                plan.travelElapsed = 0;
+                ++plan.travelAttempts;
+
+                std::string travelDetail, travelError;
+                if (TeleportCompletedPlan(master, plan, travelDetail, travelError))
+                {
+                    plan.travelPending = false;
+                    SendProgress(master, "DONE", uint32(plan.members.size()), uint32(plan.members.size()), travelDetail);
+                    SendProtocol(master, "DONE", travelDetail);
+                }
+                else if (plan.travelAttempts >= 8)
+                {
+                    plan.travelPending = false;
+                    SendProtocol(master, "STATUS", travelError);
+                    SendProgress(master, "READY", uint32(plan.members.size()), uint32(plan.members.size()),
+                        "Group is assembled. Automatic entry could not complete; clear the blocker and press Assemble to retry.");
+                }
+                else
+                {
+                    SendProgress(master, "TRAVEL", uint32(plan.members.size()), uint32(plan.members.size()),
+                        "Roster complete. Waiting for instance entry to become available...");
+                }
+                continue;
+            }
+
             if (!plan.assembling) continue;
             plan.assembleElapsed += diff;
             plan.assembleProgressElapsed += diff;
@@ -1231,23 +1267,33 @@ public:
                 plan.assembling = false;
                 if (ApplyArrangement(master, plan, arrangementError))
                 {
-                    std::string travelDetail, travelError;
                     if (ActivityMapId(plan))
-                        SendProgress(master, "TRAVEL", uint32(plan.members.size()), uint32(plan.members.size()), "Roster complete. Entering the selected instance...");
-
-                    if (TeleportCompletedPlan(master, plan, travelDetail, travelError))
                     {
-                        SendProgress(master, "DONE", uint32(plan.members.size()), uint32(plan.members.size()), travelDetail);
-                        SendProtocol(master, "DONE", travelDetail);
+                        // Group creation/conversion and difficulty changes finish on this same world
+                        // update. Give AzerothCore a few ticks to settle the live group before entry,
+                        // then retry transient PlayerCannotEnter/instance-state races automatically.
+                        plan.travelPending = true;
+                        plan.travelElapsed = 0;
+                        plan.travelAttempts = 0;
+                        SendProgress(master, "TRAVEL", uint32(plan.members.size()), uint32(plan.members.size()),
+                            "Roster complete. Entering the selected instance...");
                     }
                     else
                     {
-                        // The roster itself is already committed and valid. Travel blockers are
-                        // actionable status, not roster errors: keep the plan clean, return to READY,
-                        // and let the user retry entry without carrying a stale red warning forever.
-                        SendProtocol(master, "STATUS", travelError);
-                        SendProgress(master, "READY", uint32(plan.members.size()), uint32(plan.members.size()),
-                            "Group is assembled. Clear the travel blocker and press Enter Activity to retry.");
+                        // Random Dungeon has no fixed map. Finish assembly cleanly; the client
+                        // immediately hands the full party to Dungeon Finder when auto-queue is on.
+                        std::string travelDetail, travelError;
+                        if (TeleportCompletedPlan(master, plan, travelDetail, travelError))
+                        {
+                            SendProgress(master, "DONE", uint32(plan.members.size()), uint32(plan.members.size()), travelDetail);
+                            SendProtocol(master, "DONE", travelDetail);
+                        }
+                        else
+                        {
+                            SendProtocol(master, "STATUS", travelError);
+                            SendProgress(master, "READY", uint32(plan.members.size()), uint32(plan.members.size()),
+                                "Group is assembled. Select a named activity or use Dungeon Finder.");
+                        }
                     }
                 }
                 else
@@ -1511,6 +1557,7 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
     auto itr = s_plans.find(owner);
     if (itr == s_plans.end() || !itr->second.valid) { SendError(handler, "Find a valid roster before assembling it."); return true; }
     Plan& plan = itr->second;
+    if (plan.travelPending) { handler->SendSysMessage("[GC]|STATUS|Instance entry is already in progress."); return true; }
     if (plan.assembling) { handler->SendSysMessage("[GC]|STATUS|Assembly is already in progress."); return true; }
 
     if (!plan.prepared || plan.preparing || OwnerHasPendingSync(owner))
@@ -1549,6 +1596,9 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
             SyncManagedBot(master, bot, member.role, member.spec, false);
     }
 
+    plan.travelPending = false;
+    plan.travelElapsed = 0;
+    plan.travelAttempts = 0;
     plan.assembling = true;
     plan.assembleElapsed = 0;
     plan.assembleProgressElapsed = 0;
@@ -1668,13 +1718,16 @@ bool GroupComposerCommand::HandleStatus(ChatHandler* handler)
     if (plan != s_plans.end())
     {
         SendPlan(handler, plan->second);
-        if (plan->second.assembling)
+        if (plan->second.travelPending)
+            SendProgress(master, "TRAVEL", uint32(plan->second.members.size()), uint32(plan->second.members.size()), "Entering the selected instance...");
+        else if (plan->second.assembling)
             SendProgress(master, "ASSEMBLING", JoinedPlanMembers(master, plan->second), uint32(plan->second.members.size()), "Assembly in progress...");
         else
             SendProgress(master, plan->second.prepared ? "READY" : plan->second.preparing ? "PREPARING" : "IDLE",
                 PreparedBotCount(plan->second), SelectedBotCount(plan->second),
                 plan->second.prepared ? "Prepared roster synchronized from server." : "Roster preparation status synchronized.");
-        handler->PSendSysMessage("[GC]|STATUS|{}", plan->second.assembling ? "Assembly in progress." : "Preview synchronized from server.");
+        handler->PSendSysMessage("[GC]|STATUS|{}", plan->second.travelPending ? "Instance entry in progress." :
+            plan->second.assembling ? "Assembly in progress." : "Preview synchronized from server.");
         return true;
     }
     handler->PSendSysMessage("[GC]|DIAG|{}", Sanitize(Reserve::Status(owner)));
