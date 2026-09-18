@@ -12,7 +12,7 @@ command -v npm  >/dev/null || { echo "ERROR: npm is required to build the typed 
 cd "$UI"
 if [[ ! -x node_modules/.bin/tstl ]]; then
   echo "==> Installing pinned Group Composer UI build dependencies"
-  npm install --ignore-scripts --no-audit --no-fund
+  npm install --package-lock=false --ignore-scripts --no-audit --no-fund
 fi
 
 echo "==> Compiling Group Composer TypeScript -> Lua 5.1"
