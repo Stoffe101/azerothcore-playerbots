@@ -1221,7 +1221,7 @@ public:
                     plan.travelPending = false;
                     SendProtocol(master, "STATUS", travelError);
                     SendProgress(master, "READY", uint32(plan.members.size()), uint32(plan.members.size()),
-                        "Group is assembled. Automatic entry could not complete; clear the blocker and press Assemble to retry.");
+                        "Group is assembled. Automatic entry could not complete; clear the blocker and press Enter Activity to retry.");
                 }
                 else
                 {
