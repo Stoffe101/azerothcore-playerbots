@@ -646,3 +646,11 @@ assert "ornate = false" in NATIVE and "if (ornate)" in NATIVE
 assert "createChrome(panel.frame, theme.colors.chrome, true)" in MODAL
 assert "Native.createChrome(frame, theme.colors.chrome, true)" in MODERN
 assert "Native.createChrome(mark.frame, theme.colors.primary)" in MODERN
+
+
+# Status rail semantics match the premium target without claiming assembly.
+assert 'return "Ready to configure";' in MODEL
+assert 'const composed = Model.config().mode === "RAID" ? Model.roleTargetTotal() : humanCount;' in MODERN
+assert 'phase === "IDLE" && target > 0' in MODERN
+assert 'Add specific builds or keep Auto to prepare your raid.' in MODERN
+assert '"Level " + String(slot.human.level ?? "?")' in MODERN

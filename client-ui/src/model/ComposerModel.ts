@@ -547,7 +547,7 @@ export function phaseLabel(phase: string): string {
     if (phase === "TRAVEL") return "Entering activity";
     if (phase === "DONE") return "Group ready";
     if (phase === "ERROR") return "Needs attention";
-    return "Configure roster";
+    return "Ready to configure";
 }
 
 export function isBusy(): boolean {

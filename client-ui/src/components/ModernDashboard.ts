@@ -1431,7 +1431,9 @@ export function createModernDashboard(): Dashboard {
                 widgets.classBadge.outline.setColor(Native.classColor(String(slot.human.class)));
                 widgets.specBadge.frame.Hide();
                 widgets.name.SetText((slot.human.isPlayer ? "YOU  ·  " : "") + slot.human.name);
-                widgets.sub.SetText(Model.classLabel(String(slot.human.class)) + "  ·  Locked " + Model.roleLabel(slot.role));
+                widgets.sub.SetText(
+                    "Level " + String(slot.human.level ?? "?") + " " + Model.classLabel(String(slot.human.class))
+                );
                 widgets.choose.frame.Hide();
                 widgets.auto.frame.Hide();
                 widgets.humanAnchor.frame.Show();
@@ -1719,11 +1721,20 @@ export function createModernDashboard(): Dashboard {
         phaseCard.outline.setColor(phase === "ERROR" ? theme.colors.error : theme.colors.borderStrong);
         phaseText.SetText(Model.isTravelRetry() ? "Ready to enter activity" : Model.phaseLabel(phase));
         phaseText.SetTextColor(phaseColor[0], phaseColor[1], phaseColor[2], 1);
-        phaseDetail.SetText(String(p.detail ?? ""));
+        if (phase === "IDLE") {
+            phaseDetail.SetText(
+                Model.config().mode === "RAID"
+                    ? "Add specific builds or keep Auto to prepare your raid."
+                    : "Choose exact builds or keep Auto to prepare your group."
+            );
+        } else phaseDetail.SetText(String(p.detail ?? ""));
 
         const humanCount = Model.humans().length;
         const target = Number(Model.config().size ?? 5);
-        const total = Model.plan().ready === true ? Number(Model.plan().summary?.total ?? Model.planMembers().length) : humanCount;
+        const composed = Model.config().mode === "RAID" ? Model.roleTargetTotal() : humanCount;
+        const total = Model.plan().ready === true
+            ? Number(Model.plan().summary?.total ?? Model.planMembers().length)
+            : composed;
         rosterCount.SetText(String(total) + " / " + String(target));
 
         if (Model.plan().ready === true) {
@@ -1743,6 +1754,7 @@ export function createModernDashboard(): Dashboard {
         let ratio = 0;
         if (Number(p.total ?? 0) > 0) ratio = Math.min(1, Number(p.current ?? 0) / Number(p.total));
         else if (phase === "READY" || phase === "DONE") ratio = 1;
+        else if (phase === "IDLE" && target > 0) ratio = Math.min(1, total / target);
         progressFill.SetWidth(Math.max(1, 266 * ratio));
         Native.setTextureColor(progressFill, phaseColor);
         progressText.SetText(
