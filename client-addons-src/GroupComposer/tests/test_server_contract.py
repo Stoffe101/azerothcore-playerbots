@@ -549,90 +549,78 @@ assert "SyncManagedBot(master, bot, member.role, member.spec, plan.config.requir
 
 
 # Modern dashboard redesign contracts.
+# These deliberately enforce the new one-border / content-first system instead of the old
+# "premium = more chrome" implementation that produced the noisy live screenshots.
 assert 'frame.SetSize(1520, 900)' in MODERN, "Modern shell lost the redesigned workspace dimensions"
 assert 'center.SetSize(970, 768)' in MODERN, "Composition workspace lost its expanded layout"
 assert 'Adjust the highlighted requirement, then Build & Prepare again.' in MODERN, (
     "Status rail regressed to repeating backend errors instead of giving an actionable next step"
 )
-assert '"CHOOSE A CLASS"' in SELECTOR and '"CHOOSE A SPECIALIZATION"' in SELECTOR
-assert 'column = classIndex % 5' in SELECTOR, "Build selector lost its class-card grid"
+assert '"Choose a class"' in SELECTOR and '"Choose a specialization"' in SELECTOR
+assert "columns = Math.min(5" in SELECTOR and "startX = Math.floor" in SELECTOR, (
+    "Build selector lost its responsive centered class-card grid"
+)
+assert 'const modal = createModal(parent, 1040, 680);' in SELECTOR
 assert 'Any valid spec' in SELECTOR and 'Use this build' in SELECTOR
-assert 'activeEdge' in BUTTON, "Buttons lost the modern selected-state edge"
-assert 'headerAccent' in MODAL, "Modals lost the redesigned header treatment"
-assert 'const peopleModal = ModalUI.createModal(frame, 980, 700);' in MODERN
-assert 'const optionsModal = ModalUI.createModal(frame, 900, 650);' in MODERN
-assert 'column * 430' in MODERN and 'rowIndex * 84' in MODERN, "Options regressed to the old vertical settings list"
-assert 'const pinBuilder = Native.createPanel' in MODERN, "Humans & Pins lost the dedicated pin-composer card"
-assert 'panel.frame.SetSize(438, 76);' in MODERN, "Template cards regressed to the cramped legacy row height"
-
-
-# Premium mockup-target visual contracts.
-assert "Native.createChrome(frame, theme.colors.chrome, true)" in MODERN, "Main dashboard lost the framed chrome treatment"
-assert "ICON_DUNGEON" in MODERN and "ICON_RAID" in MODERN and "ICON_TEMPLATES" in MODERN
-assert "activityBadge = Native.createFramedIcon" in MODERN, "Activity card lost its icon-led visual treatment"
-assert "emphasis: true" in MODERN, "Primary Build & Prepare CTA lost its luminous emphasis"
-assert "roleTint = Native.createSolid" in MODERN, "Role cards lost their role-tinted depth treatment"
-assert "classBadge = Native.createFramedIcon" in MODERN and "specBadge = Native.createFramedIcon" in MODERN, (
-    "Specific Builds rows lost the framed real class/spec icon treatment"
-)
-assert "const modal = createModal(parent, 1080, 790);" in SELECTOR
-assert "classIndex % 5" in SELECTOR and "row * 122" in SELECTOR, "Class picker lost the 5x2 card-grid layout"
 assert "specSummary" in SELECTOR and 'labels.join("  ·  ")' in SELECTOR
-assert "Any valid spec" in SELECTOR and "emphasis: true" in SELECTOR
 assert "modal.setHeaderRole(currentRole)" in SELECTOR
-assert "createChrome(panel.frame, theme.colors.chrome, true)" in MODAL and "setHeaderIcon(path?: string)" in MODAL
-assert "topTint" in BUTTON and "activeTop" in BUTTON and "emphasis?: boolean" in BUTTON
-assert "createFramedIcon" in NATIVE and "createChrome" in NATIVE and "withAlpha" in NATIVE
-assert '" TANK"' in MODERN and '" HEALER"' in MODERN and '" DPS"' in MODERN, (
-    "Roster status chips regressed from full role labels"
+
+# One-border visual primitive contracts.
+assert "selectedWash" in BUTTON and "const outline = createOutline" in BUTTON
+assert "innerFrame" not in BUTTON and "innerOutline" not in BUTTON and "activeTop" not in BUTTON
+assert "topTint" not in BUTTON, "Button refactor regressed to stacked decorative layers"
+assert "createChrome(panel.frame, theme.colors.chrome, true)" in MODAL
+assert "headerDivider" in MODAL and "setHeaderIcon(path?: string)" in MODAL
+assert "createChrome(popup.frame" not in CHOICE_SELECT, "Dropdown popup must stay single-border"
+assert "track.SetWidth(2)" in SCROLL_LIST and "thumb.SetWidth(5)" in SCROLL_LIST
+assert "GetVerticalScrollRange" not in SCROLL_LIST, "Scroll behavior must remain deterministic"
+assert "UI-CheckBox-Check" in TOGGLE and "createOutline" in TOGGLE
+assert "const center = createPanel" in STEPPER and "minus.setEnabled" in STEPPER and "plus.setEnabled" in STEPPER
+assert "ROLE_ICON_TEXTURES" in NATIVE and "UI-LFG-ICON-PORTRAITROLES" not in NATIVE, (
+    "Large role badges regressed to the low-resolution LFG atlas"
 )
-assert "iconBadge = Native.createFramedIcon" in MODERN, "Prepared roster lost framed class icons"
-assert 'widgets.count.SetText("× " + String(build.count))' in MODERN, (
-    "Specific Builds count presentation regressed from the compact mockup treatment"
+assert "UI-DialogBox-Gold-Corner" not in NATIVE, (
+    "Child/shell chrome regressed to duplicated Blizzard gold corner textures"
 )
 
+# Specific Builds must reconcile pooled frames explicitly because WoW does not clip child frames
+# to a shrunken parent. This is the regression contract for the Protection Paladin ×2 ghost row.
+assert "rowsByKey" in MODERN and "rowKeys" in MODERN
+assert "pooled.panel.frame.Hide()" in MODERN and "pooled.panel.frame.ClearAllPoints()" in MODERN
+assert "widgets.panel.frame.Hide()" in MODERN and "widgets.panel.frame.ClearAllPoints()" in MODERN
+assert 'widgets.count.SetText("× " + String(build.count))' in MODERN
 
-# Final mockup-fidelity widget and surface contracts.
+# Major mockup surfaces remain icon-led and role-aware while decoration stays restrained.
 assert "ACTIVITY_ICONS" in MODEL and "selectedActivityIcon" in MODEL
 assert 'icon: ACTIVITY_ICONS[String(dungeon.id)]' in MODEL
 assert 'icon: ACTIVITY_ICONS[String(raid.id)]' in MODEL
 assert "triggerIcon = createFramedIcon" in CHOICE_SELECT and "item.icon" in CHOICE_SELECT
-assert "createChrome(popup.frame" in CHOICE_SELECT, "Choice dropdown lost premium chrome"
-assert "trackGlow" in SCROLL_LIST and "thumbCore" in SCROLL_LIST
-assert "GetVerticalScrollRange" not in SCROLL_LIST, "Scroll behavior must remain deterministic"
 assert "OnEditFocusGained" in TEXT_INPUT and "focusGlow" in TEXT_INPUT
-assert "const track = createPanel" in TOGGLE and "const knob = createPanel" in TOGGLE
-assert "const center = createPanel" in STEPPER and "minus.setEnabled" in STEPPER and "plus.setEnabled" in STEPPER
-assert "UI-RadioButton" in SELECTOR and "setRadioSelected" in SELECTOR, "Spec cards lost native radio selection markers"
-assert "humanBadge = Native.createFramedIcon" in MODERN
-assert "classBadge = Native.createFramedIcon" in MODERN and "specBadge = Native.createFramedIcon" in MODERN
-assert "BUILT-IN" in MODERN and "CUSTOM" in MODERN, "Template cards lost their visual category tags"
-assert "_roleBadge" in MODERN and "Preferred companion" in MODERN
-assert "gearIcon = Native.createFramedIcon" in MODERN
-
-
-# Final visual-density and empty-state contracts.
-assert 'activity.frame.SetHeight(124)' in MODERN
-assert 'humanPanel.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -136)' in MODERN
-assert 'composition.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -226)' in MODERN
-assert "sidebarDivider" in MODERN, "Sidebar hierarchy lost the Compose/Tools divider"
-assert "builtinEmpty" in MODERN and "customEmpty" in MODERN, "Template browser lost explicit empty states"
-assert "humanEmpty" in MODERN and "pinEmpty" in MODERN, "People browser lost explicit empty states"
-assert "activityTop" in MODERN and "compositionTop" in MODERN, "Main content lost premium section accents"
-
-
-# Mockup parity finishing contracts.
-assert "innerFrame" in BUTTON and "innerOutline" in BUTTON, "Premium buttons lost their double-line selected chrome"
 assert "classRoleSummary" in SELECTOR and '"Ranged DPS"' in SELECTOR and '"Melee DPS"' in SELECTOR
-assert 'const modal = createModal(parent, 1080, 790);' in SELECTOR
-assert 'height: 116' in SELECTOR and 'row * 122' in SELECTOR, "Class cards regressed from the target proportions"
 assert '"BUILD SUMMARY"' in SELECTOR and "summaryClassBadge" in SELECTOR and "summarySpecBadge" in SELECTOR
 assert "summaryRoleBadge" in SELECTOR and '"COUNT"' in SELECTOR
-assert "roleDescription" in MODERN and 'card.frame.SetSize(300, 226)' in MODERN
-assert '"TOTAL RAID SIZE"' in MODERN and "quickStatusTitle" in MODERN and "quickStatusDetail" in MODERN
+assert "roleDescription" in MODERN and '"TOTAL RAID SIZE"' in MODERN
+assert "quickStatusTitle" in MODERN and "quickStatusDetail" in MODERN
+assert "humanBadge = Native.createFramedIcon" in MODERN
+assert "classBadge = Native.createFramedIcon" in MODERN and "specBadge = Native.createFramedIcon" in MODERN
 assert '"Human anchor"' in MODERN and "widgets.humanAnchor.frame.Show()" in MODERN
 assert "resetRoles.frame.SetPoint" in MODERN and 'resetRoles.frame.SetPoint("TOPRIGHT", raidView' in MODERN
 assert "backendGlow" in MODERN and "phaseGlow" in MODERN and "coverageGlyph" in MODERN
+assert "sidebarDivider" in MODERN, "Sidebar hierarchy lost the Compose/Tools divider"
+assert "builtinEmpty" in MODERN and "customEmpty" in MODERN, "Template browser lost explicit empty states"
+assert "humanEmpty" in MODERN and "pinEmpty" in MODERN, "People browser lost explicit empty states"
+assert "BUILT-IN" in MODERN and "CUSTOM" in MODERN, "Template cards lost their visual category tags"
+assert "_roleBadge" in MODERN and "Preferred companion" in MODERN
+assert "gearIcon = Native.createFramedIcon" in MODERN
+assert '" TANK"' in MODERN and '" HEALER"' in MODERN and '" DPS"' in MODERN, (
+    "Roster status chips regressed from full role labels"
+)
+assert "iconBadge = Native.createFramedIcon" in MODERN, "Prepared roster lost framed class icons"
+assert 'activity.frame.SetHeight(124)' in MODERN
+assert 'humanPanel.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -136)' in MODERN
+assert 'composition.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -226)' in MODERN
+assert "activityTop" in MODERN and "compositionTop" in MODERN, "Main content lost restrained section accents"
+assert '"Close   X"' in MODERN
 
 
 # Human anchor presentation carries authoritative level for the premium party strip.
