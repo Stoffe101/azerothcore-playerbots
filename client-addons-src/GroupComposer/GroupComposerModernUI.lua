@@ -4354,8 +4354,6 @@ function ____exports.createModernDashboard(self)
     frame:Hide()
     local root = Native:createSolid(frame, theme.colors.background)
     root:SetAllPoints(frame)
-    local rootOutline = Native:createPanel(frame, theme.colors.background, theme.colors.borderStrong)
-    rootOutline.frame:SetAllPoints(frame)
     Native:createChrome(frame, theme.colors.chrome, true)
     local header = Native:createPanel(frame, theme.colors.surface, theme.colors.border)
     header.frame:SetPoint(
