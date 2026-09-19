@@ -200,6 +200,15 @@ assert "bool reserve = false;" in TYPES and "bool needsPreparation = false;" in 
 # Group Composer must exclude them during planning, refuse to prune them if they appear after preview,
 # and refuse to attach a selected bot if ownership changes during the asynchronous commit step.
 build_candidates = section(PLANNER, "std::vector<Candidate> BuildCandidates(", "int CandidateScore(")
+assert "abovePeerBand && !alreadyGrouped" in build_candidates, (
+    "Non-grouped overleveled bots must be excluded before scoring"
+)
+assert "above this activity's peer cap" in PLANNER, (
+    "Sticky live-group overleveled bots must fail explicitly instead of being silently pruned"
+)
+assert "above the anti-boost peer cap" in SERVER, (
+    "Assembly/preparation must revalidate the bot level ceiling after preview"
+)
 assert "botAI->HasGameClientMaster() && botAI->GetMaster() != master" in build_candidates, (
     "Online guild/world candidates can still hijack another player's actively controlled bot"
 )
@@ -387,8 +396,8 @@ provision = section(SERVER, "bool FullProvisionFor(Member const& member)", "void
 assert "member.reserve" in provision and "!member.guild" in provision and "member.needsPreparation" in provision, (
     "Persistent guild companions can no longer be distinguished from disposable full-provision bodies"
 )
-assert "SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel" in SERVER
-assert "owner, member.role, member.spec, plan.config.requiredLevel, minimumItemLevel" in SERVER
+assert "SyncManagedBot(master, bot, member.role, member.spec, plan.config.botTargetLevel" in SERVER
+assert "owner, member.role, member.spec, plan.config.botTargetLevel, minimumItemLevel" in SERVER
 assert "targetItemLevel, fullProvision, 0" in SERVER
 assert "CLASS_DRUID" in sync and "role == ROLE_DPS" in sync and "buildSpec = 3" in sync, (
     "Feral DPS no longer maps to Playerbots/Era Talents Cat pseudo-spec 3"
@@ -631,15 +640,20 @@ assert 'getClassesForRole(currentRole)' in SELECTOR and 'getSpecsForRole(current
 
 # Activity eligibility is authoritative and precedes guild preference / assembly.
 assert "uint8 requiredLevel = 1;" in TYPES, "Config lost server-derived activity level floor"
+assert "uint8 botTargetLevel = 1;" in TYPES and "uint8 maxBotLevel = 1;" in TYPES, (
+    "Config lost the server-derived peer-level anti-boost policy"
+)
 assert "uint8 level = 1;" in TYPES, "Candidate/member level snapshots disappeared"
 assert "uint8 RequiredActivityLevel(Player* master, Config const& config)" in SERVER
 assert "GetLFGDungeon(mapId, difficulty)" in SERVER, "Named dungeon levels must come from Blizzard LFGDungeons.dbc data"
 assert "config.requiredLevel = RequiredActivityLevel(master, config);" in SERVER
-assert "bool disposableCapacity" in PLANNER and "underLevel" in PLANNER and "underGear" in PLANNER, (
+assert "ApplyBotLevelPolicy(master, config);" in SERVER
+assert "uint16(ownerLevelInEra) + 2" in SERVER and "AdventureCatalog::EraLevelCap(activityEra)" in SERVER
+assert "bool disposableCapacity" in PLANNER and "underLevel" in PLANNER and "belowPeerTarget" in PLANNER and "abovePeerBand" in PLANNER and "underGear" in PLANNER, (
     "Online RNDbot fallback lost elastic activity provisioning"
 )
 assert "SELECT guid, name, class, level FROM characters" in PLANNER, "Offline reserve selection lost persisted level metadata"
-assert "std::max<uint8>(storedLevel, config.requiredLevel)" in PLANNER, (
+assert "std::max<uint8>(storedLevel, config.botTargetLevel)" in PLANNER and "storedLevel > config.maxBotLevel" in PLANNER, (
     "Low-level offline reserve bodies must project to the selected activity level"
 )
 assert "bot->GiveLevel(targetLevel)" in SERVER, "Managed fallback no longer promotes low-level bodies before preparation"
@@ -675,7 +689,7 @@ assert human_snapshot.count("GetLevel() < plan.config.requiredLevel") >= 2, (
 )
 assert "minimumItemLevel" not in human_snapshot, "Assembly item-level validation must never apply to real humans"
 
-assert "SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel, 0, 0, false);" in SERVER, (
+assert "SyncManagedBot(master, bot, member.role, member.spec, plan.config.botTargetLevel, 0, 0, false);" in SERVER, (
     "Persistent guild spec retask lost the expanded managed-sync contract"
 )
 

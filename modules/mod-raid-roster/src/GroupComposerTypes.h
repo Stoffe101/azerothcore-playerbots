@@ -58,8 +58,12 @@ struct Config
     uint8 tanks = 1;
     uint8 healers = 1;
     uint8 dps = 3;
-    // Server-derived eligibility floor for the selected activity. The client never supplies this.
+    // Server-derived level policy for the selected activity. The client never supplies this.
+    // requiredLevel gates access. botTargetLevel is the peer level Composer provisions disposable
+    // capacity toward, and maxBotLevel is the hard anti-boost ceiling for selected Playerbots.
     uint8 requiredLevel = 1;
+    uint8 botTargetLevel = 1;
+    uint8 maxBotLevel = 1;
 
     bool preferGuild = true;
     bool fillWorld = true;

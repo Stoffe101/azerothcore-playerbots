@@ -390,6 +390,27 @@ uint8 RequiredActivityLevel(Player* master, Config const& config)
     return master ? master->GetLevel() : 1;
 }
 
+void ApplyBotLevelPolicy(Player* master, Config& config)
+{
+    if (!master)
+    {
+        config.botTargetLevel = config.requiredLevel;
+        config.maxBotLevel = config.requiredLevel;
+        return;
+    }
+
+    AdventureEra activityEra = AdventureCatalog::CurrentRealmEra();
+    if (AdventureActivity const* activity = AdventureCatalog::FindComposer(config.activity))
+        activityEra = activity->era;
+
+    uint8 const eraCap = AdventureCatalog::EraLevelCap(activityEra);
+    uint8 const ownerLevelInEra = std::min<uint8>(master->GetLevel(), eraCap);
+    config.botTargetLevel = std::max<uint8>(config.requiredLevel, ownerLevelInEra);
+
+    uint16 const peerCeiling = std::min<uint16>(eraCap, uint16(ownerLevelInEra) + 2);
+    config.maxBotLevel = std::max<uint8>(config.requiredLevel, static_cast<uint8>(peerCeiling));
+}
+
 uint8 RequiredProgressionFor(Config const& config)
 {
     AdventureActivity const* activity = AdventureCatalog::FindComposer(config.activity);
@@ -1526,6 +1547,13 @@ bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& err
                 ", below the selected activity's required level " + std::to_string(unsigned(plan.config.requiredLevel)) + ".";
             return false;
         }
+        if (live->GetLevel() > plan.config.maxBotLevel)
+        {
+            error = "Selected bot '" + member.name + "' is level " + std::to_string(unsigned(live->GetLevel())) +
+                ", above the anti-boost peer cap of " + std::to_string(unsigned(plan.config.maxBotLevel)) +
+                ". Run Find Roster again for a level-appropriate replacement.";
+            return false;
+        }
         if (BotHasOtherGameClientMaster(master, live))
         {
             error = "Selected bot '" + member.name + "' is now controlled by another active player. Run Find Roster again.";
@@ -1629,6 +1657,13 @@ std::string PreparedMemberBlocker(Plan const& plan, Member const& member)
     if (bot->GetLevel() < plan.config.requiredLevel)
         return "is level " + std::to_string(unsigned(bot->GetLevel())) +
             ", below the required level " + std::to_string(unsigned(plan.config.requiredLevel));
+    if (bot->GetLevel() > plan.config.maxBotLevel)
+        return "is level " + std::to_string(unsigned(bot->GetLevel())) +
+            ", above the anti-boost peer cap " + std::to_string(unsigned(plan.config.maxBotLevel));
+    if ((member.managed || member.reserve || member.needsPreparation) &&
+        bot->GetLevel() < plan.config.botTargetLevel)
+        return "is level " + std::to_string(unsigned(bot->GetLevel())) +
+            ", below the Composer peer target " + std::to_string(unsigned(plan.config.botTargetLevel));
 
     // Validate the finalized combat build itself. Playerbot strategy flags can lag a talent reset by
     // one AI tick, which previously stranded correctly-specced healers at 3/4 ready.
@@ -1702,7 +1737,7 @@ bool PreparePlan(Player* master, Plan& plan, std::string& error)
         if (bot)
         {
             if (!(member.guild && member.needsPreparation))
-                SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel,
+                SyncManagedBot(master, bot, member.role, member.spec, plan.config.botTargetLevel,
                     minimumItemLevel, targetItemLevel, fullProvision);
             EnsureComposerInstanceAccess(master, bot, plan.config);
             continue;
@@ -1711,7 +1746,7 @@ bool PreparePlan(Player* master, Plan& plan, std::string& error)
         if (!member.reserve)
             mgr->AddPlayerBot(member.guid, account, true);
         s_pendingSync[member.guid.GetCounter()] = {
-            owner, member.role, member.spec, plan.config.requiredLevel, minimumItemLevel,
+            owner, member.role, member.spec, plan.config.botTargetLevel, minimumItemLevel,
             targetItemLevel, fullProvision, 0
         };
     }
@@ -1830,7 +1865,7 @@ bool BeginPreparedAssembly(Player* master, Plan& plan, std::string& error)
     {
         if (member.human || !member.guild || !member.needsPreparation) continue;
         if (Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid))
-            SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel, 0, 0, false);
+            SyncManagedBot(master, bot, member.role, member.spec, plan.config.botTargetLevel, 0, 0, false);
     }
 
     plan.travelPending = false;
@@ -2162,6 +2197,7 @@ bool GroupComposerCommand::HandleBegin(ChatHandler* handler, std::string mode, s
     config.avoidDuplicates = avoidDuplicates != 0;
     config.minimumItemLevel = static_cast<uint16>(std::min<uint32>(1000, minimumItemLevel));
     config.requiredLevel = RequiredActivityLevel(master, config);
+    ApplyBotLevelPolicy(master, config);
 
     std::string eligibilityReason;
     if (!ActivityEligible(master, config, eligibilityReason))

@@ -495,7 +495,42 @@ For the cleanest "friends type one domain and connect" experience, a real public
 
 ---
 
-## 7. Friend-ready launch checklist
+## 7. Realm lifecycle: test realm vs fresh release realm
+
+The current realm is intentionally the **development/testing realm**. It is allowed to accumulate test characters, debug progression, temporary boosts, experimental guild state and repeated expansion-gate changes.
+
+It should **not** become the permanent friends realm by slowly cleaning it up.
+
+When the project reaches a release-quality checkpoint, create a separate fresh realm/database state with:
+
+- brand-new character and guild data;
+- Vanilla as the live era;
+- level cap 60;
+- progression at the true starting stage;
+- no test clears, debug quest completions or raid-ready boosts;
+- production-safe account/admin settings;
+- the same tested server code, modules and addon versions as the release commit.
+
+The preferred release flow is to preserve the test realm for future development and create the fresh realm from clean database volumes/backups, rather than destructively wiping the only test environment. A future maintenance task should package this into a deliberate "create fresh realm" procedure with backup/confirmation guards.
+
+### Anti-boost Group Composer rule
+
+Group Composer now treats bot level as part of roster eligibility.
+
+For the selected activity era:
+
+- disposable Composer capacity is prepared toward the player's level, capped by that expansion's level cap;
+- non-grouped bots more than **2 levels above the player's effective level for that era** are excluded;
+- bots can never exceed the selected activity era's cap;
+- persistent guild companions are never silently downleveled;
+- an already-grouped overleveled bot is not kicked automatically. Instead Composer refuses the build with an explicit message so the player can remove it manually;
+- assembly rechecks the same ceiling so a bot cannot level/change between preview and commit and slip into a boost run.
+
+Real human players are not subject to this bot-only restriction.
+
+---
+
+## 8. Friend-ready launch checklist
 
 Before inviting friends:
 
@@ -517,7 +552,7 @@ Before inviting friends:
 
 ---
 
-## 8. Product direction after friends can join
+## 9. Product direction after friends can join
 
 Once external multiplayer works reliably, the project can shift from "make the systems function" to "make the world feel alive."
 
