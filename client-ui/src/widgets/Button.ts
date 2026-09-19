@@ -10,6 +10,7 @@ export interface ButtonOptions {
     icon?: string;
     iconSize?: number;
     emphasis?: boolean;
+    flat?: boolean;
 }
 
 export interface UIButton {
@@ -27,9 +28,15 @@ export function createButton(parent: WoWFrame, options: ButtonOptions): UIButton
     frame.EnableMouse(true);
 
     const accent = options.accent ?? theme.colors.primary;
-    const background = createSolid(frame, options.emphasis === true ? theme.colors.surfaceBlue : theme.colors.surfaceRaised);
+    const background = createSolid(
+        frame,
+        options.emphasis === true ? theme.colors.surfaceBlue : (options.flat === true ? theme.colors.surface : theme.colors.surfaceRaised),
+    );
     background.SetAllPoints(frame);
-    const outline = createOutline(frame, options.emphasis === true ? accent : theme.colors.border);
+    const outline = createOutline(
+        frame,
+        options.emphasis === true ? accent : (options.flat === true ? theme.colors.surface : theme.colors.border),
+    );
 
     const selectedWash = createSolid(frame, withAlpha(accent, 0.10), "ARTWORK");
     selectedWash.SetAllPoints(frame);
@@ -64,8 +71,17 @@ export function createButton(parent: WoWFrame, options: ButtonOptions): UIButton
             selectedWash.Show();
         } else {
             selectedWash.Hide();
-            setTextureColor(background, hovered && enabled ? theme.colors.surfaceHover : (options.emphasis === true ? theme.colors.surfaceBlue : theme.colors.surfaceRaised));
-            outline.setColor(options.emphasis === true ? accent : (hovered && enabled ? theme.colors.borderStrong : theme.colors.border));
+            setTextureColor(
+                background,
+                hovered && enabled
+                    ? theme.colors.surfaceHover
+                    : (options.emphasis === true ? theme.colors.surfaceBlue : (options.flat === true ? theme.colors.surface : theme.colors.surfaceRaised)),
+            );
+            outline.setColor(
+                options.emphasis === true
+                    ? accent
+                    : (hovered && enabled ? theme.colors.borderStrong : (options.flat === true ? theme.colors.surface : theme.colors.border)),
+            );
         }
         const color = selected ? accent : theme.colors.text;
         label.SetTextColor(color[0], color[1], color[2], enabled ? 1 : 0.72);
