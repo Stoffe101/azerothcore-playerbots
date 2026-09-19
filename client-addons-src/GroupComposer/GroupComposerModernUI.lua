@@ -2135,7 +2135,6 @@ return ____exports
 --[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
 local ____exports = {}
 local ____Native = require("core.Native")
-local createChrome = ____Native.createChrome
 local createFramedIcon = ____Native.createFramedIcon
 local createPanel = ____Native.createPanel
 local createSolid = ____Native.createSolid
@@ -2153,7 +2152,7 @@ function ____exports.createModal(self, parent, width, height)
     scrim:EnableMouse(true)
     local scrimTexture = createSolid(nil, scrim, theme.colors.scrim)
     scrimTexture:SetAllPoints(scrim)
-    local panel = createPanel(nil, parent, theme.colors.background, theme.colors.borderStrong)
+    local panel = createPanel(nil, parent, theme.colors.background, theme.colors.chrome)
     panel.frame:SetSize(width, height)
     panel.frame:SetPoint(
         "CENTER",
@@ -2164,7 +2163,6 @@ function ____exports.createModal(self, parent, width, height)
     )
     panel.frame:SetFrameStrata("DIALOG")
     panel.frame:SetFrameLevel(scrim:GetFrameLevel() + 1)
-    createChrome(nil, panel.frame, theme.colors.chrome, true)
     local function hideModal(self)
         panel.frame:Hide()
         scrim:Hide()
