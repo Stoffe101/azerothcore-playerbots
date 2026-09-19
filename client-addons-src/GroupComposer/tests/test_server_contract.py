@@ -965,3 +965,8 @@ assert "Rebuild / Repair Roster" in GENERATED_UI
 assert "Disband Composer Group" in GENERATED_UI
 assert "Why this bot?" in GENERATED_UI
 assert "click for why" in GENERATED_UI
+
+# Random Dungeon handoff must follow the live realm era, never the character's current level.
+assert "RANDOM_DUNGEON_NORMAL_CLASSIC = 258u" in SERVER
+assert "switch (AdventureCatalog::CurrentRealmEra())" in SERVER
+assert "master->GetLevel() >= 71" not in SERVER

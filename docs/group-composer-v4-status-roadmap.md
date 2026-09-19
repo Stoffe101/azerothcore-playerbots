@@ -281,6 +281,7 @@ The current V4 feature set now includes the remaining original UX items:
 
 - exact activity lock explanations;
 - Vanilla/TBC/WotLK-aware browsing and difficulty rules;
+- era-aware Random Dungeon Finder handoff, including the stock 3.3.5a Random Classic category;
 - Progression and Recommended Activities pages;
 - Favorites and Recent Activities;
 - saved dungeon party templates;

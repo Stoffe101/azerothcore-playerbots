@@ -2686,9 +2686,27 @@ bool GroupComposerCommand::HandleQueue(ChatHandler* handler)
     bool heroic = plan.config.difficulty == "heroic";
     if (plan.config.activity == "random")
     {
-        bool wotlk = master->GetLevel() >= 71;
-        dungeons.insert(wotlk ? (heroic ? lfg::RANDOM_DUNGEON_HEROIC_WOTLK : lfg::RANDOM_DUNGEON_NORMAL_WOTLK)
-                              : (heroic ? lfg::RANDOM_DUNGEON_HEROIC_TBC : lfg::RANDOM_DUNGEON_NORMAL_TBC));
+        // LFGDungeons.dbc 3.3.5a IDs: 258 Classic Normal, 259/260 TBC Normal/Heroic,
+        // 261/262 WotLK Normal/Heroic. AzerothCore exposes constants for TBC/WotLK but not
+        // Random Classic, so keep the missing stock client ID local and explicit here.
+        static constexpr uint32 RANDOM_DUNGEON_NORMAL_CLASSIC = 258u;
+        switch (AdventureCatalog::CurrentRealmEra())
+        {
+            case AdventureEra::Vanilla:
+                if (heroic)
+                {
+                    SendError(handler, "Vanilla Random Dungeon is Normal-only.");
+                    return true;
+                }
+                dungeons.insert(RANDOM_DUNGEON_NORMAL_CLASSIC);
+                break;
+            case AdventureEra::Tbc:
+                dungeons.insert(heroic ? lfg::RANDOM_DUNGEON_HEROIC_TBC : lfg::RANDOM_DUNGEON_NORMAL_TBC);
+                break;
+            case AdventureEra::Wotlk:
+                dungeons.insert(heroic ? lfg::RANDOM_DUNGEON_HEROIC_WOTLK : lfg::RANDOM_DUNGEON_NORMAL_WOTLK);
+                break;
+        }
     }
     else
     {
