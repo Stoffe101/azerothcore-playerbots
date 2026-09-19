@@ -850,12 +850,12 @@ export function createModernDashboard(): Dashboard {
     resetButton.frame.SetPoint("LEFT", assembleButton.frame, "RIGHT", 8, 0);
 
     // Templates modal --------------------------------------------------------
-    const templatesModal = ModalUI.createModal(frame, 1020, 720);
+    const templatesModal = ModalUI.createModal(frame, 960, 650);
     templatesModal.setTitle("Raid Templates");
-    templatesModal.setSubtitle("Coverage-first raid cores reserve key buffs; every unlisted slot stays Auto-filled.");
+    templatesModal.setSubtitle("Start from a proven raid core or save your own. Unlisted slots remain Auto-filled.");
     templatesModal.setHeaderIcon(ICON_TEMPLATES);
 
-    const templateSaveLabel = Native.createText(templatesModal.content, "SAVE CURRENT", "GameFontNormalSmall", theme.colors.muted);
+    const templateSaveLabel = Native.createText(templatesModal.content, "SAVE CURRENT RAID", "GameFontNormalSmall", theme.colors.muted);
     templateSaveLabel.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, 0);
     const templateName = InputUI.createTextInput(templatesModal.content, 300, 34);
     templateName.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -24);
@@ -880,198 +880,184 @@ export function createModernDashboard(): Dashboard {
     });
     templateSave.frame.SetPoint("LEFT", templateName.frame, "RIGHT", 8, 0);
 
-    const builtinTitle = Native.createText(templatesModal.content, "BUILT-IN RAID COMPS", "GameFontNormalSmall", theme.colors.muted);
-    builtinTitle.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -82);
-    const customTitle = Native.createText(templatesModal.content, "MY TEMPLATES", "GameFontNormalSmall", theme.colors.muted);
-    customTitle.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 472, -82);
+    let templateTab: "BUILTIN" | "CUSTOM" = "BUILTIN";
+    const templateBuiltinTab = ButtonUI.createButton(templatesModal.content, { text: "Built-in", width: 138, height: 34, accent: theme.colors.primary });
+    templateBuiltinTab.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -82);
+    const templateCustomTab = ButtonUI.createButton(templatesModal.content, { text: "My Templates", width: 150, height: 34, accent: theme.colors.warning });
+    templateCustomTab.frame.SetPoint("LEFT", templateBuiltinTab.frame, "RIGHT", 8, 0);
 
-    const builtinScroll = ScrollUI.createScrollList(templatesModal.content, 448, 460);
-    builtinScroll.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -110);
-    const customScroll = ScrollUI.createScrollList(templatesModal.content, 448, 460);
-    customScroll.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 472, -110);
-
-    const builtinRows: WoWFrame[] = [];
-    const customRows: WoWFrame[] = [];
-
-    const builtinEmpty = Native.createText(
-        builtinScroll.content,
-        "Built-in raid compositions will appear here.",
+    const templateScroll = ScrollUI.createScrollList(templatesModal.content, 884, 420);
+    templateScroll.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -126);
+    const templateRows: WoWFrame[] = [];
+    const templateEmpty = Native.createText(
+        templateScroll.content,
+        "",
         "GameFontHighlight",
         theme.colors.muted,
     );
-    builtinEmpty.SetPoint("TOPLEFT", builtinScroll.content, "TOPLEFT", 18, -22);
-    builtinEmpty.SetWidth(360);
-    builtinEmpty.SetJustifyH("CENTER");
-    builtinEmpty.Hide();
-
-    const customEmpty = Native.createText(
-        customScroll.content,
-        "No custom templates yet. Configure a raid, name it above, then Save Current.",
-        "GameFontHighlight",
-        theme.colors.muted,
-    );
-    customEmpty.SetPoint("TOPLEFT", customScroll.content, "TOPLEFT", 22, -22);
-    customEmpty.SetWidth(350);
-    customEmpty.SetJustifyH("CENTER");
-    customEmpty.SetJustifyV("TOP");
-    customEmpty.Hide();
+    templateEmpty.SetPoint("TOPLEFT", templateScroll.content, "TOPLEFT", 24, -28);
+    templateEmpty.SetWidth(800);
+    templateEmpty.SetJustifyH("CENTER");
+    templateEmpty.SetJustifyV("TOP");
+    templateEmpty.Hide();
 
     function clearDynamicRows(rows: WoWFrame[]): void {
         for (const row of rows) row.Hide();
     }
 
     function refreshTemplates(): void {
-        clearDynamicRows(builtinRows);
-        clearDynamicRows(customRows);
+        clearDynamicRows(templateRows);
         templateSave.setEnabled(Model.config().mode === "RAID");
+        templateBuiltinTab.setSelected(templateTab === "BUILTIN");
+        templateCustomTab.setSelected(templateTab === "CUSTOM");
 
-        const builtins = Model.listBuiltinProfiles();
-        if (builtins.length === 0) builtinEmpty.Show();
-        else builtinEmpty.Hide();
-        for (let i = 0; i < builtins.length; i += 1) {
-            let row = builtinRows[i];
+        const names = templateTab === "BUILTIN" ? Model.listBuiltinProfiles() : Model.listCustomProfiles();
+        if (names.length === 0) {
+            templateEmpty.SetText(
+                templateTab === "BUILTIN"
+                    ? "No built-in raid compositions are available."
+                    : "No custom templates yet. Configure a raid, name it above, then Save Current."
+            );
+            templateEmpty.Show();
+        } else templateEmpty.Hide();
+
+        for (let i = 0; i < names.length; i += 1) {
+            let row = templateRows[i];
             if (row === undefined) {
-                const panel = Native.createPanel(builtinScroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                panel.frame.SetSize(438, 76);
+                const panel = Native.createPanel(templateScroll.content, theme.colors.surfaceRaised, theme.colors.border);
+                panel.frame.SetSize(854, 70);
                 const accent = Native.createSolid(panel.frame, theme.colors.primary, "ARTWORK");
                 accent.SetWidth(3);
                 accent.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 0, 0);
                 accent.SetPoint("BOTTOMLEFT", panel.frame, "BOTTOMLEFT", 0, 0);
-                const iconBadge = Native.createFramedIcon(panel.frame, ICON_RAID, 42, theme.colors.primary);
-                iconBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
+                const iconBadge = Native.createFramedIcon(panel.frame, ICON_RAID, 40, theme.colors.primary);
+                iconBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 12, 0);
                 const name = Native.createText(panel.frame, "", "GameFontHighlight");
-                name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 62, -10);
-                name.SetWidth(258);
-                const builtinTag = Native.createText(panel.frame, "BUILT-IN", "GameFontNormalSmall", theme.colors.primary);
-                builtinTag.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 62, -31);
+                name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 64, -10);
+                name.SetWidth(500);
+                const tag = Native.createText(panel.frame, "", "GameFontNormalSmall", theme.colors.primary);
+                tag.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 64, -33);
+                tag.SetWidth(80);
                 const info = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-                info.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 122, -31);
-                info.SetWidth(200);
-                const load = ButtonUI.createButton(panel.frame, { text: "Load", width: 82, height: 32, accent: theme.colors.primary });
-                load.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
+                info.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 142, -33);
+                info.SetWidth(470);
+                const load = ButtonUI.createButton(panel.frame, { text: "Load", width: 72, height: 30, accent: theme.colors.primary });
+                const remove = ButtonUI.createButton(panel.frame, { text: "Delete", width: 70, height: 30, accent: theme.colors.error });
+                (panel.frame as any)._accent = accent;
+                (panel.frame as any)._iconBadge = iconBadge;
                 (panel.frame as any)._name = name;
-                (panel.frame as any)._info = info;
-                (panel.frame as any)._load = load;
-                builtinScroll.bindWheel(panel.frame);
-                builtinScroll.bindWheel(load.frame);
-                row = panel.frame;
-                builtinRows[i] = row;
-            }
-            row.ClearAllPoints();
-            row.SetPoint("TOPLEFT", builtinScroll.content, "TOPLEFT", 0, -(i * 84));
-            (row as any)._name.SetText(builtins[i]);
-            (row as any)._info.SetText(Model.profileDescription(builtins[i]));
-            const profileName = builtins[i];
-            (row as any)._load.frame.SetScript("OnMouseDown", () => {
-                Model.loadProfile(profileName);
-                templatesModal.hide();
-            });
-            row.Show();
-        }
-        builtinScroll.setContentHeight(Math.max(460, builtins.length * 84));
-
-        const customs = Model.listCustomProfiles();
-        if (customs.length === 0) customEmpty.Show();
-        else customEmpty.Hide();
-        for (let i = 0; i < customs.length; i += 1) {
-            let row = customRows[i];
-            if (row === undefined) {
-                const panel = Native.createPanel(customScroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                panel.frame.SetSize(438, 76);
-                const accent = Native.createSolid(panel.frame, theme.colors.warning, "ARTWORK");
-                accent.SetWidth(3);
-                accent.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 0, 0);
-                accent.SetPoint("BOTTOMLEFT", panel.frame, "BOTTOMLEFT", 0, 0);
-                const iconBadge = Native.createFramedIcon(panel.frame, ICON_TEMPLATES, 42, theme.colors.warning);
-                iconBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
-                const name = Native.createText(panel.frame, "", "GameFontHighlight");
-                name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 62, -10);
-                name.SetWidth(190);
-                const customTag = Native.createText(panel.frame, "CUSTOM", "GameFontNormalSmall", theme.colors.warning);
-                customTag.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 62, -31);
-                const info = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-                info.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 115, -31);
-                info.SetWidth(142);
-                const load = ButtonUI.createButton(panel.frame, { text: "Load", width: 68, height: 30, accent: theme.colors.primary });
-                load.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -78, 0);
-                const remove = ButtonUI.createButton(panel.frame, { text: "Delete", width: 66, height: 30, accent: theme.colors.error });
-                remove.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
-                (panel.frame as any)._name = name;
+                (panel.frame as any)._tag = tag;
                 (panel.frame as any)._info = info;
                 (panel.frame as any)._load = load;
                 (panel.frame as any)._remove = remove;
-                customScroll.bindWheel(panel.frame);
-                customScroll.bindWheel(load.frame);
-                customScroll.bindWheel(remove.frame);
+                templateScroll.bindWheel(panel.frame);
+                templateScroll.bindWheel(load.frame);
+                templateScroll.bindWheel(remove.frame);
                 row = panel.frame;
-                customRows[i] = row;
+                templateRows[i] = row;
             }
+
             row.ClearAllPoints();
-            row.SetPoint("TOPLEFT", customScroll.content, "TOPLEFT", 0, -(i * 84));
-            (row as any)._name.SetText(customs[i]);
-            (row as any)._info.SetText(Model.profileDescription(customs[i]));
-            const profileName = customs[i];
-            (row as any)._load.frame.SetScript("OnMouseDown", () => {
+            row.SetPoint("TOPLEFT", templateScroll.content, "TOPLEFT", 0, -(i * 78));
+            const profileName = names[i];
+            const builtin = templateTab === "BUILTIN";
+            const rowAccent = builtin ? theme.colors.primary : theme.colors.warning;
+            Native.setTextureColor((row as any)._accent, rowAccent);
+            (row as any)._iconBadge.outline.setColor(rowAccent);
+            (row as any)._iconBadge.icon.SetTexture(builtin ? ICON_RAID : ICON_TEMPLATES);
+            (row as any)._iconBadge.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+            (row as any)._name.SetText(profileName);
+            (row as any)._tag.SetText(builtin ? "BUILT-IN" : "CUSTOM");
+            (row as any)._tag.SetTextColor(rowAccent[0], rowAccent[1], rowAccent[2], 1);
+            (row as any)._info.SetText(Model.profileDescription(profileName));
+
+            const load = (row as any)._load as UIButton;
+            const remove = (row as any)._remove as UIButton;
+            load.frame.ClearAllPoints();
+            remove.frame.ClearAllPoints();
+            if (builtin) {
+                remove.frame.Hide();
+                load.frame.SetPoint("RIGHT", row, "RIGHT", -10, 0);
+            } else {
+                load.frame.SetPoint("RIGHT", row, "RIGHT", -88, 0);
+                remove.frame.SetPoint("RIGHT", row, "RIGHT", -10, 0);
+                remove.frame.SetScript("OnMouseDown", () => {
+                    Model.deleteProfile(profileName);
+                    refreshTemplates();
+                });
+                remove.frame.Show();
+            }
+            load.frame.SetScript("OnMouseDown", () => {
                 Model.loadProfile(profileName);
                 templatesModal.hide();
             });
-            (row as any)._remove.frame.SetScript("OnMouseDown", () => {
-                Model.deleteProfile(profileName);
-                refreshTemplates();
-            });
             row.Show();
         }
-        customScroll.setContentHeight(Math.max(460, customs.length * 84));
+        templateScroll.setContentHeight(Math.max(420, names.length * 78));
     }
+
+    templateBuiltinTab.frame.SetScript("OnMouseDown", () => {
+        templateTab = "BUILTIN";
+        templateScroll.scrollToTop();
+        refreshTemplates();
+    });
+    templateCustomTab.frame.SetScript("OnMouseDown", () => {
+        templateTab = "CUSTOM";
+        templateScroll.scrollToTop();
+        refreshTemplates();
+    });
 
     showTemplates = () => {
         ChoiceUI.closeChoicePopup();
-        builtinScroll.scrollToTop();
-        customScroll.scrollToTop();
+        templateScroll.scrollToTop();
         refreshTemplates();
         templatesModal.show();
     };
 
     // Humans & Pins modal ----------------------------------------------------
-    const peopleModal = ModalUI.createModal(frame, 980, 700);
+    const peopleModal = ModalUI.createModal(frame, 980, 620);
     peopleModal.setTitle("Humans & Pins");
-    peopleModal.setSubtitle("Real players stay locked. Pins request named companions without turning humans into disposable roster slots.");
+    peopleModal.setSubtitle("Humans are locked anchors. Pins reserve named companions without making active group members disposable.");
     peopleModal.setHeaderIcon(ICON_PEOPLE);
 
     const peopleHumanTitle = Native.createText(peopleModal.content, "HUMAN ANCHORS", "GameFontNormalSmall", theme.colors.muted);
     peopleHumanTitle.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, 0);
-    const humanScroll = ScrollUI.createScrollList(peopleModal.content, 900, 210);
+    const humanScroll = ScrollUI.createScrollList(peopleModal.content, 442, 430);
     humanScroll.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -26);
     const humanRowsModal: WoWFrame[] = [];
     const humanEmpty = Native.createText(
         humanScroll.content,
-        "No additional human anchors detected.",
+        "No human anchors detected.",
         "GameFontHighlight",
         theme.colors.muted,
     );
-    humanEmpty.SetPoint("TOPLEFT", humanScroll.content, "TOPLEFT", 18, -20);
-    humanEmpty.SetWidth(820);
+    humanEmpty.SetPoint("TOPLEFT", humanScroll.content, "TOPLEFT", 18, -24);
+    humanEmpty.SetWidth(360);
     humanEmpty.SetJustifyH("CENTER");
     humanEmpty.Hide();
 
-    const pinBuilder = Native.createPanel(peopleModal.content, theme.colors.surfaceRaised, theme.colors.border);
-    pinBuilder.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -242);
-    pinBuilder.frame.SetPoint("TOPRIGHT", peopleModal.content, "TOPRIGHT", 0, -242);
-    pinBuilder.frame.SetHeight(82);
+    const pinPane = CreateFrame("Frame", undefined, peopleModal.content);
+    pinPane.SetPoint("TOPRIGHT", peopleModal.content, "TOPRIGHT", 0, 0);
+    pinPane.SetSize(442, 456);
 
-    const pinTitle = Native.createText(peopleModal.content, "PIN COMPANION", "GameFontNormalSmall", theme.colors.muted);
-    pinTitle.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 12, -250);
-    const pinInput = InputUI.createTextInput(peopleModal.content, 230, 34);
-    pinInput.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 12, -278);
+    const pinTitle = Native.createText(pinPane, "PIN COMPANION", "GameFontNormalSmall", theme.colors.muted);
+    pinTitle.SetPoint("TOPLEFT", pinPane, "TOPLEFT", 0, 0);
+    const pinBuilder = Native.createPanel(pinPane, theme.colors.surfaceRaised, theme.colors.border);
+    pinBuilder.frame.SetPoint("TOPLEFT", pinPane, "TOPLEFT", 0, -26);
+    pinBuilder.frame.SetPoint("TOPRIGHT", pinPane, "TOPRIGHT", 0, -26);
+    pinBuilder.frame.SetHeight(118);
+
+    const pinInput = InputUI.createTextInput(pinBuilder.frame, 250, 34);
+    pinInput.frame.SetPoint("TOPLEFT", pinBuilder.frame, "TOPLEFT", 12, -12);
 
     let pinRole: Role = "DPS";
     let pinRequired = false;
     const pinRoleButtons: Record<Role, UIButton> = {
-        TANK: ButtonUI.createButton(peopleModal.content, { text: "Tank", width: 78, height: 34, accent: theme.colors.tank }),
-        HEALER: ButtonUI.createButton(peopleModal.content, { text: "Healer", width: 78, height: 34, accent: theme.colors.healer }),
-        DPS: ButtonUI.createButton(peopleModal.content, { text: "DPS", width: 78, height: 34, accent: theme.colors.dps }),
+        TANK: ButtonUI.createButton(pinBuilder.frame, { text: "Tank", width: 66, height: 28, accent: theme.colors.tank }),
+        HEALER: ButtonUI.createButton(pinBuilder.frame, { text: "Healer", width: 66, height: 28, accent: theme.colors.healer }),
+        DPS: ButtonUI.createButton(pinBuilder.frame, { text: "DPS", width: 66, height: 28, accent: theme.colors.dps }),
     };
-    pinRoleButtons.TANK.frame.SetPoint("LEFT", pinInput.frame, "RIGHT", 8, 0);
+    pinRoleButtons.TANK.frame.SetPoint("TOPLEFT", pinBuilder.frame, "TOPLEFT", 12, -58);
     pinRoleButtons.HEALER.frame.SetPoint("LEFT", pinRoleButtons.TANK.frame, "RIGHT", 6, 0);
     pinRoleButtons.DPS.frame.SetPoint("LEFT", pinRoleButtons.HEALER.frame, "RIGHT", 6, 0);
     for (const role of roleOrder) {
@@ -1083,18 +1069,18 @@ export function createModernDashboard(): Dashboard {
     }
 
     const pinToggle = ToggleUI.createToggle(
-        peopleModal.content,
+        pinBuilder.frame,
         "Required",
         () => pinRequired,
         (value) => { pinRequired = value; },
     );
-    pinToggle.frame.SetPoint("LEFT", pinRoleButtons.DPS.frame, "RIGHT", 12, 0);
-    pinToggle.frame.SetWidth(98);
+    pinToggle.frame.SetPoint("TOPLEFT", pinBuilder.frame, "TOPLEFT", 230, -57);
+    pinToggle.frame.SetWidth(92);
 
-    const addPinButton = ButtonUI.createButton(peopleModal.content, {
+    const addPinButton = ButtonUI.createButton(pinBuilder.frame, {
         text: "Pin Member",
-        width: 116,
-        height: 36,
+        width: 112,
+        height: 34,
         accent: theme.colors.primary,
         emphasis: true,
         onClick: () => {
@@ -1106,22 +1092,23 @@ export function createModernDashboard(): Dashboard {
             }
         },
     });
-    addPinButton.frame.SetPoint("TOPRIGHT", peopleModal.content, "TOPRIGHT", -12, -278);
+    addPinButton.frame.SetPoint("TOPRIGHT", pinBuilder.frame, "TOPRIGHT", -12, -12);
 
-    const pinListTitle = Native.createText(peopleModal.content, "PINNED MEMBERS", "GameFontNormalSmall", theme.colors.muted);
-    pinListTitle.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -338);
-    const pinScroll = ScrollUI.createScrollList(peopleModal.content, 900, 190);
-    pinScroll.frame.SetPoint("TOPLEFT", peopleModal.content, "TOPLEFT", 0, -364);
+    const pinListTitle = Native.createText(pinPane, "PINNED MEMBERS", "GameFontNormalSmall", theme.colors.muted);
+    pinListTitle.SetPoint("TOPLEFT", pinPane, "TOPLEFT", 0, -160);
+    const pinScroll = ScrollUI.createScrollList(pinPane, 442, 270);
+    pinScroll.frame.SetPoint("TOPLEFT", pinPane, "TOPLEFT", 0, -186);
     const pinRows: WoWFrame[] = [];
     const pinEmpty = Native.createText(
         pinScroll.content,
-        "No companions pinned. Add a name above to keep a familiar bot in mind.",
-        "GameFontHighlight",
+        "No companions pinned. Add a name above when you want Composer to keep someone in mind.",
+        "GameFontHighlightSmall",
         theme.colors.muted,
     );
-    pinEmpty.SetPoint("TOPLEFT", pinScroll.content, "TOPLEFT", 18, -20);
-    pinEmpty.SetWidth(820);
+    pinEmpty.SetPoint("TOPLEFT", pinScroll.content, "TOPLEFT", 24, -26);
+    pinEmpty.SetWidth(350);
     pinEmpty.SetJustifyH("CENTER");
+    pinEmpty.SetJustifyV("TOP");
     pinEmpty.Hide();
 
     function refreshPeople(): void {
@@ -1135,23 +1122,23 @@ export function createModernDashboard(): Dashboard {
             let row = humanRowsModal[i];
             if (row === undefined) {
                 const panel = Native.createPanel(humanScroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                panel.frame.SetSize(892, 50);
+                panel.frame.SetSize(412, 64);
                 const classBadge = Native.createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 34, theme.colors.borderStrong);
                 classBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 8, 0);
                 const icon = classBadge.icon;
                 const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
-                name.SetPoint("LEFT", panel.frame, "LEFT", 52, 7);
-                name.SetWidth(250);
+                name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 52, -11);
+                name.SetWidth(150);
                 const identity = Native.createText(panel.frame, "REAL PLAYER", "GameFontNormalSmall", theme.colors.primary);
-                identity.SetPoint("LEFT", panel.frame, "LEFT", 52, -10);
+                identity.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 52, -33);
                 const buttons: Record<Role, UIButton> = {
-                    TANK: ButtonUI.createButton(panel.frame, { text: "Tank", width: 78, height: 28, accent: theme.colors.tank }),
-                    HEALER: ButtonUI.createButton(panel.frame, { text: "Healer", width: 78, height: 28, accent: theme.colors.healer }),
-                    DPS: ButtonUI.createButton(panel.frame, { text: "DPS", width: 78, height: 28, accent: theme.colors.dps }),
+                    TANK: ButtonUI.createButton(panel.frame, { text: "Tank", width: 62, height: 26, accent: theme.colors.tank }),
+                    HEALER: ButtonUI.createButton(panel.frame, { text: "Healer", width: 62, height: 26, accent: theme.colors.healer }),
+                    DPS: ButtonUI.createButton(panel.frame, { text: "DPS", width: 62, height: 26, accent: theme.colors.dps }),
                 };
                 buttons.DPS.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
-                buttons.HEALER.frame.SetPoint("RIGHT", buttons.DPS.frame, "LEFT", -6, 0);
-                buttons.TANK.frame.SetPoint("RIGHT", buttons.HEALER.frame, "LEFT", -6, 0);
+                buttons.HEALER.frame.SetPoint("RIGHT", buttons.DPS.frame, "LEFT", -5, 0);
+                buttons.TANK.frame.SetPoint("RIGHT", buttons.HEALER.frame, "LEFT", -5, 0);
                 (panel.frame as any)._classBadge = classBadge;
                 (panel.frame as any)._icon = icon;
                 (panel.frame as any)._name = name;
@@ -1163,7 +1150,7 @@ export function createModernDashboard(): Dashboard {
             }
 
             row.ClearAllPoints();
-            row.SetPoint("TOPLEFT", humanScroll.content, "TOPLEFT", 0, -(i * 56));
+            row.SetPoint("TOPLEFT", humanScroll.content, "TOPLEFT", 0, -(i * 70));
             Native.setClassIcon((row as any)._icon, String(human.class));
             (row as any)._classBadge.outline.setColor(Native.classColor(String(human.class)));
             (row as any)._name.SetText((human.isPlayer ? "YOU  ·  " : "") + human.name + "  ·  " + Model.classLabel(String(human.class)));
@@ -1185,7 +1172,7 @@ export function createModernDashboard(): Dashboard {
             }
             row.Show();
         }
-        humanScroll.setContentHeight(Math.max(210, list.length * 56));
+        humanScroll.setContentHeight(Math.max(430, list.length * 70));
 
         for (const role of roleOrder) pinRoleButtons[role].setSelected(pinRole === role);
         pinToggle.refresh();
@@ -1199,17 +1186,17 @@ export function createModernDashboard(): Dashboard {
             let row = pinRows[i];
             if (row === undefined) {
                 const panel = Native.createPanel(pinScroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                panel.frame.SetSize(892, 48);
-                const roleBadge = Native.createFramedRoleIcon(panel.frame, "DPS", 34, theme.colors.dps);
+                panel.frame.SetSize(412, 50);
+                const roleBadge = Native.createFramedRoleIcon(panel.frame, "DPS", 32, theme.colors.dps);
                 roleBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 8, 0);
                 const name = Native.createText(panel.frame, "", "GameFontHighlightSmall");
-                name.SetPoint("LEFT", panel.frame, "LEFT", 52, 7);
-                name.SetWidth(250);
+                name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 50, -9);
+                name.SetWidth(220);
                 const info = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-                info.SetPoint("LEFT", panel.frame, "LEFT", 52, -10);
-                info.SetWidth(330);
-                const remove = ButtonUI.createButton(panel.frame, { text: "Remove", width: 78, height: 28, accent: theme.colors.error });
-                remove.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -6, 0);
+                info.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 50, -29);
+                info.SetWidth(220);
+                const remove = ButtonUI.createButton(panel.frame, { text: "Remove", width: 70, height: 28, accent: theme.colors.error });
+                remove.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
                 (panel.frame as any)._roleBadge = roleBadge;
                 (panel.frame as any)._roleIcon = roleBadge.icon;
                 (panel.frame as any)._name = name;
@@ -1221,7 +1208,7 @@ export function createModernDashboard(): Dashboard {
                 pinRows[i] = row;
             }
             row.ClearAllPoints();
-            row.SetPoint("TOPLEFT", pinScroll.content, "TOPLEFT", 0, -(i * 54));
+            row.SetPoint("TOPLEFT", pinScroll.content, "TOPLEFT", 0, -(i * 56));
             const pinAccent = Model.roleAccent(pin.role as Role);
             Native.setRoleIcon((row as any)._roleIcon, pin.role);
             (row as any)._roleBadge.outline.setColor(pinAccent);
@@ -1240,7 +1227,7 @@ export function createModernDashboard(): Dashboard {
             });
             row.Show();
         }
-        pinScroll.setContentHeight(Math.max(190, pins.length * 54));
+        pinScroll.setContentHeight(Math.max(270, pins.length * 56));
     }
 
     showPeople = () => {
@@ -1250,36 +1237,41 @@ export function createModernDashboard(): Dashboard {
     };
 
     // Options modal ----------------------------------------------------------
-    const optionsModal = ModalUI.createModal(frame, 900, 650);
+    const optionsModal = ModalUI.createModal(frame, 820, 650);
     optionsModal.setHeaderIcon(ICON_OPTIONS);
     optionsModal.setTitle("Composition Options");
-    optionsModal.setSubtitle("Keep the common path simple. These controls tune how Composer fills unspecified slots.");
+    optionsModal.setSubtitle("Tune candidate selection without turning the common path into a settings dashboard.");
 
     const optionDefs: Array<{ label: string; key: string; hint: string }> = [
-        { label: "Prefer guild bots", key: "preferGuild", hint: "Use familiar guild companions first when suitable." },
-        { label: "Allow world fallback", key: "fillWorld", hint: "Fill remaining slots from the world/reserve pool." },
-        { label: "Balance classes", key: "balanceClasses", hint: "Avoid lopsided class coverage when Auto is used." },
-        { label: "Balance utility", key: "balanceUtility", hint: "Prefer a healthier mix of raid/dungeon utility." },
-        { label: "Balance melee / ranged", key: "balanceRange", hint: "Avoid extreme melee/ranged skew when possible." },
-        { label: "Avoid duplicate classes", key: "avoidDuplicateClasses", hint: "Stricter diversity preference. Exact builds still win." },
-        { label: "Queue random dungeon after assembly", key: "queueAfterAssemble", hint: "Only applies to Random Dungeon." },
+        { label: "Prefer guild bots", key: "preferGuild", hint: "Soft preference for suitable guild companions. It does not ban other valid candidates." },
+        { label: "Allow world fallback", key: "fillWorld", hint: "Hard pool boundary. Off means Composer will not fill open slots from outside the guild." },
+        { label: "Balance classes", key: "balanceClasses", hint: "Avoid heavily lopsided class coverage when Auto is filling slots." },
+        { label: "Balance utility", key: "balanceUtility", hint: "Prefer broader raid and dungeon utility coverage." },
+        { label: "Balance melee / ranged", key: "balanceRange", hint: "Avoid extreme melee or ranged skew where possible." },
+        { label: "Avoid duplicate classes", key: "avoidDuplicateClasses", hint: "Stricter diversity preference. Exact builds still take priority." },
+        { label: "Queue random dungeon after assembly", key: "queueAfterAssemble", hint: "Only applies when Random Dungeon is the selected activity." },
     ];
     const optionToggles: any[] = [];
 
+    const candidateTitle = Native.createText(optionsModal.content, "CANDIDATE POOL", "GameFontNormalSmall", theme.colors.primary);
+    candidateTitle.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", 0, 0);
+    const compositionOptionsTitle = Native.createText(optionsModal.content, "COMPOSITION", "GameFontNormalSmall", theme.colors.primary);
+    compositionOptionsTitle.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", 0, -136);
+    const activityOptionsTitle = Native.createText(optionsModal.content, "ACTIVITY", "GameFontNormalSmall", theme.colors.primary);
+    activityOptionsTitle.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", 0, -376);
+    const eligibilityTitle = Native.createText(optionsModal.content, "ELIGIBILITY", "GameFontNormalSmall", theme.colors.primary);
+    eligibilityTitle.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", 0, -462);
+
+    const optionY = [-24, -76, -160, -212, -264, -316, -400];
     for (let i = 0; i < optionDefs.length; i += 1) {
         const def = optionDefs[i];
-        const column = i % 2;
-        const rowIndex = Math.floor(i / 2);
-        const row = Native.createPanel(optionsModal.content, theme.colors.surfaceRaised, theme.colors.border);
-        row.frame.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", column * 430, -(rowIndex * 84));
-        row.frame.SetSize(414, 72);
-        const optionAccent = Native.createSolid(row.frame, Native.withAlpha(theme.colors.primary, 0.42), "ARTWORK");
-        optionAccent.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 0, 0);
-        optionAccent.SetPoint("TOPRIGHT", row.frame, "TOPRIGHT", 0, 0);
-        optionAccent.SetHeight(2);
+        const row = CreateFrame("Frame", undefined, optionsModal.content);
+        row.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", 0, optionY[i]);
+        row.SetPoint("TOPRIGHT", optionsModal.content, "TOPRIGHT", 0, optionY[i]);
+        row.SetHeight(48);
 
         const toggle = ToggleUI.createToggle(
-            row.frame,
+            row,
             def.label,
             () => Model.config().options?.[def.key] === true,
             (value) => {
@@ -1287,37 +1279,46 @@ export function createModernDashboard(): Dashboard {
                 Model.touch("Composition option changed");
             },
         );
-        toggle.frame.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 12, -8);
-        toggle.frame.SetWidth(360);
+        toggle.frame.SetPoint("TOPLEFT", row, "TOPLEFT", 0, -2);
+        toggle.frame.SetWidth(720);
 
-        const hint = Native.createText(row.frame, def.hint, "GameFontHighlightSmall", theme.colors.muted);
-        hint.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 42, -37);
-        hint.SetWidth(350);
+        const hint = Native.createText(row, def.hint, "GameFontHighlightSmall", theme.colors.muted);
+        hint.SetPoint("TOPLEFT", row, "TOPLEFT", 32, -27);
+        hint.SetWidth(700);
         hint.SetJustifyV("TOP");
+
+        const divider = Native.createSolid(row, theme.colors.border, "ARTWORK");
+        divider.SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0);
+        divider.SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0);
+        divider.SetHeight(1);
         optionToggles.push(toggle);
     }
 
-    const gearRow = Native.createPanel(optionsModal.content, theme.colors.surfaceRaised, theme.colors.borderStrong);
-    gearRow.frame.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", 0, -348);
-    gearRow.frame.SetPoint("TOPRIGHT", optionsModal.content, "TOPRIGHT", 0, -348);
-    gearRow.frame.SetHeight(72);
+    const gearRow = CreateFrame("Frame", undefined, optionsModal.content);
+    gearRow.SetPoint("TOPLEFT", optionsModal.content, "TOPLEFT", 0, -486);
+    gearRow.SetPoint("TOPRIGHT", optionsModal.content, "TOPRIGHT", 0, -486);
+    gearRow.SetHeight(66);
+    const gearDivider = Native.createSolid(gearRow, theme.colors.border, "ARTWORK");
+    gearDivider.SetPoint("TOPLEFT", gearRow, "TOPLEFT", 0, 0);
+    gearDivider.SetPoint("TOPRIGHT", gearRow, "TOPRIGHT", 0, 0);
+    gearDivider.SetHeight(1);
 
-    const gearIcon = Native.createFramedIcon(gearRow.frame, "Interface\\Icons\\INV_Chest_Plate04", 40, theme.colors.primary);
-    gearIcon.frame.SetPoint("LEFT", gearRow.frame, "LEFT", 12, 0);
-    const gearTitle = Native.createText(gearRow.frame, "Minimum item level", "GameFontNormal");
-    gearTitle.SetPoint("TOPLEFT", gearRow.frame, "TOPLEFT", 64, -12);
-    const gearHint = Native.createText(gearRow.frame, "0 disables the floor. Guild/world bots below the configured value are rejected.", "GameFontHighlightSmall", theme.colors.muted);
-    gearHint.SetPoint("TOPLEFT", gearRow.frame, "TOPLEFT", 64, -39);
-    gearHint.SetWidth(560);
+    const gearIcon = Native.createFramedIcon(gearRow, "Interface\\Icons\\INV_Chest_Plate04", 34, theme.colors.primary);
+    gearIcon.frame.SetPoint("LEFT", gearRow, "LEFT", 0, -4);
+    const gearTitle = Native.createText(gearRow, "Minimum item level", "GameFontNormal");
+    gearTitle.SetPoint("TOPLEFT", gearRow, "TOPLEFT", 46, -12);
+    const gearHint = Native.createText(gearRow, "0 disables the floor. Persistent guild/world candidates below this value are rejected.", "GameFontHighlightSmall", theme.colors.muted);
+    gearHint.SetPoint("TOPLEFT", gearRow, "TOPLEFT", 46, -35);
+    gearHint.SetWidth(520);
 
     const gearStepper = StepperUI.createNumberStepper(
-        gearRow.frame,
+        gearRow,
         0,
         300,
         Number(Model.config().options?.minimumItemLevel ?? 0),
         (value) => Model.setMinimumItemLevel(value),
     );
-    gearStepper.frame.SetPoint("RIGHT", gearRow.frame, "RIGHT", -14, 0);
+    gearStepper.frame.SetPoint("RIGHT", gearRow, "RIGHT", 0, -4);
 
     showOptions = () => {
         ChoiceUI.closeChoicePopup();
