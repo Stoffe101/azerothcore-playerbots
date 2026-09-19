@@ -1,5 +1,6 @@
 #include "GroupComposerCommand.h"
 
+#include "AdventureCatalog.h"
 #include "AdventureStartControl.h"
 #include "GroupComposerPlanner.h"
 #include "GroupComposerReserve.h"
@@ -8,6 +9,7 @@
 #include "RaidRosterGear.h"
 
 #include "CharacterCache.h"
+#include "DatabaseEnv.h"
 #include "DBCStores.h"
 #include "EraTalentBots.h"
 #include "EraTransition.h"
@@ -20,6 +22,7 @@
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Player.h"
+#include "QuestDef.h"
 #include "PlayerbotAI.h"
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotFactory.h"
@@ -290,29 +293,14 @@ bool UsesWrathRaidDifficulty(std::string const& activity)
 
 uint32 DungeonMapId(std::string const& activity)
 {
-    static std::unordered_map<std::string, uint32> const maps = {
-        { "utgarde_keep", 574 }, { "nexus", 576 }, { "azjol_nerub", 601 }, { "ahnkahet", 619 },
-        { "drak_tharon", 600 }, { "violet_hold", 608 }, { "gundrak", 604 }, { "halls_of_stone", 599 },
-        { "halls_of_lightning", 602 }, { "oculus", 578 }, { "culling", 595 }, { "utgarde_pinnacle", 575 },
-        { "trial_champion", 650 }, { "forge_souls", 632 }, { "pit_saron", 658 }, { "halls_reflection", 668 },
-    };
-    auto itr = maps.find(activity);
-    return itr == maps.end() ? 0 : itr->second;
+    AdventureActivity const* entry = AdventureCatalog::FindComposer(activity);
+    return entry && entry->kind == AdventureActivityKind::Dungeon ? entry->instanceMap : 0;
 }
 
 uint32 RaidMapId(std::string const& activity)
 {
-    static std::unordered_map<std::string, uint32> const maps = {
-        { "naxxramas", 533 }, { "obsidian_sanctum", 615 }, { "eye_of_eternity", 616 },
-        { "ulduar", 603 }, { "trial_crusader", 649 }, { "onyxia", 249 },
-        { "vault_archavon", 624 }, { "icecrown", 631 }, { "ruby_sanctum", 724 },
-        { "karazhan", 532 }, { "zulaman", 568 }, { "gruul", 565 }, { "magtheridon", 544 },
-        { "serpentshrine", 548 }, { "tempest_keep", 550 }, { "hyjal", 534 },
-        { "black_temple", 564 }, { "sunwell", 580 }, { "zul_gurub", 309 }, { "aq20", 509 },
-        { "molten_core", 409 }, { "blackwing_lair", 469 }, { "aq40", 531 },
-    };
-    auto itr = maps.find(activity);
-    return itr == maps.end() ? 0 : itr->second;
+    AdventureActivity const* entry = AdventureCatalog::FindComposer(activity);
+    return entry && entry->kind == AdventureActivityKind::Raid ? entry->instanceMap : 0;
 }
 
 uint32 ActivityMapId(Plan const& plan)
@@ -378,95 +366,46 @@ std::string SpecificInstanceAccessHint(Player* player, Config const& config)
 
 uint8 RequiredActivityLevel(Player* master, Config const& config)
 {
-    if (config.mode == "raid")
+    AdventureActivity const* activity = AdventureCatalog::FindComposer(config.activity);
+    if (activity)
     {
-        if (UsesWrathRaidDifficulty(config.activity)) return 80;
-
-        static std::unordered_set<std::string> const tbcRaids = {
-            "karazhan", "zulaman", "gruul", "magtheridon", "serpentshrine",
-            "tempest_keep", "hyjal", "black_temple", "sunwell"
-        };
-        if (tbcRaids.count(config.activity)) return 70;
-        return 60;
+        if (config.mode == "dungeon" && config.difficulty != "normal")
+        {
+            uint8 const heroicFloor = activity->era == AdventureEra::Wotlk ? 80 : 70;
+            return std::max<uint8>(activity->minLevel, heroicFloor);
+        }
+        return activity->minLevel;
     }
 
-    // Random WotLK Normal begins with Utgarde Keep. Heroic and Titan Rune modes are level 80.
-    if (config.activity == "random")
-        return config.difficulty == "normal" ? 68 : 80;
+    // Random Dungeon follows the live era. Classic random is normal-only; TBC/WotLK Heroic
+    // randoms unlock at their era cap. Titan Rune is WotLK-only and therefore level 80.
+    if (config.mode == "dungeon" && config.activity == "random")
+    {
+        AdventureEra const era = AdventureCatalog::CurrentRealmEra();
+        if (config.difficulty != "normal")
+            return AdventureCatalog::EraLevelCap(era);
+        return era == AdventureEra::Vanilla ? 15 : (era == AdventureEra::Tbc ? 60 : 68);
+    }
 
-    uint32 mapId = DungeonMapId(config.activity);
-    Difficulty difficulty = config.difficulty == "normal" ? DUNGEON_DIFFICULTY_NORMAL : DUNGEON_DIFFICULTY_HEROIC;
-    if (LFGDungeonEntry const* dungeon = GetLFGDungeon(mapId, difficulty))
-        return std::max<uint8>(1, static_cast<uint8>(dungeon->MinLevel));
-
-    return difficulty == DUNGEON_DIFFICULTY_HEROIC ? 80 : (master ? std::min<uint8>(master->GetLevel(), 80) : 80);
+    return master ? master->GetLevel() : 1;
 }
 
 uint8 RequiredProgressionFor(Config const& config)
 {
-    using namespace AdventureStartControl;
-
-    if (config.mode == "dungeon")
-    {
-        if (config.activity == "trial_champion") return ProgressionWotlkTier2; // 15: Ulduar cleared.
-        if (config.activity == "forge_souls") return ProgressionWotlkTier3;    // 16: ToC cleared.
-        return ProgressionWotlkEntry; // 13: WotLK released, with Pit/HoR still quest-gated below.
-    }
-
-    if (config.mode != "raid")
-        return ProgressionStart;
-
-    if (config.activity == "ulduar") return ProgressionWotlkTier1;
-    if (config.activity == "trial_crusader") return ProgressionWotlkTier2;
-    if (config.activity == "icecrown") return ProgressionWotlkTier3;
-    if (config.activity == "ruby_sanctum") return ProgressionWotlkTier4;
-
-    static std::unordered_set<std::string> const wrathEntry = {
-        "naxxramas", "obsidian_sanctum", "eye_of_eternity", "onyxia", "vault_archavon"
-    };
-    if (wrathEntry.count(config.activity)) return ProgressionWotlkEntry;
-
-    if (config.activity == "serpentshrine" || config.activity == "tempest_keep")
-        return ProgressionTbcTier1;
-    if (config.activity == "hyjal" || config.activity == "black_temple")
-        return ProgressionTbcTier2;
-    if (config.activity == "sunwell")
-        return ProgressionTbcTier4;
+    AdventureActivity const* activity = AdventureCatalog::FindComposer(config.activity);
+    if (!activity)
+        return AdventureStartControl::ProgressionStart;
 
     if (config.activity == "zulaman")
-        return RequiredZulAmanProgression();
-
-    static std::unordered_set<std::string> const tbcEntry = {
-        "karazhan", "gruul", "magtheridon"
-    };
-    if (tbcEntry.count(config.activity)) return ProgressionPreTbc;
-
-    if (config.activity == "blackwing_lair") return ProgressionMoltenCore;
-    if (config.activity == "aq20" || config.activity == "aq40") return ProgressionPreAq;
+        return AdventureStartControl::RequiredZulAmanProgression();
     if (config.activity == "zul_gurub")
-        return RequiredZulGurubProgression();
-
-    return ProgressionStart;
+        return AdventureStartControl::RequiredZulGurubProgression();
+    return activity->minProgression;
 }
 
-char const* ProgressionUnlockHint(uint8 required)
+std::string ProgressionUnlockHint(uint8 required)
 {
-    using namespace AdventureStartControl;
-    switch (required)
-    {
-        case ProgressionMoltenCore: return "clear Molten Core";
-        case ProgressionPreAq: return "reach the Ahn'Qiraj progression gate";
-        case ProgressionPreTbc: return "unlock The Burning Crusade";
-        case ProgressionTbcTier1: return "clear Karazhan";
-        case ProgressionTbcTier2: return "clear Tempest Keep";
-        case ProgressionTbcTier4: return "clear Black Temple";
-        case ProgressionWotlkEntry: return "unlock Wrath of the Lich King";
-        case ProgressionWotlkTier1: return "clear Naxxramas";
-        case ProgressionWotlkTier2: return "clear Ulduar";
-        case ProgressionWotlkTier3: return "clear Trial of the Crusader";
-        case ProgressionWotlkTier4: return "clear Icecrown Citadel";
-        default: return "advance realm progression";
-    }
+    return AdventureCatalog::ProgressionRequirementText(required);
 }
 
 Difficulty ActivityDifficulty(Config const& config)
@@ -481,6 +420,104 @@ Difficulty ActivityDifficulty(Config const& config)
     if (config.size >= 25)
         return heroic ? RAID_DIFFICULTY_25MAN_HEROIC : RAID_DIFFICULTY_25MAN_NORMAL;
     return heroic ? RAID_DIFFICULTY_10MAN_HEROIC : RAID_DIFFICULTY_10MAN_NORMAL;
+}
+
+bool RequirementApplies(Player* player, ProgressionRequirement const* requirement)
+{
+    return player && requirement &&
+        (requirement->faction == TEAM_NEUTRAL || requirement->faction == player->GetTeamId(true));
+}
+
+std::string QuestTitle(uint32 questId)
+{
+    if (Quest const* quest = sObjectMgr->GetQuestTemplate(questId))
+        return quest->GetTitle();
+    return "Quest " + std::to_string(questId);
+}
+
+std::string QuestChainReason(Player* player, uint32 questId)
+{
+    std::vector<uint32> chain;
+    std::unordered_set<uint32> seen;
+    uint32 cursor = questId;
+    for (uint8 depth = 0; cursor && depth < 24 && seen.insert(cursor).second; ++depth)
+    {
+        chain.push_back(cursor);
+        Quest const* quest = sObjectMgr->GetQuestTemplate(cursor);
+        if (!quest)
+            break;
+        int32 const previous = quest->GetPrevQuestId();
+        cursor = previous < 0 ? uint32(-previous) : uint32(previous);
+    }
+    std::reverse(chain.begin(), chain.end());
+
+    uint32 nextMissing = questId;
+    for (uint32 id : chain)
+    {
+        if (!player->IsQuestRewarded(id))
+        {
+            nextMissing = id;
+            break;
+        }
+    }
+
+    std::string text = "Requires quest chain ending in \"" + QuestTitle(questId) + "\".";
+    if (nextMissing)
+        text += " Next missing quest: \"" + QuestTitle(nextMissing) + "\" (quest " + std::to_string(nextMissing) + ").";
+    return text;
+}
+
+std::string DetailedCoreAccessRequirement(Player* player, uint32 mapId, Difficulty difficulty)
+{
+    if (!player || !mapId)
+        return "";
+
+    DungeonProgressionRequirements const* requirements = sObjectMgr->GetAccessRequirement(mapId, difficulty);
+    if (!requirements)
+        return "";
+
+    if (requirements->levelMin && player->GetLevel() < requirements->levelMin)
+        return "Requires level " + std::to_string(unsigned(requirements->levelMin)) + ".";
+
+    for (ProgressionRequirement const* requirement : requirements->quests)
+        if (RequirementApplies(player, requirement) && !player->GetQuestRewardStatus(requirement->id))
+        {
+            std::string reason = QuestChainReason(player, requirement->id);
+            if (!requirement->note.empty())
+                reason += " " + requirement->note;
+            return reason;
+        }
+
+    for (ProgressionRequirement const* requirement : requirements->items)
+        if (RequirementApplies(player, requirement) && !player->HasItemCount(requirement->id, 1))
+        {
+            std::string name = "item " + std::to_string(requirement->id);
+            if (ItemTemplate const* item = sObjectMgr->GetItemTemplate(requirement->id))
+                name = item->Name1;
+            std::string reason = "Requires item \"" + name + "\".";
+            if (!requirement->note.empty())
+                reason += " " + requirement->note;
+            return reason;
+        }
+
+    for (ProgressionRequirement const* requirement : requirements->achievements)
+        if (RequirementApplies(player, requirement) && !player->HasAchieved(requirement->id))
+        {
+            std::string name = "achievement " + std::to_string(requirement->id);
+            if (AchievementEntry const* achievement = sAchievementStore.LookupEntry(requirement->id))
+                if (achievement->name[0] && *achievement->name[0])
+                    name = achievement->name[0];
+            std::string reason = "Requires achievement \"" + name + "\".";
+            if (!requirement->note.empty())
+                reason += " " + requirement->note;
+            return reason;
+        }
+
+    if (requirements->reqItemLevel && player->GetAverageItemLevelForDF() < requirements->reqItemLevel)
+        return "Requires average item level " + std::to_string(unsigned(requirements->reqItemLevel)) +
+            "; yours is " + std::to_string(unsigned(player->GetAverageItemLevelForDF())) + ".";
+
+    return "";
 }
 
 std::string KnownAccessRequirement(Player* player, Config const& config)
@@ -550,6 +587,53 @@ bool ActivityEligible(Player* player, Config const& config, std::string& reason)
         return false;
     }
 
+    AdventureActivity const* activity = AdventureCatalog::FindComposer(config.activity);
+    AdventureEra const realmEra = AdventureCatalog::CurrentRealmEra();
+
+    if (activity)
+    {
+        if ((config.mode == "dungeon" && activity->kind != AdventureActivityKind::Dungeon) ||
+            (config.mode == "raid" && activity->kind != AdventureActivityKind::Raid))
+        {
+            reason = "That activity does not match the selected group type.";
+            return false;
+        }
+
+        if (!AdventureCatalog::IsEraReleased(activity->era))
+        {
+            reason = std::string(AdventureCatalog::EraName(activity->era)) +
+                " content is locked until that expansion is released.";
+            return false;
+        }
+
+        std::string catalogReason;
+        if (!AdventureCatalog::IsUnlocked(player, *activity, catalogReason))
+        {
+            reason = catalogReason;
+            return false;
+        }
+    }
+
+    if (config.mode == "dungeon")
+    {
+        bool const titan = config.difficulty == "alpha" || config.difficulty == "beta" || config.difficulty == "gamma";
+        if (realmEra == AdventureEra::Vanilla && config.difficulty != "normal")
+        {
+            reason = "Vanilla dungeons only use Normal difficulty on this realm.";
+            return false;
+        }
+        if (realmEra == AdventureEra::Tbc && titan)
+        {
+            reason = "Titan Rune Alpha/Beta/Gamma unlock only in Wrath of the Lich King.";
+            return false;
+        }
+        if (realmEra == AdventureEra::Vanilla && config.activity == "random" && config.difficulty != "normal")
+        {
+            reason = "Vanilla Random Dungeon is Normal-only.";
+            return false;
+        }
+    }
+
     uint8 const level = RequiredActivityLevel(player, config);
     if (player->GetLevel() < level)
     {
@@ -562,8 +646,9 @@ bool ActivityEligible(Player* player, Config const& config, std::string& reason)
         !AdventureStartControl::HasPassedProgression(player, requiredProgression))
     {
         uint8 const current = AdventureStartControl::CurrentProgression(player);
-        reason = "Realm progression " + std::to_string(unsigned(requiredProgression)) + " required; current " +
-            std::to_string(unsigned(current)) + ". " + ProgressionUnlockHint(requiredProgression) + ".";
+        reason = ProgressionUnlockHint(requiredProgression) + " Your progression is " +
+            std::to_string(unsigned(current)) + "; required stage is " +
+            std::to_string(unsigned(requiredProgression)) + ".";
         return false;
     }
 
@@ -584,9 +669,12 @@ bool ActivityEligible(Player* player, Config const& config, std::string& reason)
         return false;
     }
 
-    if (!player->Satisfy(sObjectMgr->GetAccessRequirement(mapId, ActivityDifficulty(config)), mapId, false))
+    Difficulty const difficulty = ActivityDifficulty(config);
+    if (!player->Satisfy(sObjectMgr->GetAccessRequirement(mapId, difficulty), mapId, false))
     {
-        reason = "Locked by an instance quest, item, achievement, level, or item-level requirement.";
+        reason = DetailedCoreAccessRequirement(player, mapId, difficulty);
+        if (reason.empty())
+            reason = "The server's instance access requirements are not met.";
         return false;
     }
     return true;
@@ -606,27 +694,20 @@ void SendActivityEligibility(ChatHandler* handler, Player* master, std::string c
 {
     if (!handler || !master) return;
 
-    static std::array<char const*, 17> const dungeons = {{
-        "random", "utgarde_keep", "nexus", "azjol_nerub", "ahnkahet", "drak_tharon",
-        "violet_hold", "gundrak", "halls_of_stone", "halls_of_lightning", "oculus", "culling",
-        "utgarde_pinnacle", "trial_champion", "forge_souls", "pit_saron", "halls_reflection"
-    }};
-    static std::array<char const*, 23> const raids = {{
-        "naxxramas", "obsidian_sanctum", "eye_of_eternity", "ulduar", "trial_crusader",
-        "onyxia", "vault_archavon", "icecrown", "ruby_sanctum", "karazhan", "zulaman",
-        "gruul", "magtheridon", "serpentshrine", "tempest_keep", "hyjal", "black_temple",
-        "sunwell", "zul_gurub", "aq20", "molten_core", "blackwing_lair", "aq40"
-    }};
-
     std::string const normalizedMode = Lower(mode) == "raid" ? "raid" : "dungeon";
     difficulty = Lower(difficulty);
     if (normalizedMode == "raid" && difficulty != "heroic") difficulty = "normal";
     if (normalizedMode == "dungeon" && difficulty != "heroic" && difficulty != "alpha" &&
         difficulty != "beta" && difficulty != "gamma") difficulty = "normal";
 
-    handler->PSendSysMessage("[GC]|ACTIVITYRESET|{}", normalizedMode == "raid" ? "RAID" : "DUNGEON");
+    char const* modeToken = normalizedMode == "raid" ? "RAID" : "DUNGEON";
+    handler->PSendSysMessage("[GC]|ACTIVITYRESET|{}", modeToken);
+    handler->PSendSysMessage("[GC]|REALM|{}|{}|{}",
+        AdventureCatalog::EraName(AdventureCatalog::CurrentRealmEra()),
+        uint32(AdventureCatalog::EraLevelCap(AdventureCatalog::CurrentRealmEra())),
+        uint32(AdventureStartControl::CurrentProgression(master)));
 
-    auto sendOne = [&](std::string const& id)
+    auto sendConfig = [&](std::string const& id, AdventureActivity const* activity)
     {
         Config config;
         config.mode = normalizedMode;
@@ -639,19 +720,177 @@ void SendActivityEligibility(ChatHandler* handler, Player* master, std::string c
 
         std::string reason;
         bool const eligible = ActivityEligible(master, config, reason);
-        handler->PSendSysMessage("[GC]|ACTIVITY|{}|{}|{}|{}",
-            normalizedMode == "raid" ? "RAID" : "DUNGEON", id, eligible ? 1 : 0,
-            Sanitize(eligible ? "Available" : reason));
+
+        char const* label = activity ? activity->name : "Random Dungeon";
+        char const* era = activity ? AdventureCatalog::EraName(activity->era) :
+            AdventureCatalog::EraName(AdventureCatalog::CurrentRealmEra());
+        uint32 const minLevel = activity ? activity->minLevel : RequiredActivityLevel(master, config);
+        uint32 const minProgression = activity ? RequiredProgressionFor(config) : 0;
+        uint32 const preferredSize = activity ? activity->preferredSize : 5;
+        char const* support = activity ? AdventureCatalog::SupportLabel(activity->support) : "Guild Ready";
+        uint32 const mapId = activity ? activity->instanceMap : 0;
+
+        handler->PSendSysMessage("[GC]|ACTIVITY|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+            modeToken, id, eligible ? 1 : 0, Sanitize(eligible ? "Available" : reason),
+            Sanitize(label), era, minLevel, minProgression, preferredSize, Sanitize(support), mapId);
     };
 
-    if (normalizedMode == "raid")
-        for (char const* id : raids) sendOne(id);
-    else
-        for (char const* id : dungeons) sendOne(id);
+    if (normalizedMode == "dungeon")
+        sendConfig("random", nullptr);
+
+    for (AdventureActivity const& activity : AdventureCatalog::All())
+    {
+        bool const matches = normalizedMode == "raid"
+            ? activity.kind == AdventureActivityKind::Raid
+            : activity.kind == AdventureActivityKind::Dungeon;
+        if (matches)
+            sendConfig(activity.composerId, &activity);
+    }
 
     handler->PSendSysMessage("[GC]|ACTIVITYDONE|{}|{}",
-        normalizedMode == "raid" ? "RAID" : "DUNGEON",
-        uint32(AdventureStartControl::CurrentProgression(master)));
+        modeToken, uint32(AdventureStartControl::CurrentProgression(master)));
+}
+
+bool HasBossClear(uint32 playerGuid, AdventureActivity const& activity)
+{
+    if (!playerGuid || !activity.finalBossEntry)
+        return false;
+
+    return CharacterDatabase.Query(
+        "SELECT 1 FROM mod_adventure_boss_bounty WHERE player_guid = {} AND map_id = {} "
+        "AND creature_entry = {} LIMIT 1",
+        playerGuid, activity.instanceMap, activity.finalBossEntry) != nullptr;
+}
+
+bool GuildHasBossClear(Player* player, AdventureActivity const& activity)
+{
+    if (!player || !player->GetGuildId() || !activity.finalBossEntry)
+        return false;
+
+    return CharacterDatabase.Query(
+        "SELECT 1 FROM mod_adventure_boss_bounty b "
+        "INNER JOIN guild_member gm ON gm.guid = b.player_guid "
+        "WHERE gm.guildid = {} AND b.map_id = {} AND b.creature_entry = {} LIMIT 1",
+        player->GetGuildId(), activity.instanceMap, activity.finalBossEntry) != nullptr;
+}
+
+uint8 ProgressionCompletionStage(std::string const& id)
+{
+    if (id == "molten_core") return 1;
+    if (id == "blackwing_lair") return 3;
+    if (id == "aq40") return 6;
+    if (id == "karazhan") return 9;
+    if (id == "tempest_keep") return 10;
+    if (id == "black_temple") return 12;
+    if (id == "sunwell") return 13;
+    if (id == "naxxramas") return 14;
+    if (id == "ulduar") return 15;
+    if (id == "trial_crusader") return 16;
+    if (id == "icecrown") return 17;
+    if (id == "ruby_sanctum") return 18;
+    return 0;
+}
+
+bool PlayerRaidComplete(Player* player, AdventureActivity const& activity)
+{
+    if (!player)
+        return false;
+    if (HasBossClear(player->GetGUID().GetCounter(), activity))
+        return true;
+
+    uint8 const completionStage = ProgressionCompletionStage(activity.composerId);
+    return completionStage && AdventureStartControl::CurrentProgression(player) >= completionStage;
+}
+
+void SendJourney(ChatHandler* handler, Player* master)
+{
+    if (!handler || !master)
+        return;
+
+    uint8 const progression = AdventureStartControl::CurrentProgression(master);
+    AdventureEra const liveEra = AdventureCatalog::CurrentRealmEra();
+    handler->SendSysMessage("[GC]|JOURNEYRESET");
+    handler->PSendSysMessage("[GC]|JOURNEYSTATE|{}|{}|{}|{}",
+        AdventureCatalog::EraName(liveEra), uint32(progression), uint32(master->GetLevel()), master->GetGuildId());
+
+    struct Recommendation
+    {
+        AdventureActivity const* activity = nullptr;
+        int score = 0;
+        std::string why;
+    };
+    std::vector<Recommendation> recommendations;
+
+    for (AdventureActivity const& activity : AdventureCatalog::All())
+    {
+        if (activity.kind != AdventureActivityKind::Raid)
+            continue;
+
+        Config config;
+        config.mode = "raid";
+        config.activity = activity.composerId;
+        config.difficulty = "normal";
+        config.size = BrowserRaidSize(activity.composerId, activity.preferredSize);
+
+        std::string reason;
+        bool const available = ActivityEligible(master, config, reason);
+        bool const personalComplete = PlayerRaidComplete(master, activity);
+        bool const guildComplete = GuildHasBossClear(master, activity);
+
+        handler->PSendSysMessage("[GC]|JOURNEYRAID|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+            activity.composerId, Sanitize(activity.name), AdventureCatalog::EraName(activity.era),
+            uint32(RequiredProgressionFor(config)), available ? 1 : 0, personalComplete ? 1 : 0,
+            guildComplete ? 1 : 0, Sanitize(AdventureCatalog::SupportLabel(activity.support)),
+            Sanitize(available ? activity.supportNote : reason));
+
+        if (activity.era == liveEra && activity.support == AdventureSupport::Ready && available && !personalComplete)
+            recommendations.push_back({ &activity, 100 + int(activity.minProgression), "Available progression raid you have not completed yet." });
+    }
+
+    for (AdventureActivity const& activity : AdventureCatalog::All())
+    {
+        if (activity.kind != AdventureActivityKind::Dungeon || activity.era != liveEra ||
+            activity.support != AdventureSupport::Ready)
+            continue;
+
+        Config config;
+        config.mode = "dungeon";
+        config.activity = activity.composerId;
+        config.difficulty = "normal";
+        config.size = 5;
+        std::string reason;
+        if (!ActivityEligible(master, config, reason))
+            continue;
+
+        int const levelDistance = std::max<int>(0, int(master->GetLevel()) - int(activity.minLevel));
+        int score = 80 - std::min(40, levelDistance * 4);
+        if (master->GetLevel() >= AdventureCatalog::EraLevelCap(liveEra) && activity.minLevel >= AdventureCatalog::EraLevelCap(liveEra) - 5)
+            score += 25;
+        recommendations.push_back({ &activity, score, "Available dungeon that fits your current era and level." });
+    }
+
+    std::stable_sort(recommendations.begin(), recommendations.end(), [](Recommendation const& a, Recommendation const& b)
+    {
+        return a.score > b.score;
+    });
+
+    uint8 sent = 0;
+    std::unordered_set<std::string> seen;
+    for (Recommendation const& recommendation : recommendations)
+    {
+        if (!recommendation.activity || !seen.insert(recommendation.activity->composerId).second)
+            continue;
+        handler->PSendSysMessage("[GC]|RECOMMEND|{}|{}|{}|{}|{}",
+            recommendation.activity->composerId,
+            recommendation.activity->kind == AdventureActivityKind::Raid ? "RAID" : "DUNGEON",
+            Sanitize(recommendation.activity->name),
+            AdventureCatalog::EraName(recommendation.activity->era),
+            Sanitize(recommendation.why));
+        if (++sent >= 6)
+            break;
+    }
+
+    handler->SendSysMessage("[GC]|JOURNEYDONE");
 }
 
 struct ComposerGearProfile
@@ -1860,6 +2099,7 @@ ChatCommandTable GroupComposerCommand::GetCommands() const
         { "assemble",    HandleAssemble,          SEC_PLAYER, Console::No },
         { "teleport",    HandleTeleport,          SEC_PLAYER, Console::No },
         { "activities",  HandleActivities,        SEC_PLAYER, Console::No },
+        { "journey",     HandleJourney,           SEC_PLAYER, Console::No },
         { "queue",       HandleQueue,             SEC_PLAYER, Console::No },
         { "anchors",     HandleAnchors,           SEC_PLAYER, Console::No },
         { "diagnostics", HandleDiagnostics,       SEC_PLAYER, Console::No },
@@ -1903,6 +2143,13 @@ bool GroupComposerCommand::HandleBegin(ChatHandler* handler, std::string mode, s
         if (activity != "random" && !DungeonMapId(activity)) { SendError(handler, "Unknown dungeon selection."); return true; }
         if (difficulty != "normal" && difficulty != "heroic" && difficulty != "alpha" && difficulty != "beta" && difficulty != "gamma")
         { SendError(handler, "Unknown dungeon difficulty."); return true; }
+
+        AdventureEra const liveEra = AdventureCatalog::CurrentRealmEra();
+        bool const titan = difficulty == "alpha" || difficulty == "beta" || difficulty == "gamma";
+        if (liveEra == AdventureEra::Vanilla && difficulty != "normal")
+        { SendError(handler, "Vanilla dungeon mode supports Normal difficulty only."); return true; }
+        if (liveEra == AdventureEra::Tbc && titan)
+        { SendError(handler, "Titan Rune Alpha/Beta/Gamma are WotLK-only."); return true; }
     }
 
     Config config;
@@ -2166,6 +2413,14 @@ bool GroupComposerCommand::HandleActivities(ChatHandler* handler, std::string mo
     Player* master = CommandPlayer(handler);
     if (!master) return true;
     SendActivityEligibility(handler, master, mode, difficulty, size);
+    return true;
+}
+
+bool GroupComposerCommand::HandleJourney(ChatHandler* handler)
+{
+    Player* master = CommandPlayer(handler);
+    if (!master) return true;
+    SendJourney(handler, master);
     return true;
 }
 
