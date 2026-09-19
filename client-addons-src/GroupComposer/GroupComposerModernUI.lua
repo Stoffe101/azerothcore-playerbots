@@ -4155,6 +4155,7 @@ function ____exports.createModernDashboard(self)
                         52,
                         -33
                     )
+                    identity:SetWidth(150)
                     local buttons = {
                         TANK = ButtonUI:createButton(panel.frame, {text = "Tank", width = 62, height = 26, accent = theme.colors.tank}),
                         HEALER = ButtonUI:createButton(panel.frame, {text = "Healer", width = 62, height = 26, accent = theme.colors.healer}),
@@ -4184,6 +4185,7 @@ function ____exports.createModernDashboard(self)
                     panel.frame._classBadge = classBadge
                     panel.frame._icon = icon
                     panel.frame._name = name
+                    panel.frame._identity = identity
                     panel.frame._buttons = buttons
                     humanScroll:bindWheel(panel.frame)
                     for ____, wheelRole in ipairs(roleOrder) do
@@ -4205,7 +4207,8 @@ function ____exports.createModernDashboard(self)
                     tostring(human.class)
                 )
                 row._classBadge.outline:setColor(Native:classColor(tostring(human.class)))
-                row._name:SetText((((human.isPlayer and "YOU  ·  " or "") .. human.name) .. "  ·  ") .. Model:classLabel(tostring(human.class)))
+                row._name:SetText((human.isPlayer and "YOU  ·  " or "") .. human.name)
+                row._identity:SetText(Model:classLabel(tostring(human.class)) .. "  ·  REAL PLAYER")
                 local ____opt_13 = Model:config().humanRoles
                 if ____opt_13 ~= nil then
                     ____opt_13 = ____opt_13[human.name]
