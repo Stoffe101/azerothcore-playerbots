@@ -55,18 +55,18 @@ struct TeleportPoint
     float y;
     float z;
     float o;
-    bool requiresWotlk;
+    RealmEra requiredEra;
 };
 
 std::array<TeleportPoint, 8> const kTeleports = {{
-    { "darkportal", "Dark Portal", 0, -11894.80f, -3206.52f, -14.62f, 0.00f, false },
-    { "stormwind", "Stormwind", 0, -8833.38f, 628.62f, 94.00f, 0.70f, false },
-    { "ironforge", "Ironforge", 0, -4981.25f, -881.54f, 501.66f, 5.40f, false },
-    { "orgrimmar", "Orgrimmar", 1, 1629.36f, -4373.39f, 31.26f, 3.00f, false },
-    { "thunderbluff", "Thunder Bluff", 1, -1274.45f, 71.86f, 128.16f, 2.80f, false },
-    { "shattrath", "Shattrath", 530, -1838.16f, 5301.79f, -12.43f, 5.95f, false },
-    { "dalaran", "Dalaran", 571, 5807.75f, 588.27f, 660.94f, 1.64f, true },
-    { "argent", "Argent Tournament", 571, 8475.70f, 891.54f, 547.29f, 0.00f, true },
+    { "darkportal", "Dark Portal", 0, -11894.80f, -3206.52f, -14.62f, 0.00f, RealmEra::Vanilla },
+    { "stormwind", "Stormwind", 0, -8833.38f, 628.62f, 94.00f, 0.70f, RealmEra::Vanilla },
+    { "ironforge", "Ironforge", 0, -4981.25f, -881.54f, 501.66f, 5.40f, RealmEra::Vanilla },
+    { "orgrimmar", "Orgrimmar", 1, 1629.36f, -4373.39f, 31.26f, 3.00f, RealmEra::Vanilla },
+    { "thunderbluff", "Thunder Bluff", 1, -1274.45f, 71.86f, 128.16f, 2.80f, RealmEra::Vanilla },
+    { "shattrath", "Shattrath", 530, -1838.16f, 5301.79f, -12.43f, 5.95f, RealmEra::Tbc },
+    { "dalaran", "Dalaran", 571, 5807.75f, 588.27f, 660.94f, 1.64f, RealmEra::Wotlk },
+    { "argent", "Argent Tournament", 571, 8475.70f, 891.54f, 547.29f, 0.00f, RealmEra::Wotlk },
 }};
 
 std::string Lower(std::string value)
@@ -907,9 +907,10 @@ private:
             handler->PSendSysMessage("{} Unknown destination. Use: darkportal, shattrath, stormwind, ironforge, orgrimmar, thunderbluff, dalaran, argent.", PREFIX);
             return true;
         }
-        if (point->requiresWotlk && !AdminPanelExpansion::IsWotlkReleased())
+        if (static_cast<uint8>(AdminPanelExpansion::CurrentEra()) < static_cast<uint8>(point->requiredEra))
         {
-            handler->PSendSysMessage("{} {} is locked until WotLK is released.", PREFIX, point->label);
+            handler->PSendSysMessage("{} {} is locked until {} is released.", PREFIX, point->label,
+                point->requiredEra == RealmEra::Tbc ? "The Burning Crusade" : "Wrath of the Lich King");
             return true;
         }
         if (player && player->TeleportTo(point->map, point->x, point->y, point->z, point->o))
