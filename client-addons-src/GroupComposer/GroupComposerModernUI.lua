@@ -7349,32 +7349,20 @@ function ____exports.createModernDashboard(self)
                                     local identity = member.isPlayer and "YOU  ·  " or (member.pinned and "PINNED  ·  " or "")
                                     rowWidgets.name:SetText(identity .. tostring(member.name))
                                     rowWidgets.name:SetTextColor(theme.colors.text[1], theme.colors.text[2], theme.colors.text[3], 1)
-                                    local ____member_isPlayer_43
-                                    if member.isPlayer then
-                                        ____member_isPlayer_43 = "Human"
-                                    else
-                                        local ____member_pinned_42
-                                        if member.pinned then
-                                            ____member_pinned_42 = "Pinned"
-                                        else
-                                            local ____member_source_41 = member.source
-                                            if ____member_source_41 == nil then
-                                                ____member_source_41 = ""
-                                            end
-                                            ____member_pinned_42 = tostring(____member_source_41) ~= "" and tostring(member.source) or "Prepared bot"
-                                        end
-                                        ____member_isPlayer_43 = ____member_pinned_42
+                                    local ____self_44 = rowWidgets.spec
+                                    local ____self_44_SetText_45 = ____self_44.SetText
+                                    local ____member_level_41 = member.level
+                                    if ____member_level_41 == nil then
+                                        ____member_level_41 = "?"
                                     end
-                                    local source = ____member_isPlayer_43
-                                    local ____self_45 = rowWidgets.spec
-                                    local ____self_45_SetText_46 = ____self_45.SetText
-                                    local ____member_spec_44 = member.spec
-                                    if ____member_spec_44 == nil then
-                                        ____member_spec_44 = Model:classLabel(tostring(member.class))
+                                    local ____temp_43 = ("Lv " .. tostring(____member_level_41)) .. "  ·  "
+                                    local ____member_spec_42 = member.spec
+                                    if ____member_spec_42 == nil then
+                                        ____member_spec_42 = Model:classLabel(tostring(member.class))
                                     end
-                                    ____self_45_SetText_46(
-                                        ____self_45,
-                                        (tostring(____member_spec_44) .. "  ·  ") .. source
+                                    ____self_44_SetText_45(
+                                        ____self_44,
+                                        ____temp_43 .. tostring(____member_spec_42)
                                     )
                                     rowWidgets.spec:SetTextColor(theme.colors.muted[1], theme.colors.muted[2], theme.colors.muted[3], 1)
                                     Native:setTextureColor(rowWidgets.roleBar, accent)
@@ -7445,11 +7433,11 @@ function ____exports.createModernDashboard(self)
     )
     local function refreshStatus(self)
         local p = Model:progress()
-        local ____p_phase_47 = p.phase
-        if ____p_phase_47 == nil then
-            ____p_phase_47 = "IDLE"
+        local ____p_phase_46 = p.phase
+        if ____p_phase_46 == nil then
+            ____p_phase_46 = "IDLE"
         end
-        local phase = tostring(____p_phase_47)
+        local phase = tostring(____p_phase_46)
         local phaseColor = colorForPhase(nil, phase)
         Native:setTextureColor(phaseDot, phaseColor)
         Native:setTextureColor(phaseAccent, phaseColor)
@@ -7465,109 +7453,109 @@ function ____exports.createModernDashboard(self)
         elseif Model:isTravelRetry() and statusNotice ~= "" then
             phaseDetail:SetText(statusNotice)
         else
-            local ____phaseDetail_SetText_49 = phaseDetail.SetText
-            local ____p_detail_48 = p.detail
-            if ____p_detail_48 == nil then
-                ____p_detail_48 = ""
+            local ____phaseDetail_SetText_48 = phaseDetail.SetText
+            local ____p_detail_47 = p.detail
+            if ____p_detail_47 == nil then
+                ____p_detail_47 = ""
             end
-            ____phaseDetail_SetText_49(
+            ____phaseDetail_SetText_48(
                 phaseDetail,
-                tostring(____p_detail_48)
+                tostring(____p_detail_47)
             )
         end
         local humanCount = #Model:humans()
-        local ____table_size_50 = Model:config().size
-        if ____table_size_50 == nil then
-            ____table_size_50 = 5
+        local ____table_size_49 = Model:config().size
+        if ____table_size_49 == nil then
+            ____table_size_49 = 5
         end
-        local target = __TS__Number(____table_size_50)
+        local target = __TS__Number(____table_size_49)
         local composed = Model:config().mode == "RAID" and Model:roleTargetTotal() or humanCount
-        local ____temp_54
+        local ____temp_53
         if Model:plan().ready == true then
-            local ____opt_51 = Model:plan().summary
-            if ____opt_51 ~= nil then
-                ____opt_51 = ____opt_51.total
+            local ____opt_50 = Model:plan().summary
+            if ____opt_50 ~= nil then
+                ____opt_50 = ____opt_50.total
             end
-            local ____opt_51_53 = ____opt_51
-            if ____opt_51_53 == nil then
-                ____opt_51_53 = #Model:planMembers()
+            local ____opt_50_52 = ____opt_50
+            if ____opt_50_52 == nil then
+                ____opt_50_52 = #Model:planMembers()
             end
-            ____temp_54 = __TS__Number(____opt_51_53)
+            ____temp_53 = __TS__Number(____opt_50_52)
         else
-            ____temp_54 = composed
+            ____temp_53 = composed
         end
-        local total = ____temp_54
+        local total = ____temp_53
         rosterCount:SetText((tostring(total) .. " / ") .. tostring(target))
         if Model:plan().ready == true then
-            local ____sourceText_SetText_63 = sourceText.SetText
-            local ____temp_58 = ((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  "
-            local ____opt_55 = Model:plan().summary
-            if ____opt_55 ~= nil then
-                ____opt_55 = ____opt_55.guild
+            local ____sourceText_SetText_62 = sourceText.SetText
+            local ____temp_57 = ((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  "
+            local ____opt_54 = Model:plan().summary
+            if ____opt_54 ~= nil then
+                ____opt_54 = ____opt_54.guild
             end
-            local ____opt_55_57 = ____opt_55
-            if ____opt_55_57 == nil then
-                ____opt_55_57 = 0
+            local ____opt_54_56 = ____opt_54
+            if ____opt_54_56 == nil then
+                ____opt_54_56 = 0
             end
-            local ____temp_62 = (____temp_58 .. tostring(____opt_55_57)) .. " guild  ·  "
-            local ____opt_59 = Model:plan().summary
-            if ____opt_59 ~= nil then
-                ____opt_59 = ____opt_59.world
+            local ____temp_61 = (____temp_57 .. tostring(____opt_54_56)) .. " guild  ·  "
+            local ____opt_58 = Model:plan().summary
+            if ____opt_58 ~= nil then
+                ____opt_58 = ____opt_58.world
             end
-            local ____opt_59_61 = ____opt_59
-            if ____opt_59_61 == nil then
-                ____opt_59_61 = 0
+            local ____opt_58_60 = ____opt_58
+            if ____opt_58_60 == nil then
+                ____opt_58_60 = 0
             end
-            ____sourceText_SetText_63(
+            ____sourceText_SetText_62(
                 sourceText,
-                (____temp_62 .. tostring(____opt_59_61)) .. " fallback"
+                (____temp_61 .. tostring(____opt_58_60)) .. " fallback"
             )
         else
             sourceText:SetText(((((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  ") .. tostring(math.max(0, target - humanCount))) .. " bot slots")
         end
-        local ____self_65 = statusRoleChips.TANK.label
-        local ____self_65_SetText_66 = ____self_65.SetText
-        local ____table_tanks_64 = Model:config().tanks
-        if ____table_tanks_64 == nil then
-            ____table_tanks_64 = 0
+        local ____self_64 = statusRoleChips.TANK.label
+        local ____self_64_SetText_65 = ____self_64.SetText
+        local ____table_tanks_63 = Model:config().tanks
+        if ____table_tanks_63 == nil then
+            ____table_tanks_63 = 0
         end
-        ____self_65_SetText_66(
-            ____self_65,
-            tostring(____table_tanks_64) .. " TANK"
+        ____self_64_SetText_65(
+            ____self_64,
+            tostring(____table_tanks_63) .. " TANK"
         )
-        local ____self_68 = statusRoleChips.HEALER.label
-        local ____self_68_SetText_69 = ____self_68.SetText
-        local ____table_healers_67 = Model:config().healers
-        if ____table_healers_67 == nil then
-            ____table_healers_67 = 0
+        local ____self_67 = statusRoleChips.HEALER.label
+        local ____self_67_SetText_68 = ____self_67.SetText
+        local ____table_healers_66 = Model:config().healers
+        if ____table_healers_66 == nil then
+            ____table_healers_66 = 0
         end
-        ____self_68_SetText_69(
-            ____self_68,
-            tostring(____table_healers_67) .. " HEALER"
+        ____self_67_SetText_68(
+            ____self_67,
+            tostring(____table_healers_66) .. " HEALER"
         )
-        local ____self_71 = statusRoleChips.DPS.label
-        local ____self_71_SetText_72 = ____self_71.SetText
-        local ____table_dps_70 = Model:config().dps
-        if ____table_dps_70 == nil then
-            ____table_dps_70 = 0
+        local ____self_70 = statusRoleChips.DPS.label
+        local ____self_70_SetText_71 = ____self_70.SetText
+        local ____table_dps_69 = Model:config().dps
+        if ____table_dps_69 == nil then
+            ____table_dps_69 = 0
         end
-        ____self_71_SetText_72(
-            ____self_71,
-            tostring(____table_dps_70) .. " DPS"
+        ____self_70_SetText_71(
+            ____self_70,
+            tostring(____table_dps_69) .. " DPS"
         )
         local ratio = 0
-        local ____p_total_73 = p.total
-        if ____p_total_73 == nil then
-            ____p_total_73 = 0
+        local ____p_total_72 = p.total
+        if ____p_total_72 == nil then
+            ____p_total_72 = 0
         end
-        if __TS__Number(____p_total_73) > 0 then
-            local ____p_current_74 = p.current
-            if ____p_current_74 == nil then
-                ____p_current_74 = 0
+        if __TS__Number(____p_total_72) > 0 then
+            local ____p_current_73 = p.current
+            if ____p_current_73 == nil then
+                ____p_current_73 = 0
             end
             ratio = math.min(
                 1,
-                __TS__Number(____p_current_74) / __TS__Number(p.total)
+                __TS__Number(____p_current_73) / __TS__Number(p.total)
             )
         elseif phase == "READY" or phase == "DONE" then
             ratio = 1
@@ -7576,42 +7564,42 @@ function ____exports.createModernDashboard(self)
         end
         progressFill:SetWidth(math.max(1, 266 * ratio))
         Native:setTextureColor(progressFill, phaseColor)
-        local ____progressText_SetText_81 = progressText.SetText
-        local ____temp_80
+        local ____progressText_SetText_80 = progressText.SetText
+        local ____temp_79
         if phase == "PREPARING" or phase == "ASSEMBLING" or phase == "READY" or phase == "DONE" then
-            local ____p_current_75 = p.current
-            if ____p_current_75 == nil then
-                ____p_current_75 = 0
+            local ____p_current_74 = p.current
+            if ____p_current_74 == nil then
+                ____p_current_74 = 0
             end
-            local ____temp_77 = tostring(____p_current_75) .. " / "
-            local ____p_total_76 = p.total
-            if ____p_total_76 == nil then
-                ____p_total_76 = 0
+            local ____temp_76 = tostring(____p_current_74) .. " / "
+            local ____p_total_75 = p.total
+            if ____p_total_75 == nil then
+                ____p_total_75 = 0
             end
-            local ____temp_79 = (____temp_77 .. tostring(____p_total_76)) .. "  ·  "
-            local ____p_detail_78 = p.detail
-            if ____p_detail_78 == nil then
-                ____p_detail_78 = ""
+            local ____temp_78 = (____temp_76 .. tostring(____p_total_75)) .. "  ·  "
+            local ____p_detail_77 = p.detail
+            if ____p_detail_77 == nil then
+                ____p_detail_77 = ""
             end
-            ____temp_80 = ____temp_79 .. tostring(____p_detail_78)
+            ____temp_79 = ____temp_78 .. tostring(____p_detail_77)
         else
-            ____temp_80 = ""
+            ____temp_79 = ""
         end
-        ____progressText_SetText_81(progressText, ____temp_80)
-        local ____opt_82 = Model:plan().summary
-        if ____opt_82 ~= nil then
-            ____opt_82 = ____opt_82.utility
+        ____progressText_SetText_80(progressText, ____temp_79)
+        local ____opt_81 = Model:plan().summary
+        if ____opt_81 ~= nil then
+            ____opt_81 = ____opt_81.utility
         end
-        local ____opt_82_84 = ____opt_82
-        if ____opt_82_84 == nil then
-            ____opt_82_84 = ""
+        local ____opt_81_83 = ____opt_81
+        if ____opt_81_83 == nil then
+            ____opt_81_83 = ""
         end
-        local utilityRaw = tostring(____opt_82_84)
-        local ____opt_85 = Model:plan().summary
-        if ____opt_85 ~= nil then
-            ____opt_85 = ____opt_85.utility
+        local utilityRaw = tostring(____opt_81_83)
+        local ____opt_84 = Model:plan().summary
+        if ____opt_84 ~= nil then
+            ____opt_84 = ____opt_84.utility
         end
-        local hasPreparedCoverage = ____opt_85 ~= nil
+        local hasPreparedCoverage = ____opt_84 ~= nil
         do
             local i = 0
             while i < #coverageChips do
@@ -7633,31 +7621,31 @@ function ____exports.createModernDashboard(self)
                 i = i + 1
             end
         end
-        local ____coverageDamageText_SetText_95 = coverageDamageText.SetText
-        local ____hasPreparedCoverage_94
+        local ____coverageDamageText_SetText_94 = coverageDamageText.SetText
+        local ____hasPreparedCoverage_93
         if hasPreparedCoverage then
-            local ____opt_87 = Model:plan().summary
-            if ____opt_87 ~= nil then
-                ____opt_87 = ____opt_87.ranged
+            local ____opt_86 = Model:plan().summary
+            if ____opt_86 ~= nil then
+                ____opt_86 = ____opt_86.ranged
             end
-            local ____opt_87_89 = ____opt_87
-            if ____opt_87_89 == nil then
-                ____opt_87_89 = 0
+            local ____opt_86_88 = ____opt_86
+            if ____opt_86_88 == nil then
+                ____opt_86_88 = 0
             end
-            local ____temp_93 = ("Ranged DPS  " .. tostring(____opt_87_89)) .. "   ·   Melee DPS  "
-            local ____opt_90 = Model:plan().summary
-            if ____opt_90 ~= nil then
-                ____opt_90 = ____opt_90.melee
+            local ____temp_92 = ("Ranged DPS  " .. tostring(____opt_86_88)) .. "   ·   Melee DPS  "
+            local ____opt_89 = Model:plan().summary
+            if ____opt_89 ~= nil then
+                ____opt_89 = ____opt_89.melee
             end
-            local ____opt_90_92 = ____opt_90
-            if ____opt_90_92 == nil then
-                ____opt_90_92 = 0
+            local ____opt_89_91 = ____opt_89
+            if ____opt_89_91 == nil then
+                ____opt_89_91 = 0
             end
-            ____hasPreparedCoverage_94 = ____temp_93 .. tostring(____opt_90_92)
+            ____hasPreparedCoverage_93 = ____temp_92 .. tostring(____opt_89_91)
         else
-            ____hasPreparedCoverage_94 = "Prepare a roster to inspect utility."
+            ____hasPreparedCoverage_93 = "Prepare a roster to inspect utility."
         end
-        ____coverageDamageText_SetText_95(coverageDamageText, ____hasPreparedCoverage_94)
+        ____coverageDamageText_SetText_94(coverageDamageText, ____hasPreparedCoverage_93)
         local warnings = Model:planWarnings()
         local nextText = ""
         if phase == "ERROR" then
@@ -7665,21 +7653,21 @@ function ____exports.createModernDashboard(self)
         elseif not Model:humanReady() then
             nextText = "Choose a legal role for every real player."
         else
-            local ____temp_98 = Model:config().mode == "RAID"
-            if ____temp_98 then
-                local ____temp_97 = Model:roleTargetTotal()
-                local ____table_size_96 = Model:config().size
-                if ____table_size_96 == nil then
-                    ____table_size_96 = 25
+            local ____temp_97 = Model:config().mode == "RAID"
+            if ____temp_97 then
+                local ____temp_96 = Model:roleTargetTotal()
+                local ____table_size_95 = Model:config().size
+                if ____table_size_95 == nil then
+                    ____table_size_95 = 25
                 end
-                ____temp_98 = ____temp_97 ~= __TS__Number(____table_size_96)
+                ____temp_97 = ____temp_96 ~= __TS__Number(____table_size_95)
             end
-            if ____temp_98 then
-                local ____table_size_99 = Model:config().size
-                if ____table_size_99 == nil then
-                    ____table_size_99 = 25
+            if ____temp_97 then
+                local ____table_size_98 = Model:config().size
+                if ____table_size_98 == nil then
+                    ____table_size_98 = 25
                 end
-                nextText = ("Role counts must total " .. tostring(____table_size_99)) .. " before preparing."
+                nextText = ("Role counts must total " .. tostring(____table_size_98)) .. " before preparing."
             elseif phase == "READY" then
                 nextText = Model:isTravelRetry() and "Clear the travel blocker, then enter the activity." or "Prepared roster is ready for review. Assemble when it looks right."
             elseif phase == "PREPARING" then
@@ -7703,21 +7691,21 @@ function ____exports.createModernDashboard(self)
         warningsTitle:SetTextColor(nextColor[1], nextColor[2], nextColor[3], 1)
         nextDetail:SetTextColor(nextColor[1], nextColor[2], nextColor[3], 1)
         nextDetail:SetText(nextText)
-        local ____buildButton_setEnabled_104 = buildButton.setEnabled
-        local ____temp_103 = Model:humanReady() and not Model:isBusy()
-        if ____temp_103 then
-            local ____temp_102 = Model:config().mode ~= "RAID"
-            if not ____temp_102 then
-                local ____temp_101 = Model:roleTargetTotal()
-                local ____table_size_100 = Model:config().size
-                if ____table_size_100 == nil then
-                    ____table_size_100 = 25
+        local ____buildButton_setEnabled_103 = buildButton.setEnabled
+        local ____temp_102 = Model:humanReady() and not Model:isBusy()
+        if ____temp_102 then
+            local ____temp_101 = Model:config().mode ~= "RAID"
+            if not ____temp_101 then
+                local ____temp_100 = Model:roleTargetTotal()
+                local ____table_size_99 = Model:config().size
+                if ____table_size_99 == nil then
+                    ____table_size_99 = 25
                 end
-                ____temp_102 = ____temp_101 == __TS__Number(____table_size_100)
+                ____temp_101 = ____temp_100 == __TS__Number(____table_size_99)
             end
-            ____temp_103 = ____temp_102
+            ____temp_102 = ____temp_101
         end
-        ____buildButton_setEnabled_104(buildButton, ____temp_103)
+        ____buildButton_setEnabled_103(buildButton, ____temp_102)
         assembleButton:setEnabled(Model:plan().ready == true and Model:plan().valid == true and phase == "READY")
         assembleButton:setText(Model:isTravelRetry() and "Enter Activity" or (Model:config().mode == "RAID" and "Assemble Raid" or "Assemble Party"))
         assembleButton:setSelected(Model:plan().ready == true and Model:plan().valid == true and phase == "READY")
