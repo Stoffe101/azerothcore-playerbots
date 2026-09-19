@@ -16,7 +16,10 @@ GC.anchors = {}
 GC.anchorsReady = false
 GC.activityEligibility = { DUNGEON = {}, RAID = {} }
 GC.activityEligibilityReady = { DUNGEON = false, RAID = false }
+GC.activityMeta = { DUNGEON = {}, RAID = {} }
 GC.activityProgression = 0
+GC.realm = { era = "Vanilla", levelCap = 60, progression = 0 }
+GC.journey = { ready = false, raids = {}, recommendations = {}, era = "Vanilla", stage = 0, level = 1, guildId = 0 }
 
 local function Split(text, delim)
     local out = {}
@@ -288,6 +291,14 @@ function GC:RequestActivities(mode, difficulty, size)
     SendRawServer("activities " .. string.lower(mode) .. " " .. difficulty .. " " .. tostring(math.floor(size)))
 end
 
+function GC:RequestJourney()
+    GC.journey.ready = false
+    GC.journey.raids = {}
+    GC.journey.recommendations = {}
+    GC:Fire("JOURNEY_CHANGED", GC.journey)
+    SendRawServer("journey")
+end
+
 function GC:FindRoster()
     local valid, problems = GC:ValidateConfig()
     if not valid then
@@ -393,8 +404,17 @@ function GC:HandleProtocolMessage(message)
     elseif kind == "ACTIVITYRESET" then
         local mode = fields[2] == "RAID" and "RAID" or "DUNGEON"
         GC.activityEligibility[mode] = {}
+        GC.activityMeta[mode] = {}
         GC.activityEligibilityReady[mode] = false
         GC:Fire("ACTIVITIES_CHANGED", mode)
+    elseif kind == "REALM" then
+        GC.realm = {
+            era = fields[2] or "Vanilla",
+            levelCap = ParseNumber(fields[3], 60),
+            progression = ParseNumber(fields[4], 0),
+        }
+        GC.activityProgression = GC.realm.progression
+        GC:Fire("REALM_CHANGED", GC.realm)
     elseif kind == "ACTIVITY" then
         local mode = fields[2] == "RAID" and "RAID" or "DUNGEON"
         local id = fields[3] or ""
@@ -403,12 +423,59 @@ function GC:HandleProtocolMessage(message)
                 eligible = fields[4] == "1",
                 reason = fields[5] or "",
             }
+            GC.activityMeta[mode][id] = {
+                id = id,
+                label = fields[6] or id,
+                era = fields[7] or GC.realm.era or "Vanilla",
+                minLevel = ParseNumber(fields[8], 1),
+                minProgression = ParseNumber(fields[9], 0),
+                size = ParseNumber(fields[10], mode == "RAID" and 10 or 5),
+                support = fields[11] or "Unknown",
+                map = ParseNumber(fields[12], 0),
+            }
         end
     elseif kind == "ACTIVITYDONE" then
         local mode = fields[2] == "RAID" and "RAID" or "DUNGEON"
         GC.activityEligibilityReady[mode] = true
         GC.activityProgression = ParseNumber(fields[3], GC.activityProgression or 0)
+        GC.realm.progression = GC.activityProgression
         GC:Fire("ACTIVITIES_CHANGED", mode)
+    elseif kind == "JOURNEYRESET" then
+        GC.journey = {
+            ready = false, raids = {}, recommendations = {},
+            era = GC.realm.era or "Vanilla", stage = GC.activityProgression or 0, level = UnitLevel("player") or 1, guildId = 0,
+        }
+        GC:Fire("JOURNEY_CHANGED", GC.journey)
+    elseif kind == "JOURNEYSTATE" then
+        GC.journey.era = fields[2] or "Vanilla"
+        GC.journey.stage = ParseNumber(fields[3], 0)
+        GC.journey.level = ParseNumber(fields[4], UnitLevel("player") or 1)
+        GC.journey.guildId = ParseNumber(fields[5], 0)
+        GC.realm.era = GC.journey.era
+        GC.realm.progression = GC.journey.stage
+    elseif kind == "JOURNEYRAID" then
+        GC.journey.raids[#GC.journey.raids + 1] = {
+            id = fields[2] or "",
+            label = fields[3] or "",
+            era = fields[4] or "Vanilla",
+            requiredProgression = ParseNumber(fields[5], 0),
+            available = fields[6] == "1",
+            playerComplete = fields[7] == "1",
+            guildComplete = fields[8] == "1",
+            support = fields[9] or "Unknown",
+            reason = fields[10] or "",
+        }
+    elseif kind == "RECOMMEND" then
+        GC.journey.recommendations[#GC.journey.recommendations + 1] = {
+            id = fields[2] or "",
+            mode = fields[3] == "RAID" and "RAID" or "DUNGEON",
+            label = fields[4] or "",
+            era = fields[5] or "Vanilla",
+            reason = fields[6] or "",
+        }
+    elseif kind == "JOURNEYDONE" then
+        GC.journey.ready = true
+        GC:Fire("JOURNEY_CHANGED", GC.journey)
     elseif kind == "PROGRESS" then
         local phase = fields[2] or "IDLE"
         local current = ParseNumber(fields[3], 0)
@@ -572,6 +639,8 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
     elseif event == "PLAYER_LOGIN" then
         GC:Fire("PLAYER_READY")
         GC:RequestAnchors()
+        GC:RequestActivities(GC:GetConfig().mode)
+        GC:RequestJourney()
     elseif event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE" then
         GC:RequestAnchors()
     elseif event == "DISPLAY_SIZE_CHANGED" then
