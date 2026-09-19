@@ -526,42 +526,52 @@ export function createModernDashboard(): Dashboard {
     const roleOrder: Role[] = ["TANK", "HEALER", "DPS"];
     for (let i = 0; i < roleOrder.length; i += 1) {
         const role = roleOrder[i];
-        const card = Native.createPanel(quickView, theme.colors.surfaceDeep, theme.colors.borderStrong);
-        card.frame.SetSize(300, 226);
-        const roleStrip = Native.createSolid(card.frame, Model.roleAccent(role), "ARTWORK");
-        roleStrip.SetHeight(4);
+        const accent = Model.roleAccent(role);
+        const card = Native.createPanel(quickView, theme.colors.surfaceDeep, theme.colors.border);
+        card.frame.SetSize(300, 214);
+        card.frame.SetPoint("TOPLEFT", quickView, "TOPLEFT", i * 312, -10);
+
+        const roleStrip = Native.createSolid(card.frame, accent, "ARTWORK");
+        roleStrip.SetHeight(3);
         roleStrip.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 0, 0);
         roleStrip.SetPoint("TOPRIGHT", card.frame, "TOPRIGHT", 0, 0);
-        const roleTint = Native.createSolid(card.frame, Native.withAlpha(Model.roleAccent(role), 0.055), "BACKGROUND");
+        const roleTint = Native.createSolid(card.frame, Native.withAlpha(accent, 0.045), "BACKGROUND");
         roleTint.SetAllPoints(card.frame);
-        card.frame.SetPoint("TOPLEFT", quickView, "TOPLEFT", i * 312, -12);
 
-        const roleBadge = Native.createFramedRoleIcon(card.frame, role, 44, Model.roleAccent(role));
-        roleBadge.frame.SetPoint("TOP", card.frame, "TOP", -46, -16);
-        const label = Native.createText(card.frame, Model.roleLabel(role).toUpperCase(), "GameFontNormalLarge", Model.roleAccent(role));
-        label.SetPoint("LEFT", roleBadge.frame, "RIGHT", 12, 0);
+        const roleBadge = Native.createFramedRoleIcon(card.frame, role, 48, accent);
+        roleBadge.frame.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 18, -18);
+        const label = Native.createText(card.frame, Model.roleLabel(role).toUpperCase(), "GameFontNormalLarge", accent);
+        label.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 80, -20);
+        const kicker = Native.createText(card.frame, "RAID ROLE", "GameFontNormalSmall", theme.colors.muted);
+        kicker.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 80, -45);
 
-        const minus = ButtonUI.createButton(card.frame, { text: "-", width: 42, height: 40, accent: Model.roleAccent(role) });
-        minus.frame.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 32, -88);
-        const countPanel = Native.createPanel(card.frame, theme.colors.background, theme.colors.borderStrong);
-        countPanel.frame.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 86, -88);
-        countPanel.frame.SetSize(128, 40);
-        const count = Native.createText(countPanel.frame, "0", "GameFontNormalHuge");
+        const minus = ButtonUI.createButton(card.frame, { text: "−", width: 40, height: 38, accent });
+        minus.frame.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 24, -82);
+        const countPanel = Native.createPanel(card.frame, theme.colors.background, accent);
+        countPanel.frame.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 70, -82);
+        countPanel.frame.SetSize(160, 38);
+        const count = Native.createText(countPanel.frame, "0", "GameFontNormalHuge", theme.colors.text);
         count.SetPoint("CENTER", countPanel.frame, "CENTER", 0, 0);
-        count.SetWidth(100);
+        count.SetWidth(148);
         count.SetJustifyH("CENTER");
-        const plus = ButtonUI.createButton(card.frame, { text: "+", width: 42, height: 40, accent: Model.roleAccent(role) });
-        plus.frame.SetPoint("TOPRIGHT", card.frame, "TOPRIGHT", -32, -88);
+        const plus = ButtonUI.createButton(card.frame, { text: "+", width: 40, height: 38, accent });
+        plus.frame.SetPoint("TOPRIGHT", card.frame, "TOPRIGHT", -24, -82);
 
-        const botSlots = Native.createText(card.frame, "0 bot slots after humans", "GameFontHighlightSmall", theme.colors.muted);
-        botSlots.SetPoint("TOP", card.frame, "TOP", 0, -140);
+        const botSlots = Native.createText(card.frame, "0 bot slots after humans", "GameFontHighlightSmall", accent);
+        botSlots.SetPoint("TOP", card.frame, "TOP", 0, -132);
         botSlots.SetWidth(260);
         botSlots.SetJustifyH("CENTER");
         botSlots.SetJustifyV("TOP");
 
+        const divider = Native.createSolid(card.frame, theme.colors.border, "ARTWORK");
+        divider.SetPoint("BOTTOMLEFT", card.frame, "BOTTOMLEFT", 18, 48);
+        divider.SetPoint("BOTTOMRIGHT", card.frame, "BOTTOMRIGHT", -18, 48);
+        divider.SetHeight(1);
+
         const roleHelp = Native.createText(card.frame, roleDescription(role), "GameFontHighlightSmall", theme.colors.muted);
-        roleHelp.SetPoint("BOTTOM", card.frame, "BOTTOM", 0, 17);
-        roleHelp.SetWidth(250);
+        roleHelp.SetPoint("BOTTOMLEFT", card.frame, "BOTTOMLEFT", 20, 12);
+        roleHelp.SetWidth(260);
+        roleHelp.SetHeight(30);
         roleHelp.SetJustifyH("CENTER");
         roleHelp.SetJustifyV("TOP");
 
@@ -572,24 +582,24 @@ export function createModernDashboard(): Dashboard {
         quickCards[role] = { card, count, botSlots, minus, plus };
     }
 
-    const quickSummary = Native.createPanel(quickView, theme.colors.background, theme.colors.borderStrong);
-    quickSummary.frame.SetPoint("TOPLEFT", quickView, "TOPLEFT", 0, -252);
-    quickSummary.frame.SetPoint("TOPRIGHT", quickView, "TOPRIGHT", 0, -252);
-    quickSummary.frame.SetHeight(92);
+    const quickSummary = Native.createPanel(quickView, theme.colors.background, theme.colors.border);
+    quickSummary.frame.SetPoint("TOPLEFT", quickView, "TOPLEFT", 0, -236);
+    quickSummary.frame.SetPoint("TOPRIGHT", quickView, "TOPRIGHT", 0, -236);
+    quickSummary.frame.SetHeight(88);
 
     const quickTotalLabel = Native.createText(quickSummary.frame, "TOTAL RAID SIZE", "GameFontNormalSmall", theme.colors.muted);
-    quickTotalLabel.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 18, -14);
+    quickTotalLabel.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 18, -13);
     const quickTotal = Native.createText(quickSummary.frame, "25 / 25", "GameFontNormalHuge");
-    quickTotal.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 18, -38);
+    quickTotal.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 18, -36);
 
     const quickDivider = Native.createSolid(quickSummary.frame, theme.colors.borderStrong, "ARTWORK");
-    quickDivider.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 205, -12);
-    quickDivider.SetHeight(68);
+    quickDivider.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 190, -12);
+    quickDivider.SetHeight(64);
     quickDivider.SetWidth(1);
 
     const quickCheck = Native.createPanel(quickSummary.frame, theme.colors.surfaceDeep, theme.colors.success);
-    quickCheck.frame.SetSize(34, 34);
-    quickCheck.frame.SetPoint("LEFT", quickSummary.frame, "LEFT", 232, 0);
+    quickCheck.frame.SetSize(32, 32);
+    quickCheck.frame.SetPoint("LEFT", quickSummary.frame, "LEFT", 216, 0);
     const quickCheckIcon = quickCheck.frame.CreateTexture(undefined, "ARTWORK");
     quickCheckIcon.SetTexture("Interface\\Buttons\\UI-CheckBox-Check");
     quickCheckIcon.SetAllPoints(quickCheck.frame);
@@ -599,16 +609,18 @@ export function createModernDashboard(): Dashboard {
     quickCheckBang.Hide();
 
     const quickStatusTitle = Native.createText(quickSummary.frame, "Raid composition is complete!", "GameFontNormal", theme.colors.success);
-    quickStatusTitle.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 280, -24);
-    quickStatusTitle.SetWidth(360);
+    quickStatusTitle.SetPoint("TOPLEFT", quickSummary.frame, "TOPLEFT", 264, -20);
+    quickStatusTitle.SetWidth(380);
     const quickStatusDetail = Native.createText(
         quickSummary.frame,
         "This setup will create the selected raid size with your chosen role balance.",
         "GameFontHighlightSmall",
         theme.colors.muted,
     );
-    quickStatusDetail.SetPoint("TOPLEFT", quickStatusTitle, "BOTTOMLEFT", 0, -6);
-    quickStatusDetail.SetWidth(410);
+    quickStatusDetail.SetPoint("TOPLEFT", quickStatusTitle, "BOTTOMLEFT", 0, -5);
+    quickStatusDetail.SetWidth(600);
+    quickStatusDetail.SetHeight(34);
+    quickStatusDetail.SetJustifyV("TOP");
 
     // One full-width, vertically scrollable surface replaces the three cramped fixed columns.
     const exactScroll = ScrollUI.createScrollList(exactView, 936, 386);
