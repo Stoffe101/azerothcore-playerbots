@@ -128,7 +128,10 @@ assert 'Build & Prepare' in MODERN and 'PROGRESS_CHANGED' in MODERN, (
 
 # Safety invariants. These are intentionally source-level contracts because removing any one of
 # them changes the destructive semantics even if the module still compiles.
-assert "ValidateAssemblySnapshot(master, plan, validationError)" in SERVER, "Assemble lost authoritative pre-commit revalidation"
+begin_assembly = section(SERVER, "bool BeginPreparedAssembly(", "uint8 LfgRole(")
+assert "ValidateAssemblySnapshot(master, plan, error)" in begin_assembly, (
+    "Shared automatic/manual assembly path lost authoritative pre-commit revalidation"
+)
 assert "PruneUnselectedBots" not in SERVER, (
     "Assembly must not contain an implicit destructive prune phase"
 )
