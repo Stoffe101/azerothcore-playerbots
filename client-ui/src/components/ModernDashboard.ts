@@ -210,7 +210,7 @@ export function createModernDashboard(): Dashboard {
 
     const sidebar = Native.createPanel(frame, theme.colors.surface, theme.colors.border);
     sidebar.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -73);
-    sidebar.frame.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 34);
+    sidebar.frame.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 16);
     sidebar.frame.SetWidth(184);
 
     const navTitle = Native.createText(sidebar.frame, "COMPOSE", "GameFontNormalSmall", theme.colors.muted);
@@ -260,19 +260,13 @@ export function createModernDashboard(): Dashboard {
 
     const center = CreateFrame("Frame", undefined, frame);
     center.SetPoint("TOPLEFT", frame, "TOPLEFT", 200, -88);
-    center.SetSize(970, 768);
+    center.SetSize(970, 800);
 
     const status = Native.createPanel(frame, theme.colors.surface, theme.colors.borderStrong);
     status.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1186, -88);
-    status.frame.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -16, 48);
+    status.frame.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -16, 16);
 
-    const footer = Native.createPanel(frame, theme.colors.surface, theme.colors.border);
-    footer.frame.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 200, 10);
-    footer.frame.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -16, 10);
-    footer.frame.SetHeight(26);
-    const footerText = Native.createText(footer.frame, "Ready.", "GameFontHighlightSmall", theme.colors.muted);
-    footerText.SetPoint("LEFT", footer.frame, "LEFT", 10, 0);
-    footerText.SetPoint("RIGHT", footer.frame, "RIGHT", -10, 0);
+    let statusNotice = "";
 
     // Activity ---------------------------------------------------------------
     const activity = Native.createPanel(center, theme.colors.surface, theme.colors.borderStrong);
@@ -621,7 +615,7 @@ export function createModernDashboard(): Dashboard {
     quickStatusDetail.SetJustifyV("TOP");
 
     // One full-width, vertically scrollable surface replaces the three cramped fixed columns.
-    const exactScroll = ScrollUI.createScrollList(exactView, 936, 386);
+    const exactScroll = ScrollUI.createScrollList(exactView, 936, 418);
     exactScroll.frame.SetPoint("TOPLEFT", exactView, "TOPLEFT", 0, -4);
 
     const exactSections: Record<Role, any> = {} as Record<Role, any>;
@@ -1685,7 +1679,7 @@ export function createModernDashboard(): Dashboard {
             cursor += sectionHeight + 12;
         }
 
-        exactScroll.setContentHeight(Math.max(386, cursor));
+        exactScroll.setContentHeight(Math.max(418, cursor));
     }
 
     function refreshRoster(): void {
@@ -1788,6 +1782,8 @@ export function createModernDashboard(): Dashboard {
                     ? "Add specific builds or keep Auto to prepare your raid."
                     : "Choose exact builds or keep Auto to prepare your group."
             );
+        } else if (Model.isTravelRetry() && statusNotice !== "") {
+            phaseDetail.SetText(statusNotice);
         } else phaseDetail.SetText(String(p.detail ?? ""));
 
         const humanCount = Model.humans().length;
@@ -1864,6 +1860,7 @@ export function createModernDashboard(): Dashboard {
             nextText = "Build & Prepare when the composition looks right.";
         }
         if (warnings.length > 0) nextText += "\n" + String(warnings[0]);
+        if (phase === "IDLE" && statusNotice !== "") nextText += "\n" + statusNotice;
         nextDetail.SetText(nextText);
 
         buildButton.setEnabled(Model.humanReady() && !Model.isBusy() && (Model.config().mode !== "RAID" || Model.roleTargetTotal() === Number(Model.config().size ?? 25)));
@@ -1941,8 +1938,9 @@ export function createModernDashboard(): Dashboard {
 
     GC.Toggle = () => dashboard.toggle();
 
-    GC.RegisterCallback("CONFIG_CHANGED", () => refresh());
+    GC.RegisterCallback("CONFIG_CHANGED", () => { statusNotice = ""; refresh(); });
     GC.RegisterCallback("PLAN_CHANGED", () => {
+        statusNotice = "";
         if (Model.config().mode === "RAID" && Model.plan().ready === true && Model.plan().valid === true) raidTab = "ROSTER";
         refresh();
     });
@@ -1953,7 +1951,7 @@ export function createModernDashboard(): Dashboard {
         refresh();
     });
     GC.RegisterCallback("STATUS", (text: string) => {
-        footerText.SetText(String(text ?? "Ready."));
+        statusNotice = String(text ?? "");
         refresh();
     });
     GC.RegisterCallback("DISPLAY_CHANGED", () => applyScale());
