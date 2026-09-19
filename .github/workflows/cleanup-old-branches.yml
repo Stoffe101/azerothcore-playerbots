@@ -1,0 +1,50 @@
+name: One-time branch cleanup
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/cleanup-old-branches.yml
+
+permissions:
+  contents: write
+
+jobs:
+  delete-old-branches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main with authenticated origin
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Delete every remote branch except main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin --prune
+
+          mapfile -t branches < <(
+            git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin |
+              grep -vE '^(HEAD|main)$' |
+              sort -u
+          )
+
+          echo "Found ${#branches[@]} branches to delete."
+
+          failed=0
+          for branch in "${branches[@]}"; do
+            echo "Deleting origin/${branch}"
+            if ! git push origin --delete "${branch}"; then
+              echo "::error::Failed to delete ${branch}"
+              failed=1
+            fi
+          done
+
+          if (( failed != 0 )); then
+            exit 1
+          fi
+
+          echo "Remote cleanup complete. Only main should remain."
