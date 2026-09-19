@@ -947,18 +947,6 @@ bool PreparedMemberReady(Plan const& plan, Member const& member)
     return true;
 }
 
-std::vector<uint32> UnreadyBotGuids(Plan const& plan)
-{
-    std::vector<uint32> failed;
-    for (Member const& member : plan.members)
-    {
-        if (member.human) continue;
-        if (!PreparedMemberReady(plan, member))
-            failed.push_back(member.guid.GetCounter());
-    }
-    return failed;
-}
-
 uint32 SelectedBotCount(Plan const& plan)
 {
     uint32 total = 0;
