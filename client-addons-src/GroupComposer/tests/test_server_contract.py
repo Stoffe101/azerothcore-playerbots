@@ -363,7 +363,7 @@ assert "bool fullRebuild" in sync, "Managed preparation lost the reserve-only fu
 assert "factory.Randomize(false)" not in sync, "Composer capacity must not use whole-character randomization"
 for token in ("factory.InitSkills()", "factory.InitClassSpells()", "factory.InitAvailableSpells()",
               "factory.InitSpecialSpells()", "factory.InitGlyphs(false)",
-              "RaidRosterGear::EquipForSpec(bot, master, spec, minimumItemLevel)",
+              "RaidRosterGear::EquipForSpec(bot, master, spec, minimumItemLevel, targetItemLevel)",
               "factory.ApplyEnchantAndGemsNew()", "factory.InitAmmo()"):
     assert token in sync, f"Targeted Composer provisioning lost {token}"
 assert "bool FullProvisionFor(Member const& member)" in SERVER
@@ -372,7 +372,8 @@ assert "member.reserve" in provision and "!member.guild" in provision and "membe
     "Persistent guild companions can no longer be distinguished from disposable full-provision bodies"
 )
 assert "SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel" in SERVER
-assert "owner, member.role, member.spec, plan.config.requiredLevel, plan.config.minimumItemLevel" in SERVER
+assert "owner, member.role, member.spec, plan.config.requiredLevel, minimumItemLevel" in SERVER
+assert "targetItemLevel, fullProvision, 0" in SERVER
 assert "CLASS_DRUID" in sync and "role == ROLE_DPS" in sync and "buildSpec = 3" in sync, (
     "Feral DPS no longer maps to Playerbots/Era Talents Cat pseudo-spec 3"
 )
