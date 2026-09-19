@@ -10,7 +10,7 @@ diff --git a/modules/mod-era-talents/src/EraTalentPin.cpp b/modules/mod-era-tale
  #include "EraTalentBots.h"   // bot-only era paths (players keep the pipeline below)
  #include "EraSoulLink.h"     // EraSoulLink::kPairs — shared with era_soul_link/_relink (EraTalentProcScripts.cpp)
  
-@@ -292,9 +294,20 @@ public:
+@@ -292,10 +294,24 @@ public:
          if (EraTransition::IsInternalTalentReset())
              return;
  
