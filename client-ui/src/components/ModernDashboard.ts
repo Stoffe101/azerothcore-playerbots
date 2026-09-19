@@ -182,7 +182,6 @@ export function createModernDashboard(): Dashboard {
 
     const mark = Native.createPanel(header.frame, theme.colors.surfaceBlue, theme.colors.primary);
     mark.frame.SetSize(48, 48);
-    Native.createChrome(mark.frame, theme.colors.primary);
     mark.frame.SetPoint("LEFT", header.frame, "LEFT", 18, 0);
     const markText = Native.createText(mark.frame, "GC", "GameFontNormalLarge", theme.colors.primary);
     markText.SetPoint("CENTER", mark.frame, "CENTER", 0, 0);
@@ -431,50 +430,51 @@ export function createModernDashboard(): Dashboard {
     const dungeonRows: any[] = [];
     for (let i = 0; i < 5; i += 1) {
         const row = Native.createPanel(dungeonView, theme.colors.surfaceRaised, theme.colors.border);
-        row.frame.SetHeight(76);
-        row.frame.SetPoint("TOPLEFT", dungeonView, "TOPLEFT", 0, -(i * 82));
+        row.frame.SetHeight(64);
+        row.frame.SetPoint("TOPLEFT", dungeonView, "TOPLEFT", 0, -(i * 70));
         row.frame.SetPoint("RIGHT", dungeonView, "RIGHT", 0, 0);
 
         const accent = Native.createSolid(row.frame, theme.colors.dps, "ARTWORK");
-        accent.SetWidth(4);
+        accent.SetWidth(3);
         accent.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 0, 0);
         accent.SetPoint("BOTTOMLEFT", row.frame, "BOTTOMLEFT", 0, 0);
 
-        const roleBadge = Native.createFramedRoleIcon(row.frame, "DPS", 44, theme.colors.borderStrong);
+        const roleBadge = Native.createFramedRoleIcon(row.frame, "DPS", 38, theme.colors.borderStrong);
         roleBadge.frame.SetPoint("LEFT", row.frame, "LEFT", 12, 0);
         const roleIcon = roleBadge.icon;
 
         const roleText = Native.createText(row.frame, "DPS", "GameFontNormal");
-        roleText.SetPoint("LEFT", roleBadge.frame, "RIGHT", 10, 8);
+        roleText.SetPoint("LEFT", roleBadge.frame, "RIGHT", 10, 7);
         const slotText = Native.createText(row.frame, "Slot", "GameFontHighlightSmall", theme.colors.muted);
-        slotText.SetPoint("LEFT", roleBadge.frame, "RIGHT", 10, -10);
+        slotText.SetPoint("LEFT", roleBadge.frame, "RIGHT", 10, -9);
 
-        const classBadge = Native.createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 46, theme.colors.borderStrong);
-        classBadge.frame.SetPoint("LEFT", row.frame, "LEFT", 170, 0);
+        const classBadge = Native.createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 38, theme.colors.borderStrong);
+        classBadge.frame.SetPoint("LEFT", row.frame, "LEFT", 158, 0);
         classBadge.frame.Hide();
         const classIcon = classBadge.icon;
 
-        const specBadge = Native.createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 40, theme.colors.borderStrong);
+        const specBadge = Native.createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 34, theme.colors.borderStrong);
         specBadge.frame.SetPoint("LEFT", classBadge.frame, "RIGHT", 7, 0);
         specBadge.frame.Hide();
         const specIcon = specBadge.icon;
 
         const name = Native.createText(row.frame, "Auto-fill bot", "GameFontNormal");
-        name.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 270, -18);
-        name.SetWidth(350);
+        name.SetPoint("TOPLEFT", row.frame, "TOPLEFT", 244, -12);
+        name.SetWidth(430);
         const sub = Native.createText(row.frame, "Composer chooses a suitable build", "GameFontHighlightSmall", theme.colors.muted);
-        sub.SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -5);
-        sub.SetWidth(390);
+        sub.SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -4);
+        sub.SetWidth(430);
 
-        const choose = ButtonUI.createButton(row.frame, { text: "Choose build", width: 136, height: 38, accent: theme.colors.primary });
-        choose.frame.SetPoint("RIGHT", row.frame, "RIGHT", -82, 0);
-        const auto = ButtonUI.createButton(row.frame, { text: "Auto", width: 68, height: 38 });
-        auto.frame.SetPoint("RIGHT", row.frame, "RIGHT", -12, 0);
+        const choose = ButtonUI.createButton(row.frame, { text: "Choose build", width: 126, height: 34, accent: theme.colors.primary });
+        choose.frame.SetPoint("RIGHT", row.frame, "RIGHT", -12, 0);
+        const auto = ButtonUI.createButton(row.frame, { text: "Use Auto", width: 78, height: 34 });
+        auto.frame.SetPoint("RIGHT", choose.frame, "LEFT", -8, 0);
+        auto.frame.Hide();
 
         const humanAnchor = ButtonUI.createButton(row.frame, {
             text: "Human anchor",
-            width: 136,
-            height: 38,
+            width: 126,
+            height: 34,
             accent: theme.colors.borderStrong,
         });
         humanAnchor.frame.SetPoint("RIGHT", row.frame, "RIGHT", -12, 0);
@@ -1531,7 +1531,8 @@ export function createModernDashboard(): Dashboard {
             widgets.auto.frame.SetScript("OnMouseDown", () => {
                 if (exact !== undefined) Model.clearDungeonExact(roleCopy, botIndex);
             });
-            widgets.auto.frame.Show();
+            if (exact !== undefined) widgets.auto.frame.Show();
+            else widgets.auto.frame.Hide();
         }
     }
 
