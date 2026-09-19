@@ -628,42 +628,41 @@ export function createModernDashboard(): Dashboard {
 
     const exactSections: Record<Role, any> = {} as Record<Role, any>;
     for (const role of roleOrder) {
-        const panel = Native.createPanel(exactScroll.content, theme.colors.background, theme.colors.border);
+        const accent = Model.roleAccent(role);
+        const panel = Native.createPanel(exactScroll.content, theme.colors.surfaceDeep, theme.colors.border);
         panel.frame.SetWidth(906);
 
-        const roleStrip = Native.createSolid(panel.frame, Model.roleAccent(role), "ARTWORK");
-        roleStrip.SetHeight(4);
+        const roleStrip = Native.createSolid(panel.frame, accent, "ARTWORK");
+        roleStrip.SetHeight(3);
         roleStrip.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 0, 0);
         roleStrip.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", 0, 0);
-        const roleTint = Native.createSolid(panel.frame, Native.withAlpha(Model.roleAccent(role), 0.045), "BACKGROUND");
+        const roleTint = Native.createSolid(panel.frame, Native.withAlpha(accent, 0.035), "BACKGROUND");
         roleTint.SetAllPoints(panel.frame);
 
-        const roleBadge = Native.createFramedRoleIcon(panel.frame, role, 42, Model.roleAccent(role));
-        roleBadge.frame.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 14, -12);
-        const icon = roleBadge.icon;
-        const label = Native.createText(panel.frame, Model.roleLabel(role).toUpperCase(), "GameFontNormal", Model.roleAccent(role));
-        label.SetPoint("LEFT", roleBadge.frame, "RIGHT", 10, 5);
+        const roleBadge = Native.createFramedRoleIcon(panel.frame, role, 36, accent);
+        roleBadge.frame.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 12, -10);
+        const label = Native.createText(panel.frame, Model.roleLabel(role).toUpperCase(), "GameFontNormal", accent);
+        label.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 60, -12);
         const count = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-        count.SetPoint("LEFT", roleBadge.frame, "RIGHT", 10, -12);
+        count.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 60, -32);
         count.SetWidth(430);
 
         const add = ButtonUI.createButton(panel.frame, {
             text: "+ Add specific build",
-            width: 168,
-            height: 34,
-            accent: Model.roleAccent(role),
-            emphasis: true,
+            width: 154,
+            height: 30,
+            accent,
         });
-        add.frame.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -12, -14);
+        add.frame.SetPoint("TOPRIGHT", panel.frame, "TOPRIGHT", -12, -12);
 
         const empty = Native.createText(
             panel.frame,
-            "No reserved builds. Composer will Auto-fill every remaining " + Model.roleLabel(role).toLowerCase() + " slot.",
+            "No reserved builds. Every remaining " + Model.roleLabel(role).toLowerCase() + " slot stays Auto.",
             "GameFontHighlightSmall",
             theme.colors.muted,
         );
-        empty.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 18, -68);
-        empty.SetWidth(810);
+        empty.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 18, -58);
+        empty.SetWidth(820);
         empty.SetJustifyV("TOP");
 
         exactScroll.bindWheel(panel.frame);
@@ -680,7 +679,7 @@ export function createModernDashboard(): Dashboard {
         for (let r = 0; r < 5; r += 1) {
             const row = CreateFrame("Frame", undefined, card.frame);
             row.SetHeight(28);
-            row.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 8, -(34 + r * 30));
+            row.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 8, -(32 + r * 29));
             row.SetPoint("RIGHT", card.frame, "RIGHT", -8, 0);
 
             const roleBar = Native.createSolid(row, theme.colors.dps, "ARTWORK");
@@ -688,17 +687,17 @@ export function createModernDashboard(): Dashboard {
             roleBar.SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0);
             roleBar.SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0);
 
-            const iconBadge = Native.createFramedIcon(row, "Interface\\Icons\\INV_Misc_QuestionMark", 26, theme.colors.border);
+            const iconBadge = Native.createFramedIcon(row, "Interface\\Icons\\INV_Misc_QuestionMark", 28, theme.colors.border);
             iconBadge.frame.SetPoint("LEFT", row, "LEFT", 6, 0);
             const icon = iconBadge.icon;
             iconBadge.frame.Hide();
 
             const name = Native.createText(row, "Empty", "GameFontHighlightSmall", theme.colors.muted);
-            name.SetPoint("LEFT", row, "LEFT", 38, 7);
-            name.SetWidth(154);
+            name.SetPoint("LEFT", row, "LEFT", 42, 7);
+            name.SetWidth(150);
             const spec = Native.createText(row, "", "GameFontHighlightSmall", theme.colors.muted);
-            spec.SetPoint("LEFT", row, "LEFT", 38, -8);
-            spec.SetWidth(168);
+            spec.SetPoint("LEFT", row, "LEFT", 42, -8);
+            spec.SetWidth(160);
 
             rows.push({ row, roleBar, iconBadge, icon, name, spec });
         }
@@ -1602,7 +1601,7 @@ export function createModernDashboard(): Dashboard {
                 }
             }
 
-            const sectionHeight = rows.length === 0 ? 86 : 62 + rows.length * 56;
+            const sectionHeight = rows.length === 0 ? 88 : 66 + rows.length * 58;
             section.panel.frame.ClearAllPoints();
             section.panel.frame.SetPoint("TOPLEFT", exactScroll.content, "TOPLEFT", 0, -cursor);
             section.panel.frame.SetSize(906, sectionHeight);
@@ -1612,50 +1611,58 @@ export function createModernDashboard(): Dashboard {
 
             for (let i = 0; i < rows.length; i += 1) {
                 const build = rows[i];
-                const rowKey = String(build.classId) + ":" + String(build.specId);
+                const rowKey = role + ":" + String(build.classId) + ":" + String(build.specId);
                 let widgets = section.rowsByKey[rowKey];
                 if (widgets === undefined) {
                     const panel = Native.createPanel(section.panel.frame, theme.colors.surfaceRaised, theme.colors.border);
-                    panel.frame.SetSize(870, 48);
+                    panel.frame.SetSize(870, 52);
 
-                    const classBadge = Native.createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 38, theme.colors.borderStrong);
+                    const classBadge = Native.createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 34, theme.colors.borderStrong);
                     classBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 10, 0);
                     const classIcon = classBadge.icon;
 
-                    const specBadge = Native.createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 38, theme.colors.borderStrong);
+                    const specBadge = Native.createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 34, theme.colors.borderStrong);
                     specBadge.frame.SetPoint("LEFT", classBadge.frame, "RIGHT", 6, 0);
                     const specIcon = specBadge.icon;
 
                     const name = Native.createText(panel.frame, "", "GameFontNormal");
-                    name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 104, -10);
+                    name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 94, -8);
                     name.SetWidth(500);
+                    const info = Native.createText(panel.frame, Model.roleLabel(role) + "  ·  Reserved build", "GameFontHighlightSmall", theme.colors.muted);
+                    info.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 94, -29);
+                    info.SetWidth(440);
 
-                    const count = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-                    count.SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -4);
+                    const countPill = Native.createPanel(panel.frame, theme.colors.surfaceDeep, Model.roleAccent(role));
+                    countPill.frame.SetSize(52, 26);
+                    countPill.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -120, 0);
+                    const count = Native.createText(countPill.frame, "", "GameFontHighlightSmall", Model.roleAccent(role));
+                    count.SetPoint("CENTER", countPill.frame, "CENTER", 0, 0);
+                    count.SetWidth(46);
+                    count.SetJustifyH("CENTER");
 
-                    const edit = ButtonUI.createButton(panel.frame, { text: "Edit", width: 74, height: 30, accent: theme.colors.primary });
-                    edit.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -54, 0);
+                    const edit = ButtonUI.createButton(panel.frame, { text: "Edit", width: 62, height: 28, accent: theme.colors.primary });
+                    edit.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -48, 0);
 
-                    const remove = ButtonUI.createButton(panel.frame, { text: "X", width: 40, height: 30, accent: theme.colors.error });
+                    const remove = ButtonUI.createButton(panel.frame, { text: "X", width: 34, height: 28, accent: theme.colors.error });
                     remove.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -8, 0);
 
                     exactScroll.bindWheel(panel.frame);
                     exactScroll.bindWheel(edit.frame);
                     exactScroll.bindWheel(remove.frame);
-                    widgets = { panel, classBadge, classIcon, specBadge, specIcon, name, count, edit, remove };
+                    widgets = { panel, classBadge, classIcon, specBadge, specIcon, name, info, countPill, count, edit, remove };
                     section.rowsByKey[rowKey] = widgets;
                     (section.rowKeys as string[]).push(rowKey);
                 }
 
                 widgets.panel.frame.ClearAllPoints();
-                widgets.panel.frame.SetPoint("TOPLEFT", section.panel.frame, "TOPLEFT", 18, -(58 + i * 56));
+                widgets.panel.frame.SetPoint("TOPLEFT", section.panel.frame, "TOPLEFT", 18, -(58 + i * 58));
                 Native.setClassIcon(widgets.classIcon, build.classId);
                 widgets.classBadge.outline.setColor(Native.classColor(build.classId));
                 widgets.specBadge.outline.setColor(theme.colors.primary);
                 widgets.specIcon.SetTexture(Model.getSpecIcon(build.classId, build.specId));
                 widgets.specIcon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
                 widgets.name.SetText(Model.getSpecLabel(build.classId, build.specId) + " " + Model.classLabel(build.classId));
-                widgets.count.SetText("× " + String(build.count));
+                widgets.count.SetText("×" + String(build.count));
 
                 const indexCopy = i;
                 widgets.edit.frame.SetScript("OnMouseDown", () => {
@@ -1686,7 +1693,7 @@ export function createModernDashboard(): Dashboard {
         const totalGroups = Math.max(1, Math.ceil(Number(cfg.size ?? 5) / 5));
         const columns = totalGroups <= 3 ? totalGroups : (totalGroups <= 5 ? 3 : 4);
         const cardWidth = Math.floor((934 - (columns - 1) * 10) / columns);
-        const cardHeight = 190;
+        const cardHeight = 184;
 
         for (let g = 0; g < groupCards.length; g += 1) {
             const widgets = groupCards[g];
@@ -1718,9 +1725,12 @@ export function createModernDashboard(): Dashboard {
                     Native.setClassIcon(rowWidgets.icon, String(member.class));
                     rowWidgets.iconBadge.outline.setColor(Native.classColor(String(member.class)));
                     rowWidgets.iconBadge.frame.Show();
-                    rowWidgets.name.SetText((member.isPlayer ? "YOU  ·  " : "") + String(member.name));
+                    const identity = member.isPlayer ? "YOU  ·  " : (member.pinned ? "PIN  ·  " : "");
+                    rowWidgets.name.SetText(identity + String(member.name));
                     rowWidgets.name.SetTextColor(theme.colors.text[0], theme.colors.text[1], theme.colors.text[2], 1);
-                    rowWidgets.spec.SetText("Lv " + String(member.level ?? "?") + " · " + String(member.spec ?? Model.classLabel(String(member.class))));
+                    rowWidgets.name.SetWidth(Math.max(110, cardWidth - 54));
+                    rowWidgets.spec.SetText(String(member.spec ?? Model.classLabel(String(member.class))) + "  ·  " + Model.roleLabel(member.role as Role));
+                    rowWidgets.spec.SetWidth(Math.max(110, cardWidth - 54));
                     Native.setTextureColor(rowWidgets.roleBar, Model.roleAccent(member.role as Role));
                 }
             }
