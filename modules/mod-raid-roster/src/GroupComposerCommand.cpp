@@ -13,7 +13,6 @@
 #include "EraTransition.h"
 #include "Group.h"
 #include "GroupMgr.h"
-#include "IndividualProgression.h"
 #include "LFG.h"
 #include "LFGMgr.h"
 #include "Map.h"
@@ -405,64 +404,67 @@ uint8 RequiredActivityLevel(Player* master, Config const& config)
 
 uint8 RequiredProgressionFor(Config const& config)
 {
+    using namespace AdventureStartControl;
+
     if (config.mode == "dungeon")
     {
-        if (config.activity == "trial_champion") return PROGRESSION_WOTLK_TIER_2; // 15
-        if (config.activity == "forge_souls") return PROGRESSION_WOTLK_TIER_3;    // 16
-        return PROGRESSION_TBC_TIER_5; // 13: WotLK entry, including Pit/HoR once their quest gates are done.
+        if (config.activity == "trial_champion") return ProgressionWotlkTier2; // 15: Ulduar cleared.
+        if (config.activity == "forge_souls") return ProgressionWotlkTier3;    // 16: ToC cleared.
+        return ProgressionWotlkEntry; // 13: WotLK released, with Pit/HoR still quest-gated below.
     }
 
     if (config.mode != "raid")
-        return PROGRESSION_START;
+        return ProgressionStart;
 
-    if (config.activity == "ulduar") return PROGRESSION_WOTLK_TIER_1;
-    if (config.activity == "trial_crusader") return PROGRESSION_WOTLK_TIER_2;
-    if (config.activity == "icecrown") return PROGRESSION_WOTLK_TIER_3;
-    if (config.activity == "ruby_sanctum") return PROGRESSION_WOTLK_TIER_4;
+    if (config.activity == "ulduar") return ProgressionWotlkTier1;
+    if (config.activity == "trial_crusader") return ProgressionWotlkTier2;
+    if (config.activity == "icecrown") return ProgressionWotlkTier3;
+    if (config.activity == "ruby_sanctum") return ProgressionWotlkTier4;
 
     static std::unordered_set<std::string> const wrathEntry = {
         "naxxramas", "obsidian_sanctum", "eye_of_eternity", "onyxia", "vault_archavon"
     };
-    if (wrathEntry.count(config.activity)) return PROGRESSION_TBC_TIER_5;
+    if (wrathEntry.count(config.activity)) return ProgressionWotlkEntry;
 
     if (config.activity == "serpentshrine" || config.activity == "tempest_keep")
-        return PROGRESSION_TBC_TIER_1;
+        return ProgressionTbcTier1;
     if (config.activity == "hyjal" || config.activity == "black_temple")
-        return PROGRESSION_TBC_TIER_2;
+        return ProgressionTbcTier2;
     if (config.activity == "sunwell")
-        return PROGRESSION_TBC_TIER_4;
+        return ProgressionTbcTier4;
 
     if (config.activity == "zulaman")
-        return static_cast<uint8>(sIndividualProgression->RequiredZulAmanProgression);
+        return RequiredZulAmanProgression();
 
     static std::unordered_set<std::string> const tbcEntry = {
         "karazhan", "gruul", "magtheridon"
     };
-    if (tbcEntry.count(config.activity)) return PROGRESSION_PRE_TBC;
+    if (tbcEntry.count(config.activity)) return ProgressionPreTbc;
 
-    if (config.activity == "blackwing_lair") return PROGRESSION_MOLTEN_CORE;
-    if (config.activity == "aq20" || config.activity == "aq40") return PROGRESSION_PRE_AQ;
+    if (config.activity == "blackwing_lair") return ProgressionMoltenCore;
+    if (config.activity == "aq20" || config.activity == "aq40") return ProgressionPreAq;
     if (config.activity == "zul_gurub")
-        return static_cast<uint8>(sIndividualProgression->RequiredZulGurubProgression);
+        return RequiredZulGurubProgression();
 
-    return PROGRESSION_START;
+    return ProgressionStart;
 }
 
 char const* ProgressionUnlockHint(uint8 required)
 {
+    using namespace AdventureStartControl;
     switch (required)
     {
-        case PROGRESSION_MOLTEN_CORE: return "clear Molten Core";
-        case PROGRESSION_PRE_AQ: return "reach the Ahn'Qiraj progression gate";
-        case PROGRESSION_PRE_TBC: return "unlock The Burning Crusade";
-        case PROGRESSION_TBC_TIER_1: return "clear Karazhan";
-        case PROGRESSION_TBC_TIER_2: return "clear Tempest Keep";
-        case PROGRESSION_TBC_TIER_4: return "clear Black Temple";
-        case PROGRESSION_TBC_TIER_5: return "unlock Wrath of the Lich King";
-        case PROGRESSION_WOTLK_TIER_1: return "clear Naxxramas";
-        case PROGRESSION_WOTLK_TIER_2: return "clear Ulduar";
-        case PROGRESSION_WOTLK_TIER_3: return "clear Trial of the Crusader";
-        case PROGRESSION_WOTLK_TIER_4: return "clear Icecrown Citadel";
+        case ProgressionMoltenCore: return "clear Molten Core";
+        case ProgressionPreAq: return "reach the Ahn'Qiraj progression gate";
+        case ProgressionPreTbc: return "unlock The Burning Crusade";
+        case ProgressionTbcTier1: return "clear Karazhan";
+        case ProgressionTbcTier2: return "clear Tempest Keep";
+        case ProgressionTbcTier4: return "clear Black Temple";
+        case ProgressionWotlkEntry: return "unlock Wrath of the Lich King";
+        case ProgressionWotlkTier1: return "clear Naxxramas";
+        case ProgressionWotlkTier2: return "clear Ulduar";
+        case ProgressionWotlkTier3: return "clear Trial of the Crusader";
+        case ProgressionWotlkTier4: return "clear Icecrown Citadel";
         default: return "advance realm progression";
     }
 }
@@ -499,20 +501,29 @@ std::string KnownAccessRequirement(Player* player, Config const& config)
         return "";
     }
 
+    // These IDs are the exact access gates used by mod-individual-progression. Keep the constants
+    // local so its legacy header never collides with PlayerbotAI.h in this translation unit.
+    static constexpr uint32 TempestKey = 31704u;
+    static constexpr uint32 TrialMagtheridon = 10888u;
+    static constexpr uint32 CudgelOfKardesh = 10901u;
+    static constexpr uint32 VialsOfEternity = 10445u;
+    static constexpr uint32 MedallionOfKarabor = 32649u;
+    static constexpr uint32 BlessedMedallionOfKarabor = 32757u;
+
     if (config.activity == "tempest_keep")
     {
-        if (!player->HasItemCount(ITEM_TEMPEST_KEY))
+        if (!player->HasItemCount(TempestKey))
             return "Obtain the Tempest Key first.";
-        if (!player->IsQuestRewarded(TRIAL_MAGTHERIDON))
+        if (!player->IsQuestRewarded(TrialMagtheridon))
             return "Complete Trial of the Naaru: Magtheridon first.";
     }
-    else if (config.activity == "serpentshrine" && !player->IsQuestRewarded(CUDGEL_OF_KARDESH))
+    else if (config.activity == "serpentshrine" && !player->IsQuestRewarded(CudgelOfKardesh))
         return "Complete The Cudgel of Kar'desh first.";
-    else if (config.activity == "hyjal" && !player->IsQuestRewarded(VIALS_OF_ETERNITY))
+    else if (config.activity == "hyjal" && !player->IsQuestRewarded(VialsOfEternity))
         return "Complete The Vials of Eternity first.";
     else if (config.activity == "black_temple" &&
-        !player->HasItemCount(ITEM_MEDALLION_OF_KARABOR) &&
-        !player->HasItemCount(ITEM_BLESSED_MEDALLION_OF_KARABOR))
+        !player->HasItemCount(MedallionOfKarabor) &&
+        !player->HasItemCount(BlessedMedallionOfKarabor))
         return "Obtain the Medallion of Karabor first.";
 
     if (config.difficulty == "heroic" && config.activity == "trial_crusader")
@@ -547,10 +558,10 @@ bool ActivityEligible(Player* player, Config const& config, std::string& reason)
     }
 
     uint8 const requiredProgression = RequiredProgressionFor(config);
-    if (requiredProgression != PROGRESSION_START &&
-        !sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(requiredProgression)))
+    if (requiredProgression != AdventureStartControl::ProgressionStart &&
+        !AdventureStartControl::HasPassedProgression(player, requiredProgression))
     {
-        uint8 const current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+        uint8 const current = AdventureStartControl::CurrentProgression(player);
         reason = "Realm progression " + std::to_string(unsigned(requiredProgression)) + " required; current " +
             std::to_string(unsigned(current)) + ". " + ProgressionUnlockHint(requiredProgression) + ".";
         return false;

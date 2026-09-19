@@ -571,10 +571,15 @@ assert 'EnsureRaidReadyAccess(player, profile);' in ADVENTURE_START_CONTROL
 
 # Activity visibility and execution use the same authoritative server-side access contract.
 assert "uint8 RequiredProgressionFor(Config const& config)" in SERVER
-assert 'config.activity == "forge_souls"' in SERVER and "PROGRESSION_WOTLK_TIER_3" in SERVER
+assert 'config.activity == "forge_souls"' in SERVER and "ProgressionWotlkTier3" in SERVER
 assert 'config.activity == "zulaman"' in SERVER and "RequiredZulAmanProgression" in SERVER
+assert '#include "IndividualProgression.h"' not in SERVER, (
+    "GroupComposerCommand must not include IndividualProgression.h beside PlayerbotAI.h; both define legacy GENERAL"
+)
+assert "bool HasPassedProgression(Player* player, uint8 progression);" in ADVENTURE_START_CONTROL_H
+assert "sIndividualProgression->hasPassedProgression" in ADVENTURE_START_CONTROL
 assert "bool ActivityEligible(Player* player, Config const& config, std::string& reason)" in SERVER
-assert "sIndividualProgression->hasPassedProgression" in SERVER
+assert "AdventureStartControl::HasPassedProgression" in SERVER
 assert "player->Satisfy(sObjectMgr->GetAccessRequirement(mapId, ActivityDifficulty(config)), mapId, false)" in SERVER
 assert 'SendActivityEligibility' in SERVER and '"[GC]|ACTIVITY|{}|{}|{}|{}"' in SERVER
 assert '"Selected activity is locked: " + eligibilityReason' in SERVER

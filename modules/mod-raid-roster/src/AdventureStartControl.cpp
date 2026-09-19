@@ -75,6 +75,36 @@ void RevealAllMap(Player* player)
 
 namespace AdventureStartControl
 {
+uint8 CurrentProgression(Player* player)
+{
+    if (!player || !sIndividualProgression->enabled)
+        return ProgressionStart;
+    return sIndividualProgression->GetPlayerProgressionFromQuests(player);
+}
+
+bool HasPassedProgression(Player* player, uint8 progression)
+{
+    if (!player)
+        return false;
+    if (!sIndividualProgression->enabled || progression == ProgressionStart)
+        return true;
+    return sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(progression));
+}
+
+uint8 RequiredZulGurubProgression()
+{
+    return sIndividualProgression->enabled
+        ? static_cast<uint8>(sIndividualProgression->RequiredZulGurubProgression)
+        : ProgressionStart;
+}
+
+uint8 RequiredZulAmanProgression()
+{
+    return sIndividualProgression->enabled
+        ? static_cast<uint8>(sIndividualProgression->RequiredZulAmanProgression)
+        : ProgressionStart;
+}
+
 AdventureStartProfile GetDefaultProfile()
 {
     if (g_AdventureStartDefaultProfile == static_cast<uint8>(AdventureStartProfile::WotlkRaidReady))

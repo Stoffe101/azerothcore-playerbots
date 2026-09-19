@@ -14,6 +14,28 @@ enum class AdventureStartProfile : uint8
 
 namespace AdventureStartControl
 {
+// Stable progression values mirrored from mod-individual-progression's ProgressionState. Keep the
+// dependency itself inside AdventureStartControl.cpp: PlayerbotAI.h and IndividualProgression.h
+// both expose a legacy unscoped GENERAL enumerator and cannot safely share a translation unit.
+inline constexpr uint8 ProgressionStart = 0;
+inline constexpr uint8 ProgressionMoltenCore = 1;
+inline constexpr uint8 ProgressionPreAq = 4;
+inline constexpr uint8 ProgressionPreTbc = 8;
+inline constexpr uint8 ProgressionTbcTier1 = 9;
+inline constexpr uint8 ProgressionTbcTier2 = 10;
+inline constexpr uint8 ProgressionTbcTier4 = 12;
+inline constexpr uint8 ProgressionWotlkEntry = 13;
+inline constexpr uint8 ProgressionWotlkTier1 = 14;
+inline constexpr uint8 ProgressionWotlkTier2 = 15;
+inline constexpr uint8 ProgressionWotlkTier3 = 16;
+inline constexpr uint8 ProgressionWotlkTier4 = 17;
+inline constexpr uint8 ProgressionWotlkMax = 18;
+
+uint8 CurrentProgression(Player* player);
+bool HasPassedProgression(Player* player, uint8 progression);
+uint8 RequiredZulGurubProgression();
+uint8 RequiredZulAmanProgression();
+
 AdventureStartProfile GetDefaultProfile();
 void SetDefaultProfile(AdventureStartProfile profile);
 char const* ProfileName(AdventureStartProfile profile);
