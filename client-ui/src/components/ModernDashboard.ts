@@ -2,6 +2,8 @@ import type { BuildSelection } from "./BuildSelector";
 import * as BuildSelectorUI from "./BuildSelector";
 import * as ActivityBrowserUI from "./ActivityBrowser";
 import * as TemplateBrowserUI from "./TemplateBrowser";
+import * as ProgressionPageUI from "./ProgressionPage";
+import * as RecommendationsPageUI from "./RecommendationsPage";
 import * as Native from "../core/Native";
 import type { ClassId, Role } from "../data/WotlkBuilds";
 import * as Builds from "../data/WotlkBuilds";
@@ -206,6 +208,11 @@ export function createModernDashboard(): Dashboard {
     backendText.SetWidth(160);
     backendText.SetJustifyH("LEFT");
 
+    const realmBadge = Native.createText(header.frame, "VANILLA · CAP 60", "GameFontNormalSmall", theme.colors.warning);
+    realmBadge.SetPoint("RIGHT", backendGlow, "LEFT", -24, 0);
+    realmBadge.SetWidth(190);
+    realmBadge.SetJustifyH("RIGHT");
+
     const close = ButtonUI.createButton(header.frame, {
         text: "Close   X", width: 108, height: 34, accent: theme.colors.error, emphasis: true,
         onClick: () => frame.Hide(),
@@ -220,15 +227,20 @@ export function createModernDashboard(): Dashboard {
     const navTitle = Native.createText(sidebar.frame, "COMPOSE", "GameFontNormalSmall", theme.colors.muted);
     navTitle.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -20);
 
+    let activePage: "COMPOSER" | "PROGRESSION" | "RECOMMENDED" = "COMPOSER";
+    let showComposerWorkspace = (mode?: "DUNGEON" | "RAID") => {};
+    let showProgressionPage = () => {};
+    let showRecommendationsPage = () => {};
+
     const navDungeon = ButtonUI.createButton(sidebar.frame, {
         text: "Dungeon", width: 152, height: 46, accent: theme.colors.primary, icon: ICON_DUNGEON, iconSize: 24, flat: true,
-        onClick: () => Model.setMode("DUNGEON"),
+        onClick: () => showComposerWorkspace("DUNGEON"),
     });
     navDungeon.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -48);
     navDungeon.label.SetJustifyH("LEFT");
     const navRaid = ButtonUI.createButton(sidebar.frame, {
         text: "Raid", width: 152, height: 46, accent: theme.colors.warning, icon: ICON_RAID, iconSize: 24, flat: true,
-        onClick: () => Model.setMode("RAID"),
+        onClick: () => showComposerWorkspace("RAID"),
     });
     navRaid.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -102);
     navRaid.label.SetJustifyH("LEFT");
@@ -238,21 +250,43 @@ export function createModernDashboard(): Dashboard {
     sidebarDivider.SetPoint("TOPRIGHT", sidebar.frame, "TOPRIGHT", -14, -160);
     sidebarDivider.SetHeight(1);
 
+    const journeyTitle = Native.createText(sidebar.frame, "JOURNEY", "GameFontNormalSmall", theme.colors.muted);
+    journeyTitle.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -174);
+
+    const navProgression = ButtonUI.createButton(sidebar.frame, {
+        text: "Progression", width: 152, height: 42, icon: "Interface\\Icons\\Achievement_Quests_Completed_08", iconSize: 22, flat: true,
+        onClick: () => showProgressionPage(),
+    });
+    navProgression.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -198);
+    navProgression.label.SetJustifyH("LEFT");
+
+    const navRecommended = ButtonUI.createButton(sidebar.frame, {
+        text: "Recommended", width: 152, height: 42, icon: "Interface\\Icons\\INV_Misc_Map_01", iconSize: 22, flat: true,
+        onClick: () => showRecommendationsPage(),
+    });
+    navRecommended.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -248);
+    navRecommended.label.SetJustifyH("LEFT");
+
+    const toolsDivider = Native.createSolid(sidebar.frame, theme.colors.borderStrong, "ARTWORK");
+    toolsDivider.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -304);
+    toolsDivider.SetPoint("TOPRIGHT", sidebar.frame, "TOPRIGHT", -14, -304);
+    toolsDivider.SetHeight(1);
+
     const manageTitle = Native.createText(sidebar.frame, "TOOLS", "GameFontNormalSmall", theme.colors.muted);
-    manageTitle.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -174);
+    manageTitle.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -318);
 
     let showTemplates = () => {};
     let showPeople = () => {};
     let showOptions = () => {};
 
     const navTemplates = ButtonUI.createButton(sidebar.frame, { text: "Templates", width: 152, height: 42, icon: ICON_TEMPLATES, iconSize: 22, flat: true, onClick: () => showTemplates() });
-    navTemplates.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -198);
+    navTemplates.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -342);
     navTemplates.label.SetJustifyH("LEFT");
     const navPeople = ButtonUI.createButton(sidebar.frame, { text: "Humans & Pins", width: 152, height: 42, icon: ICON_PEOPLE, iconSize: 22, flat: true, onClick: () => showPeople() });
-    navPeople.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -248);
+    navPeople.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -392);
     navPeople.label.SetJustifyH("LEFT");
     const navOptions = ButtonUI.createButton(sidebar.frame, { text: "Options", width: 152, height: 42, icon: ICON_OPTIONS, iconSize: 22, flat: true, onClick: () => showOptions() });
-    navOptions.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -298);
+    navOptions.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -442);
     navOptions.label.SetJustifyH("LEFT");
 
     const sideHint = Native.createText(sidebar.frame, "Humans stay locked.\nSpecific builds reserve bot slots; everything else stays Auto.", "GameFontHighlightSmall", theme.colors.muted);
@@ -1820,16 +1854,61 @@ export function createModernDashboard(): Dashboard {
         if (assembled) assembleButton.frame.Hide(); else assembleButton.frame.Show();
     }
 
+    // Full workspace pages ----------------------------------------------------
+    const progressionPage = ProgressionPageUI.createProgressionPage(frame);
+    const recommendationsPage = RecommendationsPageUI.createRecommendationsPage(frame, () => {
+        activePage = "COMPOSER";
+        progressionPage.hide();
+        recommendationsPage.hide();
+        refresh();
+        Model.requestActivities(Model.config().mode === "RAID" ? "RAID" : "DUNGEON");
+    });
+
+    showComposerWorkspace = (mode?: "DUNGEON" | "RAID") => {
+        activePage = "COMPOSER";
+        progressionPage.hide();
+        recommendationsPage.hide();
+        if (mode !== undefined) Model.setMode(mode);
+        refresh();
+        Model.requestActivities(Model.config().mode === "RAID" ? "RAID" : "DUNGEON");
+    };
+    showProgressionPage = () => {
+        activePage = "PROGRESSION";
+        recommendationsPage.hide();
+        progressionPage.show();
+        refresh();
+    };
+    showRecommendationsPage = () => {
+        activePage = "RECOMMENDED";
+        progressionPage.hide();
+        recommendationsPage.show();
+        refresh();
+    };
+
     function refresh(): void {
         if (!frame.IsShown()) return;
 
         const raid = Model.config().mode === "RAID";
-        navDungeon.setSelected(!raid);
-        navRaid.setSelected(raid);
+        navDungeon.setSelected(activePage === "COMPOSER" && !raid);
+        navRaid.setSelected(activePage === "COMPOSER" && raid);
+        navProgression.setSelected(activePage === "PROGRESSION");
+        navRecommended.setSelected(activePage === "RECOMMENDED");
+
+        const realm = Model.realm();
+        realmBadge.SetText(String(realm.era).toUpperCase() + " · CAP " + String(realm.levelCap));
+        const realmColor = realm.era === "Vanilla" ? theme.colors.warning : (realm.era === "TBC" ? theme.colors.success : theme.colors.primary);
+        realmBadge.SetTextColor(realmColor[0], realmColor[1], realmColor[2], 1);
+
         backendText.SetText(GC.backendSeen === true ? "Backend connected" : "Checking backend");
         Native.setTextureColor(backendDot, GC.backendSeen === true ? theme.colors.success : theme.colors.muted);
         if (GC.backendSeen === true) backendGlow.Show();
         else backendGlow.Hide();
+
+        if (activePage !== "COMPOSER") {
+            if (activePage === "PROGRESSION") progressionPage.refresh();
+            else recommendationsPage.refresh();
+            return;
+        }
 
         refreshActivity();
         refreshHumanPanel();
@@ -1872,6 +1951,7 @@ export function createModernDashboard(): Dashboard {
             applyScale();
             frame.Show();
             Model.requestActivities(Model.config().mode === "RAID" ? "RAID" : "DUNGEON");
+            Model.requestJourney();
             refresh();
             Model.requestAnchors();
             Model.requestStatus();
@@ -1899,6 +1979,11 @@ export function createModernDashboard(): Dashboard {
     GC.RegisterCallback("PROGRESS_CHANGED", () => refresh());
     GC.RegisterCallback("HUMANS_CHANGED", () => refresh());
     GC.RegisterCallback("ACTIVITIES_CHANGED", () => refresh());
+    GC.RegisterCallback("REALM_CHANGED", () => {
+        difficultySelect.refresh();
+        refresh();
+    });
+    GC.RegisterCallback("JOURNEY_CHANGED", () => refresh());
     GC.RegisterCallback("PROFILES_CHANGED", () => refresh());
     GC.RegisterCallback("STATUS", (text: string) => {
         statusNotice = String(text ?? "");
