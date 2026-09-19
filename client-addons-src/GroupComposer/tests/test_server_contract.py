@@ -414,14 +414,18 @@ assert sync_body.index("RaidRosterEra::SyncBotToMaster(master, bot);") < sync_bo
 assert "ComposerGearProfile" in SERVER and "GearProfileFor(plan.config)" in SERVER
 assert "preferredItemLevel" in GEAR_H and "preferredItemLevel" in GEAR_CPP
 
-# Build & Prepare is the normal one-click path. Once bots are Ready, server-side group assembly
-# begins automatically; the explicit Assemble action remains a recovery/manual boundary.
+# Build & Prepare and Assemble are deliberately separate lifecycle stages. Preparation ends at a
+# reviewable READY roster; only an explicit Assemble command commits that snapshot to the live group.
 world_prepare = section(SERVER, "if (plan.preparing)", "if (plan.travelPending)")
-assert "BeginPreparedAssembly(master, plan, assemblyError)" in world_prepare
+assert "plan.prepared = true;" in world_prepare
+assert 'SendProgress(master, "READY"' in world_prepare
+assert "BeginPreparedAssembly(master, plan, assemblyError)" not in world_prepare
 find_handler = section(SERVER, "bool GroupComposerCommand::HandleFind", "bool GroupComposerCommand::HandleArrange")
-assert "BeginPreparedAssembly(master, stored, assemblyError)" in find_handler
+assert 'SendProgress(master, "READY"' in find_handler
+assert "BeginPreparedAssembly(master, stored, assemblyError)" not in find_handler
 
-assemble = section(SERVER, "bool GroupComposerCommand::HandleAssemble", "bool GroupComposerCommand::HandleQueue")
+assemble = section(SERVER, "bool GroupComposerCommand::HandleAssemble", "bool GroupComposerCommand::HandleTeleport")
+assert "BeginPreparedAssembly(master, plan, assemblyError)" in assemble
 assert "!plan.prepared || plan.preparing || OwnerHasPendingSync(owner)" in assemble, (
     "Assemble can commit before Build & Prepare is complete"
 )
