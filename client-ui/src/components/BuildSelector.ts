@@ -55,10 +55,15 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     classSection.frame.SetPoint("TOPLEFT", modal.content, "TOPLEFT", 0, 0);
     classSection.frame.SetPoint("TOPRIGHT", modal.content, "TOPRIGHT", 0, 0);
     classSection.frame.SetHeight(258);
-    const classStep = createText(classSection.frame, "01", "GameFontNormalLarge", theme.colors.primary);
-    classStep.SetPoint("TOPLEFT", classSection.frame, "TOPLEFT", 14, -14);
+    const classStepBadge = createPanel(classSection.frame, theme.colors.surfaceBlue, theme.colors.primary);
+    classStepBadge.frame.SetSize(32, 32);
+    classStepBadge.frame.SetPoint("TOPLEFT", classSection.frame, "TOPLEFT", 14, -12);
+    const classStep = createText(classStepBadge.frame, "1", "GameFontNormalLarge", theme.colors.primary);
+    classStep.SetPoint("CENTER", classStepBadge.frame, "CENTER", 0, 0);
+    classStep.SetWidth(24);
+    classStep.SetJustifyH("CENTER");
     const classTitle = createText(classSection.frame, "Choose a class", "GameFontNormalLarge");
-    classTitle.SetPoint("TOPLEFT", classSection.frame, "TOPLEFT", 52, -12);
+    classTitle.SetPoint("TOPLEFT", classSection.frame, "TOPLEFT", 58, -12);
     const classHint = createText(classSection.frame, "Select a class that can fulfill this role.", "GameFontHighlightSmall", theme.colors.muted);
     classHint.SetPoint("TOPLEFT", classTitle, "BOTTOMLEFT", 0, -3);
 
@@ -81,11 +86,15 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     specSection.frame.SetPoint("TOPLEFT", classSection.frame, "BOTTOMLEFT", 0, -12);
     specSection.frame.SetPoint("TOPRIGHT", classSection.frame, "BOTTOMRIGHT", 0, -12);
     specSection.frame.SetHeight(176);
-    const specStep = createText(specSection.frame, "02", "GameFontNormalLarge", theme.colors.primary); specStep.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 14, -14);
-    const specTitle = createText(specSection.frame, "Choose a specialization", "GameFontNormalLarge"); specTitle.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 52, -12);
-    const specHint = createText(specSection.frame, "Pick a class first.", "GameFontHighlightSmall", theme.colors.muted); specHint.SetPoint("TOPLEFT", specTitle, "BOTTOMLEFT", 0, -3);
-    const emptySpec = createText(specSection.frame, "Choose a class above and its valid specializations will appear here.", "GameFontHighlight", theme.colors.muted);
-    emptySpec.SetPoint("CENTER", specSection.frame, "CENTER", 0, -22); emptySpec.SetWidth(620); emptySpec.SetJustifyH("CENTER");
+    const specStepBadge = createPanel(specSection.frame, theme.colors.surfaceBlue, theme.colors.primary);
+    specStepBadge.frame.SetSize(32, 32);
+    specStepBadge.frame.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 14, -12);
+    const specStep = createText(specStepBadge.frame, "2", "GameFontNormalLarge", theme.colors.primary);
+    specStep.SetPoint("CENTER", specStepBadge.frame, "CENTER", 0, 0);
+    specStep.SetWidth(24);
+    specStep.SetJustifyH("CENTER");
+    const specTitle = createText(specSection.frame, "Choose a specialization", "GameFontNormalLarge"); specTitle.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 58, -12);
+    const specHint = createText(specSection.frame, "Select a class above to unlock specializations.", "GameFontHighlightSmall", theme.colors.muted); specHint.SetPoint("TOPLEFT", specTitle, "BOTTOMLEFT", 0, -3);
 
     const anySpecButton = createButton(specSection.frame, { text: "Any valid spec", width: 208, height: 76, accent: theme.colors.primary, onClick: () => { if (currentClass === undefined) return; currentSpec = ANY_SPEC_ID; refresh(); } });
     const anySpecIcon = createIcon(anySpecButton.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 40); anySpecIcon.SetPoint("LEFT", anySpecButton.frame, "LEFT", 10, 0);
@@ -141,6 +150,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         modal.setSubtitle("Reserve only the class/spec you care about. Every unreserved slot stays Auto.");
         modal.setHeaderRole(currentRole);
         classSection.outline.setColor(theme.colors.borderStrong); specSection.outline.setColor(theme.colors.borderStrong);
+        classStepBadge.outline.setColor(accent); specStepBadge.outline.setColor(accent);
         classStep.SetTextColor(accent[0], accent[1], accent[2], 1); specStep.SetTextColor(accent[0], accent[1], accent[2], 1);
         classHint.SetText("Select a class that can fulfill the " + roleLabel(currentRole) + " role.");
         setRoleIcon(summaryRoleBadge.icon, currentRole); summaryRoleBadge.outline.setColor(accent); summaryRoleText.SetText(roleLabel(currentRole)); summaryRoleText.SetTextColor(accent[0], accent[1], accent[2], 1);
@@ -149,7 +159,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         const columns = Math.min(5, Math.max(1, validClasses.length));
         const classRows = Math.max(1, Math.ceil(validClasses.length / columns));
         const classHeight = classRows > 1 ? 258 : 164;
-        const specHeight = currentClass === undefined ? 108 : 176;
+        const specHeight = currentClass === undefined ? 68 : 176;
         classSection.frame.SetHeight(classHeight);
         specSection.frame.SetHeight(specHeight);
         modal.frame.SetHeight(classHeight + specHeight + 222);
@@ -177,12 +187,10 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         if (currentClass === undefined) {
             anySpecButton.frame.Hide();
             for (const tile of specTiles) tile.button.frame.Hide();
-            specHint.SetText("Pick a class first.");
-            emptySpec.Show();
+            specHint.SetText("Select a class above to unlock specializations.");
         } else {
             const selectedClass = getClass(currentClass);
             specHint.SetText("Pick an exact " + (selectedClass?.label ?? "class") + " specialization, or leave the spec flexible.");
-            emptySpec.Hide();
             const visibleSpecs = getSpecsForRole(currentClass, currentRole);
             const totalCards = visibleSpecs.length + 1;
             const cardWidth = 208;
