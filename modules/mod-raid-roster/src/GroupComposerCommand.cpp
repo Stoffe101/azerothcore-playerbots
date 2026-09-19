@@ -13,6 +13,7 @@
 #include "EraTransition.h"
 #include "Group.h"
 #include "GroupMgr.h"
+#include "IndividualProgression.h"
 #include "LFG.h"
 #include "LFGMgr.h"
 #include "Map.h"
@@ -345,15 +346,22 @@ bool FrozenHallsAccessRequirement(Config const& config, Player* player, uint32& 
     return false;
 }
 
-void EnsureComposerInstanceAccess(Player* bot, Config const& config)
+void EnsureComposerInstanceAccess(Player* master, Player* bot, Config const& config)
 {
+    if (!master || !bot)
+        return;
+
+    // Composer bots follow their real player's progression so a reviewed roster never reaches the
+    // door with stage-13 reserve bots while the owner is legitimately on Ulduar/ToC/ICC content.
+    RaidRosterEra::SyncBotToMaster(master, bot);
+
     uint32 questId = 0;
     char const* questName = "";
     if (!FrozenHallsAccessRequirement(config, bot, questId, questName))
         return;
 
-    // Keep Composer-selected bots on AzerothCore's normal access path. The WotLK raid-ready
-    // bootstrap repairs only the mandatory Frozen Halls story gates; it does not award raid kills.
+    // Frozen Halls adds ordinary AzerothCore quest requirements on top of Individual Progression.
+    // Repair those access flags only for Composer-owned Playerbots; human progression is never forged.
     if (AdventureStartControl::EnsureRaidReadyAccess(bot, AdventureStartProfile::WotlkRaidReady))
         bot->SaveToDB(false, false);
 }
@@ -393,6 +401,243 @@ uint8 RequiredActivityLevel(Player* master, Config const& config)
         return std::max<uint8>(1, static_cast<uint8>(dungeon->MinLevel));
 
     return difficulty == DUNGEON_DIFFICULTY_HEROIC ? 80 : (master ? std::min<uint8>(master->GetLevel(), 80) : 80);
+}
+
+uint8 RequiredProgressionFor(Config const& config)
+{
+    if (config.mode == "dungeon")
+    {
+        if (config.activity == "trial_champion") return PROGRESSION_WOTLK_TIER_2; // 15
+        if (config.activity == "forge_souls") return PROGRESSION_WOTLK_TIER_3;    // 16
+        return PROGRESSION_TBC_TIER_5; // 13: WotLK entry, including Pit/HoR once their quest gates are done.
+    }
+
+    if (config.mode != "raid")
+        return PROGRESSION_START;
+
+    if (config.activity == "ulduar") return PROGRESSION_WOTLK_TIER_1;
+    if (config.activity == "trial_crusader") return PROGRESSION_WOTLK_TIER_2;
+    if (config.activity == "icecrown") return PROGRESSION_WOTLK_TIER_3;
+    if (config.activity == "ruby_sanctum") return PROGRESSION_WOTLK_TIER_4;
+
+    static std::unordered_set<std::string> const wrathEntry = {
+        "naxxramas", "obsidian_sanctum", "eye_of_eternity", "onyxia", "vault_archavon"
+    };
+    if (wrathEntry.count(config.activity)) return PROGRESSION_TBC_TIER_5;
+
+    if (config.activity == "serpentshrine" || config.activity == "tempest_keep")
+        return PROGRESSION_TBC_TIER_1;
+    if (config.activity == "hyjal" || config.activity == "black_temple")
+        return PROGRESSION_TBC_TIER_2;
+    if (config.activity == "sunwell")
+        return PROGRESSION_TBC_TIER_4;
+
+    static std::unordered_set<std::string> const tbcEntry = {
+        "karazhan", "zulaman", "gruul", "magtheridon"
+    };
+    if (tbcEntry.count(config.activity)) return PROGRESSION_PRE_TBC;
+
+    if (config.activity == "blackwing_lair") return PROGRESSION_MOLTEN_CORE;
+    if (config.activity == "aq20" || config.activity == "aq40") return PROGRESSION_PRE_AQ;
+    if (config.activity == "zul_gurub")
+        return static_cast<uint8>(sIndividualProgression->RequiredZulGurubProgression);
+
+    return PROGRESSION_START;
+}
+
+char const* ProgressionUnlockHint(uint8 required)
+{
+    switch (required)
+    {
+        case PROGRESSION_MOLTEN_CORE: return "clear Molten Core";
+        case PROGRESSION_PRE_AQ: return "reach the Ahn'Qiraj progression gate";
+        case PROGRESSION_PRE_TBC: return "unlock The Burning Crusade";
+        case PROGRESSION_TBC_TIER_1: return "clear Karazhan";
+        case PROGRESSION_TBC_TIER_2: return "clear Tempest Keep";
+        case PROGRESSION_TBC_TIER_4: return "clear Black Temple";
+        case PROGRESSION_TBC_TIER_5: return "unlock Wrath of the Lich King";
+        case PROGRESSION_WOTLK_TIER_1: return "clear Naxxramas";
+        case PROGRESSION_WOTLK_TIER_2: return "clear Ulduar";
+        case PROGRESSION_WOTLK_TIER_3: return "clear Trial of the Crusader";
+        case PROGRESSION_WOTLK_TIER_4: return "clear Icecrown Citadel";
+        default: return "advance realm progression";
+    }
+}
+
+Difficulty ActivityDifficulty(Config const& config)
+{
+    if (config.mode == "dungeon")
+        return config.difficulty == "normal" ? DUNGEON_DIFFICULTY_NORMAL : DUNGEON_DIFFICULTY_HEROIC;
+
+    if (!UsesWrathRaidDifficulty(config.activity))
+        return RAID_DIFFICULTY_10MAN_NORMAL;
+
+    bool const heroic = config.difficulty == "heroic";
+    if (config.size >= 25)
+        return heroic ? RAID_DIFFICULTY_25MAN_HEROIC : RAID_DIFFICULTY_25MAN_NORMAL;
+    return heroic ? RAID_DIFFICULTY_10MAN_HEROIC : RAID_DIFFICULTY_10MAN_NORMAL;
+}
+
+std::string KnownAccessRequirement(Player* player, Config const& config)
+{
+    if (!player)
+        return "Character is not available.";
+
+    if (config.mode == "dungeon")
+    {
+        if (player->IsClass(CLASS_DEATH_KNIGHT) &&
+            !player->IsQuestRewarded(13188u) && !player->IsQuestRewarded(13189u))
+            return "Complete the Death Knight starting campaign before using Dungeon Finder.";
+
+        uint32 questId = 0;
+        char const* questName = "";
+        if (FrozenHallsAccessRequirement(config, player, questId, questName) && !player->IsQuestRewarded(questId))
+            return std::string("Complete quest \"") + questName + "\" first.";
+        return "";
+    }
+
+    if (config.activity == "tempest_keep")
+    {
+        if (!player->HasItemCount(ITEM_TEMPEST_KEY))
+            return "Obtain the Tempest Key first.";
+        if (!player->IsQuestRewarded(TRIAL_MAGTHERIDON))
+            return "Complete Trial of the Naaru: Magtheridon first.";
+    }
+    else if (config.activity == "serpentshrine" && !player->IsQuestRewarded(CUDGEL_OF_KARDESH))
+        return "Complete The Cudgel of Kar'desh first.";
+    else if (config.activity == "hyjal" && !player->IsQuestRewarded(VIALS_OF_ETERNITY))
+        return "Complete The Vials of Eternity first.";
+    else if (config.activity == "black_temple" &&
+        !player->HasItemCount(ITEM_MEDALLION_OF_KARABOR) &&
+        !player->HasItemCount(ITEM_BLESSED_MEDALLION_OF_KARABOR))
+        return "Obtain the Medallion of Karabor first.";
+
+    if (config.difficulty == "heroic" && config.activity == "trial_crusader")
+    {
+        uint32 const achievement = config.size >= 25 ? 3916u : 3917u;
+        if (!player->HasAchieved(achievement))
+            return "Complete the prerequisite Trial of the Crusader achievement before Heroic.";
+    }
+    if (config.difficulty == "heroic" && config.activity == "icecrown")
+    {
+        uint32 const achievement = config.size >= 25 ? 4597u : 4530u;
+        if (!player->HasAchieved(achievement))
+            return "Complete the prerequisite Icecrown Citadel achievement before Heroic.";
+    }
+    return "";
+}
+
+bool ActivityEligible(Player* player, Config const& config, std::string& reason)
+{
+    reason.clear();
+    if (!player || !player->IsInWorld())
+    {
+        reason = "Character must be online.";
+        return false;
+    }
+
+    uint8 const level = RequiredActivityLevel(player, config);
+    if (player->GetLevel() < level)
+    {
+        reason = "Requires level " + std::to_string(unsigned(level)) + ".";
+        return false;
+    }
+
+    uint8 const requiredProgression = RequiredProgressionFor(config);
+    if (requiredProgression != PROGRESSION_START &&
+        !sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(requiredProgression)))
+    {
+        uint8 const current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+        reason = "Realm progression " + std::to_string(unsigned(requiredProgression)) + " required; current " +
+            std::to_string(unsigned(current)) + ". " + ProgressionUnlockHint(requiredProgression) + ".";
+        return false;
+    }
+
+    std::string const known = KnownAccessRequirement(player, config);
+    if (!known.empty())
+    {
+        reason = known;
+        return false;
+    }
+
+    if (config.mode == "dungeon" && config.activity == "random")
+        return true;
+
+    uint32 const mapId = config.mode == "dungeon" ? DungeonMapId(config.activity) : RaidMapId(config.activity);
+    if (!mapId)
+    {
+        reason = "No instance map is configured for this activity.";
+        return false;
+    }
+
+    if (!player->Satisfy(sObjectMgr->GetAccessRequirement(mapId, ActivityDifficulty(config)), mapId, false))
+    {
+        reason = "Locked by an instance quest, item, achievement, level, or item-level requirement.";
+        return false;
+    }
+    return true;
+}
+
+uint8 BrowserRaidSize(std::string const& activity, uint32 requested)
+{
+    if (activity == "karazhan" || activity == "zulaman") return 10;
+    if (activity == "zul_gurub" || activity == "aq20") return 20;
+    if (activity == "molten_core" || activity == "blackwing_lair" || activity == "aq40") return 40;
+    if (UsesWrathRaidDifficulty(activity)) return requested == 25 ? 25 : 10;
+    return 25;
+}
+
+void SendActivityEligibility(ChatHandler* handler, Player* master, std::string const& mode,
+    std::string difficulty, uint32 requestedSize)
+{
+    if (!handler || !master) return;
+
+    static std::array<char const*, 17> const dungeons = {{
+        "random", "utgarde_keep", "nexus", "azjol_nerub", "ahnkahet", "drak_tharon",
+        "violet_hold", "gundrak", "halls_of_stone", "halls_of_lightning", "oculus", "culling",
+        "utgarde_pinnacle", "trial_champion", "forge_souls", "pit_saron", "halls_reflection"
+    }};
+    static std::array<char const*, 23> const raids = {{
+        "naxxramas", "obsidian_sanctum", "eye_of_eternity", "ulduar", "trial_crusader",
+        "onyxia", "vault_archavon", "icecrown", "ruby_sanctum", "karazhan", "zulaman",
+        "gruul", "magtheridon", "serpentshrine", "tempest_keep", "hyjal", "black_temple",
+        "sunwell", "zul_gurub", "aq20", "molten_core", "blackwing_lair", "aq40"
+    }};
+
+    std::string const normalizedMode = Lower(mode) == "raid" ? "raid" : "dungeon";
+    difficulty = Lower(difficulty);
+    if (normalizedMode == "raid" && difficulty != "heroic") difficulty = "normal";
+    if (normalizedMode == "dungeon" && difficulty != "heroic" && difficulty != "alpha" &&
+        difficulty != "beta" && difficulty != "gamma") difficulty = "normal";
+
+    handler->PSendSysMessage("[GC]|ACTIVITYRESET|{}", normalizedMode == "raid" ? "RAID" : "DUNGEON");
+
+    auto sendOne = [&](std::string const& id)
+    {
+        Config config;
+        config.mode = normalizedMode;
+        config.activity = id;
+        config.difficulty = difficulty;
+        config.size = normalizedMode == "raid" ? BrowserRaidSize(id, requestedSize) : 5;
+        if (normalizedMode == "raid" && config.difficulty == "heroic" &&
+            !RaidSupports(id, config.size, true))
+            config.difficulty = "normal";
+
+        std::string reason;
+        bool const eligible = ActivityEligible(master, config, reason);
+        handler->PSendSysMessage("[GC]|ACTIVITY|{}|{}|{}|{}",
+            normalizedMode == "raid" ? "RAID" : "DUNGEON", id, eligible ? 1 : 0,
+            Sanitize(eligible ? "Available" : reason));
+    };
+
+    if (normalizedMode == "raid")
+        for (char const* id : raids) sendOne(id);
+    else
+        for (char const* id : dungeons) sendOne(id);
+
+    handler->PSendSysMessage("[GC]|ACTIVITYDONE|{}|{}",
+        normalizedMode == "raid" ? "RAID" : "DUNGEON",
+        uint32(sIndividualProgression->GetPlayerProgressionFromQuests(master)));
 }
 
 struct ComposerGearProfile
@@ -833,6 +1078,13 @@ bool TeleportCompletedPlan(Player* master, Plan const& plan, std::string& detail
             return false;
         }
 
+        std::string eligibilityReason;
+        if (!ActivityEligible(player, plan.config, eligibilityReason))
+        {
+            error = "'" + member.name + "' cannot enter the selected activity: " + eligibilityReason;
+            return false;
+        }
+
         Map::EnterState state = sMapMgr->PlayerCannotEnter(mapId, player);
         if (state != Map::CAN_ENTER && state != Map::CANNOT_ENTER_ALREADY_IN_MAP)
         {
@@ -1199,7 +1451,7 @@ bool PreparePlan(Player* master, Plan& plan, std::string& error)
             if (!(member.guild && member.needsPreparation))
                 SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel,
                     minimumItemLevel, targetItemLevel, fullProvision);
-            EnsureComposerInstanceAccess(bot, plan.config);
+            EnsureComposerInstanceAccess(master, bot, plan.config);
             continue;
         }
 
@@ -1592,6 +1844,7 @@ ChatCommandTable GroupComposerCommand::GetCommands() const
         { "move",        HandleMove,              SEC_PLAYER, Console::No },
         { "assemble",    HandleAssemble,          SEC_PLAYER, Console::No },
         { "teleport",    HandleTeleport,          SEC_PLAYER, Console::No },
+        { "activities",  HandleActivities,        SEC_PLAYER, Console::No },
         { "queue",       HandleQueue,             SEC_PLAYER, Console::No },
         { "anchors",     HandleAnchors,           SEC_PLAYER, Console::No },
         { "diagnostics", HandleDiagnostics,       SEC_PLAYER, Console::No },
@@ -1648,10 +1901,10 @@ bool GroupComposerCommand::HandleBegin(ChatHandler* handler, std::string mode, s
     config.minimumItemLevel = static_cast<uint16>(std::min<uint32>(1000, minimumItemLevel));
     config.requiredLevel = RequiredActivityLevel(master, config);
 
-    if (master->GetLevel() < config.requiredLevel)
+    std::string eligibilityReason;
+    if (!ActivityEligible(master, config, eligibilityReason))
     {
-        SendError(handler, "The selected activity requires level " + std::to_string(unsigned(config.requiredLevel)) +
-            ", but your character is only level " + std::to_string(unsigned(master->GetLevel())) + ".");
+        SendError(handler, "Selected activity is locked: " + eligibilityReason);
         return true;
     }
 
@@ -1893,6 +2146,14 @@ bool GroupComposerCommand::HandleTeleport(ChatHandler* handler)
     return true;
 }
 
+bool GroupComposerCommand::HandleActivities(ChatHandler* handler, std::string mode, std::string difficulty, uint32 size)
+{
+    Player* master = CommandPlayer(handler);
+    if (!master) return true;
+    SendActivityEligibility(handler, master, mode, difficulty, size);
+    return true;
+}
+
 bool GroupComposerCommand::HandleQueue(ChatHandler* handler)
 {
     Player* master = CommandPlayer(handler);
@@ -1901,6 +2162,13 @@ bool GroupComposerCommand::HandleQueue(ChatHandler* handler)
     if (itr == s_plans.end() || !itr->second.valid) { SendError(handler, "Find a valid dungeon roster first."); return true; }
     Plan& plan = itr->second;
     if (plan.config.mode != "dungeon") { SendError(handler, "Dungeon Finder handoff is only available in Dungeon mode."); return true; }
+
+    std::string eligibilityReason;
+    if (!ActivityEligible(master, plan.config, eligibilityReason))
+    {
+        SendError(handler, "Selected dungeon is locked: " + eligibilityReason);
+        return true;
+    }
     if (plan.assembling || !plan.assembled || !PlanMembershipComplete(master, plan)) { SendError(handler, "Assemble the complete 5-player party before queueing it."); return true; }
 
     Group* group = master->GetGroup();

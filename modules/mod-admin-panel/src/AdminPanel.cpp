@@ -595,9 +595,14 @@ private:
             handler->PSendSysMessage("{} Could not apply the WotLK raid-ready profile.", PREFIX);
             return true;
         }
+        if (!AdventureStartControl::CompleteWotlkExpansionAccess(player))
+        {
+            handler->PSendSysMessage("{} Raid-ready gear was applied, but the WotLK campaign/access skip could not be completed.", PREFIX);
+            return true;
+        }
 
         handler->PSendSysMessage(
-            "{} WotLK raid-ready applied: level 80, stage 13, Dalaran, max riding, glyph/mount/supply bootstrap, spec-aware ilvl-200 pre-Naxx gear, and Frozen Halls quest access (Pit of Saron / Halls of Reflection).",
+            "{} WotLK raid-ready applied: level 80, Dalaran, ilvl-200 pre-Naxx gear, WotLK progression stage 18, and campaign/dungeon/raid quest-access gates completed. Heroic-only achievement gates remain normal.",
             PREFIX);
         return true;
     }

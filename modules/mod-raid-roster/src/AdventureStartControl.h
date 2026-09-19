@@ -25,6 +25,12 @@ bool MatchesProfile(Player* player, AdventureStartProfile profile);
 // complete. Returns true when missing completion state was repaired.
 bool EnsureRaidReadyAccess(Player* player, AdventureStartProfile profile);
 
+// Admin-only convenience boundary: after the normal WotLK raid-ready bootstrap, mark this
+// character as having completed this realm's WotLK progression/access campaign. This advances the
+// hidden Individual Progression milestone to max WotLK and repairs access/phasing quests, but does
+// not fabricate heroic raid achievements.
+bool CompleteWotlkExpansionAccess(Player* player);
+
 // Bootstrap a character into the requested profile. forceStarterReset is used by GM convenience
 // actions so an already-initialized character receives a fresh starter kit and a new spec-aware
 // gear pass for the selected era.

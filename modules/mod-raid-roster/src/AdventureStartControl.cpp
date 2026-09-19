@@ -157,6 +157,50 @@ bool EnsureRaidReadyAccess(Player* player, AdventureStartProfile profile)
     return changed;
 }
 
+bool CompleteWotlkExpansionAccess(Player* player)
+{
+    if (!player || !player->IsInWorld() || !sIndividualProgression->enabled)
+        return false;
+
+    // The Admin Panel action is intentionally a full WotLK access skip. Individual Progression
+    // stores raid milestones as hidden quests, so moving to tier 5 (18) represents having cleared
+    // every WotLK progression gate, including the stage-16 Forge of Souls / ICC gate.
+    sIndividualProgression->ForceUpdateProgressionState(player, PROGRESSION_WOTLK_TIER_5);
+    if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_WOTLK_TIER_5))
+        return false;
+
+    // Keep the two real WotLK campaign/access chains used by this stack in sync with that skip:
+    // Battle for the Undercity drives capital-city phasing, while Frozen Halls drives Pit/HoR entry.
+    uint32 const undercityQuest = player->GetTeamId() == TEAM_ALLIANCE ? BATTLE_UNDERCITY_ALLIANCE : BATTLE_UNDERCITY_HORDE;
+    if (!player->IsQuestRewarded(undercityQuest))
+    {
+        player->RemoveActiveQuest(undercityQuest, false);
+        player->SetRewardedQuest(undercityQuest);
+        player->SendQuestUpdate(undercityQuest);
+    }
+
+    if (player->IsClass(CLASS_DEATH_KNIGHT))
+    {
+        uint32 const dkIntroCompletionQuest = player->GetTeamId() == TEAM_ALLIANCE ? 13188u : 13189u;
+        if (!player->IsQuestRewarded(dkIntroCompletionQuest))
+        {
+            player->RemoveActiveQuest(dkIntroCompletionQuest, false);
+            player->SetRewardedQuest(dkIntroCompletionQuest);
+            player->SendQuestUpdate(dkIntroCompletionQuest);
+        }
+    }
+
+    EnsureRaidReadyAccess(player, AdventureStartProfile::WotlkRaidReady);
+    sIndividualProgression->CheckAdjustments(player);
+    sIndividualProgression->checkIPPhasing(player, player->GetAreaId());
+    player->SaveToDB(false, false);
+
+    LOG_INFO("server.loading",
+        "[AdventureStart] Completed WotLK expansion access for {}: progression={}, Frozen Halls/Undercity access repaired.",
+        player->GetName(), uint32(sIndividualProgression->GetPlayerProgressionFromQuests(player)));
+    return true;
+}
+
 bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStarterReset)
 {
     if (!player || !player->IsInWorld())
