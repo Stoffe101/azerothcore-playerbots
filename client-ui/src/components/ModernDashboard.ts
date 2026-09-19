@@ -217,13 +217,13 @@ export function createModernDashboard(): Dashboard {
     navTitle.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -20);
 
     const navDungeon = ButtonUI.createButton(sidebar.frame, {
-        text: "Dungeon", width: 152, height: 46, accent: theme.colors.primary, icon: ICON_DUNGEON, iconSize: 24,
+        text: "Dungeon", width: 152, height: 46, accent: theme.colors.primary, icon: ICON_DUNGEON, iconSize: 24, flat: true,
         onClick: () => Model.setMode("DUNGEON"),
     });
     navDungeon.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -48);
     navDungeon.label.SetJustifyH("LEFT");
     const navRaid = ButtonUI.createButton(sidebar.frame, {
-        text: "Raid", width: 152, height: 46, accent: theme.colors.warning, icon: ICON_RAID, iconSize: 24,
+        text: "Raid", width: 152, height: 46, accent: theme.colors.warning, icon: ICON_RAID, iconSize: 24, flat: true,
         onClick: () => Model.setMode("RAID"),
     });
     navRaid.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -102);
@@ -241,13 +241,13 @@ export function createModernDashboard(): Dashboard {
     let showPeople = () => {};
     let showOptions = () => {};
 
-    const navTemplates = ButtonUI.createButton(sidebar.frame, { text: "Templates", width: 152, height: 42, icon: ICON_TEMPLATES, iconSize: 22, onClick: () => showTemplates() });
+    const navTemplates = ButtonUI.createButton(sidebar.frame, { text: "Templates", width: 152, height: 42, icon: ICON_TEMPLATES, iconSize: 22, flat: true, onClick: () => showTemplates() });
     navTemplates.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -198);
     navTemplates.label.SetJustifyH("LEFT");
-    const navPeople = ButtonUI.createButton(sidebar.frame, { text: "Humans & Pins", width: 152, height: 42, icon: ICON_PEOPLE, iconSize: 22, onClick: () => showPeople() });
+    const navPeople = ButtonUI.createButton(sidebar.frame, { text: "Humans & Pins", width: 152, height: 42, icon: ICON_PEOPLE, iconSize: 22, flat: true, onClick: () => showPeople() });
     navPeople.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -248);
     navPeople.label.SetJustifyH("LEFT");
-    const navOptions = ButtonUI.createButton(sidebar.frame, { text: "Options", width: 152, height: 42, icon: ICON_OPTIONS, iconSize: 22, onClick: () => showOptions() });
+    const navOptions = ButtonUI.createButton(sidebar.frame, { text: "Options", width: 152, height: 42, icon: ICON_OPTIONS, iconSize: 22, flat: true, onClick: () => showOptions() });
     navOptions.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -298);
     navOptions.label.SetJustifyH("LEFT");
 
