@@ -488,19 +488,32 @@ export function createModernDashboard(): Dashboard {
     raidView.Hide();
 
     let raidTab: RaidTab = "QUICK";
-    const tabQuick = ButtonUI.createButton(raidView, { text: "Quick Composition", width: 164, height: 38, accent: theme.colors.warning });
+    const tabQuick = ButtonUI.createButton(raidView, {
+        text: "Quick Composition", width: 164, height: 36, accent: theme.colors.primary, flat: true,
+    });
     tabQuick.frame.SetPoint("TOPLEFT", raidView, "TOPLEFT", 0, 0);
-    const tabExact = ButtonUI.createButton(raidView, { text: "Specific Builds", width: 150, height: 38, accent: theme.colors.warning });
-    tabExact.frame.SetPoint("LEFT", tabQuick.frame, "RIGHT", 8, 0);
-    const tabRoster = ButtonUI.createButton(raidView, { text: "Prepared Roster", width: 150, height: 38, accent: theme.colors.success });
-    tabRoster.frame.SetPoint("LEFT", tabExact.frame, "RIGHT", 8, 0);
+    const tabExact = ButtonUI.createButton(raidView, {
+        text: "Specific Builds", width: 150, height: 36, accent: theme.colors.primary, flat: true,
+    });
+    tabExact.frame.SetPoint("LEFT", tabQuick.frame, "RIGHT", 4, 0);
+    const tabRoster = ButtonUI.createButton(raidView, {
+        text: "Prepared Roster", width: 150, height: 36, accent: theme.colors.primary, flat: true,
+    });
+    tabRoster.frame.SetPoint("LEFT", tabExact.frame, "RIGHT", 4, 0);
+
+    const tabUnderline = Native.createSolid(raidView, theme.colors.border, "ARTWORK");
+    tabUnderline.SetPoint("TOPLEFT", raidView, "TOPLEFT", 0, -39);
+    tabUnderline.SetPoint("TOPRIGHT", raidView, "TOPRIGHT", 0, -39);
+    tabUnderline.SetHeight(1);
+
     const resetRoles = ButtonUI.createButton(raidView, {
         text: "Reset roles",
         width: 100,
-        height: 34,
+        height: 32,
+        flat: true,
         onClick: () => Model.resetRoleTargets(),
     });
-    resetRoles.frame.SetPoint("TOPRIGHT", raidView, "TOPRIGHT", 0, 0);
+    resetRoles.frame.SetPoint("TOPRIGHT", raidView, "TOPRIGHT", 0, -2);
 
     const quickView = CreateFrame("Frame", undefined, raidView);
     quickView.SetPoint("TOPLEFT", raidView, "TOPLEFT", 0, -46);
