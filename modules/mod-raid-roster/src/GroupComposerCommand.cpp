@@ -1018,7 +1018,7 @@ bool TeleportCompletedPlan(Player* master, Plan const& plan, std::string& detail
     Group* group = master->GetGroup();
     if (!group || group->GetMembersCount() != plan.members.size())
     {
-        error = "Automatic travel requires the complete reviewed roster to still be grouped.";
+        error = "Instance teleport requires the complete reviewed roster to still be grouped.";
         return false;
     }
 
@@ -1028,7 +1028,7 @@ bool TeleportCompletedPlan(Player* master, Plan const& plan, std::string& detail
     Player* travelLeader = group->GetLeader();
     if (!travelLeader || GET_PLAYERBOT_AI(travelLeader))
     {
-        error = "Automatic travel requires the real group leader to be online.";
+        error = "Instance teleport requires the real group leader to be online.";
         return false;
     }
     bool leaderReviewed = false;
@@ -1057,17 +1057,17 @@ bool TeleportCompletedPlan(Player* master, Plan const& plan, std::string& detail
         Player* player = ObjectAccessor::FindConnectedPlayer(member.guid);
         if (!player)
         {
-            error = "'" + member.name + "' went offline before automatic instance travel.";
+            error = "'" + member.name + "' went offline before instance teleport.";
             return false;
         }
         if (player->GetGroup() != group)
         {
-            error = "'" + member.name + "' left the reviewed group before automatic instance travel.";
+            error = "'" + member.name + "' left the reviewed group before instance teleport.";
             return false;
         }
         if (player->IsBeingTeleported())
         {
-            error = "'" + member.name + "' is already being teleported; wait a moment and Assemble again.";
+            error = "'" + member.name + "' is already being teleported; wait a moment and press Teleport to Instance again.";
             return false;
         }
         if (player->IsInCombat())
@@ -1136,7 +1136,7 @@ bool TeleportCompletedPlan(Player* master, Plan const& plan, std::string& detail
         if (!teleport(player))
         {
             error = "'" + player->GetName() + "' could not enter the selected instance after the leader. "
-                "The roster remains assembled; retry Enter Activity to move the missing member.";
+                "The roster remains assembled; press Teleport to Instance again to move the missing member.";
             return false;
         }
     }
@@ -1741,27 +1741,28 @@ public:
 
                 plan.travelElapsed += diff;
                 if (plan.travelElapsed < 450) continue;
+
+                // Teleport is now an explicit player-confirmed action. Perform exactly one delayed
+                // attempt after group/difficulty state settles. Repeating Player::TeleportTo here
+                // can make module-level access hooks print the same blocker many times (for example
+                // Individual Progression's "Progression Level Required" message). A failed attempt
+                // leaves the reviewed roster assembled so the player can fix the blocker and click
+                // Teleport to Instance again deliberately.
+                plan.travelPending = false;
                 plan.travelElapsed = 0;
                 ++plan.travelAttempts;
 
                 std::string travelDetail, travelError;
                 if (TeleportCompletedPlan(master, plan, travelDetail, travelError))
                 {
-                    plan.travelPending = false;
                     SendProgress(master, "DONE", uint32(plan.members.size()), uint32(plan.members.size()), travelDetail);
                     SendProtocol(master, "DONE", travelDetail);
                 }
-                else if (plan.travelAttempts >= 8)
+                else
                 {
-                    plan.travelPending = false;
                     SendProtocol(master, "STATUS", travelError);
                     SendProgress(master, "ASSEMBLED", uint32(plan.members.size()), uint32(plan.members.size()),
                         "Group is assembled. Clear the blocker, then press Teleport to Instance to retry.");
-                }
-                else
-                {
-                    SendProgress(master, "TRAVEL", uint32(plan.members.size()), uint32(plan.members.size()),
-                        "Roster complete. Waiting for instance entry to become available...");
                 }
                 continue;
             }

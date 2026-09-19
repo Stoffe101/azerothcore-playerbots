@@ -546,8 +546,10 @@ assert "ValidateAssemblySnapshot(master, plan, validationError)" in teleport_han
 assert 'SendProgress(master, "TRAVEL"' in teleport_handler
 travel_loop = section(world_update, "if (plan.travelPending)", "if (!plan.assembling) continue;")
 assert "plan.travelElapsed < 450" in travel_loop
-assert "plan.travelAttempts >= 8" in travel_loop
+assert "Perform exactly one delayed" in travel_loop, "Explicit teleport must never retry access failures automatically"
+assert "plan.travelPending = false;" in travel_loop
 assert "TeleportCompletedPlan(master, plan, travelDetail, travelError)" in travel_loop
+assert "plan.travelAttempts >= 8" not in travel_loop, "Legacy eight-attempt teleport spam loop returned"
 assert 'SendProtocol(master, "STATUS", travelError);' in travel_loop
 assert 'SendProtocol(master, "ERROR", travelError);' not in travel_loop
 assert 'SendProgress(master, "ASSEMBLED"' in travel_loop
@@ -556,6 +558,7 @@ assert 'function GC:TeleportToInstance()' in CORE
 assert 'if (phase === "ASSEMBLED") return "Group assembled";' in MODEL
 assert 'if (phase === "TRAVEL") return "Teleporting to instance";' in MODEL
 assert 'Teleport to Instance' in MODERN and 'Teleport to instance?' in MODERN
+assert 'press Teleport to Instance again' in travel
 assert 'Teleport after assembly' in MODERN and 'Dungeon Finder chooses destination' in MODERN
 
 # Frozen Halls access is quest-gated in AzerothCore. Composer-owned bots receive the same narrow
