@@ -2327,6 +2327,26 @@ end
 function ____exports.profileMeta(self, name)
     return ProfileFns.Get(name)
 end
+function ____exports.isFavorite(self, mode, id)
+    return ProfileFns.IsFavorite(mode, id) == true
+end
+function ____exports.toggleFavorite(self, mode, id)
+    local value = ProfileFns.ToggleFavorite(mode, id) == true
+    GC:Fire("ACTIVITY_HISTORY_CHANGED")
+    return value
+end
+function ____exports.recentActivityIds(self, mode, limit)
+    if limit == nil then
+        limit = 6
+    end
+    local out = {}
+    for ____, entry in ipairs(ProfileFns.ListRecent(mode, limit) or ({})) do
+        if entry ~= nil and entry.id ~= nil then
+            out[#out + 1] = tostring(entry.id)
+        end
+    end
+    return out
+end
 function ____exports.addPin(self, name, role, required)
     GC:AddPinnedMember(name, role, required)
 end
@@ -3855,6 +3875,18 @@ return ____exports
 ["components.ActivityBrowser"] = function(...) 
 --[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
 -- Lua Library inline imports
+local function __TS__ArraySort(self, compareFn)
+    if compareFn ~= nil then
+        table.sort(
+            self,
+            function(a, b) return compareFn(nil, a, b) < 0 end
+        )
+    else
+        table.sort(self)
+    end
+    return self
+end
+
 local function __TS__Number(value)
     local valueType = type(value)
     if valueType == "number" then
@@ -3956,7 +3988,7 @@ function ____exports.createActivityBrowser(self, parent)
     local filterButtons = {}
     do
         local i = 0
-        while i < 3 do
+        while i < 5 do
             local button = ButtonUI:createButton(modal.content, {
                 text = "",
                 width = 132,
@@ -4013,18 +4045,34 @@ function ____exports.createActivityBrowser(self, parent)
     end
     local function entries(self)
         local out = {}
-        local serverEntries = Model:activityMetaList(mode(nil))
+        local selectedMode = mode(nil)
+        local serverEntries = Model:activityMetaList(selectedMode)
         if #serverEntries > 0 then
+            local recentOrder = {}
+            if filter == "RECENT" then
+                local recent = Model:recentActivityIds(selectedMode, 8)
+                do
+                    local i = 0
+                    while i < #recent do
+                        recentOrder[recent[i + 1]] = i + 1
+                        i = i + 1
+                    end
+                end
+            end
             for ____, entry in ipairs(serverEntries) do
                 do
-                    local __continue12
+                    local __continue15
                     repeat
-                        if entry.id ~= "random" and entry.era ~= filter then
-                            __continue12 = true
+                        if filter == "FAVORITES" and not Model:isFavorite(selectedMode, entry.id) then
+                            __continue15 = true
                             break
                         end
-                        if entry.id == "random" and entry.era ~= filter then
-                            __continue12 = true
+                        if filter == "RECENT" and recentOrder[entry.id] == nil then
+                            __continue15 = true
+                            break
+                        end
+                        if filter ~= "FAVORITES" and filter ~= "RECENT" and entry.era ~= filter then
+                            __continue15 = true
                             break
                         end
                         out[#out + 1] = {
@@ -4039,12 +4087,18 @@ function ____exports.createActivityBrowser(self, parent)
                             minLevel = entry.minLevel,
                             support = entry.support
                         }
-                        __continue12 = true
+                        __continue15 = true
                     until true
-                    if not __continue12 then
+                    if not __continue15 then
                         break
                     end
                 end
+            end
+            if filter == "RECENT" then
+                __TS__ArraySort(
+                    out,
+                    function(____, left, right) return (recentOrder[left.id] or 999) - (recentOrder[right.id] or 999) end
+                )
             end
             return out
         end
@@ -4055,7 +4109,7 @@ function ____exports.createActivityBrowser(self, parent)
             end
             for ____, dungeon in __TS__Iterator(____D_DUNGEONS_3) do
                 do
-                    local __continue17
+                    local __continue23
                     repeat
                         local ____temp_1
                         if dungeon.id == "random" then
@@ -4069,7 +4123,7 @@ function ____exports.createActivityBrowser(self, parent)
                         end
                         local era = ____temp_1
                         if era ~= filter then
-                            __continue17 = true
+                            __continue23 = true
                             break
                         end
                         local ____dungeon_minLevel_2 = dungeon.minLevel
@@ -4089,9 +4143,9 @@ function ____exports.createActivityBrowser(self, parent)
                             minLevel = minLevel,
                             support = "Checking support"
                         }
-                        __continue17 = true
+                        __continue23 = true
                     until true
-                    if not __continue17 then
+                    if not __continue23 then
                         break
                     end
                 end
@@ -4103,7 +4157,7 @@ function ____exports.createActivityBrowser(self, parent)
             end
             for ____, raid in __TS__Iterator(____D_RAIDS_14) do
                 do
-                    local __continue21
+                    local __continue27
                     repeat
                         local ____raid_era_4 = raid.era
                         if ____raid_era_4 == nil then
@@ -4111,7 +4165,7 @@ function ____exports.createActivityBrowser(self, parent)
                         end
                         local era = tostring(____raid_era_4)
                         if era ~= filter then
-                            __continue21 = true
+                            __continue27 = true
                             break
                         end
                         local sizes = {}
@@ -4148,9 +4202,9 @@ function ____exports.createActivityBrowser(self, parent)
                             minLevel = __TS__Number(____raid_requiredLevel_8),
                             support = "Checking support"
                         }
-                        __continue21 = true
+                        __continue27 = true
                     until true
-                    if not __continue21 then
+                    if not __continue27 then
                         break
                     end
                 end
@@ -4159,7 +4213,13 @@ function ____exports.createActivityBrowser(self, parent)
         return out
     end
     local function tabLabels(self)
-        return {{key = "Vanilla", label = "Vanilla"}, {key = "TBC", label = "TBC"}, {key = "WotLK", label = "WotLK"}}
+        return {
+            {key = "Vanilla", label = "Vanilla"},
+            {key = "TBC", label = "TBC"},
+            {key = "WotLK", label = "WotLK"},
+            {key = "FAVORITES", label = "★ Favorites"},
+            {key = "RECENT", label = "Recent"}
+        }
     end
     local function refresh(self)
         local tabs = tabLabels(nil)
@@ -4238,10 +4298,26 @@ function ____exports.createActivityBrowser(self, parent)
                         66,
                         -55
                     )
-                    tag:SetWidth(328)
+                    tag:SetWidth(260)
+                    local favorite = ButtonUI:createButton(button.frame, {
+                        text = "☆",
+                        width = 34,
+                        height = 30,
+                        accent = theme.colors.warning,
+                        flat = true
+                    })
+                    favorite.frame:SetPoint(
+                        "TOPRIGHT",
+                        button.frame,
+                        "TOPRIGHT",
+                        -7,
+                        -7
+                    )
                     scroll:bindWheel(button.frame)
+                    scroll:bindWheel(favorite.frame)
                     card = {
                         button = button,
+                        favorite = favorite,
                         iconBadge = iconBadge,
                         title = title,
                         detail = detail,
@@ -4284,6 +4360,15 @@ function ____exports.createActivityBrowser(self, parent)
                     card.tag:SetTextColor(theme.colors.success[1], theme.colors.success[2], theme.colors.success[3], 1)
                 end
                 local id = item.id
+                local selectedMode = mode(nil)
+                card.favorite:setText(Model:isFavorite(selectedMode, id) and "★" or "☆")
+                card.favorite.frame:SetScript(
+                    "OnMouseDown",
+                    function()
+                        Model:toggleFavorite(selectedMode, id)
+                        refresh(nil)
+                    end
+                )
                 card.button.frame:SetScript(
                     "OnMouseDown",
                     function()
@@ -4314,6 +4399,14 @@ function ____exports.createActivityBrowser(self, parent)
     end
     Model:composer():RegisterCallback(
         "ACTIVITIES_CHANGED",
+        function()
+            if modal.frame:IsShown() then
+                refresh(nil)
+            end
+        end
+    )
+    Model:composer():RegisterCallback(
+        "ACTIVITY_HISTORY_CHANGED",
         function()
             if modal.frame:IsShown() then
                 refresh(nil)
