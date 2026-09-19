@@ -4401,7 +4401,7 @@ function ____exports.createModernDashboard(self)
         "RIGHT",
         header.frame,
         "RIGHT",
-        -233,
+        -326,
         0
     )
     backendGlow:Hide()
@@ -4411,7 +4411,7 @@ function ____exports.createModernDashboard(self)
         "RIGHT",
         header.frame,
         "RIGHT",
-        -238,
+        -331,
         0
     )
     local backendText = Native:createText(header.frame, "Checking backend", "GameFontHighlightSmall", theme.colors.muted)
@@ -4422,6 +4422,8 @@ function ____exports.createModernDashboard(self)
         8,
         0
     )
+    backendText:SetWidth(160)
+    backendText:SetJustifyH("LEFT")
     local close = ButtonUI:createButton(
         header.frame,
         {
@@ -6012,7 +6014,7 @@ function ____exports.createModernDashboard(self)
         -16,
         -307
     )
-    coverageCard.frame:SetHeight(154)
+    coverageCard.frame:SetHeight(196)
     local coverageGlyph = Native:createPanel(coverageCard.frame, theme.colors.surfaceDeep, theme.colors.borderStrong)
     coverageGlyph.frame:SetSize(30, 30)
     coverageGlyph.frame:SetPoint(
@@ -6051,7 +6053,7 @@ function ____exports.createModernDashboard(self)
         {token = "dispel", label = "Dispel"},
         {token = "buffs", label = "Raid Buffs"},
         {token = "heroism", label = "Heroism"},
-        {token = "battle-rez", label = "Battle Rez"},
+        {token = "battle-rez", label = "Battle Res"},
         {token = "cc", label = "CC"},
         {token = "threat", label = "Threat"}
     }
@@ -6059,15 +6061,15 @@ function ____exports.createModernDashboard(self)
     do
         local i = 0
         while i < #coverageDefs do
-            local column = i % 3
-            local row = math.floor(i / 3)
+            local column = i % 2
+            local row = math.floor(i / 2)
             local chip = Native:createPanel(coverageCard.frame, theme.colors.surfaceDeep, theme.colors.border)
-            chip.frame:SetSize(78, 24)
+            chip.frame:SetSize(122, 24)
             chip.frame:SetPoint(
                 "TOPLEFT",
                 coverageCard.frame,
                 "TOPLEFT",
-                12 + column * 82,
+                12 + column * 126,
                 -(50 + row * 29)
             )
             local check = chip.frame:CreateTexture(nil, "ARTWORK")
@@ -6089,7 +6091,7 @@ function ____exports.createModernDashboard(self)
                 22,
                 0
             )
-            label:SetWidth(53)
+            label:SetWidth(94)
             coverageChips[#coverageChips + 1] = {panel = chip, check = check, label = label, token = coverageDefs[i + 1].token}
             i = i + 1
         end
@@ -6109,7 +6111,7 @@ function ____exports.createModernDashboard(self)
         status.frame,
         "TOPLEFT",
         16,
-        -477
+        -519
     )
     nextCard.frame:SetPoint(
         "TOPRIGHT",
