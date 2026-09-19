@@ -917,4 +917,8 @@ assert '"You: Cleared ✓"' in PROGRESSION_PAGE and '"Guild: Cleared ✓"' in PR
 assert '"Recommended Activities"' in RECOMMENDATIONS_PAGE
 assert '"Vanilla"' in ACTIVITY_BROWSER and '"TBC"' in ACTIVITY_BROWSER and '"WotLK"' in ACTIVITY_BROWSER
 assert 'difficultyDetail' in ACTIVITY_BROWSER and 'Titan Rune' in ACTIVITY_BROWSER
+assert '"FAVORITES"' in ACTIVITY_BROWSER and '"RECENT"' in ACTIVITY_BROWSER
+assert 'toggleFavorite' in MODEL and 'recentActivityIds' in MODEL
+assert 'function P.ToggleFavorite' in PROFILES and 'function P.MarkRecent' in PROFILES
+assert 'P.MarkRecent(GC:GetConfig().mode, GC:GetConfig().activity)' in CORE
 assert 'const column = i % 2;' in ACTIVITY_BROWSER and 'Math.ceil(items.length / 2) * 86' in ACTIVITY_BROWSER

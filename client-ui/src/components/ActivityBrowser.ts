@@ -18,6 +18,7 @@ interface BrowserEntry {
 
 interface BrowserCard {
     button: UIButton;
+    favorite: UIButton;
     iconBadge: any;
     title: WoWFontString;
     detail: WoWFontString;
@@ -36,7 +37,7 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
     modal.setHeaderIcon("Interface\\Icons\\INV_Misc_Map_01");
 
     const filterButtons: UIButton[] = [];
-    for (let i = 0; i < 3; i += 1) {
+    for (let i = 0; i < 5; i += 1) {
         const button = ButtonUI.createButton(modal.content, {
             text: "", width: 132, height: 34, accent: theme.colors.primary, flat: true,
         });
@@ -71,11 +72,18 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
 
     function entries(): BrowserEntry[] {
         const out: BrowserEntry[] = [];
-        const serverEntries = Model.activityMetaList(mode());
+        const selectedMode = mode();
+        const serverEntries = Model.activityMetaList(selectedMode);
         if (serverEntries.length > 0) {
+            let recentOrder: Record<string, number> = {};
+            if (filter === "RECENT") {
+                const recent = Model.recentActivityIds(selectedMode, 8);
+                for (let i = 0; i < recent.length; i += 1) recentOrder[recent[i]] = i + 1;
+            }
             for (const entry of serverEntries) {
-                if (entry.id !== "random" && entry.era !== filter) continue;
-                if (entry.id === "random" && entry.era !== filter) continue;
+                if (filter === "FAVORITES" && !Model.isFavorite(selectedMode, entry.id)) continue;
+                if (filter === "RECENT" && recentOrder[entry.id] === undefined) continue;
+                if (filter !== "FAVORITES" && filter !== "RECENT" && entry.era !== filter) continue;
                 out.push({
                     id: entry.id,
                     label: entry.label,
@@ -87,6 +95,9 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
                     minLevel: entry.minLevel,
                     support: entry.support,
                 });
+            }
+            if (filter === "RECENT") {
+                out.sort((left, right) => (recentOrder[left.id] ?? 999) - (recentOrder[right.id] ?? 999));
             }
             return out;
         }
@@ -126,6 +137,8 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
             { key: "Vanilla", label: "Vanilla" },
             { key: "TBC", label: "TBC" },
             { key: "WotLK", label: "WotLK" },
+            { key: "FAVORITES", label: "★ Favorites" },
+            { key: "RECENT", label: "Recent" },
         ];
     }
 
@@ -162,9 +175,14 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
                 const detail = Native.createText(button.frame, "", "GameFontHighlightSmall", theme.colors.muted);
                 detail.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -35); detail.SetWidth(328);
                 const tag = Native.createText(button.frame, "", "GameFontNormalSmall", theme.colors.primary);
-                tag.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -55); tag.SetWidth(328);
+                tag.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -55); tag.SetWidth(260);
+                const favorite = ButtonUI.createButton(button.frame, {
+                    text: "☆", width: 34, height: 30, accent: theme.colors.warning, flat: true,
+                });
+                favorite.frame.SetPoint("TOPRIGHT", button.frame, "TOPRIGHT", -7, -7);
                 scroll.bindWheel(button.frame);
-                card = { button, iconBadge, title, detail, tag };
+                scroll.bindWheel(favorite.frame);
+                card = { button, favorite, iconBadge, title, detail, tag };
                 cards[i] = card;
             }
 
@@ -197,6 +215,12 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
                 card.tag.SetTextColor(theme.colors.success[0], theme.colors.success[1], theme.colors.success[2], 1);
             }
             const id = item.id;
+            const selectedMode = mode();
+            card.favorite.setText(Model.isFavorite(selectedMode, id) ? "★" : "☆");
+            card.favorite.frame.SetScript("OnMouseDown", () => {
+                Model.toggleFavorite(selectedMode, id);
+                refresh();
+            });
             card.button.frame.SetScript("OnMouseDown", () => {
                 const latest = Model.activityEligibility(id, mode());
                 if (!latest.known || !latest.eligible) {
@@ -212,6 +236,9 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
     }
 
     Model.composer().RegisterCallback("ACTIVITIES_CHANGED", () => {
+        if (modal.frame.IsShown()) refresh();
+    });
+    Model.composer().RegisterCallback("ACTIVITY_HISTORY_CHANGED", () => {
         if (modal.frame.IsShown()) refresh();
     });
 

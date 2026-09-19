@@ -102,6 +102,10 @@ interface ProfileFunctions {
     ListCustom(mode?: string): string[];
     Describe(name: string): string;
     Get(name: string): any;
+    IsFavorite(mode: string, id: string): boolean;
+    ToggleFavorite(mode: string, id: string): boolean;
+    ListRecent(mode?: string, limit?: number): any[];
+    MarkRecent(mode: string, id: string): void;
 }
 
 const D: any = _G.GroupComposerData;
@@ -704,6 +708,19 @@ export function listBuiltinProfiles(): string[] { return ProfileFns.ListBuiltins
 export function listCustomProfiles(mode?: "DUNGEON" | "RAID"): string[] { return ProfileFns.ListCustom(mode) ?? []; }
 export function profileDescription(name: string): string { return ProfileFns.Describe(name) ?? ""; }
 export function profileMeta(name: string): any { return ProfileFns.Get(name); }
+export function isFavorite(mode: "DUNGEON" | "RAID", id: string): boolean { return ProfileFns.IsFavorite(mode, id) === true; }
+export function toggleFavorite(mode: "DUNGEON" | "RAID", id: string): boolean {
+    const value = ProfileFns.ToggleFavorite(mode, id) === true;
+    GC.Fire("ACTIVITY_HISTORY_CHANGED");
+    return value;
+}
+export function recentActivityIds(mode: "DUNGEON" | "RAID", limit = 6): string[] {
+    const out: string[] = [];
+    for (const entry of ProfileFns.ListRecent(mode, limit) ?? []) {
+        if (entry !== undefined && entry.id !== undefined) out.push(String(entry.id));
+    }
+    return out;
+}
 export function addPin(name: string, role: Role, required: boolean): void { GC.AddPinnedMember(name, role, required); }
 export function removePin(index: number): void { GC.RemovePinnedMember(index); }
 

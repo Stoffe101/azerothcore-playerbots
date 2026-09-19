@@ -188,7 +188,7 @@ function P.InitializeDB()
     GroupComposerDB = GroupComposerDB or {}
     local db = GroupComposerDB
     local oldVersion = tonumber(db.version) or 0
-    db.version = 3
+    db.version = 4
     db.profiles = type(db.profiles) == "table" and db.profiles or {}
     db.window = type(db.window) == "table" and db.window or {}
     db.window.point = db.window.point or { "CENTER", "UIParent", "CENTER", 0, 0 }
@@ -198,6 +198,10 @@ function P.InitializeDB()
     db.window.advancedTab = db.window.advancedTab or "PEOPLE"
     db.lastProfile = db.lastProfile or nil
     db.lastMode = db.lastMode == "RAID" and "RAID" or "DUNGEON"
+    db.activityFavorites = type(db.activityFavorites) == "table" and db.activityFavorites or {}
+    db.activityFavorites.DUNGEON = type(db.activityFavorites.DUNGEON) == "table" and db.activityFavorites.DUNGEON or {}
+    db.activityFavorites.RAID = type(db.activityFavorites.RAID) == "table" and db.activityFavorites.RAID or {}
+    db.recentActivities = type(db.recentActivities) == "table" and db.recentActivities or {}
 
     if oldVersion < 3 then
         for name, profile in pairs(db.profiles) do db.profiles[name] = P.Normalize(profile) end
@@ -292,6 +296,63 @@ function P.Delete(name)
     db.profiles[name] = nil
     if db.lastProfile == name then db.lastProfile = nil end
     return true
+end
+
+local function ActivityMode(mode)
+    return mode == "RAID" and "RAID" or "DUNGEON"
+end
+
+function P.IsFavorite(mode, id)
+    id = CleanName(id)
+    if not id then return false end
+    local db = P.InitializeDB()
+    mode = ActivityMode(mode)
+    return db.activityFavorites[mode][id] == true
+end
+
+function P.ToggleFavorite(mode, id)
+    id = CleanName(id)
+    if not id then return false end
+    local db = P.InitializeDB()
+    mode = ActivityMode(mode)
+    local nextValue = db.activityFavorites[mode][id] ~= true
+    db.activityFavorites[mode][id] = nextValue or nil
+    return nextValue
+end
+
+function P.MarkRecent(mode, id)
+    id = CleanName(id)
+    if not id then return end
+    mode = ActivityMode(mode)
+    local db = P.InitializeDB()
+    local out = { { mode = mode, id = id } }
+    for _, entry in ipairs(db.recentActivities) do
+        if type(entry) == "table" and #out < 12 then
+            local entryMode = ActivityMode(entry.mode)
+            local entryId = CleanName(entry.id)
+            if entryId and not (entryMode == mode and entryId == id) then
+                out[#out + 1] = { mode = entryMode, id = entryId }
+            end
+        end
+    end
+    db.recentActivities = out
+end
+
+function P.ListRecent(mode, limit)
+    mode = mode and ActivityMode(mode) or nil
+    limit = math.max(1, math.min(12, math.floor(tonumber(limit) or 6)))
+    local db = P.InitializeDB()
+    local out = {}
+    for _, entry in ipairs(db.recentActivities) do
+        if type(entry) == "table" and (not mode or ActivityMode(entry.mode) == mode) then
+            local id = CleanName(entry.id)
+            if id then
+                out[#out + 1] = { mode = ActivityMode(entry.mode), id = id }
+                if #out >= limit then break end
+            end
+        end
+    end
+    return out
 end
 
 function P.New(mode)

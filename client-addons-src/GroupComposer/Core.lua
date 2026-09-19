@@ -308,6 +308,8 @@ function GC:FindRoster()
         return false
     end
 
+    P.MarkRecent(GC:GetConfig().mode, GC:GetConfig().activity)
+    GC:Fire("ACTIVITY_HISTORY_CHANGED")
     GC:ResetPlan("Searching")
     GC.pendingCommand = "find"
     GC:SetProgress("BUILDING", 0, 0, "Selecting a valid roster...")
