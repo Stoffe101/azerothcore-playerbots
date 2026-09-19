@@ -5565,6 +5565,268 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
 end
 return ____exports
  end,
+["components.MemberDetailsModal"] = function(...) 
+--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+local ____exports = {}
+local Model = require("model.ComposerModel")
+local Native = require("core.Native")
+local ____Theme = require("theme.Theme")
+local theme = ____Theme.theme
+local ModalUI = require("widgets.Modal")
+local function sourceLabel(self, source)
+    if source == "HUMAN" then
+        return "Real player anchor"
+    end
+    if source == "GUILD" then
+        return "Guild companion"
+    end
+    if source == "RESERVE" then
+        return "Composer reserve"
+    end
+    if source == "ROSTER" then
+        return "Managed Composer capacity"
+    end
+    return "World bot"
+end
+function ____exports.createMemberDetailsModal(self, parent)
+    local modal = ModalUI:createModal(parent, 680, 410)
+    modal:setHeaderIcon("Interface\\Icons\\INV_Misc_Note_05")
+    modal:setTitle("Why this member?")
+    modal:setSubtitle("Group Composer selection rationale.")
+    local summary = Native:createText(modal.content, "", "GameFontNormal", theme.colors.primary)
+    summary:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        8,
+        -6
+    )
+    summary:SetWidth(600)
+    local source = Native:createText(modal.content, "", "GameFontHighlightSmall", theme.colors.muted)
+    source:SetPoint(
+        "TOPLEFT",
+        summary,
+        "BOTTOMLEFT",
+        0,
+        -7
+    )
+    source:SetWidth(600)
+    local whyTitle = Native:createText(modal.content, "WHY COMPOSER CHOSE THIS MEMBER", "GameFontNormalSmall", theme.colors.warning)
+    whyTitle:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        8,
+        -82
+    )
+    local why = Native:createText(modal.content, "", "GameFontHighlight", theme.colors.text)
+    why:SetPoint(
+        "TOPLEFT",
+        whyTitle,
+        "BOTTOMLEFT",
+        0,
+        -10
+    )
+    why:SetWidth(610)
+    why:SetHeight(190)
+    why:SetJustifyV("TOP")
+    local hint = Native:createText(modal.content, "This explanation comes from the server-reviewed roster snapshot. Rebuilding may choose a different bot if availability, guild state, level band or utility coverage changes.", "GameFontHighlightSmall", theme.colors.muted)
+    hint:SetPoint(
+        "BOTTOMLEFT",
+        modal.content,
+        "BOTTOMLEFT",
+        8,
+        8
+    )
+    hint:SetWidth(610)
+    hint:SetJustifyV("BOTTOM")
+    return {open = function(____, member)
+        local role = Model:roleLabel(member.role)
+        local level = tostring(member.level or "?")
+        local spec = tostring(member.spec or Model:classLabel(tostring(member.class)))
+        modal:setTitle(member.human and "Why is this player anchored?" or "Why this bot?")
+        modal:setSubtitle(tostring(member.name))
+        summary:SetText((((("Level " .. level) .. "  ·  ") .. spec) .. "  ·  ") .. role)
+        source:SetText(((sourceLabel(
+            nil,
+            tostring(member.source or "WORLD")
+        ) .. (member.pinned and "  ·  PINNED" or "")) .. (member.locked and "  ·  ALREADY GROUPED" or "")) .. (member.needsPreparation and "  ·  PREPARATION NEEDED" or ""))
+        why:SetText(tostring(member.why or "Composer selected this member because it matched the reviewed roster requirements."))
+        modal:show()
+    end}
+end
+return ____exports
+ end,
+["components.GroupActionsModal"] = function(...) 
+--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+local ____exports = {}
+local Model = require("model.ComposerModel")
+local Native = require("core.Native")
+local ____Theme = require("theme.Theme")
+local theme = ____Theme.theme
+local ButtonUI = require("widgets.Button")
+local ModalUI = require("widgets.Modal")
+function ____exports.createGroupActionsModal(self, parent)
+    local modal = ModalUI:createModal(parent, 650, 430)
+    modal:setHeaderIcon("Interface\\Icons\\INV_Misc_GroupLooking")
+    modal:setTitle("Assembled Group Actions")
+    modal:setSubtitle("Keep the current composition useful after assembly and instance travel.")
+    local intro = Native:createText(modal.content, "Rebuild/Repair keeps the current configuration and treats valid live members as sticky anchors.", "GameFontHighlight", theme.colors.muted)
+    intro:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        8,
+        -6
+    )
+    intro:SetWidth(570)
+    intro:SetHeight(46)
+    intro:SetJustifyV("TOP")
+    local rebuild = ButtonUI:createButton(
+        modal.content,
+        {
+            text = "Rebuild / Repair Roster",
+            width = 260,
+            height = 44,
+            accent = theme.colors.primary,
+            emphasis = true,
+            onClick = function()
+                modal:hide()
+                Model:rebuildOrRepair()
+            end
+        }
+    )
+    rebuild.frame:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        8,
+        -72
+    )
+    local rebuildHint = Native:createText(modal.content, "Re-run Build & Prepare. Existing valid group members stay; missing slots are filled again.", "GameFontHighlightSmall", theme.colors.muted)
+    rebuildHint:SetPoint(
+        "TOPLEFT",
+        rebuild.frame,
+        "BOTTOMLEFT",
+        0,
+        -7
+    )
+    rebuildHint:SetWidth(560)
+    local leave = ButtonUI:createButton(
+        modal.content,
+        {
+            text = "Leave Instance Together",
+            width = 260,
+            height = 44,
+            accent = theme.colors.success,
+            onClick = function()
+                modal:hide()
+                Model:leaveInstance()
+            end
+        }
+    )
+    leave.frame:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        8,
+        -160
+    )
+    local leaveHint = Native:createText(modal.content, "Use AzerothCore's canonical instance exit. The reviewed group remains assembled for re-entry.", "GameFontHighlightSmall", theme.colors.muted)
+    leaveHint:SetPoint(
+        "TOPLEFT",
+        leave.frame,
+        "BOTTOMLEFT",
+        0,
+        -7
+    )
+    leaveHint:SetWidth(560)
+    local disband = ButtonUI:createButton(modal.content, {text = "Disband Composer Group", width = 260, height = 44, accent = theme.colors.error})
+    disband.frame:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        8,
+        -248
+    )
+    local disbandHint = Native:createText(modal.content, "Only the real leader can do this. Composer refuses if an unreviewed player has joined the live group.", "GameFontHighlightSmall", theme.colors.muted)
+    disbandHint:SetPoint(
+        "TOPLEFT",
+        disband.frame,
+        "BOTTOMLEFT",
+        0,
+        -7
+    )
+    disbandHint:SetWidth(560)
+    local confirm = ModalUI:createModal(parent, 560, 270)
+    confirm:setHeaderIcon("Interface\\Icons\\Ability_Rogue_FeignDeath")
+    confirm:setTitle("Disband Composer group?")
+    confirm:setSubtitle("This removes the reviewed live party/raid. Your saved configuration remains.")
+    local confirmText = Native:createText(confirm.content, "Composer only disbands if you are the real leader and the live group exactly matches the reviewed roster. Unreviewed players are protected.", "GameFontHighlight", theme.colors.muted)
+    confirmText:SetPoint(
+        "TOPLEFT",
+        confirm.content,
+        "TOPLEFT",
+        8,
+        -8
+    )
+    confirmText:SetWidth(490)
+    confirmText:SetJustifyH("CENTER")
+    confirmText:SetJustifyV("TOP")
+    local cancel = ButtonUI:createButton(
+        confirm.content,
+        {
+            text = "Cancel",
+            width = 120,
+            height = 36,
+            onClick = function() return confirm:hide() end
+        }
+    )
+    cancel.frame:SetPoint(
+        "BOTTOMLEFT",
+        confirm.content,
+        "BOTTOMLEFT",
+        112,
+        0
+    )
+    local go = ButtonUI:createButton(
+        confirm.content,
+        {
+            text = "Disband",
+            width = 140,
+            height = 38,
+            accent = theme.colors.error,
+            emphasis = true,
+            onClick = function()
+                confirm:hide()
+                Model:disbandComposerGroup()
+            end
+        }
+    )
+    go.frame:SetPoint(
+        "BOTTOMRIGHT",
+        confirm.content,
+        "BOTTOMRIGHT",
+        -112,
+        0
+    )
+    disband.frame:SetScript(
+        "OnMouseDown",
+        function()
+            modal:hide()
+            confirm:show()
+        end
+    )
+    return {open = function()
+        if not Model:isAssembled() then
+            Model:fireStatus("Assemble the reviewed roster before using group lifecycle actions.")
+            return
+        end
+        modal:show()
+    end}
+end
+return ____exports
+ end,
 ["widgets.Toggle"] = function(...) 
 --[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
 local ____exports = {}
@@ -5684,6 +5946,8 @@ local ActivityBrowserUI = require("components.ActivityBrowser")
 local TemplateBrowserUI = require("components.TemplateBrowser")
 local ProgressionPageUI = require("components.ProgressionPage")
 local RecommendationsPageUI = require("components.RecommendationsPage")
+local MemberDetailsUI = require("components.MemberDetailsModal")
+local GroupActionsUI = require("components.GroupActionsModal")
 local Native = require("core.Native")
 local Builds = require("data.WotlkBuilds")
 local Model = require("model.ComposerModel")
@@ -5867,7 +6131,7 @@ local function activitySubtitle(self)
     return (mode .. "  ·  5 player  ·  ") .. (cfg.activity == "random" and "Dungeon Finder chooses destination" or "Teleport when ready")
 end
 function ____exports.createModernDashboard(self)
-    local clearDynamicRows, refreshPeople, refreshActivity, refreshHumanPanel, refreshDungeon, refreshQuickRaid, refreshExactRaid, refreshRoster, refreshRaidTabs, refreshStatus, refresh, frame, backendGlow, backendDot, backendText, realmBadge, activePage, navDungeon, navRaid, navProgression, navRecommended, statusNotice, activity, activityBadge, activityName, activitySub, activityEligibility, activityFieldLabel, activityBrowse, difficultySelect, raidSizeLabel, raidSizeButtons, humanBadge, humanIcon, humanName, humanSub, humanRoleButtons, compositionTitle, compositionHint, selectorContext, buildSelector, dungeonView, dungeonRows, raidView, raidTab, tabQuick, tabExact, tabRoster, quickView, exactView, rosterView, quickCards, roleOrder, quickSummary, quickTotal, quickCheck, quickCheckIcon, quickCheckBang, quickStatusTitle, quickStatusDetail, exactScroll, exactSections, groupCards, phaseCard, phaseAccent, phaseGlow, phaseDot, phaseText, phaseDetail, rosterCount, sourceText, statusRoleChips, progressFill, progressText, coverageChips, coverageDamageText, nextCard, nextBadge, nextBang, warningsTitle, nextDetail, buildButton, teleportButton, assembleButton, humanScroll, humanRowsModal, humanEmpty, pinRole, pinRoleButtons, pinToggle, pinScroll, pinRows, pinEmpty, progressionPage, recommendationsPage
+    local clearDynamicRows, refreshPeople, refreshActivity, refreshHumanPanel, refreshDungeon, refreshQuickRaid, refreshExactRaid, refreshRoster, refreshRaidTabs, refreshStatus, refresh, frame, memberDetails, backendGlow, backendDot, backendText, realmBadge, activePage, navDungeon, navRaid, navProgression, navRecommended, statusNotice, activity, activityBadge, activityName, activitySub, activityEligibility, activityFieldLabel, activityBrowse, difficultySelect, raidSizeLabel, raidSizeButtons, humanBadge, humanIcon, humanName, humanSub, humanRoleButtons, compositionTitle, compositionHint, selectorContext, buildSelector, dungeonView, dungeonRows, raidView, raidTab, tabQuick, tabExact, tabRoster, quickView, exactView, rosterView, quickCards, roleOrder, quickSummary, quickTotal, quickCheck, quickCheckIcon, quickCheckBang, quickStatusTitle, quickStatusDetail, exactScroll, exactSections, groupCards, phaseCard, phaseAccent, phaseGlow, phaseDot, phaseText, phaseDetail, rosterCount, sourceText, statusRoleChips, progressFill, progressText, coverageChips, coverageDamageText, nextCard, nextBadge, nextBang, warningsTitle, nextDetail, buildButton, teleportButton, assembleButton, resetButton, groupActionsButton, humanScroll, humanRowsModal, humanEmpty, pinRole, pinRoleButtons, pinToggle, pinScroll, pinRows, pinEmpty, progressionPage, recommendationsPage
     function clearDynamicRows(self, rows)
         for ____, row in ipairs(rows) do
             row:Hide()
@@ -6187,10 +6451,16 @@ function ____exports.createModernDashboard(self)
             local i = 0
             while i < #dungeonRows do
                 do
-                    local __continue159
+                    local __continue160
                     repeat
                         local widgets = dungeonRows[i + 1]
                         local slot = slots[i + 1]
+                        widgets.row.frame:EnableMouse(false)
+                        widgets.row.frame:SetScript(
+                            "OnMouseDown",
+                            function()
+                            end
+                        )
                         local accent = Model:roleAccent(slot.role)
                         Native:setTextureColor(widgets.accent, accent)
                         widgets.row.outline:setColor(theme.colors.borderStrong)
@@ -6220,7 +6490,7 @@ function ____exports.createModernDashboard(self)
                             widgets.choose.frame:Hide()
                             widgets.auto.frame:Hide()
                             widgets.humanAnchor.frame:Show()
-                            __continue159 = true
+                            __continue160 = true
                             break
                         end
                         local exact = slot.exact
@@ -6258,7 +6528,13 @@ function ____exports.createModernDashboard(self)
                             end
                             ____self_34_SetText_35(
                                 ____self_34,
-                                ____temp_33 .. tostring(____prepared_source_32)
+                                (____temp_33 .. tostring(____prepared_source_32)) .. "  ·  click for why"
+                            )
+                            local preparedCopy = prepared
+                            widgets.row.frame:EnableMouse(true)
+                            widgets.row.frame:SetScript(
+                                "OnMouseDown",
+                                function() return memberDetails:open(preparedCopy) end
                             )
                         elseif exact ~= nil then
                             Native:setClassIcon(widgets.classIcon, exact.classId)
@@ -6308,9 +6584,9 @@ function ____exports.createModernDashboard(self)
                         else
                             widgets.auto.frame:Hide()
                         end
-                        __continue159 = true
+                        __continue160 = true
                     until true
-                    if not __continue159 then
+                    if not __continue160 then
                         break
                     end
                 end
@@ -6567,12 +6843,12 @@ function ____exports.createModernDashboard(self)
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue193
+                    local __continue196
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue193 = true
+                            __continue196 = true
                             break
                         end
                         local column = g % columns
@@ -6604,6 +6880,12 @@ function ____exports.createModernDashboard(self)
                                 rowWidgets.name:SetWidth(textWidth)
                                 rowWidgets.spec:SetWidth(textWidth)
                                 if member == nil then
+                                    rowWidgets.row:EnableMouse(false)
+                                    rowWidgets.row:SetScript(
+                                        "OnMouseDown",
+                                        function()
+                                        end
+                                    )
                                     rowWidgets.iconBadge.frame:Hide()
                                     rowWidgets.roleIcon:Hide()
                                     rowWidgets.name:SetText("Empty slot")
@@ -6641,7 +6923,13 @@ function ____exports.createModernDashboard(self)
                                     end
                                     ____self_44_SetText_45(
                                         ____self_44,
-                                        ____temp_43 .. tostring(____member_spec_42)
+                                        (____temp_43 .. tostring(____member_spec_42)) .. "  ·  click for why"
+                                    )
+                                    local memberCopy = member
+                                    rowWidgets.row:EnableMouse(true)
+                                    rowWidgets.row:SetScript(
+                                        "OnMouseDown",
+                                        function() return memberDetails:open(memberCopy) end
                                     )
                                     rowWidgets.spec:SetTextColor(theme.colors.muted[1], theme.colors.muted[2], theme.colors.muted[3], 1)
                                     Native:setTextureColor(rowWidgets.roleBar, accent)
@@ -6654,9 +6942,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue193 = true
+                        __continue196 = true
                     until true
-                    if not __continue193 then
+                    if not __continue196 then
                         break
                     end
                 end
@@ -6929,6 +7217,8 @@ function ____exports.createModernDashboard(self)
                     ____table_size_98 = 25
                 end
                 nextText = ("Role counts must total " .. tostring(____table_size_98)) .. " before preparing."
+            elseif phase == "DONE" and Model:isAssembled() then
+                nextText = "Group is assembled and the latest lifecycle action completed. Use Group Actions to repair, leave the instance together, or disband safely."
             elseif phase == "ASSEMBLED" then
                 nextText = Model:hasFixedActivityDestination() and "Group assembled. Press Teleport to Instance when everyone is ready." or "Group assembled. Dungeon Finder can choose the destination."
             elseif phase == "READY" then
@@ -6954,9 +7244,9 @@ function ____exports.createModernDashboard(self)
         warningsTitle:SetTextColor(nextColor[1], nextColor[2], nextColor[3], 1)
         nextDetail:SetTextColor(nextColor[1], nextColor[2], nextColor[3], 1)
         nextDetail:SetText(nextText)
-        local assembled = phase == "ASSEMBLED"
+        local assembled = Model:isAssembled()
         local activityAvailable = selectedAccess.known and selectedAccess.eligible
-        local canTeleport = assembled and activityAvailable and Model:hasFixedActivityDestination()
+        local canTeleport = phase == "ASSEMBLED" and activityAvailable and Model:hasFixedActivityDestination()
         local ____buildButton_setEnabled_103 = buildButton.setEnabled
         local ____temp_102 = activityAvailable and Model:humanReady() and not Model:isBusy() and not assembled
         if ____temp_102 then
@@ -6988,8 +7278,12 @@ function ____exports.createModernDashboard(self)
         assembleButton:setSelected(Model:plan().ready == true and Model:plan().valid == true and phase == "READY")
         if assembled then
             assembleButton.frame:Hide()
+            resetButton.frame:Hide()
+            groupActionsButton.frame:Show()
         else
             assembleButton.frame:Show()
+            resetButton.frame:Show()
+            groupActionsButton.frame:Hide()
         end
     end
     function refresh(self)
@@ -7061,6 +7355,8 @@ function ____exports.createModernDashboard(self)
         function() return frame:StopMovingOrSizing() end
     )
     frame:Hide()
+    memberDetails = MemberDetailsUI:createMemberDetailsModal(frame)
+    local groupActions = GroupActionsUI:createGroupActionsModal(frame)
     local root = Native:createSolid(frame, theme.colors.background)
     root:SetAllPoints(frame)
     Native:createChrome(frame, theme.colors.chrome, true)
@@ -9034,7 +9330,7 @@ function ____exports.createModernDashboard(self)
         16,
         18
     )
-    local resetButton = ButtonUI:createButton(
+    resetButton = ButtonUI:createButton(
         status.frame,
         {
             text = "Reset",
@@ -9051,6 +9347,24 @@ function ____exports.createModernDashboard(self)
         8,
         0
     )
+    groupActionsButton = ButtonUI:createButton(
+        status.frame,
+        {
+            text = "Group Actions",
+            width = 270,
+            height = 46,
+            accent = theme.colors.warning,
+            onClick = function() return groupActions:open() end
+        }
+    )
+    groupActionsButton.frame:SetPoint(
+        "BOTTOMLEFT",
+        status.frame,
+        "BOTTOMLEFT",
+        16,
+        18
+    )
+    groupActionsButton.frame:Hide()
     showTemplates = function()
         ChoiceUI:closeChoicePopup()
         templatesBrowser:open()
