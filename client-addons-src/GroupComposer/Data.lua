@@ -1,7 +1,7 @@
 GroupComposerData = GroupComposerData or {}
 local D = GroupComposerData
 
-D.VERSION = "0.13.1"
+D.VERSION = "0.14.0"
 
 D.ROLE = {
     TANK = "TANK",
@@ -129,23 +129,65 @@ D.UTILITY_LABELS = {
 }
 
 D.DUNGEONS = {
-    { id = "random", label = "Random Dungeon", rdf = true , minLevel = 68 },
-    { id = "utgarde_keep", label = "Utgarde Keep", map = 574, rdf = true , minLevel = 68 },
-    { id = "nexus", label = "The Nexus", map = 576, rdf = true , minLevel = 69 },
-    { id = "azjol_nerub", label = "Azjol-Nerub", map = 601, rdf = true , minLevel = 70 },
-    { id = "ahnkahet", label = "Ahn'kahet: The Old Kingdom", map = 619, rdf = true , minLevel = 71 },
-    { id = "drak_tharon", label = "Drak'Tharon Keep", map = 600, rdf = true , minLevel = 72 },
-    { id = "violet_hold", label = "The Violet Hold", map = 608, rdf = true , minLevel = 73 },
-    { id = "gundrak", label = "Gundrak", map = 604, rdf = true , minLevel = 74 },
-    { id = "halls_of_stone", label = "Halls of Stone", map = 599, rdf = true , minLevel = 75 },
-    { id = "halls_of_lightning", label = "Halls of Lightning", map = 602, rdf = true , minLevel = 77 },
-    { id = "oculus", label = "The Oculus", map = 578, rdf = true , minLevel = 77 },
-    { id = "culling", label = "The Culling of Stratholme", map = 595, rdf = true , minLevel = 78 },
-    { id = "utgarde_pinnacle", label = "Utgarde Pinnacle", map = 575, rdf = true , minLevel = 77 },
-    { id = "trial_champion", label = "Trial of the Champion", map = 650, rdf = true , minLevel = 80 },
-    { id = "forge_souls", label = "The Forge of Souls", map = 632, rdf = true , minLevel = 80 },
-    { id = "pit_saron", label = "Pit of Saron", map = 658, rdf = true , minLevel = 80 },
-    { id = "halls_reflection", label = "Halls of Reflection", map = 668, rdf = true , minLevel = 80 },
+    -- Synthetic random destination follows the live realm era.
+    { id = "random", label = "Random Dungeon", rdf = true, minLevel = 15, era = "Current" },
+
+    -- Vanilla
+    { id = "ragefire_chasm", label = "Ragefire Chasm", map = 389, minLevel = 13, era = "Vanilla" },
+    { id = "deadmines", label = "The Deadmines", map = 36, minLevel = 15, era = "Vanilla" },
+    { id = "wailing_caverns", label = "Wailing Caverns", map = 43, minLevel = 15, era = "Vanilla" },
+    { id = "shadowfang_keep", label = "Shadowfang Keep", map = 33, minLevel = 18, era = "Vanilla" },
+    { id = "blackfathom_deeps", label = "Blackfathom Deeps", map = 48, minLevel = 20, era = "Vanilla" },
+    { id = "stockades", label = "The Stockade", map = 34, minLevel = 22, era = "Vanilla" },
+    { id = "gnomeregan", label = "Gnomeregan", map = 90, minLevel = 24, era = "Vanilla" },
+    { id = "razorfen_kraul", label = "Razorfen Kraul", map = 47, minLevel = 25, era = "Vanilla" },
+    { id = "scarlet_monastery", label = "Scarlet Monastery", map = 189, minLevel = 30, era = "Vanilla" },
+    { id = "razorfen_downs", label = "Razorfen Downs", map = 129, minLevel = 35, era = "Vanilla" },
+    { id = "uldaman", label = "Uldaman", map = 70, minLevel = 35, era = "Vanilla" },
+    { id = "zul_farrak", label = "Zul'Farrak", map = 209, minLevel = 44, era = "Vanilla" },
+    { id = "maraudon", label = "Maraudon", map = 349, minLevel = 45, era = "Vanilla" },
+    { id = "sunken_temple", label = "The Sunken Temple", map = 109, minLevel = 50, era = "Vanilla" },
+    { id = "blackrock_depths", label = "Blackrock Depths", map = 230, minLevel = 52, era = "Vanilla" },
+    { id = "lower_blackrock_spire", label = "Lower Blackrock Spire", map = 229, minLevel = 55, era = "Vanilla" },
+    { id = "dire_maul", label = "Dire Maul", map = 429, minLevel = 55, era = "Vanilla" },
+    { id = "scholomance", label = "Scholomance", map = 289, minLevel = 58, era = "Vanilla" },
+    { id = "stratholme", label = "Stratholme", map = 329, minLevel = 58, era = "Vanilla" },
+
+    -- The Burning Crusade
+    { id = "hellfire_ramparts", label = "Hellfire Ramparts", map = 543, minLevel = 60, era = "TBC" },
+    { id = "blood_furnace", label = "The Blood Furnace", map = 542, minLevel = 60, era = "TBC" },
+    { id = "slave_pens", label = "The Slave Pens", map = 547, minLevel = 60, era = "TBC" },
+    { id = "underbog", label = "The Underbog", map = 546, minLevel = 61, era = "TBC" },
+    { id = "mana_tombs", label = "Mana-Tombs", map = 557, minLevel = 62, era = "TBC" },
+    { id = "auchenai_crypts", label = "Auchenai Crypts", map = 558, minLevel = 63, era = "TBC" },
+    { id = "shattered_halls", label = "The Shattered Halls", map = 540, minLevel = 65, era = "TBC" },
+    { id = "steamvault", label = "The Steamvault", map = 545, minLevel = 65, era = "TBC" },
+    { id = "sethekk_halls", label = "Sethekk Halls", map = 556, minLevel = 65, era = "TBC" },
+    { id = "old_hillsbrad", label = "Old Hillsbrad Foothills", map = 560, minLevel = 66, era = "TBC" },
+    { id = "shadow_labyrinth", label = "Shadow Labyrinth", map = 555, minLevel = 67, era = "TBC" },
+    { id = "black_morass", label = "The Black Morass", map = 269, minLevel = 68, era = "TBC" },
+    { id = "mechanar", label = "The Mechanar", map = 554, minLevel = 68, era = "TBC" },
+    { id = "botanica", label = "The Botanica", map = 553, minLevel = 68, era = "TBC" },
+    { id = "arcatraz", label = "The Arcatraz", map = 552, minLevel = 68, era = "TBC" },
+    { id = "magisters_terrace", label = "Magisters' Terrace", map = 585, minLevel = 70, era = "TBC" },
+
+    -- Wrath of the Lich King
+    { id = "utgarde_keep", label = "Utgarde Keep", map = 574, rdf = true, minLevel = 68, era = "WotLK" },
+    { id = "nexus", label = "The Nexus", map = 576, rdf = true, minLevel = 68, era = "WotLK" },
+    { id = "azjol_nerub", label = "Azjol-Nerub", map = 601, rdf = true, minLevel = 68, era = "WotLK" },
+    { id = "ahnkahet", label = "Ahn'kahet: The Old Kingdom", map = 619, rdf = true, minLevel = 68, era = "WotLK" },
+    { id = "drak_tharon", label = "Drak'Tharon Keep", map = 600, rdf = true, minLevel = 72, era = "WotLK" },
+    { id = "violet_hold", label = "The Violet Hold", map = 608, rdf = true, minLevel = 73, era = "WotLK" },
+    { id = "gundrak", label = "Gundrak", map = 604, rdf = true, minLevel = 74, era = "WotLK" },
+    { id = "halls_of_stone", label = "Halls of Stone", map = 599, rdf = true, minLevel = 75, era = "WotLK" },
+    { id = "halls_of_lightning", label = "Halls of Lightning", map = 602, rdf = true, minLevel = 77, era = "WotLK" },
+    { id = "oculus", label = "The Oculus", map = 578, rdf = true, minLevel = 77, era = "WotLK" },
+    { id = "culling", label = "The Culling of Stratholme", map = 595, rdf = true, minLevel = 78, era = "WotLK" },
+    { id = "utgarde_pinnacle", label = "Utgarde Pinnacle", map = 575, rdf = true, minLevel = 77, era = "WotLK" },
+    { id = "trial_champion", label = "Trial of the Champion", map = 650, rdf = true, minLevel = 80, era = "WotLK" },
+    { id = "forge_souls", label = "The Forge of Souls", map = 632, rdf = true, minLevel = 80, era = "WotLK" },
+    { id = "pit_saron", label = "Pit of Saron", map = 658, rdf = true, minLevel = 80, era = "WotLK" },
+    { id = "halls_reflection", label = "Halls of Reflection", map = 668, rdf = true, minLevel = 80, era = "WotLK" },
 }
 
 D.DUNGEON_DIFFICULTIES = {
@@ -182,11 +224,11 @@ D.RAIDS = {
     { id = "sunwell", label = "Sunwell Plateau", sizes = { 25 }, heroic = false, era = "TBC", requiredLevel = 70 },
 
     -- Classic legacy
-    { id = "zul_gurub", label = "Zul'Gurub", sizes = { 20 }, heroic = false, era = "Classic", requiredLevel = 60 },
-    { id = "aq20", label = "Ruins of Ahn'Qiraj", sizes = { 20 }, heroic = false, era = "Classic", requiredLevel = 60 },
-    { id = "molten_core", label = "Molten Core", sizes = { 40 }, heroic = false, era = "Classic", requiredLevel = 60 },
-    { id = "blackwing_lair", label = "Blackwing Lair", sizes = { 40 }, heroic = false, era = "Classic", requiredLevel = 60 },
-    { id = "aq40", label = "Temple of Ahn'Qiraj", sizes = { 40 }, heroic = false, era = "Classic", requiredLevel = 60 },
+    { id = "zul_gurub", label = "Zul'Gurub", sizes = { 20 }, heroic = false, era = "Vanilla", requiredLevel = 60 },
+    { id = "aq20", label = "Ruins of Ahn'Qiraj", sizes = { 20 }, heroic = false, era = "Vanilla", requiredLevel = 60 },
+    { id = "molten_core", label = "Molten Core", sizes = { 40 }, heroic = false, era = "Vanilla", requiredLevel = 60 },
+    { id = "blackwing_lair", label = "Blackwing Lair", sizes = { 40 }, heroic = false, era = "Vanilla", requiredLevel = 60 },
+    { id = "aq40", label = "Temple of Ahn'Qiraj", sizes = { 40 }, heroic = false, era = "Vanilla", requiredLevel = 60 },
 }
 
 D.RAID_DIFFICULTIES = {
