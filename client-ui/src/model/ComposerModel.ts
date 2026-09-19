@@ -488,7 +488,7 @@ export function journey(): JourneyState {
         recommendations: (raw.recommendations ?? []) as Recommendation[],
         era: String(raw.era ?? realm().era),
         stage: Number(raw.stage ?? realm().progression),
-        level: Number(raw.level ?? UnitLevel("player") ?? 1),
+        level: Number(raw.level ?? 1),
         guildId: Number(raw.guildId ?? 0),
     };
 }

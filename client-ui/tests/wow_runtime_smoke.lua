@@ -166,7 +166,10 @@ GroupComposer = {
     progress = { phase = "IDLE", current = 0, total = 0, detail = "Configure a roster to begin." },
     activityEligibility = { DUNGEON = {}, RAID = {} },
     activityEligibilityReady = { DUNGEON = false, RAID = false },
+    activityMeta = { DUNGEON = {}, RAID = {} },
     activityProgression = 18,
+    realm = { era = "WotLK", levelCap = 80, progression = 18 },
+    journey = { ready = true, raids = {}, recommendations = {}, era = "WotLK", stage = 18, level = 80, guildId = 0 },
 }
 
 function GroupComposer:GetConfig() return self.config end
@@ -193,12 +196,27 @@ function GroupComposer:RequestAnchors() end
 function GroupComposer:RequestActivities(mode)
     mode = mode == "RAID" and "RAID" or "DUNGEON"
     self.activityEligibility[mode] = {}
+    self.activityMeta[mode] = {}
     local source = mode == "RAID" and GroupComposerData.RAIDS or GroupComposerData.DUNGEONS
     for _, activity in ipairs(source) do
         self.activityEligibility[mode][activity.id] = { eligible = true, reason = "Available" }
+        self.activityMeta[mode][activity.id] = {
+            id = activity.id,
+            label = activity.label,
+            era = activity.era == "Current" and "WotLK" or (activity.era or "WotLK"),
+            minLevel = activity.minLevel or activity.requiredLevel or 80,
+            minProgression = 0,
+            size = mode == "RAID" and ((activity.sizes and activity.sizes[1]) or 10) or 5,
+            support = "Guild Ready",
+            map = activity.map or 0,
+        }
     end
     self.activityEligibilityReady[mode] = true
     self:Fire("ACTIVITIES_CHANGED", mode)
+end
+function GroupComposer:RequestJourney()
+    self.journey.ready = true
+    self:Fire("JOURNEY_CHANGED", self.journey)
 end
 function GroupComposer:RequestStatus() end
 function GroupComposer:ClearServerPlan() self:Touch("Cleared") end

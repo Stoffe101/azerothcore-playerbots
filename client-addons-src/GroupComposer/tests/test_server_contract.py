@@ -533,7 +533,7 @@ assert "CANNOT_ENTER_UNSPECIFIED_REASON" in enter_reason and "access requirement
 )
 assert 'plan.config.activity == "random"' in travel, "Random Dungeon must remain destination-less until Dungeon Finder selects it"
 for map_id in (533, 615, 616, 603, 649, 249, 624, 631, 724, 532, 568, 565, 544, 548, 550, 534, 564, 580, 309, 509, 409, 469, 531):
-    assert str(map_id) in SERVER, f"Raid map {map_id} disappeared from Group Composer travel mapping"
+    assert str(map_id) in ADVENTURE_CATALOG, f"Raid map {map_id} disappeared from authoritative AdventureCatalog"
 world_update = section(SERVER, "class GroupComposerWorld", "ChatCommandTable GroupComposerCommand::GetCommands")
 assert "bool travelPending = false;" in TYPES and "uint8 travelAttempts = 0;" in TYPES, (
     "Plan lost delayed post-assembly instance entry state"
