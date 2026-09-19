@@ -2318,8 +2318,8 @@ end
 function ____exports.listBuiltinProfiles(self)
     return ProfileFns.ListBuiltins() or ({})
 end
-function ____exports.listCustomProfiles(self)
-    return ProfileFns.ListCustom() or ({})
+function ____exports.listCustomProfiles(self, mode)
+    return ProfileFns.ListCustom(mode) or ({})
 end
 function ____exports.profileDescription(self, name)
     return ProfileFns.Describe(name) or ""
@@ -4478,8 +4478,12 @@ function ____exports.createTemplateBrowser(self, parent)
         return tostring(____opt_result_3_4)
     end
     function namesForTab(self)
+        local mode = Model:config().mode == "RAID" and "RAID" or "DUNGEON"
+        if mode == "DUNGEON" then
+            return Model:listCustomProfiles("DUNGEON")
+        end
         if tab == "CUSTOM" then
-            return Model:listCustomProfiles()
+            return Model:listCustomProfiles("RAID")
         end
         local out = {}
         for ____, name in ipairs(Model:listBuiltinProfiles()) do
@@ -4490,12 +4494,28 @@ function ____exports.createTemplateBrowser(self, parent)
         return out
     end
     function refresh(self)
+        local dungeonMode = Model:config().mode == "DUNGEON"
         do
             local i = 0
             while i < #tabs do
                 tabs[i + 1]:setSelected(tabDefs[i + 1].key == tab)
+                if dungeonMode and tabDefs[i + 1].key ~= "CUSTOM" then
+                    tabs[i + 1].frame:Hide()
+                else
+                    tabs[i + 1].frame:Show()
+                end
                 i = i + 1
             end
+        end
+        if dungeonMode then
+            tabs[4].frame:ClearAllPoints()
+            tabs[4].frame:SetPoint(
+                "TOPLEFT",
+                modal.content,
+                "TOPLEFT",
+                0,
+                -82
+            )
         end
         for ____, card in ipairs(cards) do
             card.panel.frame:Hide()
@@ -4584,7 +4604,16 @@ function ____exports.createTemplateBrowser(self, parent)
                 end
                 local profileName = names[i + 1]
                 local profile = Model:profileMeta(profileName)
-                local builtin = tab ~= "CUSTOM"
+                local ____opt_result_7
+                if profile ~= nil then
+                    ____opt_result_7 = profile.builtin
+                end
+                local builtin = ____opt_result_7 == true
+                local ____opt_result_10
+                if profile ~= nil then
+                    ____opt_result_10 = profile.mode
+                end
+                local profileMode = ____opt_result_10 == "DUNGEON" and "DUNGEON" or "RAID"
                 local accent = builtin and theme.colors.primary or theme.colors.warning
                 local column = i % 2
                 local row = math.floor(i / 2)
@@ -4598,37 +4627,37 @@ function ____exports.createTemplateBrowser(self, parent)
                 )
                 Native:setTextureColor(card.accent, accent)
                 card.iconBadge.outline:setColor(accent)
-                local ____self_11 = card.iconBadge.icon
-                local ____self_11_SetTexture_12 = ____self_11.SetTexture
-                local ____Model_9 = Model
-                local ____Model_activityIconFor_10 = Model.activityIconFor
-                local ____opt_result_7
+                local ____self_17 = card.iconBadge.icon
+                local ____self_17_SetTexture_18 = ____self_17.SetTexture
+                local ____Model_15 = Model
+                local ____Model_activityIconFor_16 = Model.activityIconFor
+                local ____opt_result_13
                 if profile ~= nil then
-                    ____opt_result_7 = profile.activity
+                    ____opt_result_13 = profile.activity
                 end
-                local ____opt_result_7_8 = ____opt_result_7
-                if ____opt_result_7_8 == nil then
-                    ____opt_result_7_8 = ""
+                local ____opt_result_13_14 = ____opt_result_13
+                if ____opt_result_13_14 == nil then
+                    ____opt_result_13_14 = ""
                 end
-                ____self_11_SetTexture_12(
-                    ____self_11,
-                    ____Model_activityIconFor_10(
-                        ____Model_9,
-                        tostring(____opt_result_7_8),
-                        "RAID"
+                ____self_17_SetTexture_18(
+                    ____self_17,
+                    ____Model_activityIconFor_16(
+                        ____Model_15,
+                        tostring(____opt_result_13_14),
+                        profileMode
                     )
                 )
                 card.iconBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-                local ____opt_result_15
+                local ____opt_result_21
                 if profile ~= nil then
-                    ____opt_result_15 = profile.activity
+                    ____opt_result_21 = profile.activity
                 end
-                local ____opt_result_15_16 = ____opt_result_15
-                if ____opt_result_15_16 == nil then
-                    ____opt_result_15_16 = ""
+                local ____opt_result_21_22 = ____opt_result_21
+                if ____opt_result_21_22 == nil then
+                    ____opt_result_21_22 = ""
                 end
-                local activityId = tostring(____opt_result_15_16)
-                local access = Model:activityEligibility(activityId, "RAID")
+                local activityId = tostring(____opt_result_21_22)
+                local access = Model:activityEligibility(activityId, profileMode)
                 card.name:SetText(profileName)
                 if not access.known then
                     card.tag:SetText("CHECKING ACCESS")
@@ -4682,20 +4711,20 @@ function ____exports.createTemplateBrowser(self, parent)
                 card.load.frame:SetScript(
                     "OnMouseDown",
                     function()
-                        local ____Model_21 = Model
-                        local ____Model_activityEligibility_22 = Model.activityEligibility
-                        local ____opt_result_19
+                        local ____Model_27 = Model
+                        local ____Model_activityEligibility_28 = Model.activityEligibility
+                        local ____opt_result_25
                         if profile ~= nil then
-                            ____opt_result_19 = profile.activity
+                            ____opt_result_25 = profile.activity
                         end
-                        local ____opt_result_19_20 = ____opt_result_19
-                        if ____opt_result_19_20 == nil then
-                            ____opt_result_19_20 = ""
+                        local ____opt_result_25_26 = ____opt_result_25
+                        if ____opt_result_25_26 == nil then
+                            ____opt_result_25_26 = ""
                         end
-                        local latest = ____Model_activityEligibility_22(
-                            ____Model_21,
-                            tostring(____opt_result_19_20),
-                            "RAID"
+                        local latest = ____Model_activityEligibility_28(
+                            ____Model_27,
+                            tostring(____opt_result_25_26),
+                            profileMode
                         )
                         if not latest.known or not latest.eligible then
                             Model:fireStatus(latest.reason)
@@ -4716,10 +4745,10 @@ function ____exports.createTemplateBrowser(self, parent)
     end
     D = Model:data()
     modal = ModalUI:createModal(parent, 960, 650)
-    modal:setTitle("Raid Templates")
-    modal:setSubtitle("Browse by expansion. Unlisted slots remain Auto-filled.")
+    modal:setTitle("Templates")
+    modal:setSubtitle("Save reusable raid rosters or five-player dungeon parties.")
     modal:setHeaderIcon("Interface\\Icons\\INV_Scroll_03")
-    local saveLabel = Native:createText(modal.content, "SAVE CURRENT RAID", "GameFontNormalSmall", theme.colors.muted)
+    local saveLabel = Native:createText(modal.content, "SAVE CURRENT GROUP", "GameFontNormalSmall", theme.colors.muted)
     saveLabel:SetPoint(
         "TOPLEFT",
         modal.content,
@@ -4795,10 +4824,6 @@ function ____exports.createTemplateBrowser(self, parent)
             accent = theme.colors.primary,
             emphasis = true,
             onClick = function()
-                if Model:config().mode ~= "RAID" then
-                    Model:fireStatus("Templates are raid-only. Configure dungeon bot slots directly.")
-                    return
-                end
                 local name = nameInput:getText()
                 if name == "" then
                     return
@@ -4827,34 +4852,42 @@ function ____exports.createTemplateBrowser(self, parent)
         end
     )
     local function open(self)
-        local ____Model_24 = Model
-        local ____Model_requestActivities_25 = Model.requestActivities
-        local ____table_size_23 = Model:config().size
-        if ____table_size_23 == nil then
-            ____table_size_23 = 25
-        end
-        ____Model_requestActivities_25(
-            ____Model_24,
-            "RAID",
-            "normal",
-            __TS__Number(____table_size_23)
-        )
-        save:setEnabled(Model:config().mode == "RAID")
-        if Model:config().mode == "RAID" then
-            local raid = D:GetRaidById(Model:config().activity)
-            local ____opt_result_28
-            if raid ~= nil then
-                ____opt_result_28 = raid.era
-            end
-            local ____opt_result_28_29 = ____opt_result_28
-            if ____opt_result_28_29 == nil then
-                ____opt_result_28_29 = "WotLK"
-            end
-            local era = tostring(____opt_result_28_29)
-            tab = era == "TBC" and "TBC" or (era == "Vanilla" and "Vanilla" or "WotLK")
+        local dungeonMode = Model:config().mode == "DUNGEON"
+        if dungeonMode then
+            modal:setTitle("Dungeon Party Templates")
+            modal:setSubtitle("Save your five-player role, class/spec, human and pinned-bot preferences for quick reuse.")
+            saveLabel:SetText("SAVE CURRENT PARTY")
+            tab = "CUSTOM"
+            Model:requestActivities("DUNGEON")
         else
-            tab = "WotLK"
+            modal:setTitle("Raid Templates")
+            modal:setSubtitle("Browse built-in coverage templates by expansion or load your own saved raid.")
+            saveLabel:SetText("SAVE CURRENT RAID")
+            local ____Model_30 = Model
+            local ____Model_requestActivities_31 = Model.requestActivities
+            local ____table_size_29 = Model:config().size
+            if ____table_size_29 == nil then
+                ____table_size_29 = 25
+            end
+            ____Model_requestActivities_31(
+                ____Model_30,
+                "RAID",
+                "normal",
+                __TS__Number(____table_size_29)
+            )
+            local raid = D:GetRaidById(Model:config().activity)
+            local ____opt_result_34
+            if raid ~= nil then
+                ____opt_result_34 = raid.era
+            end
+            local ____opt_result_34_35 = ____opt_result_34
+            if ____opt_result_34_35 == nil then
+                ____opt_result_34_35 = "WotLK"
+            end
+            local era = tostring(____opt_result_34_35)
+            tab = era == "TBC" and "TBC" or (era == "Vanilla" and "Vanilla" or "WotLK")
         end
+        save:setEnabled(true)
         scroll:scrollToTop()
         refresh(nil)
         modal:show()
