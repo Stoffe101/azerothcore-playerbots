@@ -892,6 +892,13 @@ export function createModernDashboard(): Dashboard {
         templatesBrowser.open();
     };
 
+    function clearDynamicRows(rows: WoWFrame[]): void {
+        for (const row of rows) {
+            row.Hide();
+            row.ClearAllPoints();
+        }
+    }
+
     // Humans & Pins modal ----------------------------------------------------
     const peopleModal = ModalUI.createModal(frame, 980, 620);
     peopleModal.setTitle("Humans & Pins");

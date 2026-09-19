@@ -31,9 +31,6 @@ jobs:
             python3 .github/scripts/apply_group_composer_v4_travel.py
           fi
           python3 .github/scripts/fix_group_composer_v4_travel_contract.py
-          if ! grep -q 'press Enter Activity to retry' modules/mod-raid-roster/src/GroupComposerCommand.cpp; then
-            python3 .github/scripts/apply_group_composer_v4_travel_retry_ui.py
-          fi
 
       - name: Focused source checks
         run: |
@@ -55,8 +52,10 @@ jobs:
           grep -q 'TitanRune::SaveSelectedMode(travelLeader, titanMode)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'Player\* travelLeader = group->GetLeader()' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'SendProtocol(master, "STATUS", travelError)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
-          grep -q 'press Enter Activity to retry' modules/mod-raid-roster/src/GroupComposerCommand.cpp
-          grep -q 'Ready to enter activity' client-ui/src/components/ModernDashboard.ts
+          grep -q 'HandleTeleport' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'plan.assembled = true' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'Teleport to Instance' client-ui/src/components/ModernDashboard.ts
+          ! grep -q 'press Enter Activity to retry' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           ! grep -Fxq 'DashboardV4.lua' client-addons-src/GroupComposer/GroupComposer.toc
 
       - name: Commit generated backend changes
@@ -77,5 +76,5 @@ jobs:
             client-addons-src/GroupComposer/Core.lua \
             client-addons-src/GroupComposer/DashboardV4.lua \
             client-addons-src/GroupComposer/tests/test_server_contract.py
-          git commit -m 'feat(group-composer): make selected activity travel retryable'
+          git commit -m 'build(group-composer): refresh staged backend contracts'
           git push origin HEAD:test/group-composer-v4

@@ -359,8 +359,9 @@ builtin_profile_tail = DATA[DATA.index("D.BUILTIN_PROFILES = {}"):]
 assert 'RaidProfile(' in builtin_profile_tail
 assert 'Profile("Dungeon' not in builtin_profile_tail, "Dungeon presets must not return to the raid template library"
 assert 'Templates are raid-only' in (ROOT / "client-addons-src/GroupComposer/Profiles.lua").read_text(encoding="utf-8")
-assert 'profileDescription' in MODEL and 'templateBuiltinTab' in MODERN and 'templateCustomTab' in MODERN
-assert 'templateScroll.scrollToTop()' in MODERN and 'createScrollList(templatesModal.content' in MODERN
+assert 'profileDescription' in MODEL and 'profileMeta' in MODEL
+assert 'TemplateBrowserUI.createTemplateBrowser(frame)' in MODERN
+assert 'scroll.scrollToTop()' in TEMPLATE_BROWSER and 'createScrollList(modal.content' in TEMPLATE_BROWSER
 assert 'scrollBy(-64)' in SCROLL_LIST and 'scrollBy(64)' in SCROLL_LIST
 
 # Preparation is allowed to rebuild combat state, not a persistent companion's life history.
