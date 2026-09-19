@@ -6,17 +6,18 @@ DB.point = DB.point or { "CENTER", "UIParent", "CENTER", 0, 0 }
 DB.page = DB.page or "Dashboard"
 
 local state = {
-    era = "TBC",
+    era = "VANILLA",
+    tbc = "0",
     wotlk = "0",
-    levelcap = "70",
-    progressionlimit = "12",
+    levelcap = "60",
+    progressionlimit = "7",
     stage = "?",
     level = "?",
     money = "?",
     xp = "1.00",
     rep = "1.00",
     goldrate = "1.00",
-    starter = "tbc",
+    starter = "vanilla",
     players = "?",
     bots = "?",
     bottarget = "?",
@@ -137,14 +138,14 @@ local headerBg = Solid(frame, "BACKGROUND", C.header[1], C.header[2], C.header[3
 headerBg:SetPoint("TOPLEFT", 5, -5); headerBg:SetPoint("TOPRIGHT", -5, -5); headerBg:SetHeight(64)
 local title = Text(frame, "AZEROTH CONTROL", "GameFontNormalLarge", C.text[1], C.text[2], C.text[3])
 title:SetPoint("TOPLEFT", 22, -18)
-local subtitle = Text(frame, "TBC-first private realm control center", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3])
+local subtitle = Text(frame, "Vanilla → TBC → WotLK private realm control center", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3])
 subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3)
 
 local eraBadge = CreateFrame("Frame", nil, frame)
 eraBadge:SetWidth(218); eraBadge:SetHeight(38); eraBadge:SetPoint("TOP", 58, -14)
 local eraBadgeBg = Solid(eraBadge, "BACKGROUND", 0.10, 0.13, 0.18, 1); eraBadgeBg:SetAllPoints(eraBadge)
-local eraText = Text(eraBadge, "THE BURNING CRUSADE", "GameFontNormal", C.green[1], C.green[2], C.green[3]); eraText:SetPoint("CENTER", 0, 6)
-local capText = Text(eraBadge, "LEVEL CAP 70", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); capText:SetPoint("CENTER", 0, -9)
+local eraText = Text(eraBadge, "VANILLA", "GameFontNormal", C.warning[1], C.warning[2], C.warning[3]); eraText:SetPoint("CENTER", 0, 6)
+local capText = Text(eraBadge, "LEVEL CAP 60", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); capText:SetPoint("CENTER", 0, -9)
 local refresh = Button(frame, "Refresh", 82, 25, function() Send("status"); Send("health") end, "Refresh character, expansion, AI population and server-health data.")
 refresh:SetPoint("TOPRIGHT", -48, -24)
 local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton"); close:SetPoint("TOPRIGHT", -8, -8)
@@ -188,21 +189,27 @@ for i, name in ipairs(tabNames) do
     b:SetScript("OnClick", function() SelectPage(tabName) end)
     tabs[tabName] = b
 end
-local sidebarEra = Text(sidebar, "TBC LIVE", "GameFontNormal", C.green[1], C.green[2], C.green[3]); sidebarEra:SetPoint("TOP", 0, -226)
-local sidebarCap = Text(sidebar, "Cap 70 • stage 12", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); sidebarCap:SetPoint("TOP", sidebarEra, "BOTTOM", 0, -5)
+local sidebarEra = Text(sidebar, "VANILLA LIVE", "GameFontNormal", C.warning[1], C.warning[2], C.warning[3]); sidebarEra:SetPoint("TOP", 0, -226)
+local sidebarCap = Text(sidebar, "Cap 60 • stage 7", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); sidebarCap:SetPoint("TOP", sidebarEra, "BOTTOM", 0, -5)
 local sidebarHelp = Text(sidebar, "GM-only controls\nchanges save automatically", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); sidebarHelp:SetPoint("BOTTOM", 0, 18); sidebarHelp:SetJustifyH("CENTER")
 
 -- DASHBOARD -----------------------------------------------------------------
 local dashboard = CreatePage("Dashboard")
 PageTitle(dashboard, "Dashboard", "Realm status, expansion state and the shortcuts you will actually use while playing.")
 local eraCard = Card(dashboard, 326, 112); eraCard:SetPoint("TOPLEFT", 8, -58); CardLabel(eraCard, "Current expansion")
-local dashEra = Text(eraCard, "THE BURNING CRUSADE", "GameFontNormalLarge", C.green[1], C.green[2], C.green[3]); dashEra:SetPoint("TOPLEFT", 14, -36)
-local dashLock = Text(eraCard, "WotLK locked • cap 70 • stage limit 12", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); dashLock:SetPoint("TOPLEFT", 14, -67)
-local dashExpansionAction = Button(eraCard, "Release WotLK", 120, 23, function() StaticPopup_Show("AZEROTH_RELEASE_WOTLK") end); dashExpansionAction:SetPoint("BOTTOMLEFT", 14, 10)
+local dashEra = Text(eraCard, "VANILLA", "GameFontNormalLarge", C.warning[1], C.warning[2], C.warning[3]); dashEra:SetPoint("TOPLEFT", 14, -36)
+local dashLock = Text(eraCard, "TBC locked • cap 60 • stage limit 7", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); dashLock:SetPoint("TOPLEFT", 14, -67)
+local dashExpansionAction = Button(eraCard, "Release TBC", 120, 23, function()
+    if tostring(state.era) == "VANILLA" then StaticPopup_Show("AZEROTH_RELEASE_TBC")
+    elseif tostring(state.era) == "TBC" then StaticPopup_Show("AZEROTH_RELEASE_WOTLK") end
+end); dashExpansionAction:SetPoint("BOTTOMLEFT", 14, 10)
 local charCard = Card(dashboard, 326, 112); charCard:SetPoint("TOPLEFT", eraCard, "TOPRIGHT", 10, 0); CardLabel(charCard, "Your character")
 local dashCharacter = Text(charCard, "Level ?  •  Stage ?", "GameFontNormalLarge", C.text[1], C.text[2], C.text[3]); dashCharacter:SetPoint("TOPLEFT", 14, -36)
 local dashMoney = Text(charCard, "? gold", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); dashMoney:SetPoint("TOPLEFT", 14, -67)
-local dashRaidReady = Button(charCard, "TBC Raid Ready", 128, 23, function() Send("tbcraidready"); Send("status") end); dashRaidReady:SetPoint("BOTTOMLEFT", 14, 10)
+local dashRaidReady = Button(charCard, "Vanilla Journey", 128, 23, function()
+    if tostring(state.era) == "TBC" then Send("tbcraidready"); Send("status")
+    elseif tostring(state.era) == "WOTLK" then Send("wotlkraidready"); Send("status") end
+end); dashRaidReady:SetPoint("BOTTOMLEFT", 14, 10)
 local ratesCard = Card(dashboard, 662, 96); ratesCard:SetPoint("TOPLEFT", eraCard, "BOTTOMLEFT", 0, -10); CardLabel(ratesCard, "Rates")
 local dashRates = Text(ratesCard, "XP 1.00x     REP 1.00x     GOLD 1.00x", "GameFontNormal", C.text[1], C.text[2], C.text[3]); dashRates:SetPoint("TOPLEFT", 14, -40)
 local presetNormal = Button(ratesCard, "Normal", 82, 23, function() Send("preset normal"); Send("status") end); presetNormal:SetPoint("TOPRIGHT", -198, -49)
@@ -254,7 +261,7 @@ for i, entry in ipairs(utilities) do
     b:SetPoint("TOPLEFT", 14 + col * 208, -42 - row * 37)
 end
 local tbcStartCard = Card(character, 662, 142); tbcStartCard:SetPoint("TOPLEFT", utilCard, "BOTTOMLEFT", 0, -10); CardLabel(tbcStartCard, "The Burning Crusade")
-local currentStarter = Text(tbcStartCard, "Default new character: TBC Adventure • Level 60", "GameFontNormal", C.text[1], C.text[2], C.text[3]); currentStarter:SetPoint("TOPLEFT", 14, -39)
+local currentStarter = Text(tbcStartCard, "Default new character: Vanilla fresh start • Level 1", "GameFontNormal", C.text[1], C.text[2], C.text[3]); currentStarter:SetPoint("TOPLEFT", 14, -39)
 local starter60 = Button(tbcStartCard, "New chars: Adventure 60", 190, 26, function() Send("starter tbc"); Send("status") end); starter60:SetPoint("TOPLEFT", 14, -72)
 local starter70 = Button(tbcStartCard, "New chars: Raid Ready 70", 190, 26, function() Send("starter tbcraid"); Send("status") end); starter70:SetPoint("LEFT", starter60, "RIGHT", 10, 0)
 local makeTbcReady = Button(tbcStartCard, "Make THIS char TBC Raid Ready", 238, 26, function() Send("tbcraidready"); Send("status") end); makeTbcReady:SetPoint("LEFT", starter70, "RIGHT", 10, 0)
@@ -269,10 +276,13 @@ local wrathGearNote = Text(wrathCard, "Pre-Naxx ilvl 200 • WotLK progression/a
 local world = CreatePage("World")
 PageTitle(world, "World & expansion", "Control the expansion timeline, live rates, progression and realm announcements.")
 local expansionCard = Card(world, 662, 188); expansionCard:SetPoint("TOPLEFT", 8, -58); CardLabel(expansionCard, "Expansion timeline")
-local expansionTitle = Text(expansionCard, "THE BURNING CRUSADE • LIVE", "GameFontNormalLarge", C.green[1], C.green[2], C.green[3]); expansionTitle:SetPoint("TOPLEFT", 14, -40)
-local expansionInfo = Text(expansionCard, "Level cap 70 • progression ceiling 12 • WotLK locked", "GameFontHighlight", C.text[1], C.text[2], C.text[3]); expansionInfo:SetPoint("TOPLEFT", 14, -73)
-local expansionDesc = Text(expansionCard, "Finish TBC normally. Releasing Wrath opens stage 13, Northrend, level 80 and the WotLK raid-ready controls. Nobody is auto-boosted.", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); expansionDesc:SetPoint("TOPLEFT", 14, -104); expansionDesc:SetWidth(620); expansionDesc:SetJustifyH("LEFT")
-local releaseButton = Button(expansionCard, "RELEASE WRATH OF THE LICH KING", 300, 31, function() StaticPopup_Show("AZEROTH_RELEASE_WOTLK") end, "Permanent realm milestone. Opens WotLK progression and WotLK-only admin controls."); releaseButton:SetPoint("BOTTOMLEFT", 14, 16)
+local expansionTitle = Text(expansionCard, "VANILLA • LIVE", "GameFontNormalLarge", C.warning[1], C.warning[2], C.warning[3]); expansionTitle:SetPoint("TOPLEFT", 14, -40)
+local expansionInfo = Text(expansionCard, "Level cap 60 • progression ceiling 7 • TBC locked", "GameFontHighlight", C.text[1], C.text[2], C.text[3]); expansionInfo:SetPoint("TOPLEFT", 14, -73)
+local expansionDesc = Text(expansionCard, "Play Vanilla normally. When you are ready, release The Burning Crusade manually; later do the same for Wrath. Existing characters are never auto-boosted.", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); expansionDesc:SetPoint("TOPLEFT", 14, -104); expansionDesc:SetWidth(620); expansionDesc:SetJustifyH("LEFT")
+local releaseButton = Button(expansionCard, "RELEASE THE BURNING CRUSADE", 300, 31, function()
+    if tostring(state.era) == "VANILLA" then StaticPopup_Show("AZEROTH_RELEASE_TBC")
+    elseif tostring(state.era) == "TBC" then StaticPopup_Show("AZEROTH_RELEASE_WOTLK") end
+end, "Permanent realm milestone. Advances the live expansion without auto-boosting characters."); releaseButton:SetPoint("BOTTOMLEFT", 14, 16)
 local releaseStatus = Text(expansionCard, "LOCKED", "GameFontNormal", C.warning[1], C.warning[2], C.warning[3]); releaseStatus:SetPoint("LEFT", releaseButton, "RIGHT", 18, 0)
 local rateCard = Card(world, 662, 176); rateCard:SetPoint("TOPLEFT", expansionCard, "BOTTOMLEFT", 0, -10); CardLabel(rateCard, "Live server multipliers")
 local rateRows = {}
@@ -292,20 +302,28 @@ RateRow(rateCard, "XP", "xp", -42); RateRow(rateCard, "Reputation", "rep", -78);
 local resetRates = Button(rateCard, "Reset all to 1x", 126, 23, function() Send("reset"); Send("status") end); resetRates:SetPoint("BOTTOMLEFT", 16, 10)
 local worldTools = Card(world, 662, 182); worldTools:SetPoint("TOPLEFT", rateCard, "BOTTOMLEFT", 0, -10); CardLabel(worldTools, "Progression & announcements")
 local progressLabel = Text(worldTools, "Set THIS character stage", "GameFontHighlight", C.text[1], C.text[2], C.text[3]); progressLabel:SetPoint("TOPLEFT", 14, -40)
-local stageButtons, previousStage = {}, nil
-for _, stage in ipairs({ 8, 9, 10, 12, 13, 14, 15, 16, 17, 18 }) do
+local stageButtons = {}
+local stageValues = { 0, 1, 3, 5, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18 }
+for index, stage in ipairs(stageValues) do
     local stageValue = stage
-    local b = Button(worldTools, tostring(stageValue), 43, 22, function() Send("progression " .. stageValue); Send("status") end)
-    if previousStage then b:SetPoint("LEFT", previousStage, "RIGHT", 4, 0) else b:SetPoint("TOPLEFT", 14, -68) end
-    previousStage = b
-    if stageValue >= 13 then table.insert(stageButtons, b) end
+    local b = Button(worldTools, tostring(stageValue), 39, 22, function() Send("progression " .. stageValue); Send("status") end)
+    local row = math.floor((index - 1) / 8)
+    local col = (index - 1) % 8
+    b:SetPoint("TOPLEFT", 14 + col * 44, -62 - row * 27)
+    stageButtons[stageValue] = b
 end
-local stageHint = Text(worldTools, "8=TBC start • 12=Sunwell • 13=Wrath start", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); stageHint:SetPoint("TOPLEFT", 14, -98)
+local stageHint = Text(worldTools, "0 Vanilla start • 7 Vanilla complete • 8 TBC start • 12 late TBC • 13 Wrath start", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); stageHint:SetPoint("TOPLEFT", 14, -119)
 local announceEdit = Edit(worldTools, 400, "Raid forming in 10 minutes!"); announceEdit:SetPoint("BOTTOMLEFT", 14, 20); announceEdit:SetJustifyH("LEFT")
 local announceBtn = Button(worldTools, "Announce", 96, 24, function() local msg = announceEdit:GetText(); if msg and msg ~= "" then Send("announce " .. msg) end end); announceBtn:SetPoint("LEFT", announceEdit, "RIGHT", 10, 0)
 
+StaticPopupDialogs["AZEROTH_RELEASE_TBC"] = {
+    text = "Release The Burning Crusade?\n\nThis advances the realm from Vanilla to TBC, opens Outland progression and raises the cap to 70. Existing characters are NOT auto-boosted.",
+    button1 = "Release TBC", button2 = "Cancel",
+    OnAccept = function() Send("releasetbc confirm"); Send("status"); Send("health") end,
+    timeout = 0, whileDead = 1, hideOnEscape = 1, preferredIndex = 3,
+}
 StaticPopupDialogs["AZEROTH_RELEASE_WOTLK"] = {
-    text = "Release Wrath of the Lich King?\n\nThis permanently opens WotLK progression, Northrend, level 80 and WotLK raid-ready controls. Existing characters are NOT auto-boosted.",
+    text = "Release Wrath of the Lich King?\n\nThis advances the realm from TBC to WotLK, opens Northrend progression, level 80 and Titan Rune systems. Existing characters are NOT auto-boosted.",
     button1 = "Release WotLK", button2 = "Cancel",
     OnAccept = function() Send("releasewotlk confirm"); Send("status"); Send("health") end,
     timeout = 0, whileDead = 1, hideOnEscape = 1, preferredIndex = 3,
@@ -370,18 +388,19 @@ local teleports = CreatePage("Teleports")
 PageTitle(teleports, "Teleports", "Expansion-aware travel, player movement and account-specific saved locations.")
 local destinationCard = Card(teleports, 662, 176); destinationCard:SetPoint("TOPLEFT", 8, -58); CardLabel(destinationCard, "Destinations")
 local teleportDefs = {
-    { "Dark Portal", "darkportal", false }, { "Shattrath", "shattrath", false }, { "Stormwind", "stormwind", false }, { "Ironforge", "ironforge", false },
-    { "Orgrimmar", "orgrimmar", false }, { "Thunder Bluff", "thunderbluff", false }, { "Dalaran", "dalaran", true }, { "Argent Tournament", "argent", true },
+    { "Dark Portal", "darkportal", 0 }, { "Shattrath", "shattrath", 1 }, { "Stormwind", "stormwind", 0 }, { "Ironforge", "ironforge", 0 },
+    { "Orgrimmar", "orgrimmar", 0 }, { "Thunder Bluff", "thunderbluff", 0 }, { "Dalaran", "dalaran", 2 }, { "Argent Tournament", "argent", 2 },
 }
-local wrathTeleportButtons = {}
+local eraTeleportButtons = {}
 for i, entry in ipairs(teleportDefs) do
-    local label, key, requiresWrath = entry[1], entry[2], entry[3]
+    local label, key, requiredEra = entry[1], entry[2], entry[3]
     local col, row = (i - 1) % 4, math.floor((i - 1) / 4)
-    local b = Button(destinationCard, label, 142, 27, function() Send("tp " .. key) end, requiresWrath and "Unlocks when WotLK is released." or nil)
+    local tip = requiredEra == 2 and "Unlocks when WotLK is released." or (requiredEra == 1 and "Unlocks when TBC is released." or nil)
+    local b = Button(destinationCard, label, 142, 27, function() Send("tp " .. key) end, tip)
     b:SetPoint("TOPLEFT", 14 + col * 156, -43 - row * 39)
-    if requiresWrath then table.insert(wrathTeleportButtons, b) end
+    eraTeleportButtons[#eraTeleportButtons + 1] = { button = b, requiredEra = requiredEra }
 end
-local tpLock = Text(destinationCard, "Northrend destinations are locked while TBC is live.", "GameFontHighlightSmall", C.warning[1], C.warning[2], C.warning[3]); tpLock:SetPoint("BOTTOMLEFT", 14, 15)
+local tpLock = Text(destinationCard, "Vanilla is live. Outland and Northrend destinations remain locked.", "GameFontHighlightSmall", C.warning[1], C.warning[2], C.warning[3]); tpLock:SetPoint("BOTTOMLEFT", 14, 15)
 local playerTp = Card(teleports, 662, 112); playerTp:SetPoint("TOPLEFT", destinationCard, "BOTTOMLEFT", 0, -10); CardLabel(playerTp, "Online player")
 local playerEdit = Edit(playerTp, 190, ""); playerEdit:SetPoint("TOPLEFT", 14, -45)
 local gotoBtn = Button(playerTp, "Go to player", 116, 24, function() if playerEdit:GetText() ~= "" then Send("goto " .. playerEdit:GetText()) end end); gotoBtn:SetPoint("LEFT", playerEdit, "RIGHT", 10, 0)
@@ -403,37 +422,89 @@ local function FormatUptime(seconds)
 end
 
 local function UpdateUI()
-    local wotlk = tostring(state.wotlk) == "1"
-    local eraName = wotlk and "WRATH OF THE LICH KING" or "THE BURNING CRUSADE"
-    local r = wotlk and C.wrath[1] or C.green[1]; local g = wotlk and C.wrath[2] or C.green[2]; local b = wotlk and C.wrath[3] or C.green[3]
+    local era = string.upper(tostring(state.era or "VANILLA"))
+    local eraIndex = era == "WOTLK" and 2 or (era == "TBC" and 1 or 0)
+    local tbc = eraIndex >= 1
+    local wotlk = eraIndex >= 2
+    local eraName = era == "WOTLK" and "WRATH OF THE LICH KING" or (era == "TBC" and "THE BURNING CRUSADE" or "VANILLA")
+    local color = era == "WOTLK" and C.wrath or (era == "TBC" and C.green or C.warning)
+    local r, g, b = color[1], color[2], color[3]
+
     eraText:SetText(eraName); eraText:SetTextColor(r, g, b); capText:SetText("LEVEL CAP " .. tostring(state.levelcap))
-    sidebarEra:SetText(wotlk and "WOTLK LIVE" or "TBC LIVE"); sidebarEra:SetTextColor(r, g, b); sidebarCap:SetText("Cap " .. tostring(state.levelcap) .. " • stage " .. tostring(state.progressionlimit))
-    dashEra:SetText(eraName); dashEra:SetTextColor(r, g, b); dashCharacter:SetText("Level " .. tostring(state.level) .. "  •  Stage " .. tostring(state.stage)); dashMoney:SetText(tostring(state.money) .. " gold"); goldCurrent:SetText("Current: " .. tostring(state.money) .. "g")
+    sidebarEra:SetText(era .. " LIVE"); sidebarEra:SetTextColor(r, g, b)
+    sidebarCap:SetText("Cap " .. tostring(state.levelcap) .. " • stage " .. tostring(state.progressionlimit))
+    dashEra:SetText(eraName); dashEra:SetTextColor(r, g, b)
+    dashCharacter:SetText("Level " .. tostring(state.level) .. "  •  Stage " .. tostring(state.stage))
+    dashMoney:SetText(tostring(state.money) .. " gold"); goldCurrent:SetText("Current: " .. tostring(state.money) .. "g")
     dashRates:SetText("XP " .. tostring(state.xp) .. "x     REP " .. tostring(state.rep) .. "x     GOLD " .. tostring(state.goldrate) .. "x")
-    dashPopulation:SetText("Players " .. tostring(state.players) .. "   •   Bots " .. tostring(state.bots) .. " / " .. tostring(state.bottarget)); dashActivity:SetText("Activity " .. tostring(state.botactivity) .. "% • " .. tostring(state.botstate) .. " • pending " .. tostring(state.botpending)); botSummary:SetText("Bots " .. tostring(state.bots) .. " / " .. tostring(state.bottarget) .. " • capacity " .. tostring(state.botcapacity) .. " • pending " .. tostring(state.botpending) .. " • " .. tostring(state.botstate))
+    dashPopulation:SetText("Players " .. tostring(state.players) .. "   •   Bots " .. tostring(state.bots) .. " / " .. tostring(state.bottarget))
+    dashActivity:SetText("Activity " .. tostring(state.botactivity) .. "% • " .. tostring(state.botstate) .. " • pending " .. tostring(state.botpending))
+    botSummary:SetText("Bots " .. tostring(state.bots) .. " / " .. tostring(state.bottarget) .. " • capacity " .. tostring(state.botcapacity) .. " • pending " .. tostring(state.botpending) .. " • " .. tostring(state.botstate))
+
     local selectedTarget = tonumber(state.bottarget)
     for target, button in pairs(botPresetButtons) do
         if target == selectedTarget then button:LockHighlight() else button:UnlockHighlight() end
     end
-    if rateRows.xp then rateRows.xp:SetText(tostring(state.xp)) end; if rateRows.rep then rateRows.rep:SetText(tostring(state.rep)) end; if rateRows.gold then rateRows.gold:SetText(tostring(state.goldrate)) end
-    if tostring(state.starter) == "wotlkraid" then currentStarter:SetText("Default new character: WotLK Raid Ready • Level 80") elseif tostring(state.starter) == "tbcraid" then currentStarter:SetText("Default new character: TBC Raid Ready • Level 70") else currentStarter:SetText("Default new character: TBC Adventure • Level 60") end
-    expansionTitle:SetText(eraName .. " • LIVE"); expansionTitle:SetTextColor(r, g, b); expansionInfo:SetText("Level cap " .. tostring(state.levelcap) .. " • progression ceiling " .. tostring(state.progressionlimit) .. (wotlk and " • WotLK live" or " • WotLK locked"))
-    if wotlk then
-        dashLock:SetText("WotLK LIVE • cap 80 • progression open"); dashExpansionAction:Hide(); dashRaidReady:SetText("WotLK Raid Ready"); dashRaidReady:SetScript("OnClick", function() Send("wotlkraidready"); Send("status") end)
-        releaseButton:Hide(); releaseStatus:SetText("WOTLK LIVE"); releaseStatus:SetTextColor(C.wrath[1], C.wrath[2], C.wrath[3]); expansionDesc:SetText("Wrath is released. Northrend and level-80 progression are open normally. Raid-ready shortcuts are now available, but no character was auto-boosted.")
-        wrathCharStatus:SetText("UNLOCKED • raid-ready shortcut completes WotLK access / stage 18"); wrathCharStatus:SetTextColor(C.wrath[1], C.wrath[2], C.wrath[3]); SetEnabled(starter80, true); SetEnabled(makeWrathReady, true)
-        tpLock:SetText("WotLK is live. Northrend destinations are unlocked."); tpLock:SetTextColor(C.wrath[1], C.wrath[2], C.wrath[3])
+    if rateRows.xp then rateRows.xp:SetText(tostring(state.xp)) end
+    if rateRows.rep then rateRows.rep:SetText(tostring(state.rep)) end
+    if rateRows.gold then rateRows.gold:SetText(tostring(state.goldrate)) end
+
+    if tostring(state.starter) == "wotlkraid" then
+        currentStarter:SetText("Default new character: WotLK Raid Ready • Level 80")
+    elseif tostring(state.starter) == "tbcraid" then
+        currentStarter:SetText("Default new character: TBC Raid Ready • Level 70")
+    elseif tostring(state.starter) == "tbc" then
+        currentStarter:SetText("Default new character: TBC Adventure • Level 60")
     else
-        dashLock:SetText("WotLK locked • cap 70 • stage limit " .. tostring(state.progressionlimit)); dashExpansionAction:Show(); dashRaidReady:SetText("TBC Raid Ready"); dashRaidReady:SetScript("OnClick", function() Send("tbcraidready"); Send("status") end)
-        releaseButton:Show(); releaseStatus:SetText("LOCKED"); releaseStatus:SetTextColor(C.warning[1], C.warning[2], C.warning[3]); expansionDesc:SetText("Finish TBC normally. Releasing Wrath opens stage 13, Northrend, level 80 and the WotLK raid-ready controls. Nobody is auto-boosted.")
-        wrathCharStatus:SetText("LOCKED • release WotLK from the World page first"); wrathCharStatus:SetTextColor(C.warning[1], C.warning[2], C.warning[3]); SetEnabled(starter80, false); SetEnabled(makeWrathReady, false)
-        tpLock:SetText("Northrend destinations are locked while TBC is live."); tpLock:SetTextColor(C.warning[1], C.warning[2], C.warning[3])
+        currentStarter:SetText("Default new character: Vanilla fresh start • Level 1")
     end
-    for _, button in ipairs(wrathTeleportButtons) do SetEnabled(button, wotlk) end; for _, button in ipairs(stageButtons) do SetEnabled(button, wotlk) end
+
+    expansionTitle:SetText(eraName .. " • LIVE"); expansionTitle:SetTextColor(r, g, b)
+    expansionInfo:SetText("Level cap " .. tostring(state.levelcap) .. " • progression ceiling " .. tostring(state.progressionlimit))
+
+    if era == "VANILLA" then
+        dashLock:SetText("TBC locked • cap 60 • stage limit " .. tostring(state.progressionlimit))
+        dashExpansionAction:SetText("Release TBC"); dashExpansionAction:Show()
+        dashRaidReady:SetText("Vanilla Journey"); SetEnabled(dashRaidReady, false)
+        releaseButton:SetText("RELEASE THE BURNING CRUSADE"); releaseButton:Show()
+        releaseStatus:SetText("TBC LOCKED"); releaseStatus:SetTextColor(C.warning[1], C.warning[2], C.warning[3])
+        expansionDesc:SetText("Vanilla is the live world. Finish the content you care about, then manually release The Burning Crusade. No character is auto-boosted.")
+        wrathCharStatus:SetText("LOCKED • TBC and WotLK have not been released yet"); wrathCharStatus:SetTextColor(C.warning[1], C.warning[2], C.warning[3])
+        tpLock:SetText("Vanilla is live. Shattrath and Northrend destinations are locked."); tpLock:SetTextColor(C.warning[1], C.warning[2], C.warning[3])
+    elseif era == "TBC" then
+        dashLock:SetText("WotLK locked • cap 70 • stage limit " .. tostring(state.progressionlimit))
+        dashExpansionAction:SetText("Release WotLK"); dashExpansionAction:Show()
+        dashRaidReady:SetText("TBC Raid Ready"); SetEnabled(dashRaidReady, true)
+        releaseButton:SetText("RELEASE WRATH OF THE LICH KING"); releaseButton:Show()
+        releaseStatus:SetText("WOTLK LOCKED"); releaseStatus:SetTextColor(C.warning[1], C.warning[2], C.warning[3])
+        expansionDesc:SetText("The Burning Crusade is live. Finish your TBC journey, then manually release Wrath. Existing characters remain exactly where they are.")
+        wrathCharStatus:SetText("LOCKED • release WotLK from the World page first"); wrathCharStatus:SetTextColor(C.warning[1], C.warning[2], C.warning[3])
+        tpLock:SetText("TBC is live. Shattrath is open; Northrend remains locked."); tpLock:SetTextColor(C.green[1], C.green[2], C.green[3])
+    else
+        dashLock:SetText("WotLK LIVE • cap 80 • full progression open"); dashExpansionAction:Hide()
+        dashRaidReady:SetText("WotLK Raid Ready"); SetEnabled(dashRaidReady, true)
+        releaseButton:Hide()
+        releaseStatus:SetText("ALL ERAS LIVE"); releaseStatus:SetTextColor(C.wrath[1], C.wrath[2], C.wrath[3])
+        expansionDesc:SetText("Wrath is live. Vanilla and TBC remain available as legacy eras; Northrend and WotLK-only systems are open.")
+        wrathCharStatus:SetText("UNLOCKED • raid-ready shortcut completes WotLK access / stage 18"); wrathCharStatus:SetTextColor(C.wrath[1], C.wrath[2], C.wrath[3])
+        tpLock:SetText("All expansion destinations are unlocked."); tpLock:SetTextColor(C.wrath[1], C.wrath[2], C.wrath[3])
+    end
+
+    SetEnabled(starter60, tbc); SetEnabled(starter70, tbc); SetEnabled(makeTbcReady, tbc)
+    SetEnabled(starter80, wotlk); SetEnabled(makeWrathReady, wotlk)
+    for stageValue, button in pairs(stageButtons) do
+        SetEnabled(button, stageValue <= (tonumber(state.progressionlimit) or 0) and stageValue ~= 11)
+    end
+    for _, entry in ipairs(eraTeleportButtons) do SetEnabled(entry.button, eraIndex >= entry.requiredEra) end
+
     local tick = tonumber(state.tick)
     if tick then
-        local color; if tick <= 75 then color = Hex(C.green[1], C.green[2], C.green[3]) elseif tick <= 150 then color = Hex(C.warning[1], C.warning[2], C.warning[3]) else color = Hex(C.danger[1], C.danger[2], C.danger[3]) end
-        dashHealth:SetText(color .. "Tick " .. tostring(state.tick) .. " ms|r • P95 " .. tostring(state.p95) .. " ms"); aiHealth:SetText("Tick " .. tostring(state.tick) .. " ms • Mean " .. tostring(state.mean) .. " • P95 " .. tostring(state.p95) .. " • P99 " .. tostring(state.p99))
+        local tickColor
+        if tick <= 75 then tickColor = Hex(C.green[1], C.green[2], C.green[3])
+        elseif tick <= 150 then tickColor = Hex(C.warning[1], C.warning[2], C.warning[3])
+        else tickColor = Hex(C.danger[1], C.danger[2], C.danger[3]) end
+        dashHealth:SetText(tickColor .. "Tick " .. tostring(state.tick) .. " ms|r • P95 " .. tostring(state.p95) .. " ms")
+        aiHealth:SetText("Tick " .. tostring(state.tick) .. " ms • Mean " .. tostring(state.mean) .. " • P95 " .. tostring(state.p95) .. " • P99 " .. tostring(state.p99))
     end
     dashUptime:SetText("Uptime " .. FormatUptime(state.uptime) .. " • Sessions " .. tostring(state.sessions))
 end
@@ -447,7 +518,7 @@ local event = CreateFrame("Frame"); event:RegisterEvent("CHAT_MSG_SYSTEM")
 event:SetScript("OnEvent", function(self, eventName, msg)
     if type(msg) ~= "string" or not string.find(msg, "[AdminPanel]", 1, true) then return end
     footer:SetText(msg)
-    if ParseKeyValues(msg, "[AdminPanel] STATUS") then UpdateUI() elseif ParseKeyValues(msg, "[AdminPanel] HEALTH") then UpdateUI() elseif string.find(msg, "WOTLK RELEASED", 1, true) then Send("status"); Send("health") end
+    if ParseKeyValues(msg, "[AdminPanel] STATUS") then UpdateUI() elseif ParseKeyValues(msg, "[AdminPanel] HEALTH") then UpdateUI() elseif string.find(msg, "WOTLK RELEASED", 1, true) or string.find(msg, "TBC RELEASED", 1, true) then Send("status"); Send("health") end
 end)
 
 -- MINIMAP + SLASH ------------------------------------------------------------
