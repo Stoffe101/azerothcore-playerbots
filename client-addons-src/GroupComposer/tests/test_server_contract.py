@@ -394,7 +394,7 @@ assert 'PSendSysMessage("[GC]|PROGRESS|' in SERVER, "Server no longer publishes 
 readiness = section(SERVER, "std::string PreparedMemberBlocker(", "uint32 SelectedBotCount(")
 assert "SpecCanFillRole(member.cls, liveSpec, member.role)" in readiness
 assert "Planner::InferRole(bot)" not in readiness, "Readiness regressed to lagging AI strategy role inference"
-assert '"is still offline"' in readiness and '"Playerbot AI is not initialized"' in readiness
+assert '"is still offline"' in readiness and '"is online but Playerbot AI is not initialized"' in readiness
 assert "PreparedItemLevelFloor" in readiness
 
 # Progression/era is finalized before talents and gear so an EraTalents transition cannot erase the
