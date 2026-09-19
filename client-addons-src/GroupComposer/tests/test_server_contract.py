@@ -592,7 +592,7 @@ assert "bool ActivityEligible(Player* player, Config const& config, std::string&
 assert "AdventureStartControl::HasPassedProgression" in SERVER
 assert "Difficulty const difficulty = ActivityDifficulty(config);" in SERVER
 assert "player->Satisfy(sObjectMgr->GetAccessRequirement(mapId, difficulty), mapId, false)" in SERVER
-assert 'SendActivityEligibility' in SERVER and '"[GC]|ACTIVITY|{}|{}|{}|{}"' in SERVER
+assert 'SendActivityEligibility' in SERVER and '"[GC]|ACTIVITY|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}"' in SERVER
 assert '"Selected activity is locked: " + eligibilityReason' in SERVER
 assert '"Selected dungeon is locked: " + eligibilityReason' in SERVER
 assert "ActivityEligible(player, plan.config, eligibilityReason)" in travel
