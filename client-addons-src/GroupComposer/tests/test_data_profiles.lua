@@ -145,11 +145,14 @@ eq(classOnly.preferences.TANK[1].spec, "ANY", "class-only preference keeps Auto 
 truth(classOnly.preferences.TANK[1].required, "class-only preference remains required")
 
 GroupComposerDB = nil
-local savedDungeon, dungeonErr = P.Save("No dungeon template", {
+local savedDungeon, dungeonErr = P.Save("Dungeon party", {
     mode = "DUNGEON", activity = "random", difficulty = "heroic", size = 5,
     tanks = 1, healers = 1, dps = 3,
 })
-truth(not savedDungeon and string.find(dungeonErr or "", "raid%-only"), "dungeon template saves must be rejected")
+truth(savedDungeon and dungeonErr == nil, "dungeon template saves must be supported")
+local loadedDungeon = P.Get("Dungeon party")
+truth(loadedDungeon ~= nil and loadedDungeon.mode == "DUNGEON", "saved dungeon template must load back as dungeon mode")
+eq(loadedDungeon.size, 5, "saved dungeon template size")
 eq(#normalized.stableHumans, 1, "stable human count")
 eq(normalized.stableHumans[1], "FriendWithoutOverride", "stable human name")
 

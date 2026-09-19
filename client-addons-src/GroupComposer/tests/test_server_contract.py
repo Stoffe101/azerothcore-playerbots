@@ -365,7 +365,9 @@ assert 'D.BUILTIN_PROFILES = {}' in DATA and 'for _, raid in ipairs(D.RAIDS)' in
 builtin_profile_tail = DATA[DATA.index("D.BUILTIN_PROFILES = {}"):]
 assert 'RaidProfile(' in builtin_profile_tail
 assert 'Profile("Dungeon' not in builtin_profile_tail, "Dungeon presets must not return to the raid template library"
-assert 'Templates are raid-only' in (ROOT / "client-addons-src/GroupComposer/Profiles.lua").read_text(encoding="utf-8")
+profiles_text = (ROOT / "client-addons-src/GroupComposer/Profiles.lua").read_text(encoding="utf-8")
+assert 'function P.ListCustom(mode)' in profiles_text
+assert 'p.mode ~= "RAID"' not in profiles_text, "Dungeon party templates must remain saveable"
 assert 'profileDescription' in MODEL and 'profileMeta' in MODEL
 assert 'TemplateBrowserUI.createTemplateBrowser(frame)' in MODERN
 assert 'scroll.scrollToTop()' in TEMPLATE_BROWSER and 'createScrollList(modal.content' in TEMPLATE_BROWSER
