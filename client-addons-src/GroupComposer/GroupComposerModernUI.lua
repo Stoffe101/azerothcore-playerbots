@@ -5634,14 +5634,11 @@ function ____exports.createModernDashboard(self)
     )
     local exactSections = {}
     for ____, role in ipairs(roleOrder) do
-        local panel = Native:createPanel(exactScroll.content, theme.colors.background, theme.colors.border)
+        local accent = Model:roleAccent(role)
+        local panel = Native:createPanel(exactScroll.content, theme.colors.surfaceDeep, theme.colors.border)
         panel.frame:SetWidth(906)
-        local roleStrip = Native:createSolid(
-            panel.frame,
-            Model:roleAccent(role),
-            "ARTWORK"
-        )
-        roleStrip:SetHeight(4)
+        local roleStrip = Native:createSolid(panel.frame, accent, "ARTWORK")
+        roleStrip:SetHeight(3)
         roleStrip:SetPoint(
             "TOPLEFT",
             panel.frame,
@@ -5658,69 +5655,51 @@ function ____exports.createModernDashboard(self)
         )
         local roleTint = Native:createSolid(
             panel.frame,
-            Native:withAlpha(
-                Model:roleAccent(role),
-                0.045
-            ),
+            Native:withAlpha(accent, 0.035),
             "BACKGROUND"
         )
         roleTint:SetAllPoints(panel.frame)
-        local roleBadge = Native:createFramedRoleIcon(
-            panel.frame,
-            role,
-            42,
-            Model:roleAccent(role)
-        )
+        local roleBadge = Native:createFramedRoleIcon(panel.frame, role, 36, accent)
         roleBadge.frame:SetPoint(
             "TOPLEFT",
             panel.frame,
             "TOPLEFT",
-            14,
-            -12
+            12,
+            -10
         )
-        local icon = roleBadge.icon
         local label = Native:createText(
             panel.frame,
             string.upper(Model:roleLabel(role)),
             "GameFontNormal",
-            Model:roleAccent(role)
+            accent
         )
         label:SetPoint(
-            "LEFT",
-            roleBadge.frame,
-            "RIGHT",
-            10,
-            5
+            "TOPLEFT",
+            panel.frame,
+            "TOPLEFT",
+            60,
+            -12
         )
         local count = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
         count:SetPoint(
-            "LEFT",
-            roleBadge.frame,
-            "RIGHT",
-            10,
-            -12
+            "TOPLEFT",
+            panel.frame,
+            "TOPLEFT",
+            60,
+            -32
         )
         count:SetWidth(430)
-        local add = ButtonUI:createButton(
-            panel.frame,
-            {
-                text = "+ Add specific build",
-                width = 168,
-                height = 34,
-                accent = Model:roleAccent(role),
-                emphasis = true
-            }
-        )
+        local add = ButtonUI:createButton(panel.frame, {text = "+ Add specific build", width = 154, height = 30, accent = accent})
         add.frame:SetPoint(
             "TOPRIGHT",
             panel.frame,
             "TOPRIGHT",
             -12,
-            -14
+            -12
         )
         local empty = Native:createText(
             panel.frame,
-            ("No reserved builds. Composer will Auto-fill every remaining " .. string.lower(Model:roleLabel(role))) .. " slot.",
+            ("No reserved builds. Every remaining " .. string.lower(Model:roleLabel(role))) .. " slot stays Auto.",
             "GameFontHighlightSmall",
             theme.colors.muted
         )
@@ -5729,9 +5708,9 @@ function ____exports.createModernDashboard(self)
             panel.frame,
             "TOPLEFT",
             18,
-            -68
+            -58
         )
-        empty:SetWidth(810)
+        empty:SetWidth(820)
         empty:SetJustifyV("TOP")
         exactScroll:bindWheel(panel.frame)
         exactScroll:bindWheel(add.frame)
@@ -5773,7 +5752,7 @@ function ____exports.createModernDashboard(self)
                         card.frame,
                         "TOPLEFT",
                         8,
-                        -(34 + r * 30)
+                        -(32 + r * 29)
                     )
                     row:SetPoint(
                         "RIGHT",
@@ -5798,7 +5777,7 @@ function ____exports.createModernDashboard(self)
                         0,
                         0
                     )
-                    local iconBadge = Native:createFramedIcon(row, "Interface\\Icons\\INV_Misc_QuestionMark", 26, theme.colors.border)
+                    local iconBadge = Native:createFramedIcon(row, "Interface\\Icons\\INV_Misc_QuestionMark", 28, theme.colors.border)
                     iconBadge.frame:SetPoint(
                         "LEFT",
                         row,
@@ -5813,19 +5792,19 @@ function ____exports.createModernDashboard(self)
                         "LEFT",
                         row,
                         "LEFT",
-                        38,
+                        42,
                         7
                     )
-                    name:SetWidth(154)
+                    name:SetWidth(150)
                     local spec = Native:createText(row, "", "GameFontHighlightSmall", theme.colors.muted)
                     spec:SetPoint(
                         "LEFT",
                         row,
                         "LEFT",
-                        38,
+                        42,
                         -8
                     )
-                    spec:SetWidth(168)
+                    spec:SetWidth(160)
                     rows[#rows + 1] = {
                         row = row,
                         roleBar = roleBar,
@@ -7068,7 +7047,7 @@ function ____exports.createModernDashboard(self)
                     pooled.panel.frame:ClearAllPoints()
                 end
             end
-            local sectionHeight = #rows == 0 and 86 or 62 + #rows * 56
+            local sectionHeight = #rows == 0 and 88 or 66 + #rows * 58
             section.panel.frame:ClearAllPoints()
             section.panel.frame:SetPoint(
                 "TOPLEFT",
@@ -7087,12 +7066,12 @@ function ____exports.createModernDashboard(self)
                 local i = 0
                 while i < #rows do
                     local build = rows[i + 1]
-                    local rowKey = (tostring(build.classId) .. ":") .. tostring(build.specId)
+                    local rowKey = (((role .. ":") .. tostring(build.classId)) .. ":") .. tostring(build.specId)
                     local widgets = section.rowsByKey[rowKey]
                     if widgets == nil then
                         local panel = Native:createPanel(section.panel.frame, theme.colors.surfaceRaised, theme.colors.border)
-                        panel.frame:SetSize(870, 48)
-                        local classBadge = Native:createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 38, theme.colors.borderStrong)
+                        panel.frame:SetSize(870, 52)
+                        local classBadge = Native:createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 34, theme.colors.borderStrong)
                         classBadge.frame:SetPoint(
                             "LEFT",
                             panel.frame,
@@ -7101,7 +7080,7 @@ function ____exports.createModernDashboard(self)
                             0
                         )
                         local classIcon = classBadge.icon
-                        local specBadge = Native:createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 38, theme.colors.borderStrong)
+                        local specBadge = Native:createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 34, theme.colors.borderStrong)
                         specBadge.frame:SetPoint(
                             "LEFT",
                             classBadge.frame,
@@ -7115,27 +7094,61 @@ function ____exports.createModernDashboard(self)
                             "TOPLEFT",
                             panel.frame,
                             "TOPLEFT",
-                            104,
-                            -10
+                            94,
+                            -8
                         )
                         name:SetWidth(500)
-                        local count = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
-                        count:SetPoint(
-                            "TOPLEFT",
-                            name,
-                            "BOTTOMLEFT",
-                            0,
-                            -4
+                        local info = Native:createText(
+                            panel.frame,
+                            Model:roleLabel(role) .. "  ·  Reserved build",
+                            "GameFontHighlightSmall",
+                            theme.colors.muted
                         )
-                        local edit = ButtonUI:createButton(panel.frame, {text = "Edit", width = 74, height = 30, accent = theme.colors.primary})
+                        info:SetPoint(
+                            "TOPLEFT",
+                            panel.frame,
+                            "TOPLEFT",
+                            94,
+                            -29
+                        )
+                        info:SetWidth(440)
+                        local countPill = Native:createPanel(
+                            panel.frame,
+                            theme.colors.surfaceDeep,
+                            Model:roleAccent(role)
+                        )
+                        countPill.frame:SetSize(52, 26)
+                        countPill.frame:SetPoint(
+                            "RIGHT",
+                            panel.frame,
+                            "RIGHT",
+                            -120,
+                            0
+                        )
+                        local count = Native:createText(
+                            countPill.frame,
+                            "",
+                            "GameFontHighlightSmall",
+                            Model:roleAccent(role)
+                        )
+                        count:SetPoint(
+                            "CENTER",
+                            countPill.frame,
+                            "CENTER",
+                            0,
+                            0
+                        )
+                        count:SetWidth(46)
+                        count:SetJustifyH("CENTER")
+                        local edit = ButtonUI:createButton(panel.frame, {text = "Edit", width = 62, height = 28, accent = theme.colors.primary})
                         edit.frame:SetPoint(
                             "RIGHT",
                             panel.frame,
                             "RIGHT",
-                            -54,
+                            -48,
                             0
                         )
-                        local remove = ButtonUI:createButton(panel.frame, {text = "X", width = 40, height = 30, accent = theme.colors.error})
+                        local remove = ButtonUI:createButton(panel.frame, {text = "X", width = 34, height = 28, accent = theme.colors.error})
                         remove.frame:SetPoint(
                             "RIGHT",
                             panel.frame,
@@ -7153,6 +7166,8 @@ function ____exports.createModernDashboard(self)
                             specBadge = specBadge,
                             specIcon = specIcon,
                             name = name,
+                            info = info,
+                            countPill = countPill,
                             count = count,
                             edit = edit,
                             remove = remove
@@ -7167,7 +7182,7 @@ function ____exports.createModernDashboard(self)
                         section.panel.frame,
                         "TOPLEFT",
                         18,
-                        -(58 + i * 56)
+                        -(58 + i * 58)
                     )
                     Native:setClassIcon(widgets.classIcon, build.classId)
                     widgets.classBadge.outline:setColor(Native:classColor(build.classId))
@@ -7175,7 +7190,7 @@ function ____exports.createModernDashboard(self)
                     widgets.specIcon:SetTexture(Model:getSpecIcon(build.classId, build.specId))
                     widgets.specIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
                     widgets.name:SetText((Model:getSpecLabel(build.classId, build.specId) .. " ") .. Model:classLabel(build.classId))
-                    widgets.count:SetText("× " .. tostring(build.count))
+                    widgets.count:SetText("×" .. tostring(build.count))
                     local indexCopy = i
                     widgets.edit.frame:SetScript(
                         "OnMouseDown",
@@ -7212,7 +7227,7 @@ function ____exports.createModernDashboard(self)
         )
         local columns = totalGroups <= 3 and totalGroups or (totalGroups <= 5 and 3 or 4)
         local cardWidth = math.floor((934 - (columns - 1) * 10) / columns)
-        local cardHeight = 190
+        local cardHeight = 184
         do
             local g = 0
             while g < #groupCards do
@@ -7261,23 +7276,21 @@ function ____exports.createModernDashboard(self)
                                     )
                                     rowWidgets.iconBadge.outline:setColor(Native:classColor(tostring(member.class)))
                                     rowWidgets.iconBadge.frame:Show()
-                                    rowWidgets.name:SetText((member.isPlayer and "YOU  ·  " or "") .. tostring(member.name))
+                                    local identity = member.isPlayer and "YOU  ·  " or (member.pinned and "PIN  ·  " or "")
+                                    rowWidgets.name:SetText(identity .. tostring(member.name))
                                     rowWidgets.name:SetTextColor(theme.colors.text[1], theme.colors.text[2], theme.colors.text[3], 1)
-                                    local ____self_45 = rowWidgets.spec
-                                    local ____self_45_SetText_46 = ____self_45.SetText
-                                    local ____member_level_42 = member.level
-                                    if ____member_level_42 == nil then
-                                        ____member_level_42 = "?"
+                                    rowWidgets.name:SetWidth(math.max(110, cardWidth - 54))
+                                    local ____self_43 = rowWidgets.spec
+                                    local ____self_43_SetText_44 = ____self_43.SetText
+                                    local ____member_spec_42 = member.spec
+                                    if ____member_spec_42 == nil then
+                                        ____member_spec_42 = Model:classLabel(tostring(member.class))
                                     end
-                                    local ____temp_44 = ("Lv " .. tostring(____member_level_42)) .. " · "
-                                    local ____member_spec_43 = member.spec
-                                    if ____member_spec_43 == nil then
-                                        ____member_spec_43 = Model:classLabel(tostring(member.class))
-                                    end
-                                    ____self_45_SetText_46(
-                                        ____self_45,
-                                        ____temp_44 .. tostring(____member_spec_43)
+                                    ____self_43_SetText_44(
+                                        ____self_43,
+                                        (tostring(____member_spec_42) .. "  ·  ") .. Model:roleLabel(member.role)
                                     )
+                                    rowWidgets.spec:SetWidth(math.max(110, cardWidth - 54))
                                     Native:setTextureColor(
                                         rowWidgets.roleBar,
                                         Model:roleAccent(member.role)
@@ -7345,11 +7358,11 @@ function ____exports.createModernDashboard(self)
     )
     local function refreshStatus(self)
         local p = Model:progress()
-        local ____p_phase_47 = p.phase
-        if ____p_phase_47 == nil then
-            ____p_phase_47 = "IDLE"
+        local ____p_phase_45 = p.phase
+        if ____p_phase_45 == nil then
+            ____p_phase_45 = "IDLE"
         end
-        local phase = tostring(____p_phase_47)
+        local phase = tostring(____p_phase_45)
         local phaseColor = colorForPhase(nil, phase)
         Native:setTextureColor(phaseDot, phaseColor)
         Native:setTextureColor(phaseAccent, phaseColor)
@@ -7363,109 +7376,109 @@ function ____exports.createModernDashboard(self)
         if phase == "IDLE" then
             phaseDetail:SetText(Model:config().mode == "RAID" and "Add specific builds or keep Auto to prepare your raid." or "Choose exact builds or keep Auto to prepare your group.")
         else
-            local ____phaseDetail_SetText_49 = phaseDetail.SetText
-            local ____p_detail_48 = p.detail
-            if ____p_detail_48 == nil then
-                ____p_detail_48 = ""
+            local ____phaseDetail_SetText_47 = phaseDetail.SetText
+            local ____p_detail_46 = p.detail
+            if ____p_detail_46 == nil then
+                ____p_detail_46 = ""
             end
-            ____phaseDetail_SetText_49(
+            ____phaseDetail_SetText_47(
                 phaseDetail,
-                tostring(____p_detail_48)
+                tostring(____p_detail_46)
             )
         end
         local humanCount = #Model:humans()
-        local ____table_size_50 = Model:config().size
-        if ____table_size_50 == nil then
-            ____table_size_50 = 5
+        local ____table_size_48 = Model:config().size
+        if ____table_size_48 == nil then
+            ____table_size_48 = 5
         end
-        local target = __TS__Number(____table_size_50)
+        local target = __TS__Number(____table_size_48)
         local composed = Model:config().mode == "RAID" and Model:roleTargetTotal() or humanCount
-        local ____temp_54
+        local ____temp_52
         if Model:plan().ready == true then
-            local ____opt_51 = Model:plan().summary
-            if ____opt_51 ~= nil then
-                ____opt_51 = ____opt_51.total
+            local ____opt_49 = Model:plan().summary
+            if ____opt_49 ~= nil then
+                ____opt_49 = ____opt_49.total
             end
-            local ____opt_51_53 = ____opt_51
-            if ____opt_51_53 == nil then
-                ____opt_51_53 = #Model:planMembers()
+            local ____opt_49_51 = ____opt_49
+            if ____opt_49_51 == nil then
+                ____opt_49_51 = #Model:planMembers()
             end
-            ____temp_54 = __TS__Number(____opt_51_53)
+            ____temp_52 = __TS__Number(____opt_49_51)
         else
-            ____temp_54 = composed
+            ____temp_52 = composed
         end
-        local total = ____temp_54
+        local total = ____temp_52
         rosterCount:SetText((tostring(total) .. " / ") .. tostring(target))
         if Model:plan().ready == true then
-            local ____sourceText_SetText_63 = sourceText.SetText
-            local ____temp_58 = ((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  "
-            local ____opt_55 = Model:plan().summary
-            if ____opt_55 ~= nil then
-                ____opt_55 = ____opt_55.guild
+            local ____sourceText_SetText_61 = sourceText.SetText
+            local ____temp_56 = ((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  "
+            local ____opt_53 = Model:plan().summary
+            if ____opt_53 ~= nil then
+                ____opt_53 = ____opt_53.guild
             end
-            local ____opt_55_57 = ____opt_55
-            if ____opt_55_57 == nil then
-                ____opt_55_57 = 0
+            local ____opt_53_55 = ____opt_53
+            if ____opt_53_55 == nil then
+                ____opt_53_55 = 0
             end
-            local ____temp_62 = (____temp_58 .. tostring(____opt_55_57)) .. " guild  ·  "
-            local ____opt_59 = Model:plan().summary
-            if ____opt_59 ~= nil then
-                ____opt_59 = ____opt_59.world
+            local ____temp_60 = (____temp_56 .. tostring(____opt_53_55)) .. " guild  ·  "
+            local ____opt_57 = Model:plan().summary
+            if ____opt_57 ~= nil then
+                ____opt_57 = ____opt_57.world
             end
-            local ____opt_59_61 = ____opt_59
-            if ____opt_59_61 == nil then
-                ____opt_59_61 = 0
+            local ____opt_57_59 = ____opt_57
+            if ____opt_57_59 == nil then
+                ____opt_57_59 = 0
             end
-            ____sourceText_SetText_63(
+            ____sourceText_SetText_61(
                 sourceText,
-                (____temp_62 .. tostring(____opt_59_61)) .. " fallback"
+                (____temp_60 .. tostring(____opt_57_59)) .. " fallback"
             )
         else
             sourceText:SetText(((((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  ") .. tostring(math.max(0, target - humanCount))) .. " bot slots")
         end
-        local ____self_65 = statusRoleChips.TANK.label
-        local ____self_65_SetText_66 = ____self_65.SetText
-        local ____table_tanks_64 = Model:config().tanks
-        if ____table_tanks_64 == nil then
-            ____table_tanks_64 = 0
+        local ____self_63 = statusRoleChips.TANK.label
+        local ____self_63_SetText_64 = ____self_63.SetText
+        local ____table_tanks_62 = Model:config().tanks
+        if ____table_tanks_62 == nil then
+            ____table_tanks_62 = 0
         end
-        ____self_65_SetText_66(
-            ____self_65,
-            tostring(____table_tanks_64) .. " TANK"
+        ____self_63_SetText_64(
+            ____self_63,
+            tostring(____table_tanks_62) .. " TANK"
         )
-        local ____self_68 = statusRoleChips.HEALER.label
-        local ____self_68_SetText_69 = ____self_68.SetText
-        local ____table_healers_67 = Model:config().healers
-        if ____table_healers_67 == nil then
-            ____table_healers_67 = 0
+        local ____self_66 = statusRoleChips.HEALER.label
+        local ____self_66_SetText_67 = ____self_66.SetText
+        local ____table_healers_65 = Model:config().healers
+        if ____table_healers_65 == nil then
+            ____table_healers_65 = 0
         end
-        ____self_68_SetText_69(
-            ____self_68,
-            tostring(____table_healers_67) .. " HEALER"
+        ____self_66_SetText_67(
+            ____self_66,
+            tostring(____table_healers_65) .. " HEALER"
         )
-        local ____self_71 = statusRoleChips.DPS.label
-        local ____self_71_SetText_72 = ____self_71.SetText
-        local ____table_dps_70 = Model:config().dps
-        if ____table_dps_70 == nil then
-            ____table_dps_70 = 0
+        local ____self_69 = statusRoleChips.DPS.label
+        local ____self_69_SetText_70 = ____self_69.SetText
+        local ____table_dps_68 = Model:config().dps
+        if ____table_dps_68 == nil then
+            ____table_dps_68 = 0
         end
-        ____self_71_SetText_72(
-            ____self_71,
-            tostring(____table_dps_70) .. " DPS"
+        ____self_69_SetText_70(
+            ____self_69,
+            tostring(____table_dps_68) .. " DPS"
         )
         local ratio = 0
-        local ____p_total_73 = p.total
-        if ____p_total_73 == nil then
-            ____p_total_73 = 0
+        local ____p_total_71 = p.total
+        if ____p_total_71 == nil then
+            ____p_total_71 = 0
         end
-        if __TS__Number(____p_total_73) > 0 then
-            local ____p_current_74 = p.current
-            if ____p_current_74 == nil then
-                ____p_current_74 = 0
+        if __TS__Number(____p_total_71) > 0 then
+            local ____p_current_72 = p.current
+            if ____p_current_72 == nil then
+                ____p_current_72 = 0
             end
             ratio = math.min(
                 1,
-                __TS__Number(____p_current_74) / __TS__Number(p.total)
+                __TS__Number(____p_current_72) / __TS__Number(p.total)
             )
         elseif phase == "READY" or phase == "DONE" then
             ratio = 1
@@ -7474,42 +7487,42 @@ function ____exports.createModernDashboard(self)
         end
         progressFill:SetWidth(math.max(1, 266 * ratio))
         Native:setTextureColor(progressFill, phaseColor)
-        local ____progressText_SetText_81 = progressText.SetText
-        local ____temp_80
+        local ____progressText_SetText_79 = progressText.SetText
+        local ____temp_78
         if phase == "PREPARING" or phase == "ASSEMBLING" or phase == "READY" or phase == "DONE" then
-            local ____p_current_75 = p.current
-            if ____p_current_75 == nil then
-                ____p_current_75 = 0
+            local ____p_current_73 = p.current
+            if ____p_current_73 == nil then
+                ____p_current_73 = 0
             end
-            local ____temp_77 = tostring(____p_current_75) .. " / "
-            local ____p_total_76 = p.total
-            if ____p_total_76 == nil then
-                ____p_total_76 = 0
+            local ____temp_75 = tostring(____p_current_73) .. " / "
+            local ____p_total_74 = p.total
+            if ____p_total_74 == nil then
+                ____p_total_74 = 0
             end
-            local ____temp_79 = (____temp_77 .. tostring(____p_total_76)) .. "  ·  "
-            local ____p_detail_78 = p.detail
-            if ____p_detail_78 == nil then
-                ____p_detail_78 = ""
+            local ____temp_77 = (____temp_75 .. tostring(____p_total_74)) .. "  ·  "
+            local ____p_detail_76 = p.detail
+            if ____p_detail_76 == nil then
+                ____p_detail_76 = ""
             end
-            ____temp_80 = ____temp_79 .. tostring(____p_detail_78)
+            ____temp_78 = ____temp_77 .. tostring(____p_detail_76)
         else
-            ____temp_80 = ""
+            ____temp_78 = ""
         end
-        ____progressText_SetText_81(progressText, ____temp_80)
-        local ____opt_82 = Model:plan().summary
-        if ____opt_82 ~= nil then
-            ____opt_82 = ____opt_82.utility
+        ____progressText_SetText_79(progressText, ____temp_78)
+        local ____opt_80 = Model:plan().summary
+        if ____opt_80 ~= nil then
+            ____opt_80 = ____opt_80.utility
         end
-        local ____opt_82_84 = ____opt_82
-        if ____opt_82_84 == nil then
-            ____opt_82_84 = ""
+        local ____opt_80_82 = ____opt_80
+        if ____opt_80_82 == nil then
+            ____opt_80_82 = ""
         end
-        local utilityRaw = tostring(____opt_82_84)
-        local ____opt_85 = Model:plan().summary
-        if ____opt_85 ~= nil then
-            ____opt_85 = ____opt_85.utility
+        local utilityRaw = tostring(____opt_80_82)
+        local ____opt_83 = Model:plan().summary
+        if ____opt_83 ~= nil then
+            ____opt_83 = ____opt_83.utility
         end
-        local hasPreparedCoverage = ____opt_85 ~= nil
+        local hasPreparedCoverage = ____opt_83 ~= nil
         do
             local i = 0
             while i < #coverageChips do
@@ -7531,31 +7544,31 @@ function ____exports.createModernDashboard(self)
                 i = i + 1
             end
         end
-        local ____coverageDamageText_SetText_95 = coverageDamageText.SetText
-        local ____hasPreparedCoverage_94
+        local ____coverageDamageText_SetText_93 = coverageDamageText.SetText
+        local ____hasPreparedCoverage_92
         if hasPreparedCoverage then
-            local ____opt_87 = Model:plan().summary
-            if ____opt_87 ~= nil then
-                ____opt_87 = ____opt_87.ranged
+            local ____opt_85 = Model:plan().summary
+            if ____opt_85 ~= nil then
+                ____opt_85 = ____opt_85.ranged
             end
-            local ____opt_87_89 = ____opt_87
-            if ____opt_87_89 == nil then
-                ____opt_87_89 = 0
+            local ____opt_85_87 = ____opt_85
+            if ____opt_85_87 == nil then
+                ____opt_85_87 = 0
             end
-            local ____temp_93 = ("Ranged DPS  " .. tostring(____opt_87_89)) .. "   ·   Melee DPS  "
-            local ____opt_90 = Model:plan().summary
-            if ____opt_90 ~= nil then
-                ____opt_90 = ____opt_90.melee
+            local ____temp_91 = ("Ranged DPS  " .. tostring(____opt_85_87)) .. "   ·   Melee DPS  "
+            local ____opt_88 = Model:plan().summary
+            if ____opt_88 ~= nil then
+                ____opt_88 = ____opt_88.melee
             end
-            local ____opt_90_92 = ____opt_90
-            if ____opt_90_92 == nil then
-                ____opt_90_92 = 0
+            local ____opt_88_90 = ____opt_88
+            if ____opt_88_90 == nil then
+                ____opt_88_90 = 0
             end
-            ____hasPreparedCoverage_94 = ____temp_93 .. tostring(____opt_90_92)
+            ____hasPreparedCoverage_92 = ____temp_91 .. tostring(____opt_88_90)
         else
-            ____hasPreparedCoverage_94 = "Prepare a roster to inspect utility."
+            ____hasPreparedCoverage_92 = "Prepare a roster to inspect utility."
         end
-        ____coverageDamageText_SetText_95(coverageDamageText, ____hasPreparedCoverage_94)
+        ____coverageDamageText_SetText_93(coverageDamageText, ____hasPreparedCoverage_92)
         local warnings = Model:planWarnings()
         do
             local i = 0
@@ -7576,21 +7589,21 @@ function ____exports.createModernDashboard(self)
                     elseif not Model:humanReady() then
                         text = "Choose a legal role for every real player."
                     else
-                        local ____temp_98 = Model:config().mode == "RAID"
-                        if ____temp_98 then
-                            local ____temp_97 = Model:roleTargetTotal()
-                            local ____table_size_96 = Model:config().size
-                            if ____table_size_96 == nil then
-                                ____table_size_96 = 25
+                        local ____temp_96 = Model:config().mode == "RAID"
+                        if ____temp_96 then
+                            local ____temp_95 = Model:roleTargetTotal()
+                            local ____table_size_94 = Model:config().size
+                            if ____table_size_94 == nil then
+                                ____table_size_94 = 25
                             end
-                            ____temp_98 = ____temp_97 ~= __TS__Number(____table_size_96)
+                            ____temp_96 = ____temp_95 ~= __TS__Number(____table_size_94)
                         end
-                        if ____temp_98 then
-                            local ____table_size_99 = Model:config().size
-                            if ____table_size_99 == nil then
-                                ____table_size_99 = 25
+                        if ____temp_96 then
+                            local ____table_size_97 = Model:config().size
+                            if ____table_size_97 == nil then
+                                ____table_size_97 = 25
                             end
-                            text = ("Role counts must total " .. tostring(____table_size_99)) .. " before preparing."
+                            text = ("Role counts must total " .. tostring(____table_size_97)) .. " before preparing."
                         else
                             text = "Build & Prepare when the composition looks right."
                         end
@@ -7600,21 +7613,21 @@ function ____exports.createModernDashboard(self)
                 i = i + 1
             end
         end
-        local ____buildButton_setEnabled_104 = buildButton.setEnabled
-        local ____temp_103 = Model:humanReady() and not Model:isBusy()
-        if ____temp_103 then
-            local ____temp_102 = Model:config().mode ~= "RAID"
-            if not ____temp_102 then
-                local ____temp_101 = Model:roleTargetTotal()
-                local ____table_size_100 = Model:config().size
-                if ____table_size_100 == nil then
-                    ____table_size_100 = 25
+        local ____buildButton_setEnabled_102 = buildButton.setEnabled
+        local ____temp_101 = Model:humanReady() and not Model:isBusy()
+        if ____temp_101 then
+            local ____temp_100 = Model:config().mode ~= "RAID"
+            if not ____temp_100 then
+                local ____temp_99 = Model:roleTargetTotal()
+                local ____table_size_98 = Model:config().size
+                if ____table_size_98 == nil then
+                    ____table_size_98 = 25
                 end
-                ____temp_102 = ____temp_101 == __TS__Number(____table_size_100)
+                ____temp_100 = ____temp_99 == __TS__Number(____table_size_98)
             end
-            ____temp_103 = ____temp_102
+            ____temp_101 = ____temp_100
         end
-        ____buildButton_setEnabled_104(buildButton, ____temp_103)
+        ____buildButton_setEnabled_102(buildButton, ____temp_101)
         assembleButton:setEnabled(Model:plan().ready == true and Model:plan().valid == true and phase == "READY")
         assembleButton:setText(Model:isTravelRetry() and "Enter Activity" or (Model:config().mode == "RAID" and "Assemble Raid" or "Assemble Party"))
         assembleButton:setSelected(Model:plan().ready == true and Model:plan().valid == true and phase == "READY")
