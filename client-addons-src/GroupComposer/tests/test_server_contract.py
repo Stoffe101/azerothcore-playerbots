@@ -789,7 +789,7 @@ assert "const empty = Native.createText" in TEMPLATE_BROWSER and '"My Templates"
     "Template browser lost its grouped empty state or custom-template tab"
 )
 assert 'Dungeon Party Templates' in TEMPLATE_BROWSER and 'SAVE CURRENT PARTY' in TEMPLATE_BROWSER
-assert 'function P.ListCustom(mode)' in PROFILES and 'p.mode ~= "RAID"' not in PROFILES
+assert 'function P.ListCustom(mode)' in profiles_text and 'p.mode ~= "RAID"' not in profiles_text
 assert "humanEmpty" in MODERN and "pinEmpty" in MODERN, "People browser lost explicit empty states"
 assert "BUILT-IN" in TEMPLATE_BROWSER and "CUSTOM" in TEMPLATE_BROWSER, "Template cards lost their visual category tags"
 assert "_roleBadge" in MODERN and "Preferred companion" in MODERN
