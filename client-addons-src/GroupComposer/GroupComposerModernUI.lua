@@ -4389,7 +4389,6 @@ function ____exports.createModernDashboard(self)
     headerAccent:SetHeight(2)
     local mark = Native:createPanel(header.frame, theme.colors.surfaceBlue, theme.colors.primary)
     mark.frame:SetSize(48, 48)
-    Native:createChrome(mark.frame, theme.colors.primary)
     mark.frame:SetPoint(
         "LEFT",
         header.frame,
@@ -5088,13 +5087,13 @@ function ____exports.createModernDashboard(self)
         local i = 0
         while i < 5 do
             local row = Native:createPanel(dungeonView, theme.colors.surfaceRaised, theme.colors.border)
-            row.frame:SetHeight(76)
+            row.frame:SetHeight(64)
             row.frame:SetPoint(
                 "TOPLEFT",
                 dungeonView,
                 "TOPLEFT",
                 0,
-                -(i * 82)
+                -(i * 70)
             )
             row.frame:SetPoint(
                 "RIGHT",
@@ -5104,7 +5103,7 @@ function ____exports.createModernDashboard(self)
                 0
             )
             local accent = Native:createSolid(row.frame, theme.colors.dps, "ARTWORK")
-            accent:SetWidth(4)
+            accent:SetWidth(3)
             accent:SetPoint(
                 "TOPLEFT",
                 row.frame,
@@ -5119,7 +5118,7 @@ function ____exports.createModernDashboard(self)
                 0,
                 0
             )
-            local roleBadge = Native:createFramedRoleIcon(row.frame, "DPS", 44, theme.colors.borderStrong)
+            local roleBadge = Native:createFramedRoleIcon(row.frame, "DPS", 38, theme.colors.borderStrong)
             roleBadge.frame:SetPoint(
                 "LEFT",
                 row.frame,
@@ -5134,7 +5133,7 @@ function ____exports.createModernDashboard(self)
                 roleBadge.frame,
                 "RIGHT",
                 10,
-                8
+                7
             )
             local slotText = Native:createText(row.frame, "Slot", "GameFontHighlightSmall", theme.colors.muted)
             slotText:SetPoint(
@@ -5142,19 +5141,19 @@ function ____exports.createModernDashboard(self)
                 roleBadge.frame,
                 "RIGHT",
                 10,
-                -10
+                -9
             )
-            local classBadge = Native:createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 46, theme.colors.borderStrong)
+            local classBadge = Native:createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 38, theme.colors.borderStrong)
             classBadge.frame:SetPoint(
                 "LEFT",
                 row.frame,
                 "LEFT",
-                170,
+                158,
                 0
             )
             classBadge.frame:Hide()
             local classIcon = classBadge.icon
-            local specBadge = Native:createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 40, theme.colors.borderStrong)
+            local specBadge = Native:createFramedIcon(row.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 34, theme.colors.borderStrong)
             specBadge.frame:SetPoint(
                 "LEFT",
                 classBadge.frame,
@@ -5169,36 +5168,37 @@ function ____exports.createModernDashboard(self)
                 "TOPLEFT",
                 row.frame,
                 "TOPLEFT",
-                270,
-                -18
+                244,
+                -12
             )
-            name:SetWidth(350)
+            name:SetWidth(430)
             local sub = Native:createText(row.frame, "Composer chooses a suitable build", "GameFontHighlightSmall", theme.colors.muted)
             sub:SetPoint(
                 "TOPLEFT",
                 name,
                 "BOTTOMLEFT",
                 0,
-                -5
+                -4
             )
-            sub:SetWidth(390)
-            local choose = ButtonUI:createButton(row.frame, {text = "Choose build", width = 136, height = 38, accent = theme.colors.primary})
+            sub:SetWidth(430)
+            local choose = ButtonUI:createButton(row.frame, {text = "Choose build", width = 126, height = 34, accent = theme.colors.primary})
             choose.frame:SetPoint(
-                "RIGHT",
-                row.frame,
-                "RIGHT",
-                -82,
-                0
-            )
-            local auto = ButtonUI:createButton(row.frame, {text = "Auto", width = 68, height = 38})
-            auto.frame:SetPoint(
                 "RIGHT",
                 row.frame,
                 "RIGHT",
                 -12,
                 0
             )
-            local humanAnchor = ButtonUI:createButton(row.frame, {text = "Human anchor", width = 136, height = 38, accent = theme.colors.borderStrong})
+            local auto = ButtonUI:createButton(row.frame, {text = "Use Auto", width = 78, height = 34})
+            auto.frame:SetPoint(
+                "RIGHT",
+                choose.frame,
+                "LEFT",
+                -8,
+                0
+            )
+            auto.frame:Hide()
+            local humanAnchor = ButtonUI:createButton(row.frame, {text = "Human anchor", width = 126, height = 34, accent = theme.colors.borderStrong})
             humanAnchor.frame:SetPoint(
                 "RIGHT",
                 row.frame,
@@ -6971,7 +6971,11 @@ function ____exports.createModernDashboard(self)
                                 end
                             end
                         )
-                        widgets.auto.frame:Show()
+                        if exact ~= nil then
+                            widgets.auto.frame:Show()
+                        else
+                            widgets.auto.frame:Hide()
+                        end
                         __continue171 = true
                     until true
                     if not __continue171 then
@@ -7231,12 +7235,12 @@ function ____exports.createModernDashboard(self)
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue203
+                    local __continue205
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue203 = true
+                            __continue205 = true
                             break
                         end
                         local column = g % columns
@@ -7299,9 +7303,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue203 = true
+                        __continue205 = true
                     until true
-                    if not __continue203 then
+                    if not __continue205 then
                         break
                     end
                 end
