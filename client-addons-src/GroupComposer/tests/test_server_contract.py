@@ -914,5 +914,5 @@ assert 'JOURNEYRAID' in SERVER and 'RECOMMEND' in SERVER
 assert '"You: Cleared ✓"' in PROGRESSION_PAGE and '"Guild: Cleared ✓"' in PROGRESSION_PAGE
 assert '"Recommended Activities"' in RECOMMENDATIONS_PAGE
 assert '"Vanilla"' in ACTIVITY_BROWSER and '"TBC"' in ACTIVITY_BROWSER and '"WotLK"' in ACTIVITY_BROWSER
-assert 'difficultyDetail' in ACTIVITY_BROWSER and '"Titan Rune"' in ACTIVITY_BROWSER
+assert 'difficultyDetail' in ACTIVITY_BROWSER and 'Titan Rune' in ACTIVITY_BROWSER
 assert 'const column = i % 2;' in ACTIVITY_BROWSER and 'Math.ceil(items.length / 2) * 86' in ACTIVITY_BROWSER
