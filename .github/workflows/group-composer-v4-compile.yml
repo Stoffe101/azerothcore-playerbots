@@ -75,13 +75,19 @@ jobs:
           grep -q 'InternalTalentResetScope internalReset' "$ERA/EraTransition.cpp"
           grep -q 'bool IsInternalTalentReset()' "$ERA/EraTransition.cpp"
           grep -q 'if (EraTransition::IsInternalTalentReset())' "$ERA/EraTalentPin.cpp"
-          grep -q 'if (noCost && !p->IsInWorld())' "$ERA/EraTalentPin.cpp"
-          # Internal native-spec cleanup and login-time native resets must never delete the custom era talent rows.
+          grep -q 'p->GetSession() && p->GetSession()->PlayerLoading()' "$ERA/EraTalentPin.cpp"
+          grep -q 'HasAtLoginFlag(AT_LOGIN_RESET_TALENTS)' "$ERA/EraTalentPin.cpp"
+          ! grep -q 'if (noCost && !p->IsInWorld())' "$ERA/EraTalentPin.cpp"
+          # Internal native-spec cleanup and every reset fired while WorldSession is still loading
+          # must never delete the custom era talent rows. IsInWorld is not a login boundary: the
+          # core consumes AT_LOGIN_RESET_TALENTS after AddPlayerToMap but before PlayerLoading=false.
           python3 - <<'PY'
           from pathlib import Path
           text = Path("azerothcore-wotlk/modules/mod-era-talents/src/EraTalentPin.cpp").read_text()
           hook = text[text.index("void OnPlayerTalentsReset"):text.index("private:", text.index("void OnPlayerTalentsReset"))]
           assert hook.index("IsInternalTalentReset") < hook.index("EraTalents::Reset"), hook
+          assert hook.index("PlayerLoading()") < hook.index("EraTalents::Reset"), hook
+          assert "noCost && !p->IsInWorld()" not in hook, hook
           print("EraTalents relog persistence guard contract passed")
           PY
 
