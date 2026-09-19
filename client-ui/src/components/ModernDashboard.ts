@@ -908,6 +908,7 @@ export function createModernDashboard(): Dashboard {
 
     let showAssembleConfirm = () => {};
     let showTeleportConfirm = () => {};
+    let showGroupActions = () => {};
     const teleportButton = ButtonUI.createButton(status.frame, {
         text: "Teleport to Instance", width: 270, height: 52, accent: theme.colors.primary, emphasis: true,
         onClick: () => showTeleportConfirm(),
@@ -919,6 +920,13 @@ export function createModernDashboard(): Dashboard {
     assembleButton.frame.SetPoint("BOTTOMLEFT", status.frame, "BOTTOMLEFT", 16, 18);
     const resetButton = ButtonUI.createButton(status.frame, { text: "Reset", width: 68, height: 46, accent: theme.colors.error, onClick: () => Model.clearPlan() });
     resetButton.frame.SetPoint("LEFT", assembleButton.frame, "RIGHT", 8, 0);
+
+    const groupActionsButton = ButtonUI.createButton(status.frame, {
+        text: "Group Actions", width: 270, height: 46, accent: theme.colors.warning,
+        onClick: () => showGroupActions(),
+    });
+    groupActionsButton.frame.SetPoint("BOTTOMLEFT", status.frame, "BOTTOMLEFT", 16, 18);
+    groupActionsButton.frame.Hide();
 
     // Templates browser ------------------------------------------------------
     showTemplates = () => {
@@ -1309,6 +1317,148 @@ export function createModernDashboard(): Dashboard {
         confirmModal.show();
     };
 
+    // Member rationale -------------------------------------------------------
+    const memberModal = ModalUI.createModal(frame, 680, 410);
+    memberModal.setHeaderIcon("Interface\\Icons\\INV_Misc_Note_05");
+    memberModal.setTitle("Why this member?");
+    memberModal.setSubtitle("Group Composer selection rationale.");
+
+    const memberSummary = Native.createText(memberModal.content, "", "GameFontNormal", theme.colors.primary);
+    memberSummary.SetPoint("TOPLEFT", memberModal.content, "TOPLEFT", 8, -6);
+    memberSummary.SetWidth(600);
+    const memberSource = Native.createText(memberModal.content, "", "GameFontHighlightSmall", theme.colors.muted);
+    memberSource.SetPoint("TOPLEFT", memberSummary, "BOTTOMLEFT", 0, -7);
+    memberSource.SetWidth(600);
+
+    const whyTitle = Native.createText(memberModal.content, "WHY COMPOSER CHOSE THIS MEMBER", "GameFontNormalSmall", theme.colors.warning);
+    whyTitle.SetPoint("TOPLEFT", memberModal.content, "TOPLEFT", 8, -82);
+    const memberWhy = Native.createText(memberModal.content, "", "GameFontHighlight", theme.colors.text);
+    memberWhy.SetPoint("TOPLEFT", whyTitle, "BOTTOMLEFT", 0, -10);
+    memberWhy.SetWidth(610);
+    memberWhy.SetHeight(190);
+    memberWhy.SetJustifyV("TOP");
+
+    const memberHint = Native.createText(
+        memberModal.content,
+        "This explanation comes from the server-reviewed roster snapshot. Rebuilding may choose a different bot if availability, guild state, level band or utility coverage changes.",
+        "GameFontHighlightSmall",
+        theme.colors.muted,
+    );
+    memberHint.SetPoint("BOTTOMLEFT", memberModal.content, "BOTTOMLEFT", 8, 8);
+    memberHint.SetWidth(610);
+    memberHint.SetJustifyV("BOTTOM");
+
+    function sourceLabel(source: string): string {
+        if (source === "HUMAN") return "Real player anchor";
+        if (source === "GUILD") return "Guild companion";
+        if (source === "RESERVE") return "Composer reserve";
+        if (source === "ROSTER") return "Managed Composer capacity";
+        return "World bot";
+    }
+
+    function showMemberDetails(member: Model.PlanMember): void {
+        const role = Model.roleLabel(member.role);
+        const level = String(member.level ?? "?");
+        const spec = String(member.spec ?? Model.classLabel(String(member.class)));
+        memberModal.setTitle(member.human ? "Why is this player anchored?" : "Why this bot?");
+        memberModal.setSubtitle(String(member.name));
+        memberSummary.SetText("Level " + level + "  ·  " + spec + "  ·  " + role);
+        memberSource.SetText(
+            sourceLabel(String(member.source ?? "WORLD")) +
+            (member.pinned ? "  ·  PINNED" : "") +
+            (member.locked ? "  ·  ALREADY GROUPED" : "") +
+            (member.needsPreparation ? "  ·  PREPARATION NEEDED" : "")
+        );
+        memberWhy.SetText(String(member.why ?? "Composer selected this member because it matched the reviewed roster requirements."));
+        memberModal.show();
+    }
+
+    // Post-assembly lifecycle ------------------------------------------------
+    const groupActionsModal = ModalUI.createModal(frame, 650, 430);
+    groupActionsModal.setHeaderIcon("Interface\\Icons\\INV_Misc_GroupLooking");
+    groupActionsModal.setTitle("Assembled Group Actions");
+    groupActionsModal.setSubtitle("Keep the current composition useful after assembly and instance travel.");
+
+    const groupActionsIntro = Native.createText(
+        groupActionsModal.content,
+        "These actions preserve the deliberate Composer lifecycle. Rebuild/Repair keeps the current configuration and treats live members as sticky anchors.",
+        "GameFontHighlight",
+        theme.colors.muted,
+    );
+    groupActionsIntro.SetPoint("TOPLEFT", groupActionsModal.content, "TOPLEFT", 8, -6);
+    groupActionsIntro.SetWidth(570);
+    groupActionsIntro.SetHeight(56);
+    groupActionsIntro.SetJustifyV("TOP");
+
+    const rebuildAction = ButtonUI.createButton(groupActionsModal.content, {
+        text: "Rebuild / Repair Roster", width: 260, height: 44, accent: theme.colors.primary, emphasis: true,
+        onClick: () => {
+            groupActionsModal.hide();
+            Model.rebuildOrRepair();
+        },
+    });
+    rebuildAction.frame.SetPoint("TOPLEFT", groupActionsModal.content, "TOPLEFT", 8, -86);
+
+    const rebuildHint = Native.createText(
+        groupActionsModal.content,
+        "Re-run Build & Prepare with this setup. Existing valid group members stay sticky; missing slots are filled again.",
+        "GameFontHighlightSmall",
+        theme.colors.muted,
+    );
+    rebuildHint.SetPoint("TOPLEFT", rebuildAction.frame, "BOTTOMLEFT", 0, -7);
+    rebuildHint.SetWidth(560);
+
+    const leaveAction = ButtonUI.createButton(groupActionsModal.content, {
+        text: "Leave Instance Together", width: 260, height: 44, accent: theme.colors.success,
+        onClick: () => {
+            groupActionsModal.hide();
+            Model.leaveInstance();
+        },
+    });
+    leaveAction.frame.SetPoint("TOPLEFT", groupActionsModal.content, "TOPLEFT", 8, -178);
+
+    const leaveHint = Native.createText(
+        groupActionsModal.content,
+        "Use AzerothCore's canonical instance exit. The reviewed group stays assembled so you can re-enter later.",
+        "GameFontHighlightSmall",
+        theme.colors.muted,
+    );
+    leaveHint.SetPoint("TOPLEFT", leaveAction.frame, "BOTTOMLEFT", 0, -7);
+    leaveHint.SetWidth(560);
+
+    const disbandAction = ButtonUI.createButton(groupActionsModal.content, {
+        text: "Disband Composer Group", width: 260, height: 44, accent: theme.colors.error,
+    });
+    disbandAction.frame.SetPoint("TOPLEFT", groupActionsModal.content, "TOPLEFT", 8, -270);
+
+    const disbandHint = Native.createText(
+        groupActionsModal.content,
+        "Only the real leader can do this, and Composer refuses if the live group contains someone outside the reviewed roster.",
+        "GameFontHighlightSmall",
+        theme.colors.muted,
+    );
+    disbandHint.SetPoint("TOPLEFT", disbandAction.frame, "BOTTOMLEFT", 0, -7);
+    disbandHint.SetWidth(560);
+
+    showGroupActions = () => {
+        if (!Model.isAssembled()) {
+            Model.fireStatus("Assemble the reviewed roster before using group lifecycle actions.");
+            return;
+        }
+        groupActionsModal.show();
+    };
+
+    disbandAction.frame.SetScript("OnMouseDown", () => {
+        groupActionsModal.hide();
+        confirmAction = () => Model.disbandComposerGroup();
+        confirmModal.setHeaderIcon("Interface\\Icons\\Ability_Rogue_FeignDeath");
+        confirmModal.setTitle("Disband Composer group?");
+        confirmModal.setSubtitle("This removes the reviewed live party/raid. Your saved configuration remains.");
+        confirmText.SetText("Composer will only disband if you are the real group leader and the live group still exactly matches the reviewed roster. Unreviewed players are protected.");
+        confirmGo.setText("Disband");
+        confirmModal.show();
+    });
+
     // Refresh helpers --------------------------------------------------------
     function refreshActivity(): void {
         const cfg = Model.config();
@@ -1382,6 +1532,8 @@ export function createModernDashboard(): Dashboard {
         for (let i = 0; i < dungeonRows.length; i += 1) {
             const widgets = dungeonRows[i];
             const slot = slots[i];
+            widgets.row.frame.EnableMouse(false);
+            widgets.row.frame.SetScript("OnMouseDown", () => {});
             const accent = Model.roleAccent(slot.role);
             Native.setTextureColor(widgets.accent, accent);
             widgets.row.outline.setColor(theme.colors.borderStrong);
@@ -1421,8 +1573,12 @@ export function createModernDashboard(): Dashboard {
                 widgets.name.SetText(String(prepared.name));
                 widgets.sub.SetText(
                     "Lv " + String(prepared.level ?? "?") + "  ·  " +
-                    String(prepared.spec || Model.classLabel(String(prepared.class))) + "  ·  " + String(prepared.source ?? "Bot")
+                    String(prepared.spec || Model.classLabel(String(prepared.class))) + "  ·  " +
+                    String(prepared.source ?? "Bot") + "  ·  click for why"
                 );
+                const preparedCopy = prepared as Model.PlanMember;
+                widgets.row.frame.EnableMouse(true);
+                widgets.row.frame.SetScript("OnMouseDown", () => showMemberDetails(preparedCopy));
             } else if (exact !== undefined) {
                 Native.setClassIcon(widgets.classIcon, exact.classId);
                 widgets.classBadge.frame.Show();
@@ -1657,6 +1813,8 @@ export function createModernDashboard(): Dashboard {
                 rowWidgets.spec.SetWidth(textWidth);
 
                 if (member === undefined) {
+                    rowWidgets.row.EnableMouse(false);
+                    rowWidgets.row.SetScript("OnMouseDown", () => {});
                     rowWidgets.iconBadge.frame.Hide();
                     rowWidgets.roleIcon.Hide();
                     rowWidgets.name.SetText("Empty slot");
@@ -1679,8 +1837,11 @@ export function createModernDashboard(): Dashboard {
 
                     rowWidgets.spec.SetText(
                         "Lv " + String(member.level ?? "?") + "  ·  " +
-                        String(member.spec ?? Model.classLabel(String(member.class)))
+                        String(member.spec ?? Model.classLabel(String(member.class))) + "  ·  click for why"
                     );
+                    const memberCopy = member as Model.PlanMember;
+                    rowWidgets.row.EnableMouse(true);
+                    rowWidgets.row.SetScript("OnMouseDown", () => showMemberDetails(memberCopy));
                     rowWidgets.spec.SetTextColor(theme.colors.muted[0], theme.colors.muted[1], theme.colors.muted[2], 1);
                     Native.setTextureColor(rowWidgets.roleBar, accent);
                     Native.setTextureColor(rowWidgets.rowBg, Native.withAlpha(accent, member.isPlayer ? 0.10 : 0.045));
@@ -1813,6 +1974,8 @@ export function createModernDashboard(): Dashboard {
             nextText = "Choose a legal role for every real player.";
         } else if (Model.config().mode === "RAID" && Model.roleTargetTotal() !== Number(Model.config().size ?? 25)) {
             nextText = "Role counts must total " + String(Model.config().size ?? 25) + " before preparing.";
+        } else if (phase === "DONE" && Model.isAssembled()) {
+            nextText = "Group is assembled and the latest lifecycle action completed. Use Group Actions to repair, leave the instance together, or disband safely.";
         } else if (phase === "ASSEMBLED") {
             nextText = Model.hasFixedActivityDestination()
                 ? "Group assembled. Press Teleport to Instance when everyone is ready."
@@ -1839,9 +2002,9 @@ export function createModernDashboard(): Dashboard {
         nextDetail.SetTextColor(nextColor[0], nextColor[1], nextColor[2], 1);
         nextDetail.SetText(nextText);
 
-        const assembled = phase === "ASSEMBLED";
+        const assembled = Model.isAssembled();
         const activityAvailable = selectedAccess.known && selectedAccess.eligible;
-        const canTeleport = assembled && activityAvailable && Model.hasFixedActivityDestination();
+        const canTeleport = phase === "ASSEMBLED" && activityAvailable && Model.hasFixedActivityDestination();
         buildButton.setEnabled(activityAvailable && Model.humanReady() && !Model.isBusy() && !assembled && (Model.config().mode !== "RAID" || Model.roleTargetTotal() === Number(Model.config().size ?? 25)));
         if (assembled) buildButton.frame.Hide(); else buildButton.frame.Show();
 
@@ -1851,7 +2014,15 @@ export function createModernDashboard(): Dashboard {
         assembleButton.setEnabled(Model.plan().ready === true && Model.plan().valid === true && phase === "READY");
         assembleButton.setText(Model.config().mode === "RAID" ? "Assemble Raid" : "Assemble Party");
         assembleButton.setSelected(Model.plan().ready === true && Model.plan().valid === true && phase === "READY");
-        if (assembled) assembleButton.frame.Hide(); else assembleButton.frame.Show();
+        if (assembled) {
+            assembleButton.frame.Hide();
+            resetButton.frame.Hide();
+            groupActionsButton.frame.Show();
+        } else {
+            assembleButton.frame.Show();
+            resetButton.frame.Show();
+            groupActionsButton.frame.Hide();
+        }
     }
 
     // Full workspace pages ----------------------------------------------------

@@ -258,7 +258,9 @@ Planned/current lifecycle controls include:
 - **Rebuild / Repair Roster** using the current configuration and live group as sticky anchors;
 - **Leave Instance** using AzerothCore's canonical go-back trigger while keeping the reviewed group assembled;
 - **Disband Composer Group** with strict leader/exact-roster safeguards so Composer cannot remove an unreviewed player;
-- member-level **Why was this bot selected?** rationale including role/spec, guild preference, pinned/sticky status, source pool, readiness, utility, current item level when available and peer-level eligibility.
+- an in-addon **Group Actions** modal for Rebuild/Repair, Leave Instance Together and safe disband;
+- clickable prepared dungeon/raid roster members with a **Why this bot?** explanation;
+- member-level rationale including role/spec, guild preference, pinned/sticky status, source pool, readiness, utility, current item level when available and peer-level eligibility.
 
 ### Existing deployment safety
 

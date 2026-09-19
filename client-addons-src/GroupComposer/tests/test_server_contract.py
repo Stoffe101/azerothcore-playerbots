@@ -948,3 +948,8 @@ assert "MemberSelectionReason" in SERVER and "MemberUtilitySummary" in SERVER
 assert 'Sanitize(MemberSelectionReason(member, plan.config))' in SERVER
 assert 'why = fields[15] or ""' in CORE
 assert "function GC:LeaveInstance()" in CORE and "function GC:DisbandComposerGroup()" in CORE
+
+assert "Group Actions" in MODERN and "Leave Instance Together" in MODERN
+assert "Rebuild / Repair Roster" in MODERN and "Disband Composer Group" in MODERN
+assert "Why this bot?" in MODERN and "click for why" in MODERN
+assert "showMemberDetails" in MODERN and "member.why" in MODERN
