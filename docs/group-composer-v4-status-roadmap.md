@@ -249,6 +249,17 @@ It includes:
 - TBC/WotLK destination locks;
 - Vanilla-first presentation instead of assuming TBC is the baseline.
 
+### Post-assembly lifecycle and roster explanations
+
+The reviewed roster now remains useful after assembly/teleport instead of becoming a dead-end state.
+
+Planned/current lifecycle controls include:
+
+- **Rebuild / Repair Roster** using the current configuration and live group as sticky anchors;
+- **Leave Instance** using AzerothCore's canonical go-back trigger while keeping the reviewed group assembled;
+- **Disband Composer Group** with strict leader/exact-roster safeguards so Composer cannot remove an unreviewed player;
+- member-level **Why was this bot selected?** rationale including role/spec, guild preference, pinned/sticky status, source pool, readiness, utility, current item level when available and peer-level eligibility.
+
 ### Existing deployment safety
 
 The server's public-access support already has useful hardening:

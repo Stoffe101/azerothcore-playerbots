@@ -356,6 +356,24 @@ function GC:TeleportToInstance()
     return true
 end
 
+function GC:LeaveInstance()
+    if not GC.plan.ready or not GC.plan.valid then
+        GC:Fire("STATUS", "Build and assemble a valid roster first.")
+        return false
+    end
+    GC:SendServer("leave", "Leaving the instance with the reviewed group...")
+    return true
+end
+
+function GC:DisbandComposerGroup()
+    if not GC.plan.ready or not GC.plan.valid then
+        GC:Fire("STATUS", "There is no active Composer roster to disband.")
+        return false
+    end
+    GC:SendServer("disband", "Disbanding the Composer group...")
+    return true
+end
+
 function GC:AutoArrange()
     if not GC.plan.ready then GC:Fire("STATUS", "Find a roster first."); return false end
     GC:SendServer("arrange", "Auto-arranging subgroups...")
@@ -507,6 +525,7 @@ function GC:HandleProtocolMessage(message)
             human = fields[8] == "1", locked = fields[9] == "1", pinned = fields[10] == "1",
             needsPreparation = fields[11] == "1", reserve = fields[12] == "1", isPlayer = fields[13] == "1",
             level = ParseNumber(fields[14], 0),
+            why = fields[15] or "",
         }
     elseif kind == "COVERAGE" then
         GC.plan.summary.ranged = ParseNumber(fields[2], 0); GC.plan.summary.melee = ParseNumber(fields[3], 0); GC.plan.summary.utility = fields[4] or ""

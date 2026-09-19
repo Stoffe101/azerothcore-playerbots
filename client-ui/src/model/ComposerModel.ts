@@ -86,6 +86,7 @@ export interface PlanMember {
     reserve: boolean;
     isPlayer: boolean;
     level?: number;
+    why?: string;
 }
 
 const GC: any = _G.GroupComposer;
@@ -695,6 +696,9 @@ export function setHumanRole(name: string, role: Role): void { GC.SetHumanRole(n
 export function buildAndPrepare(): void { GC.FindRoster(); }
 export function assemble(): void { GC.Assemble(); }
 export function teleportToInstance(): void { GC.TeleportToInstance(); }
+export function leaveInstance(): void { GC.LeaveInstance(); }
+export function disbandComposerGroup(): void { GC.DisbandComposerGroup(); }
+export function rebuildOrRepair(): void { GC.FindRoster(); }
 export function requestAnchors(): void { GC.RequestAnchors(); }
 export function requestStatus(): void { GC.RequestStatus(); }
 export function clearPlan(): void { GC.ClearServerPlan(); }
@@ -750,7 +754,8 @@ export function isBusy(): boolean {
 }
 
 export function isAssembled(): boolean {
-    return String(progress().phase ?? "") === "ASSEMBLED";
+    const phase = String(progress().phase ?? "");
+    return phase === "ASSEMBLED" || phase === "DONE";
 }
 
 export function hasFixedActivityDestination(): boolean {

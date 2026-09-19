@@ -227,6 +227,69 @@ char const* SourceToken(Member const& member)
     return "WORLD";
 }
 
+std::string MemberUtilitySummary(uint32 mask)
+{
+    std::vector<std::string> labels;
+    if (mask & UTILITY_INTERRUPT) labels.emplace_back("interrupt");
+    if (mask & UTILITY_DISPEL) labels.emplace_back("dispel/cleanse");
+    if (mask & UTILITY_RAID_BUFF) labels.emplace_back("group buffs");
+    if (mask & UTILITY_HEROISM) labels.emplace_back("Heroism/Bloodlust");
+    if (mask & UTILITY_BATTLE_REZ) labels.emplace_back("battle resurrection");
+    if (mask & UTILITY_CC) labels.emplace_back("crowd control");
+    if (mask & UTILITY_THREAT) labels.emplace_back("threat support");
+    if (labels.empty()) return "";
+
+    std::string out;
+    for (std::size_t i = 0; i < labels.size(); ++i)
+    {
+        if (i) out += ", ";
+        out += labels[i];
+    }
+    return out;
+}
+
+std::string MemberSelectionReason(Member const& member, Config const& config)
+{
+    if (member.human)
+        return "Real-player anchor. Composer preserves this player and fills the remaining " +
+            std::string(RoleToken(member.role)) + " slots around them.";
+
+    std::vector<std::string> reasons;
+    reasons.emplace_back("Fills a " + std::string(RoleToken(member.role)) + " slot as " +
+        std::string(SpecName(member.cls, member.spec)) + " " + ClassToken(member.cls));
+
+    if (member.locked) reasons.emplace_back("already in your live group, so Composer kept it as a sticky anchor");
+    if (member.pinned) reasons.emplace_back("explicitly pinned by you");
+    if (member.guild)
+        reasons.emplace_back(config.preferGuild ? "guild member matched your Prefer Guild Bots setting" : "eligible guild member");
+    else if (member.reserve)
+        reasons.emplace_back("safe Composer reserve capacity");
+    else if (member.managed)
+        reasons.emplace_back("managed Composer capacity that can be prepared safely");
+    else
+        reasons.emplace_back("available world bot");
+
+    if (member.online) reasons.emplace_back("already online");
+    if (member.needsPreparation) reasons.emplace_back("Composer can reconcile its role/spec/build before assembly");
+
+    std::string utility = MemberUtilitySummary(member.utilityMask);
+    if (!utility.empty()) reasons.emplace_back("utility: " + utility);
+
+    if (Player* live = ObjectAccessor::FindConnectedPlayer(member.guid))
+        reasons.emplace_back("current ilvl " + std::to_string(uint32(live->GetAverageItemLevel() + 0.5f)));
+
+    reasons.emplace_back("level " + std::to_string(unsigned(member.level)) +
+        " is inside the activity peer band");
+
+    std::string out;
+    for (std::size_t i = 0; i < reasons.size(); ++i)
+    {
+        if (i) out += " • ";
+        out += reasons[i];
+    }
+    return out;
+}
+
 void SendPlan(ChatHandler* handler, Plan const& plan)
 {
     if (!handler) return;
@@ -243,11 +306,12 @@ void SendPlan(ChatHandler* handler, Plan const& plan)
         if (member.human) ++humans;
         else if (member.guild) ++guild;
         else ++world;
-        handler->PSendSysMessage("[GC]|MEMBER|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+        handler->PSendSysMessage("[GC]|MEMBER|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             uint32(member.subgroup), Sanitize(member.name), RoleToken(member.role), ClassToken(member.cls),
             SpecName(member.cls, member.spec), SourceToken(member), member.human ? 1 : 0,
             member.locked ? 1 : 0, member.pinned ? 1 : 0, member.needsPreparation ? 1 : 0,
-            member.reserve ? 1 : 0, viewer && member.guid == viewer->GetGUID() ? 1 : 0, uint32(member.level));
+            member.reserve ? 1 : 0, viewer && member.guid == viewer->GetGUID() ? 1 : 0, uint32(member.level),
+            Sanitize(MemberSelectionReason(member, plan.config)));
     }
 
     handler->PSendSysMessage("[GC]|COVERAGE|{}|{}|{}", uint32(plan.coverage.rangedDps),
@@ -2133,6 +2197,8 @@ ChatCommandTable GroupComposerCommand::GetCommands() const
         { "move",        HandleMove,              SEC_PLAYER, Console::No },
         { "assemble",    HandleAssemble,          SEC_PLAYER, Console::No },
         { "teleport",    HandleTeleport,          SEC_PLAYER, Console::No },
+        { "leave",       HandleLeaveInstance,     SEC_PLAYER, Console::No },
+        { "disband",     HandleDisband,           SEC_PLAYER, Console::No },
         { "activities",  HandleActivities,        SEC_PLAYER, Console::No },
         { "journey",     HandleJourney,           SEC_PLAYER, Console::No },
         { "queue",       HandleQueue,             SEC_PLAYER, Console::No },
@@ -2441,6 +2507,135 @@ bool GroupComposerCommand::HandleTeleport(ChatHandler* handler)
     SendProgress(master, "TRAVEL", uint32(plan.members.size()), uint32(plan.members.size()),
         "Teleport confirmed. Checking access and entering the selected instance...");
     handler->SendSysMessage("[GC]|STATUS|Teleport confirmed. Validating instance access for the full group.");
+    return true;
+}
+
+bool GroupComposerCommand::HandleLeaveInstance(ChatHandler* handler)
+{
+    Player* master = CommandPlayer(handler);
+    if (!master) return true;
+    uint32 const owner = master->GetGUID().GetCounter();
+    auto itr = s_plans.find(owner);
+    if (itr == s_plans.end() || !itr->second.valid || !itr->second.assembled)
+    {
+        SendError(handler, "Leave Instance requires an assembled Composer group.");
+        return true;
+    }
+
+    Plan& plan = itr->second;
+    if (plan.assembling || plan.travelPending)
+    {
+        SendError(handler, "Wait for the current assembly/travel action to finish first.");
+        return true;
+    }
+
+    Group* group = master->GetGroup();
+    if (!group || !PlanMembershipComplete(master, plan))
+    {
+        SendError(handler, "The reviewed Composer group is no longer complete. Rebuild the roster before using group travel.");
+        return true;
+    }
+
+    if (!master->GetInstanceId())
+    {
+        SendError(handler, "You are not currently inside an instanced dungeon or raid.");
+        return true;
+    }
+
+    uint32 const instanceMap = master->GetMapId();
+    uint32 const instanceId = master->GetInstanceId();
+    AreaTriggerTeleport const* exit = sObjectMgr->GetGoBackTrigger(instanceMap);
+    if (!exit)
+    {
+        SendError(handler, "AzerothCore has no canonical exit trigger for this instance.");
+        return true;
+    }
+
+    std::vector<Player*> travelers;
+    for (Member const& member : plan.members)
+    {
+        Player* player = ObjectAccessor::FindConnectedPlayer(member.guid);
+        if (!player || player->GetGroup() != group) continue;
+        if (player->GetMapId() != instanceMap || player->GetInstanceId() != instanceId) continue;
+        if (player->IsInCombat())
+        {
+            SendError(handler, "'" + member.name + "' is in combat. The full in-instance group must be out of combat before leaving.");
+            return true;
+        }
+        if (player->IsBeingTeleported())
+        {
+            SendError(handler, "'" + member.name + "' is already being teleported. Wait a moment and retry.");
+            return true;
+        }
+        travelers.push_back(player);
+    }
+
+    if (travelers.empty())
+    {
+        SendError(handler, "No reviewed group members are currently inside your instance copy.");
+        return true;
+    }
+
+    for (Player* player : travelers)
+        if (!player->TeleportTo(exit->target_mapId, exit->target_X, exit->target_Y, exit->target_Z, exit->target_Orientation))
+        {
+            SendError(handler, "AzerothCore rejected the instance-exit teleport for one of the reviewed group members.");
+            return true;
+        }
+
+    std::string detail = "Group left the instance together. The reviewed roster remains assembled and can re-enter later.";
+    SendProgress(master, "ASSEMBLED", uint32(plan.members.size()), uint32(plan.members.size()), detail);
+    SendProtocol(master, "DONE", detail);
+    return true;
+}
+
+bool GroupComposerCommand::HandleDisband(ChatHandler* handler)
+{
+    Player* master = CommandPlayer(handler);
+    if (!master) return true;
+    uint32 const owner = master->GetGUID().GetCounter();
+    auto itr = s_plans.find(owner);
+    if (itr == s_plans.end() || !itr->second.valid)
+    {
+        SendError(handler, "There is no active Composer roster to disband.");
+        return true;
+    }
+
+    Plan& plan = itr->second;
+    if (plan.assembling || plan.travelPending)
+    {
+        SendError(handler, "Wait for the current assembly/travel action to finish before disbanding.");
+        return true;
+    }
+
+    Group* group = master->GetGroup();
+    if (!group)
+    {
+        Reserve::ReleaseOwner(owner);
+        ClearPendingForOwner(owner);
+        s_plans.erase(owner);
+        handler->SendSysMessage("[GC]|RESET");
+        handler->SendSysMessage("[GC]|DONE|Composer roster cleared; there was no live group to disband.");
+        return true;
+    }
+
+    if (group->GetLeaderGUID() != master->GetGUID())
+    {
+        SendError(handler, "Only the real group leader can use Disband Composer Group.");
+        return true;
+    }
+    if (!PlanMembershipComplete(master, plan))
+    {
+        SendError(handler, "The live group no longer exactly matches the reviewed Composer roster. Disband manually so Composer cannot remove an unreviewed player.");
+        return true;
+    }
+
+    Reserve::ReleaseOwner(owner);
+    ClearPendingForOwner(owner);
+    s_plans.erase(owner);
+    group->Disband();
+    handler->SendSysMessage("[GC]|RESET");
+    handler->SendSysMessage("[GC]|DONE|Composer group disbanded. Your configuration is still available for another Build & Prepare.");
     return true;
 }
 

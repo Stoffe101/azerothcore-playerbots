@@ -108,7 +108,7 @@ assert "GetLFGDungeon(mapId, difficulty)" in SERVER
 
 for command in (
     "begin", "pref", "humanrole", "human", "pin", "arrangepref", "find", "arrange",
-    "move", "assemble", "teleport", "activities", "journey", "queue", "anchors", "diagnostics", "clear", "status",
+    "move", "assemble", "teleport", "leave", "disband", "activities", "journey", "queue", "anchors", "diagnostics", "clear", "status",
 ):
     assert re.search(r'\{\s*"' + re.escape(command) + r'"\s*,', SERVER), (
         f"Missing server command registration: {command}"
@@ -938,3 +938,13 @@ assert 'toggleFavorite' in MODEL and 'recentActivityIds' in MODEL
 assert 'function P.ToggleFavorite' in profiles_text and 'function P.MarkRecent' in profiles_text
 assert 'P.MarkRecent(GC:GetConfig().mode, GC:GetConfig().activity)' in CORE
 assert 'const column = i % 2;' in ACTIVITY_BROWSER and 'Math.ceil(items.length / 2) * 86' in ACTIVITY_BROWSER
+
+
+# Post-assembly lifecycle and member rationale contracts.
+assert "HandleLeaveInstance" in SERVER and "GetGoBackTrigger" in SERVER
+assert "HandleDisband" in SERVER and "group->Disband()" in SERVER
+assert "PlanMembershipComplete(master, plan)" in SERVER
+assert "MemberSelectionReason" in SERVER and "MemberUtilitySummary" in SERVER
+assert 'Sanitize(MemberSelectionReason(member, plan.config))' in SERVER
+assert 'why = fields[15] or ""' in CORE
+assert "function GC:LeaveInstance()" in CORE and "function GC:DisbandComposerGroup()" in CORE
