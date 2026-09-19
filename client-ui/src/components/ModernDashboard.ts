@@ -1,5 +1,7 @@
 import type { BuildSelection } from "./BuildSelector";
 import * as BuildSelectorUI from "./BuildSelector";
+import * as ActivityBrowserUI from "./ActivityBrowser";
+import * as TemplateBrowserUI from "./TemplateBrowser";
 import * as Native from "../core/Native";
 import type { ClassId, Role } from "../data/WotlkBuilds";
 import * as Builds from "../data/WotlkBuilds";
@@ -51,7 +53,7 @@ interface DungeonSlot {
 }
 
 function colorForPhase(phase: string) {
-    if (phase === "READY" || phase === "DONE") return theme.colors.success;
+    if (phase === "READY" || phase === "ASSEMBLED" || phase === "DONE") return theme.colors.success;
     if (phase === "ERROR") return theme.colors.error;
     if (phase === "PREPARING" || phase === "BUILDING" || phase === "ASSEMBLING" || phase === "TRAVEL") return theme.colors.warning;
     return theme.colors.primary;
@@ -142,14 +144,14 @@ function specIdFromLabel(classId: string, label: string): number | undefined {
 function activitySubtitle(): string {
     const cfg = Model.config();
     if (cfg.mode === "RAID") {
-        return String(cfg.size) + " player  ·  " + (cfg.difficulty === "heroic" ? "Heroic" : "Normal") + "  ·  Auto-enter after assembly";
+        return String(cfg.size) + " player  ·  " + (cfg.difficulty === "heroic" ? "Heroic" : "Normal") + "  ·  Teleport after assembly";
     }
     const mode =
         cfg.difficulty === "alpha" ? "Titan Rune Alpha" :
         cfg.difficulty === "beta" ? "Titan Rune Beta" :
         cfg.difficulty === "gamma" ? "Titan Rune Gamma" :
         cfg.difficulty === "heroic" ? "Heroic" : "Normal";
-    return mode + "  ·  5 player  ·  " + (cfg.activity === "random" ? "Dungeon Finder chooses destination" : "Auto-enter after assembly");
+    return mode + "  ·  5 player  ·  " + (cfg.activity === "random" ? "Dungeon Finder chooses destination" : "Teleport when ready");
 }
 
 export function createModernDashboard(): Dashboard {
@@ -268,6 +270,9 @@ export function createModernDashboard(): Dashboard {
     status.frame.SetPoint("TOPLEFT", frame, "TOPLEFT", 1186, -88);
     status.frame.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -16, 16);
 
+    const activityBrowser = ActivityBrowserUI.createActivityBrowser(frame);
+    const templatesBrowser = TemplateBrowserUI.createTemplateBrowser(frame);
+
     let statusNotice = "";
 
     // Activity ---------------------------------------------------------------
@@ -301,17 +306,11 @@ export function createModernDashboard(): Dashboard {
     const difficultyFieldLabel = Native.createText(activity.frame, "DIFFICULTY", "GameFontNormalSmall", theme.colors.muted);
     difficultyFieldLabel.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 702, -12);
 
-    const activitySelect = ChoiceUI.createChoiceSelect(activity.frame, {
-        width: 344,
-        maxVisible: 10,
-        getItems: () => Model.config().mode === "RAID" ? Model.raidItems() : Model.dungeonItems(),
-        getValue: () => Model.config().activity,
-        onChange: (value) => {
-            if (Model.config().mode === "RAID") Model.setRaidActivity(String(value));
-            else Model.setDungeonActivity(String(value));
-        },
+    const activityBrowse = ButtonUI.createButton(activity.frame, {
+        text: "Browse Dungeons", width: 344, height: 38, accent: theme.colors.primary,
+        icon: ICON_COVERAGE, iconSize: 22, onClick: () => activityBrowser.open(),
     });
-    activitySelect.frame.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 330, -36);
+    activityBrowse.frame.SetPoint("TOPLEFT", activity.frame, "TOPLEFT", 330, -36);
 
     const difficultySelect = ChoiceUI.createChoiceSelect(activity.frame, {
         width: 170,
@@ -874,174 +873,23 @@ export function createModernDashboard(): Dashboard {
     buildButton.frame.SetPoint("BOTTOMLEFT", status.frame, "BOTTOMLEFT", 16, 66);
 
     let showAssembleConfirm = () => {};
+    let showTeleportConfirm = () => {};
+    const teleportButton = ButtonUI.createButton(status.frame, {
+        text: "Teleport to Instance", width: 270, height: 52, accent: theme.colors.primary, emphasis: true,
+        onClick: () => showTeleportConfirm(),
+    });
+    teleportButton.frame.SetPoint("BOTTOMLEFT", status.frame, "BOTTOMLEFT", 16, 66);
+    teleportButton.frame.Hide();
+
     const assembleButton = ButtonUI.createButton(status.frame, { text: "Assemble", width: 194, height: 46, accent: theme.colors.success, onClick: () => showAssembleConfirm() });
     assembleButton.frame.SetPoint("BOTTOMLEFT", status.frame, "BOTTOMLEFT", 16, 18);
     const resetButton = ButtonUI.createButton(status.frame, { text: "Reset", width: 68, height: 46, accent: theme.colors.error, onClick: () => Model.clearPlan() });
     resetButton.frame.SetPoint("LEFT", assembleButton.frame, "RIGHT", 8, 0);
 
-    // Templates modal --------------------------------------------------------
-    const templatesModal = ModalUI.createModal(frame, 960, 650);
-    templatesModal.setTitle("Raid Templates");
-    templatesModal.setSubtitle("Start from a proven raid core or save your own. Unlisted slots remain Auto-filled.");
-    templatesModal.setHeaderIcon(ICON_TEMPLATES);
-
-    const templateSaveLabel = Native.createText(templatesModal.content, "SAVE CURRENT RAID", "GameFontNormalSmall", theme.colors.muted);
-    templateSaveLabel.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, 0);
-    const templateName = InputUI.createTextInput(templatesModal.content, 300, 34);
-    templateName.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -24);
-    const templateSave = ButtonUI.createButton(templatesModal.content, {
-        text: "Save Current",
-        width: 124,
-        height: 36,
-        accent: theme.colors.primary,
-        emphasis: true,
-        onClick: () => {
-            if (Model.config().mode !== "RAID") {
-                Model.fireStatus("Templates are raid-only. Configure dungeon bot slots directly.");
-                return;
-            }
-            const name = templateName.getText();
-            if (name !== "") {
-                Model.saveProfile(name);
-                templateName.clear();
-                refreshTemplates();
-            }
-        },
-    });
-    templateSave.frame.SetPoint("LEFT", templateName.frame, "RIGHT", 8, 0);
-
-    let templateTab: "BUILTIN" | "CUSTOM" = "BUILTIN";
-    const templateBuiltinTab = ButtonUI.createButton(templatesModal.content, { text: "Built-in", width: 138, height: 34, accent: theme.colors.primary });
-    templateBuiltinTab.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -82);
-    const templateCustomTab = ButtonUI.createButton(templatesModal.content, { text: "My Templates", width: 150, height: 34, accent: theme.colors.warning });
-    templateCustomTab.frame.SetPoint("LEFT", templateBuiltinTab.frame, "RIGHT", 8, 0);
-
-    const templateScroll = ScrollUI.createScrollList(templatesModal.content, 884, 420);
-    templateScroll.frame.SetPoint("TOPLEFT", templatesModal.content, "TOPLEFT", 0, -126);
-    const templateRows: WoWFrame[] = [];
-    const templateEmpty = Native.createText(
-        templateScroll.content,
-        "",
-        "GameFontHighlight",
-        theme.colors.muted,
-    );
-    templateEmpty.SetPoint("TOPLEFT", templateScroll.content, "TOPLEFT", 24, -28);
-    templateEmpty.SetWidth(800);
-    templateEmpty.SetJustifyH("CENTER");
-    templateEmpty.SetJustifyV("TOP");
-    templateEmpty.Hide();
-
-    function clearDynamicRows(rows: WoWFrame[]): void {
-        for (const row of rows) row.Hide();
-    }
-
-    function refreshTemplates(): void {
-        clearDynamicRows(templateRows);
-        templateSave.setEnabled(Model.config().mode === "RAID");
-        templateBuiltinTab.setSelected(templateTab === "BUILTIN");
-        templateCustomTab.setSelected(templateTab === "CUSTOM");
-
-        const names = templateTab === "BUILTIN" ? Model.listBuiltinProfiles() : Model.listCustomProfiles();
-        if (names.length === 0) {
-            templateEmpty.SetText(
-                templateTab === "BUILTIN"
-                    ? "No built-in raid compositions are available."
-                    : "No custom templates yet. Configure a raid, name it above, then Save Current."
-            );
-            templateEmpty.Show();
-        } else templateEmpty.Hide();
-
-        for (let i = 0; i < names.length; i += 1) {
-            let row = templateRows[i];
-            if (row === undefined) {
-                const panel = Native.createPanel(templateScroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                panel.frame.SetSize(854, 70);
-                const accent = Native.createSolid(panel.frame, theme.colors.primary, "ARTWORK");
-                accent.SetWidth(3);
-                accent.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 0, 0);
-                accent.SetPoint("BOTTOMLEFT", panel.frame, "BOTTOMLEFT", 0, 0);
-                const iconBadge = Native.createFramedIcon(panel.frame, ICON_RAID, 40, theme.colors.primary);
-                iconBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 12, 0);
-                const name = Native.createText(panel.frame, "", "GameFontHighlight");
-                name.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 64, -10);
-                name.SetWidth(500);
-                const tag = Native.createText(panel.frame, "", "GameFontNormalSmall", theme.colors.primary);
-                tag.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 64, -33);
-                tag.SetWidth(80);
-                const info = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-                info.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 142, -33);
-                info.SetWidth(470);
-                const load = ButtonUI.createButton(panel.frame, { text: "Load", width: 72, height: 30, accent: theme.colors.primary });
-                const remove = ButtonUI.createButton(panel.frame, { text: "Delete", width: 70, height: 30, accent: theme.colors.error });
-                (panel.frame as any)._accent = accent;
-                (panel.frame as any)._iconBadge = iconBadge;
-                (panel.frame as any)._name = name;
-                (panel.frame as any)._tag = tag;
-                (panel.frame as any)._info = info;
-                (panel.frame as any)._load = load;
-                (panel.frame as any)._remove = remove;
-                templateScroll.bindWheel(panel.frame);
-                templateScroll.bindWheel(load.frame);
-                templateScroll.bindWheel(remove.frame);
-                row = panel.frame;
-                templateRows[i] = row;
-            }
-
-            row.ClearAllPoints();
-            row.SetPoint("TOPLEFT", templateScroll.content, "TOPLEFT", 0, -(i * 78));
-            const profileName = names[i];
-            const builtin = templateTab === "BUILTIN";
-            const rowAccent = builtin ? theme.colors.primary : theme.colors.warning;
-            Native.setTextureColor((row as any)._accent, rowAccent);
-            (row as any)._iconBadge.outline.setColor(rowAccent);
-            (row as any)._iconBadge.icon.SetTexture(builtin ? ICON_RAID : ICON_TEMPLATES);
-            (row as any)._iconBadge.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
-            (row as any)._name.SetText(profileName);
-            (row as any)._tag.SetText(builtin ? "BUILT-IN" : "CUSTOM");
-            (row as any)._tag.SetTextColor(rowAccent[0], rowAccent[1], rowAccent[2], 1);
-            (row as any)._info.SetText(Model.profileDescription(profileName));
-
-            const load = (row as any)._load as UIButton;
-            const remove = (row as any)._remove as UIButton;
-            load.frame.ClearAllPoints();
-            remove.frame.ClearAllPoints();
-            if (builtin) {
-                remove.frame.Hide();
-                load.frame.SetPoint("RIGHT", row, "RIGHT", -10, 0);
-            } else {
-                load.frame.SetPoint("RIGHT", row, "RIGHT", -88, 0);
-                remove.frame.SetPoint("RIGHT", row, "RIGHT", -10, 0);
-                remove.frame.SetScript("OnMouseDown", () => {
-                    Model.deleteProfile(profileName);
-                    refreshTemplates();
-                });
-                remove.frame.Show();
-            }
-            load.frame.SetScript("OnMouseDown", () => {
-                Model.loadProfile(profileName);
-                templatesModal.hide();
-            });
-            row.Show();
-        }
-        templateScroll.setContentHeight(Math.max(420, names.length * 78));
-    }
-
-    templateBuiltinTab.frame.SetScript("OnMouseDown", () => {
-        templateTab = "BUILTIN";
-        templateScroll.scrollToTop();
-        refreshTemplates();
-    });
-    templateCustomTab.frame.SetScript("OnMouseDown", () => {
-        templateTab = "CUSTOM";
-        templateScroll.scrollToTop();
-        refreshTemplates();
-    });
-
+    // Templates browser ------------------------------------------------------
     showTemplates = () => {
         ChoiceUI.closeChoicePopup();
-        templateScroll.scrollToTop();
-        refreshTemplates();
-        templatesModal.show();
+        templatesBrowser.open();
     };
 
     // Humans & Pins modal ----------------------------------------------------
@@ -1370,15 +1218,16 @@ export function createModernDashboard(): Dashboard {
 
     const confirmCancel = ButtonUI.createButton(confirmModal.content, { text: "Cancel", width: 120, height: 36, onClick: () => confirmModal.hide() });
     confirmCancel.frame.SetPoint("BOTTOMLEFT", confirmModal.content, "BOTTOMLEFT", 112, 0);
+    let confirmAction = () => Model.assemble();
     const confirmGo = ButtonUI.createButton(confirmModal.content, {
         text: "Assemble",
-        width: 120,
+        width: 140,
         height: 38,
         accent: theme.colors.success,
         emphasis: true,
         onClick: () => {
             confirmModal.hide();
-            Model.assemble();
+            confirmAction();
         },
     });
     confirmGo.frame.SetPoint("BOTTOMRIGHT", confirmModal.content, "BOTTOMRIGHT", -112, 0);
@@ -1389,28 +1238,33 @@ export function createModernDashboard(): Dashboard {
             Model.fireStatus("Build & Prepare must finish first.");
             return;
         }
-        const retry = Model.isTravelRetry();
         const cfg = Model.config();
         const activity = Model.selectedActivityLabel();
-
+        confirmAction = () => Model.assemble();
         confirmModal.setHeaderIcon(Model.selectedActivityIcon());
+        confirmModal.setTitle(cfg.mode === "RAID" ? "Assemble prepared raid?" : "Assemble prepared party?");
+        confirmModal.setSubtitle("Composer will commit the reviewed roster. Travel remains a separate action.");
+        confirmText.SetText(
+            cfg.mode === "DUNGEON" && cfg.activity === "random"
+                ? "Prepared Playerbots attach directly. Real players keep normal group semantics. Dungeon Finder chooses the destination."
+                : "Prepared Playerbots attach directly. After assembly, use Teleport to Instance when everyone is ready for " + activity + "."
+        );
+        confirmGo.setText("Assemble");
+        confirmModal.show();
+    };
 
-        if (retry) {
-            confirmModal.setTitle("Enter selected activity?");
-            confirmModal.setSubtitle("The reviewed roster is already assembled.");
-            confirmText.SetText("Retry automatic entry for the complete group into " + activity + ". The roster will not be rebuilt.");
-            confirmGo.setText("Enter Activity");
-        } else if (cfg.mode === "DUNGEON" && cfg.activity === "random") {
-            confirmModal.setTitle("Assemble prepared party?");
-            confirmModal.setSubtitle("Composer will commit the reviewed roster.");
-            confirmText.SetText("Prepared Playerbots attach directly. Real players keep normal group semantics. Dungeon Finder chooses the destination.");
-            confirmGo.setText("Assemble");
-        } else {
-            confirmModal.setTitle("Assemble & enter?");
-            confirmModal.setSubtitle("Composer will commit the reviewed roster.");
-            confirmText.SetText("After validation, the complete group will automatically enter " + activity + ".");
-            confirmGo.setText("Assemble");
+    showTeleportConfirm = () => {
+        if (!Model.isAssembled() || !Model.hasFixedActivityDestination()) {
+            Model.fireStatus("Assemble the complete group before teleporting to a named instance.");
+            return;
         }
+        const activity = Model.selectedActivityLabel();
+        confirmAction = () => Model.teleportToInstance();
+        confirmModal.setHeaderIcon(Model.selectedActivityIcon());
+        confirmModal.setTitle("Teleport to instance?");
+        confirmModal.setSubtitle("This is a separate confirmation after assembly.");
+        confirmText.SetText("Teleport the complete assembled group into " + activity + ". Composer will validate level, quest/access, lockout and instance state before moving anyone.");
+        confirmGo.setText("Teleport");
         confirmModal.show();
     };
 
@@ -1423,7 +1277,7 @@ export function createModernDashboard(): Dashboard {
         activityBadge.icon.SetTexture(Model.selectedActivityIcon());
         activityBadge.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
         activityFieldLabel.SetText(Model.config().mode === "RAID" ? "RAID" : "DUNGEON");
-        activitySelect.refresh();
+        activityBrowse.setText(Model.config().mode === "RAID" ? "Browse Raids" : "Browse Dungeons");
         difficultySelect.refresh();
 
         const sizes = Model.supportedRaidSizes();
@@ -1837,7 +1691,7 @@ export function createModernDashboard(): Dashboard {
         Native.setTextureColor(phaseAccent, phaseColor);
         Native.setTextureColor(phaseGlow, Native.withAlpha(phaseColor, 0.16));
         phaseCard.outline.setColor(phase === "ERROR" ? theme.colors.error : theme.colors.borderStrong);
-        phaseText.SetText(Model.isTravelRetry() ? "Ready to enter activity" : Model.phaseLabel(phase));
+        phaseText.SetText(Model.phaseLabel(phase));
         phaseText.SetTextColor(phaseColor[0], phaseColor[1], phaseColor[2], 1);
         if (phase === "IDLE") {
             phaseDetail.SetText(
@@ -1845,7 +1699,7 @@ export function createModernDashboard(): Dashboard {
                     ? "Add specific builds or keep Auto to prepare your raid."
                     : "Choose exact builds or keep Auto to prepare your group."
             );
-        } else if (Model.isTravelRetry() && statusNotice !== "") {
+        } else if ((phase === "ASSEMBLED" || phase === "TRAVEL") && statusNotice !== "") {
             phaseDetail.SetText(statusNotice);
         } else phaseDetail.SetText(String(p.detail ?? ""));
 
@@ -1873,12 +1727,12 @@ export function createModernDashboard(): Dashboard {
 
         let ratio = 0;
         if (Number(p.total ?? 0) > 0) ratio = Math.min(1, Number(p.current ?? 0) / Number(p.total));
-        else if (phase === "READY" || phase === "DONE") ratio = 1;
+        else if (phase === "READY" || phase === "ASSEMBLED" || phase === "DONE") ratio = 1;
         else if (phase === "IDLE" && target > 0) ratio = Math.min(1, total / target);
         progressFill.SetWidth(Math.max(1, 266 * ratio));
         Native.setTextureColor(progressFill, phaseColor);
         progressText.SetText(
-            phase === "PREPARING" || phase === "ASSEMBLING" || phase === "READY" || phase === "DONE"
+            phase === "PREPARING" || phase === "ASSEMBLING" || phase === "READY" || phase === "ASSEMBLED" || phase === "TRAVEL" || phase === "DONE"
                 ? String(p.current ?? 0) + " / " + String(p.total ?? 0) + "  ·  " + String(p.detail ?? "")
                 : ""
         );
@@ -1913,10 +1767,12 @@ export function createModernDashboard(): Dashboard {
             nextText = "Choose a legal role for every real player.";
         } else if (Model.config().mode === "RAID" && Model.roleTargetTotal() !== Number(Model.config().size ?? 25)) {
             nextText = "Role counts must total " + String(Model.config().size ?? 25) + " before preparing.";
+        } else if (phase === "ASSEMBLED") {
+            nextText = Model.hasFixedActivityDestination()
+                ? "Group assembled. Press Teleport to Instance when everyone is ready."
+                : "Group assembled. Dungeon Finder can choose the destination.";
         } else if (phase === "READY") {
-            nextText = Model.isTravelRetry()
-                ? "Clear the travel blocker, then enter the activity."
-                : "Prepared roster is ready for review. Assemble when it looks right.";
+            nextText = "Prepared roster is ready for review. Assemble when it looks right.";
         } else if (phase === "PREPARING") {
             nextText = "Composer is provisioning and validating the selected bots.";
         } else {
@@ -1927,20 +1783,28 @@ export function createModernDashboard(): Dashboard {
 
         const nextColor = phase === "ERROR"
             ? theme.colors.error
-            : (phase === "READY" ? theme.colors.success : theme.colors.warning);
+            : (phase === "READY" || phase === "ASSEMBLED" ? theme.colors.success : theme.colors.warning);
         nextCard.outline.setColor(phase === "ERROR" || phase === "READY" ? nextColor : theme.colors.border);
         nextBadge.outline.setColor(nextColor);
-        nextBang.SetText(phase === "READY" ? ">" : "!");
+        nextBang.SetText(phase === "READY" || phase === "ASSEMBLED" ? ">" : "!");
         nextBang.SetTextColor(nextColor[0], nextColor[1], nextColor[2], 1);
         warningsTitle.SetText(phase === "ERROR" ? "ACTION REQUIRED" : (phase === "PREPARING" ? "PREPARING" : "NEXT STEP"));
         warningsTitle.SetTextColor(nextColor[0], nextColor[1], nextColor[2], 1);
         nextDetail.SetTextColor(nextColor[0], nextColor[1], nextColor[2], 1);
         nextDetail.SetText(nextText);
 
-        buildButton.setEnabled(Model.humanReady() && !Model.isBusy() && (Model.config().mode !== "RAID" || Model.roleTargetTotal() === Number(Model.config().size ?? 25)));
+        const assembled = phase === "ASSEMBLED";
+        const canTeleport = assembled && Model.hasFixedActivityDestination();
+        buildButton.setEnabled(Model.humanReady() && !Model.isBusy() && !assembled && (Model.config().mode !== "RAID" || Model.roleTargetTotal() === Number(Model.config().size ?? 25)));
+        if (assembled) buildButton.frame.Hide(); else buildButton.frame.Show();
+
+        teleportButton.setEnabled(canTeleport);
+        if (canTeleport) teleportButton.frame.Show(); else teleportButton.frame.Hide();
+
         assembleButton.setEnabled(Model.plan().ready === true && Model.plan().valid === true && phase === "READY");
-        assembleButton.setText(Model.isTravelRetry() ? "Enter Activity" : (Model.config().mode === "RAID" ? "Assemble Raid" : "Assemble Party"));
+        assembleButton.setText(Model.config().mode === "RAID" ? "Assemble Raid" : "Assemble Party");
         assembleButton.setSelected(Model.plan().ready === true && Model.plan().valid === true && phase === "READY");
+        if (assembled) assembleButton.frame.Hide(); else assembleButton.frame.Show();
     }
 
     function refresh(): void {
@@ -2020,10 +1884,7 @@ export function createModernDashboard(): Dashboard {
     });
     GC.RegisterCallback("PROGRESS_CHANGED", () => refresh());
     GC.RegisterCallback("HUMANS_CHANGED", () => refresh());
-    GC.RegisterCallback("PROFILES_CHANGED", () => {
-        if (templatesModal.frame.IsShown()) refreshTemplates();
-        refresh();
-    });
+    GC.RegisterCallback("PROFILES_CHANGED", () => refresh());
     GC.RegisterCallback("STATUS", (text: string) => {
         statusNotice = String(text ?? "");
         refresh();

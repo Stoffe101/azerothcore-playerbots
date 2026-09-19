@@ -16,6 +16,8 @@ TOC = (ROOT / "client-addons-src/GroupComposer/GroupComposer.toc").read_text(enc
 CORE = (ROOT / "client-addons-src/GroupComposer/Core.lua").read_text(encoding="utf-8")
 POLICY = (ROOT / "client-addons-src/GroupComposer/ComposerPolicy.lua").read_text(encoding="utf-8")
 MODERN = (ROOT / "client-ui/src/components/ModernDashboard.ts").read_text(encoding="utf-8")
+ACTIVITY_BROWSER = (ROOT / "client-ui/src/components/ActivityBrowser.ts").read_text(encoding="utf-8")
+TEMPLATE_BROWSER = (ROOT / "client-ui/src/components/TemplateBrowser.ts").read_text(encoding="utf-8")
 MODEL = (ROOT / "client-ui/src/model/ComposerModel.ts").read_text(encoding="utf-8")
 SELECTOR = (ROOT / "client-ui/src/components/BuildSelector.ts").read_text(encoding="utf-8")
 CHOICE_SELECT = (ROOT / "client-ui/src/widgets/ChoiceSelect.ts").read_text(encoding="utf-8")
@@ -99,7 +101,7 @@ assert "GetLFGDungeon(mapId, difficulty)" in SERVER
 
 for command in (
     "begin", "pref", "humanrole", "human", "pin", "arrangepref", "find", "arrange",
-    "move", "assemble", "queue", "anchors", "diagnostics", "clear", "status",
+    "move", "assemble", "teleport", "queue", "anchors", "diagnostics", "clear", "status",
 ):
     assert re.search(r'\{\s*"' + re.escape(command) + r'"\s*,', SERVER), (
         f"Missing server command registration: {command}"
@@ -109,7 +111,7 @@ for command in (
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
 assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
-assert '## Version: 0.12.1' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
+assert '## Version: 0.13.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
@@ -518,36 +520,40 @@ world_update = section(SERVER, "class GroupComposerWorld", "ChatCommandTable Gro
 assert "bool travelPending = false;" in TYPES and "uint8 travelAttempts = 0;" in TYPES, (
     "Plan lost delayed post-assembly instance entry state"
 )
-assert "plan.travelPending = true;" in world_update, (
-    "Successful subgroup application must schedule selected-activity travel"
-)
+assert "bool assembled = false;" in TYPES, "Plan lost explicit post-assembly state"
+assert "plan.assembled = true;" in world_update, "Successful subgroup application must publish an assembled state"
 schedule_pos = world_update.index("ApplyArrangement(master, plan, arrangementError)")
-pending_pos = world_update.index("plan.travelPending = true;", schedule_pos)
-assert schedule_pos < pending_pos, "Automatic travel may only be scheduled after subgroup layout is committed"
+assembled_pos = world_update.index("plan.assembled = true;", schedule_pos)
+assert schedule_pos < assembled_pos, "Assembled state may only publish after subgroup layout is committed"
+assert 'SendProgress(master, "ASSEMBLED"' in world_update
+assert 'plan.travelPending = true;' not in world_update[world_update.index("ApplyArrangement(master, plan, arrangementError)"):], (
+    "Assembly must never auto-teleport; travel is an explicit second action"
+)
+teleport_handler = section(SERVER, "bool GroupComposerCommand::HandleTeleport(", "bool GroupComposerCommand::HandleQueue")
+assert "plan.travelPending = true;" in teleport_handler, "Explicit Teleport command no longer schedules travel"
+assert "ValidateAssemblySnapshot(master, plan, validationError)" in teleport_handler
+assert 'SendProgress(master, "TRAVEL"' in teleport_handler
 travel_loop = section(world_update, "if (plan.travelPending)", "if (!plan.assembling) continue;")
-assert "plan.travelElapsed < 450" in travel_loop, "Travel must wait for group state to settle before entry"
-assert "plan.travelAttempts >= 8" in travel_loop, "Transient instance-entry failures need a bounded retry window"
+assert "plan.travelElapsed < 450" in travel_loop
+assert "plan.travelAttempts >= 8" in travel_loop
 assert "TeleportCompletedPlan(master, plan, travelDetail, travelError)" in travel_loop
-assert 'SendProgress(master, "TRAVEL"' in world_update, "Client no longer receives selected-activity travel progress"
-assert 'GC:GetConfig().activity == "random"' in CORE, "Named dungeons must not queue again after direct travel"
-assert 'if (phase === "TRAVEL") return "Entering activity";' in MODEL, "Modern dashboard lost the explicit automatic travel phase"
-
-
-# A travel-only failure happens after the exact roster is already live. It must preserve that valid
-# plan and return the UI to READY only after bounded automatic retries. It remains STATUS rather than
-# roster ERROR so a transient combat/teleport/instance-state blocker never invalidates the roster.
 assert 'SendProtocol(master, "STATUS", travelError);' in travel_loop
 assert 'SendProtocol(master, "ERROR", travelError);' not in travel_loop
-assert 'SendProgress(master, "READY"' in travel_loop
-assert travel_loop.index('SendProtocol(master, "STATUS", travelError);') < travel_loop.index('SendProgress(master, "READY"'), (
-    "Travel blocker status must be surfaced before the valid assembled roster returns to READY"
-)
-assert 'GC.pendingCommand == "assemble"' in CORE and '"Enter Activity"' in CORE, (
-    "Retryable travel must release the client assembly action lock"
-)
-assert 'press Enter Activity to retry' in travel_loop
-assert 'Ready to enter activity' in MODERN and 'Enter selected activity?' in MODERN
-assert 'Auto-enter after assembly' in MODERN and 'Dungeon Finder chooses destination' in MODERN
+assert 'SendProgress(master, "ASSEMBLED"' in travel_loop
+assert 'GC.pendingCommand == "teleport"' in CORE
+assert 'function GC:TeleportToInstance()' in CORE
+assert 'if (phase === "ASSEMBLED") return "Group assembled";' in MODEL
+assert 'if (phase === "TRAVEL") return "Teleporting to instance";' in MODEL
+assert 'Teleport to Instance' in MODERN and 'Teleport to instance?' in MODERN
+assert 'Teleport after assembly' in MODERN and 'Dungeon Finder chooses destination' in MODERN
+
+# Frozen Halls access is quest-gated in AzerothCore. Composer-owned bots receive the same narrow
+# bootstrap as Admin Panel's WotLK raid-ready action; real players get an actionable blocker.
+assert 'FrozenHallsAccessRequirement' in SERVER
+assert '24499u' in SERVER and '24511u' in SERVER and '24710u' in SERVER and '24712u' in SERVER
+assert 'AdventureStartControl::EnsureRaidReadyAccess(bot, AdventureStartProfile::WotlkRaidReady)' in SERVER
+assert 'Make THIS char WotLK Raid Ready' in SERVER
+assert 'EnsureRaidReadyAccess(player, profile);' in ADVENTURE_START_CONTROL
 
 # V4 sends an explicit local-player marker with each roster member. Human no longer implies YOU,
 # which matters as soon as a real friend is part of the reviewed raid.
@@ -716,8 +722,10 @@ assert "const nextColor = phase === \"ERROR\"" in MODERN and '"ACTION REQUIRED"'
     "Next Step card lost semantic phase coloring"
 )
 assert "classIcons" not in MODERN, "Status rail brought back the overlapping class-icon strip"
-assert "templateBuiltinTab" in MODERN and "templateCustomTab" in MODERN and "templateScroll" in MODERN, (
-    "Templates regressed to permanently split Built-in/Custom columns"
+assert 'TemplateBrowserUI.createTemplateBrowser(frame)' in MODERN
+assert 'type TemplateTab = "WotLK" | "TBC" | "Classic" | "CUSTOM";' in TEMPLATE_BROWSER
+assert 'Math.ceil(names.length / 2) * 92' in TEMPLATE_BROWSER, (
+    "Templates must stay grouped by expansion and use a compact two-column browser"
 )
 assert 'const pinPane = CreateFrame("Frame", undefined, peopleModal.content);' in MODERN
 assert 'const humanScroll = ScrollUI.createScrollList(peopleModal.content, 442, 430);' in MODERN
@@ -727,11 +735,11 @@ assert 'const pinScroll = ScrollUI.createScrollList(pinPane, 442, 270);' in MODE
 assert '"CANDIDATE POOL"' in MODERN and '"COMPOSITION"' in MODERN and '"ACTIVITY"' in MODERN and '"ELIGIBILITY"' in MODERN, (
     "Options regressed from grouped compact rows to undifferentiated option cards"
 )
-assert "templateEmpty" in MODERN and 'templateTab: "BUILTIN" | "CUSTOM"' in MODERN, (
-    "Template browser lost its tabbed single-surface empty state"
+assert "const empty = Native.createText" in TEMPLATE_BROWSER and '"My Templates"' in TEMPLATE_BROWSER, (
+    "Template browser lost its grouped empty state or custom-template tab"
 )
 assert "humanEmpty" in MODERN and "pinEmpty" in MODERN, "People browser lost explicit empty states"
-assert "BUILT-IN" in MODERN and "CUSTOM" in MODERN, "Template cards lost their visual category tags"
+assert "BUILT-IN" in TEMPLATE_BROWSER and "CUSTOM" in TEMPLATE_BROWSER, "Template cards lost their visual category tags"
 assert "_roleBadge" in MODERN and "Preferred companion" in MODERN
 assert "gearIcon = Native.createFramedIcon" in MODERN
 assert '" TANK"' in MODERN and '" HEALER"' in MODERN and '" DPS"' in MODERN, (
@@ -848,4 +856,10 @@ assert "function wheel(this: void" in CHOICE_SELECT
 assert "function wheel(this: void" in SCROLL_LIST
 assert "sync-group-composer-client.sh" in UPDATE_SH
 assert "GroupComposerModernUI.lua" in SYNC_CLIENT and "Interface/AddOns/GroupComposer" in SYNC_CLIENT
-assert "0.12.1" in TOC and "0.12.1" in DATA
+assert "0.13.0" in TOC and "0.13.0" in DATA
+
+# Long activity lists use a dedicated filtered two-column browser instead of the compact ChoiceSelect.
+assert 'ActivityBrowserUI.createActivityBrowser(frame)' in MODERN
+assert '"LEVELING"' in ACTIVITY_BROWSER and '"ENDGAME"' in ACTIVITY_BROWSER
+assert '"WotLK"' in ACTIVITY_BROWSER and '"TBC"' in ACTIVITY_BROWSER and '"Classic"' in ACTIVITY_BROWSER
+assert 'const column = i % 2;' in ACTIVITY_BROWSER and 'Math.ceil(items.length / 2) * 86' in ACTIVITY_BROWSER

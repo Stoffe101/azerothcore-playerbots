@@ -48,6 +48,7 @@ interface ProfileFunctions {
     ListBuiltins(): string[];
     ListCustom(): string[];
     Describe(name: string): string;
+    Get(name: string): any;
 }
 
 const D: any = _G.GroupComposerData;
@@ -472,10 +473,13 @@ export function selectedActivityLabel(): string {
     return dungeon?.label ?? "Dungeon";
 }
 
+export function activityIconFor(id: string, mode: "DUNGEON" | "RAID"): string {
+    return ACTIVITY_ICONS[String(id)] ?? (mode === "RAID" ? DEFAULT_RAID_ICON : DEFAULT_DUNGEON_ICON);
+}
+
 export function selectedActivityIcon(): string {
     const cfg = config();
-    const key = String(cfg.activity ?? "");
-    return ACTIVITY_ICONS[key] ?? (cfg.mode === "RAID" ? DEFAULT_RAID_ICON : DEFAULT_DUNGEON_ICON);
+    return activityIconFor(String(cfg.activity ?? ""), cfg.mode === "RAID" ? "RAID" : "DUNGEON");
 }
 
 export function requiredActivityLevel(): number {
@@ -519,6 +523,7 @@ export function setDifficulty(id: string): void {
 export function setHumanRole(name: string, role: Role): void { GC.SetHumanRole(name, role); }
 export function buildAndPrepare(): void { GC.FindRoster(); }
 export function assemble(): void { GC.Assemble(); }
+export function teleportToInstance(): void { GC.TeleportToInstance(); }
 export function requestAnchors(): void { GC.RequestAnchors(); }
 export function requestStatus(): void { GC.RequestStatus(); }
 export function clearPlan(): void { GC.ClearServerPlan(); }
@@ -528,6 +533,7 @@ export function deleteProfile(name: string): void { GC.DeleteProfile(name); }
 export function listBuiltinProfiles(): string[] { return ProfileFns.ListBuiltins() ?? []; }
 export function listCustomProfiles(): string[] { return ProfileFns.ListCustom() ?? []; }
 export function profileDescription(name: string): string { return ProfileFns.Describe(name) ?? ""; }
+export function profileMeta(name: string): any { return ProfileFns.Get(name); }
 export function addPin(name: string, role: Role, required: boolean): void { GC.AddPinnedMember(name, role, required); }
 export function removePin(index: number): void { GC.RemovePinnedMember(index); }
 
@@ -542,9 +548,10 @@ export function roleAccent(role: Role): readonly [number, number, number, number
 export function phaseLabel(phase: string): string {
     if (phase === "BUILDING") return "Selecting roster";
     if (phase === "PREPARING") return "Preparing bots";
-    if (phase === "READY") return "Ready";
+    if (phase === "READY") return "Ready for review";
     if (phase === "ASSEMBLING") return "Assembling";
-    if (phase === "TRAVEL") return "Entering activity";
+    if (phase === "ASSEMBLED") return "Group assembled";
+    if (phase === "TRAVEL") return "Teleporting to instance";
     if (phase === "DONE") return "Group ready";
     if (phase === "ERROR") return "Needs attention";
     return "Ready to configure";
@@ -555,7 +562,11 @@ export function isBusy(): boolean {
     return phase === "BUILDING" || phase === "PREPARING" || phase === "ASSEMBLING" || phase === "TRAVEL";
 }
 
-export function isTravelRetry(): boolean {
-    const p = progress();
-    return p.phase === "READY" && String(p.detail ?? "").indexOf("Enter Activity") >= 0;
+export function isAssembled(): boolean {
+    return String(progress().phase ?? "") === "ASSEMBLED";
+}
+
+export function hasFixedActivityDestination(): boolean {
+    const cfg = config();
+    return !(cfg.mode === "DUNGEON" && cfg.activity === "random");
 }
