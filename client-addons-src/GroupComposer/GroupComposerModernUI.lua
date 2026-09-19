@@ -2293,6 +2293,15 @@ end
 function ____exports.teleportToInstance(self)
     GC:TeleportToInstance()
 end
+function ____exports.leaveInstance(self)
+    GC:LeaveInstance()
+end
+function ____exports.disbandComposerGroup(self)
+    GC:DisbandComposerGroup()
+end
+function ____exports.rebuildOrRepair(self)
+    GC:FindRoster()
+end
 function ____exports.requestAnchors(self)
     GC:RequestAnchors()
 end
@@ -2409,7 +2418,8 @@ function ____exports.isAssembled(self)
     if ____exports_progress_result_phase_120 == nil then
         ____exports_progress_result_phase_120 = ""
     end
-    return tostring(____exports_progress_result_phase_120) == "ASSEMBLED"
+    local phase = tostring(____exports_progress_result_phase_120)
+    return phase == "ASSEMBLED" or phase == "DONE"
 end
 function ____exports.hasFixedActivityDestination(self)
     local cfg = ____exports.config(nil)
