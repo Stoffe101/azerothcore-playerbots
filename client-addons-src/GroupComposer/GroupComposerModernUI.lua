@@ -5865,7 +5865,7 @@ function ____exports.createModernDashboard(self)
         -16,
         -40
     )
-    phaseCard.frame:SetHeight(96)
+    phaseCard.frame:SetHeight(92)
     local phaseAccent = Native:createSolid(phaseCard.frame, theme.colors.primary, "ARTWORK")
     phaseAccent:SetWidth(3)
     phaseAccent:SetPoint(
@@ -5884,7 +5884,7 @@ function ____exports.createModernDashboard(self)
     )
     local phaseGlow = Native:createSolid(
         phaseCard.frame,
-        Native:withAlpha(theme.colors.primary, 0.16),
+        Native:withAlpha(theme.colors.primary, 0.14),
         "ARTWORK"
     )
     phaseGlow:SetSize(18, 18)
@@ -5892,17 +5892,17 @@ function ____exports.createModernDashboard(self)
         "TOPLEFT",
         phaseCard.frame,
         "TOPLEFT",
-        10,
-        -11
+        11,
+        -12
     )
     local phaseDot = Native:createSolid(phaseCard.frame, theme.colors.primary, "OVERLAY")
-    phaseDot:SetSize(9, 9)
+    phaseDot:SetSize(8, 8)
     phaseDot:SetPoint(
         "TOPLEFT",
         phaseCard.frame,
         "TOPLEFT",
-        14,
-        -15
+        16,
+        -17
     )
     local phaseText = Native:createText(phaseCard.frame, "Configure roster", "GameFontNormal")
     phaseText:SetPoint(
@@ -5910,8 +5910,9 @@ function ____exports.createModernDashboard(self)
         phaseDot,
         "RIGHT",
         10,
-        3
+        2
     )
+    phaseText:SetWidth(220)
     local phaseDetail = Native:createText(phaseCard.frame, "", "GameFontHighlightSmall", theme.colors.muted)
     phaseDetail:SetPoint(
         "TOPLEFT",
@@ -5920,7 +5921,7 @@ function ____exports.createModernDashboard(self)
         0,
         -4
     )
-    phaseDetail:SetWidth(240)
+    phaseDetail:SetWidth(230)
     phaseDetail:SetJustifyV("TOP")
     local rosterCount = Native:createText(status.frame, "1 / 5", "GameFontNormalHuge")
     rosterCount:SetPoint(
@@ -5928,7 +5929,7 @@ function ____exports.createModernDashboard(self)
         status.frame,
         "TOPLEFT",
         16,
-        -152
+        -146
     )
     local sourceText = Native:createText(status.frame, "1 human  ·  4 bot slots", "GameFontHighlightSmall", theme.colors.muted)
     sourceText:SetPoint(
@@ -5936,8 +5937,9 @@ function ____exports.createModernDashboard(self)
         rosterCount,
         "BOTTOMLEFT",
         0,
-        -5
+        -4
     )
+    sourceText:SetWidth(270)
     local statusRoleChips = {}
     do
         local i = 0
@@ -5945,24 +5947,24 @@ function ____exports.createModernDashboard(self)
             local role = roleOrder[i + 1]
             local chip = Native:createPanel(
                 status.frame,
-                theme.colors.background,
+                theme.colors.surfaceDeep,
                 Model:roleAccent(role)
             )
-            chip.frame:SetSize(86, 34)
+            chip.frame:SetSize(84, 32)
             chip.frame:SetPoint(
                 "TOPLEFT",
                 status.frame,
                 "TOPLEFT",
                 16 + i * 90,
-                -210
+                -201
             )
             local icon = chip.frame:CreateTexture(nil, "ARTWORK")
-            icon:SetSize(17, 17)
+            icon:SetSize(16, 16)
             icon:SetPoint(
                 "LEFT",
                 chip.frame,
                 "LEFT",
-                6,
+                7,
                 0
             )
             Native:setRoleIcon(icon, role)
@@ -5979,6 +5981,7 @@ function ____exports.createModernDashboard(self)
                 5,
                 0
             )
+            label:SetWidth(54)
             statusRoleChips[role] = {chip = chip, label = label}
             i = i + 1
         end
@@ -5989,9 +5992,9 @@ function ____exports.createModernDashboard(self)
         status.frame,
         "TOPLEFT",
         16,
-        -254
+        -245
     )
-    progressBg.frame:SetSize(270, 14)
+    progressBg.frame:SetSize(270, 12)
     local progressFill = Native:createSolid(progressBg.frame, theme.colors.primary, "ARTWORK")
     progressFill:SetPoint(
         "TOPLEFT",
@@ -6014,51 +6017,53 @@ function ____exports.createModernDashboard(self)
         status.frame,
         "TOPLEFT",
         16,
-        -274
+        -264
     )
     progressText:SetWidth(270)
+    progressText:SetHeight(32)
+    progressText:SetJustifyV("TOP")
     local coverageCard = Native:createPanel(status.frame, theme.colors.background, theme.colors.border)
     coverageCard.frame:SetPoint(
         "TOPLEFT",
         status.frame,
         "TOPLEFT",
         16,
-        -312
+        -307
     )
     coverageCard.frame:SetPoint(
         "TOPRIGHT",
         status.frame,
         "TOPRIGHT",
         -16,
-        -312
+        -307
     )
-    coverageCard.frame:SetHeight(120)
+    coverageCard.frame:SetHeight(154)
     local coverageGlyph = Native:createPanel(coverageCard.frame, theme.colors.surfaceDeep, theme.colors.borderStrong)
-    coverageGlyph.frame:SetSize(32, 32)
+    coverageGlyph.frame:SetSize(30, 30)
     coverageGlyph.frame:SetPoint(
         "TOPLEFT",
         coverageCard.frame,
         "TOPLEFT",
         12,
-        -12
+        -11
     )
     do
         local i = 0
         while i < 3 do
             local bar = Native:createSolid(coverageGlyph.frame, theme.colors.text, "ARTWORK")
-            bar:SetWidth(5)
-            bar:SetHeight(8 + i * 6)
+            bar:SetWidth(4)
+            bar:SetHeight(7 + i * 5)
             bar:SetPoint(
                 "BOTTOMLEFT",
                 coverageGlyph.frame,
                 "BOTTOMLEFT",
-                6 + i * 8,
+                6 + i * 7,
                 5
             )
             i = i + 1
         end
     end
-    local coverageTitle = Native:createText(coverageCard.frame, "COVERAGE", "GameFontNormalSmall", theme.colors.muted)
+    local coverageTitle = Native:createText(coverageCard.frame, "UTILITY COVERAGE", "GameFontNormalSmall", theme.colors.muted)
     coverageTitle:SetPoint(
         "LEFT",
         coverageGlyph.frame,
@@ -6066,50 +6071,79 @@ function ____exports.createModernDashboard(self)
         9,
         0
     )
-    local coverageText = Native:createText(coverageCard.frame, "Build a roster to inspect coverage.", "GameFontHighlightSmall", theme.colors.muted)
-    coverageText:SetPoint(
-        "TOPLEFT",
-        coverageCard.frame,
-        "TOPLEFT",
-        12,
-        -52
-    )
-    coverageText:SetWidth(246)
-    coverageText:SetJustifyV("TOP")
-    local classIcons = {}
+    local coverageDefs = {
+        {token = "interrupt", label = "Interrupt"},
+        {token = "dispel", label = "Dispel"},
+        {token = "buffs", label = "Raid Buffs"},
+        {token = "heroism", label = "Heroism"},
+        {token = "battle-rez", label = "Battle Rez"},
+        {token = "cc", label = "CC"},
+        {token = "threat", label = "Threat"}
+    }
+    local coverageChips = {}
     do
         local i = 0
-        while i < 10 do
-            local icon = coverageCard.frame:CreateTexture(nil, "ARTWORK")
-            icon:SetSize(20, 20)
-            icon:SetPoint(
-                "BOTTOMLEFT",
+        while i < #coverageDefs do
+            local column = i % 3
+            local row = math.floor(i / 3)
+            local chip = Native:createPanel(coverageCard.frame, theme.colors.surfaceDeep, theme.colors.border)
+            chip.frame:SetSize(78, 24)
+            chip.frame:SetPoint(
+                "TOPLEFT",
                 coverageCard.frame,
-                "BOTTOMLEFT",
-                12 + i * 25,
-                10
+                "TOPLEFT",
+                12 + column * 82,
+                -(50 + row * 29)
             )
-            icon:Hide()
-            classIcons[#classIcons + 1] = icon
+            local check = chip.frame:CreateTexture(nil, "ARTWORK")
+            check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+            check:SetSize(14, 14)
+            check:SetPoint(
+                "LEFT",
+                chip.frame,
+                "LEFT",
+                5,
+                0
+            )
+            check:Hide()
+            local label = Native:createText(chip.frame, coverageDefs[i + 1].label, "GameFontHighlightSmall", theme.colors.muted)
+            label:SetPoint(
+                "LEFT",
+                chip.frame,
+                "LEFT",
+                22,
+                0
+            )
+            label:SetWidth(53)
+            coverageChips[#coverageChips + 1] = {panel = chip, check = check, label = label, token = coverageDefs[i + 1].token}
             i = i + 1
         end
     end
+    local coverageDamageText = Native:createText(coverageCard.frame, "Prepare a roster to inspect utility.", "GameFontHighlightSmall", theme.colors.muted)
+    coverageDamageText:SetPoint(
+        "BOTTOMLEFT",
+        coverageCard.frame,
+        "BOTTOMLEFT",
+        12,
+        9
+    )
+    coverageDamageText:SetWidth(246)
     local nextCard = Native:createPanel(status.frame, theme.colors.background, theme.colors.border)
     nextCard.frame:SetPoint(
         "TOPLEFT",
         status.frame,
         "TOPLEFT",
         16,
-        -448
+        -477
     )
     nextCard.frame:SetPoint(
         "TOPRIGHT",
         status.frame,
         "TOPRIGHT",
         -16,
-        -448
+        -477
     )
-    nextCard.frame:SetHeight(126)
+    nextCard.frame:SetHeight(116)
     local nextBadge = Native:createPanel(nextCard.frame, theme.colors.surfaceDeep, theme.colors.warning)
     nextBadge.frame:SetSize(28, 28)
     nextBadge.frame:SetPoint(
@@ -6146,7 +6180,7 @@ function ____exports.createModernDashboard(self)
                 nextCard.frame,
                 "TOPLEFT",
                 12,
-                -(50 + i * 24)
+                -(48 + i * 21)
             )
             row:SetWidth(246)
             row:SetJustifyV("TOP")
@@ -7462,33 +7496,66 @@ function ____exports.createModernDashboard(self)
             ____temp_80 = ""
         end
         ____progressText_SetText_81(progressText, ____temp_80)
-        local ____coverageText_SetText_84 = coverageText.SetText
         local ____opt_82 = Model:plan().summary
         if ____opt_82 ~= nil then
             ____opt_82 = ____opt_82.utility
         end
-        ____coverageText_SetText_84(
-            coverageText,
-            ____opt_82 ~= nil and Model:coverageDisplay() or "Build a roster to inspect utility coverage."
-        )
-        local seen = {}
-        local iconIndex = 0
-        for ____, member in ipairs(Model:planMembers()) do
-            local cls = tostring(member.class or "")
-            if cls ~= "" and cls ~= "UNKNOWN" and seen[cls] ~= true and iconIndex < #classIcons then
-                seen[cls] = true
-                Native:setClassIcon(classIcons[iconIndex + 1], cls)
-                classIcons[iconIndex + 1]:Show()
-                iconIndex = iconIndex + 1
-            end
+        local ____opt_82_84 = ____opt_82
+        if ____opt_82_84 == nil then
+            ____opt_82_84 = ""
         end
+        local utilityRaw = tostring(____opt_82_84)
+        local ____opt_85 = Model:plan().summary
+        if ____opt_85 ~= nil then
+            ____opt_85 = ____opt_85.utility
+        end
+        local hasPreparedCoverage = ____opt_85 ~= nil
         do
-            local i = iconIndex
-            while i < #classIcons do
-                classIcons[i + 1]:Hide()
+            local i = 0
+            while i < #coverageChips do
+                local widgets = coverageChips[i + 1]
+                local covered = hasPreparedCoverage and (string.find(
+                    utilityRaw,
+                    tostring(widgets.token),
+                    nil,
+                    true
+                ) or 0) - 1 >= 0
+                widgets.panel:setBackground(covered and theme.colors.surfaceBlue or theme.colors.surfaceDeep)
+                widgets.panel.outline:setColor(covered and theme.colors.success or theme.colors.border)
+                if covered then
+                    widgets.check:Show()
+                else
+                    widgets.check:Hide()
+                end
+                widgets.label:SetTextColor(covered and theme.colors.text[1] or theme.colors.muted[1], covered and theme.colors.text[2] or theme.colors.muted[2], covered and theme.colors.text[3] or theme.colors.muted[3], covered and 1 or 0.82)
                 i = i + 1
             end
         end
+        local ____coverageDamageText_SetText_95 = coverageDamageText.SetText
+        local ____hasPreparedCoverage_94
+        if hasPreparedCoverage then
+            local ____opt_87 = Model:plan().summary
+            if ____opt_87 ~= nil then
+                ____opt_87 = ____opt_87.ranged
+            end
+            local ____opt_87_89 = ____opt_87
+            if ____opt_87_89 == nil then
+                ____opt_87_89 = 0
+            end
+            local ____temp_93 = ("Ranged DPS  " .. tostring(____opt_87_89)) .. "   ·   Melee DPS  "
+            local ____opt_90 = Model:plan().summary
+            if ____opt_90 ~= nil then
+                ____opt_90 = ____opt_90.melee
+            end
+            local ____opt_90_92 = ____opt_90
+            if ____opt_90_92 == nil then
+                ____opt_90_92 = 0
+            end
+            ____hasPreparedCoverage_94 = ____temp_93 .. tostring(____opt_90_92)
+        else
+            ____hasPreparedCoverage_94 = "Prepare a roster to inspect utility."
+        end
+        ____coverageDamageText_SetText_95(coverageDamageText, ____hasPreparedCoverage_94)
         local warnings = Model:planWarnings()
         do
             local i = 0
@@ -7509,21 +7576,21 @@ function ____exports.createModernDashboard(self)
                     elseif not Model:humanReady() then
                         text = "Choose a legal role for every real player."
                     else
-                        local ____temp_87 = Model:config().mode == "RAID"
-                        if ____temp_87 then
-                            local ____temp_86 = Model:roleTargetTotal()
-                            local ____table_size_85 = Model:config().size
-                            if ____table_size_85 == nil then
-                                ____table_size_85 = 25
+                        local ____temp_98 = Model:config().mode == "RAID"
+                        if ____temp_98 then
+                            local ____temp_97 = Model:roleTargetTotal()
+                            local ____table_size_96 = Model:config().size
+                            if ____table_size_96 == nil then
+                                ____table_size_96 = 25
                             end
-                            ____temp_87 = ____temp_86 ~= __TS__Number(____table_size_85)
+                            ____temp_98 = ____temp_97 ~= __TS__Number(____table_size_96)
                         end
-                        if ____temp_87 then
-                            local ____table_size_88 = Model:config().size
-                            if ____table_size_88 == nil then
-                                ____table_size_88 = 25
+                        if ____temp_98 then
+                            local ____table_size_99 = Model:config().size
+                            if ____table_size_99 == nil then
+                                ____table_size_99 = 25
                             end
-                            text = ("Role counts must total " .. tostring(____table_size_88)) .. " before preparing."
+                            text = ("Role counts must total " .. tostring(____table_size_99)) .. " before preparing."
                         else
                             text = "Build & Prepare when the composition looks right."
                         end
@@ -7533,21 +7600,21 @@ function ____exports.createModernDashboard(self)
                 i = i + 1
             end
         end
-        local ____buildButton_setEnabled_93 = buildButton.setEnabled
-        local ____temp_92 = Model:humanReady() and not Model:isBusy()
-        if ____temp_92 then
-            local ____temp_91 = Model:config().mode ~= "RAID"
-            if not ____temp_91 then
-                local ____temp_90 = Model:roleTargetTotal()
-                local ____table_size_89 = Model:config().size
-                if ____table_size_89 == nil then
-                    ____table_size_89 = 25
+        local ____buildButton_setEnabled_104 = buildButton.setEnabled
+        local ____temp_103 = Model:humanReady() and not Model:isBusy()
+        if ____temp_103 then
+            local ____temp_102 = Model:config().mode ~= "RAID"
+            if not ____temp_102 then
+                local ____temp_101 = Model:roleTargetTotal()
+                local ____table_size_100 = Model:config().size
+                if ____table_size_100 == nil then
+                    ____table_size_100 = 25
                 end
-                ____temp_91 = ____temp_90 == __TS__Number(____table_size_89)
+                ____temp_102 = ____temp_101 == __TS__Number(____table_size_100)
             end
-            ____temp_92 = ____temp_91
+            ____temp_103 = ____temp_102
         end
-        ____buildButton_setEnabled_93(buildButton, ____temp_92)
+        ____buildButton_setEnabled_104(buildButton, ____temp_103)
         assembleButton:setEnabled(Model:plan().ready == true and Model:plan().valid == true and phase == "READY")
         assembleButton:setText(Model:isTravelRetry() and "Enter Activity" or (Model:config().mode == "RAID" and "Assemble Raid" or "Assemble Party"))
         assembleButton:setSelected(Model:plan().ready == true and Model:plan().valid == true and phase == "READY")
