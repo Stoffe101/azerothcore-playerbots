@@ -651,7 +651,7 @@ void SendActivityEligibility(ChatHandler* handler, Player* master, std::string c
 
     handler->PSendSysMessage("[GC]|ACTIVITYDONE|{}|{}",
         normalizedMode == "raid" ? "RAID" : "DUNGEON",
-        uint32(sIndividualProgression->GetPlayerProgressionFromQuests(master)));
+        uint32(AdventureStartControl::CurrentProgression(master)));
 }
 
 struct ComposerGearProfile

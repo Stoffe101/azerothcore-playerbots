@@ -576,6 +576,9 @@ assert 'config.activity == "zulaman"' in SERVER and "RequiredZulAmanProgression"
 assert '#include "IndividualProgression.h"' not in SERVER, (
     "GroupComposerCommand must not include IndividualProgression.h beside PlayerbotAI.h; both define legacy GENERAL"
 )
+assert "sIndividualProgression->" not in SERVER, (
+    "GroupComposerCommand must use AdventureStartControl progression bridge instead of direct IP globals"
+)
 assert "bool HasPassedProgression(Player* player, uint8 progression);" in ADVENTURE_START_CONTROL_H
 assert "sIndividualProgression->hasPassedProgression" in ADVENTURE_START_CONTROL
 assert "bool ActivityEligible(Player* player, Config const& config, std::string& reason)" in SERVER
