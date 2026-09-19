@@ -25,6 +25,53 @@ export interface ActivityEligibility {
     reason: string;
 }
 
+export interface ActivityMeta {
+    id: string;
+    label: string;
+    era: string;
+    minLevel: number;
+    minProgression: number;
+    size: number;
+    support: string;
+    map: number;
+}
+
+export interface RealmInfo {
+    era: string;
+    levelCap: number;
+    progression: number;
+}
+
+export interface JourneyRaid {
+    id: string;
+    label: string;
+    era: string;
+    requiredProgression: number;
+    available: boolean;
+    playerComplete: boolean;
+    guildComplete: boolean;
+    support: string;
+    reason: string;
+}
+
+export interface Recommendation {
+    id: string;
+    mode: "DUNGEON" | "RAID";
+    label: string;
+    era: string;
+    reason: string;
+}
+
+export interface JourneyState {
+    ready: boolean;
+    raids: JourneyRaid[];
+    recommendations: Recommendation[];
+    era: string;
+    stage: number;
+    level: number;
+    guildId: number;
+}
+
 export interface PlanMember {
     subgroup: number;
     name: string;
@@ -377,11 +424,73 @@ export function roleLabel(role: Role): string {
 }
 
 function dungeonById(id: string): any {
-    return DataFns.GetDungeonById(id);
+    const local = DataFns.GetDungeonById(id);
+    if (local !== undefined) return local;
+    return activityMeta(id, "DUNGEON");
 }
 
 function raidById(id: string): any {
-    return DataFns.GetRaidById(id);
+    const local = DataFns.GetRaidById(id);
+    if (local !== undefined) return local;
+    return activityMeta(id, "RAID");
+}
+
+export function realm(): RealmInfo {
+    const raw = GC.realm ?? {};
+    return {
+        era: String(raw.era ?? "Vanilla"),
+        levelCap: Number(raw.levelCap ?? 60),
+        progression: Number(raw.progression ?? GC.activityProgression ?? 0),
+    };
+}
+
+export function activityMeta(id: string, mode: "DUNGEON" | "RAID"): ActivityMeta | undefined {
+    const byMode = GC.activityMeta ?? {};
+    const entries = byMode[mode] ?? {};
+    const raw = entries[id];
+    if (raw === undefined) return undefined;
+    return {
+        id: String(raw.id ?? id),
+        label: String(raw.label ?? id),
+        era: String(raw.era ?? "Vanilla"),
+        minLevel: Number(raw.minLevel ?? 1),
+        minProgression: Number(raw.minProgression ?? 0),
+        size: Number(raw.size ?? (mode === "RAID" ? 10 : 5)),
+        support: String(raw.support ?? "Unknown"),
+        map: Number(raw.map ?? 0),
+    };
+}
+
+export function activityMetaList(mode: "DUNGEON" | "RAID"): ActivityMeta[] {
+    const result: ActivityMeta[] = [];
+    const byMode = GC.activityMeta ?? {};
+    const entries = byMode[mode] ?? {};
+    for (const id in entries) {
+        const meta = activityMeta(String(id), mode);
+        if (meta !== undefined) result.push(meta);
+    }
+    result.sort((a, b) => {
+        const eraOrder: Record<string, number> = { Vanilla: 0, TBC: 1, WotLK: 2 };
+        const ae = eraOrder[a.era] ?? 9;
+        const be = eraOrder[b.era] ?? 9;
+        if (ae !== be) return ae - be;
+        if (a.minLevel !== b.minLevel) return a.minLevel - b.minLevel;
+        return a.label < b.label ? -1 : (a.label > b.label ? 1 : 0);
+    });
+    return result;
+}
+
+export function journey(): JourneyState {
+    const raw = GC.journey ?? {};
+    return {
+        ready: raw.ready === true,
+        raids: (raw.raids ?? []) as JourneyRaid[],
+        recommendations: (raw.recommendations ?? []) as Recommendation[],
+        era: String(raw.era ?? realm().era),
+        stage: Number(raw.stage ?? realm().progression),
+        level: Number(raw.level ?? UnitLevel("player") ?? 1),
+        guildId: Number(raw.guildId ?? 0),
+    };
 }
 
 export function pinnedMembers(): any[] {
@@ -437,8 +546,16 @@ export function dungeonItems(): ChoiceItem[] {
 }
 
 export function difficultyItems(): ChoiceItem[] {
-    const result: ChoiceItem[] = [];
-    for (const difficulty of D.DUNGEON_DIFFICULTIES ?? []) result.push({ value: difficulty.id, label: difficulty.label });
+    const currentEra = realm().era;
+    const result: ChoiceItem[] = [{ value: "normal", label: "Normal" }];
+    if (currentEra === "Vanilla") return result;
+
+    result.push({ value: "heroic", label: "Heroic" });
+    if (currentEra === "WotLK") {
+        result.push({ value: "alpha", label: "Titan Rune Alpha" });
+        result.push({ value: "beta", label: "Titan Rune Beta" });
+        result.push({ value: "gamma", label: "Titan Rune Gamma" });
+    }
     return result;
 }
 
@@ -471,6 +588,9 @@ export function raidDifficultyItems(): ChoiceItem[] {
 
 export function selectedActivityLabel(): string {
     const cfg = config();
+    const mode = cfg.mode === "RAID" ? "RAID" : "DUNGEON";
+    const meta = activityMeta(String(cfg.activity ?? ""), mode);
+    if (meta !== undefined) return meta.label;
     if (cfg.mode === "RAID") {
         const raid = raidById(cfg.activity);
         return raid?.label ?? "Raid";
@@ -490,13 +610,19 @@ export function selectedActivityIcon(): string {
 
 export function requiredActivityLevel(): number {
     const cfg = config();
+    const mode = cfg.mode === "RAID" ? "RAID" : "DUNGEON";
+    const meta = activityMeta(String(cfg.activity ?? ""), mode);
+    if (meta !== undefined) {
+        if (mode === "DUNGEON" && cfg.difficulty !== "normal")
+            return Math.max(meta.minLevel, meta.era === "WotLK" ? 80 : 70);
+        return meta.minLevel;
+    }
     if (cfg.mode === "RAID") {
         const raid = raidById(cfg.activity);
-        return Number(raid?.requiredLevel ?? 80);
+        return Number(raid?.requiredLevel ?? realm().levelCap);
     }
-    if (cfg.difficulty !== "normal") return 80;
     const dungeon = dungeonById(cfg.activity);
-    return Number(dungeon?.minLevel ?? 68);
+    return Number(dungeon?.minLevel ?? 1);
 }
 
 export function activityEligibilityText(): string {
@@ -522,6 +648,8 @@ export function requestActivities(mode?: "DUNGEON" | "RAID", difficulty?: string
     const selectedMode = mode ?? (config().mode === "RAID" ? "RAID" : "DUNGEON");
     GC.RequestActivities(selectedMode, difficulty, size);
 }
+
+export function requestJourney(): void { GC.RequestJourney(); }
 
 export function activityEligibility(id: string, mode?: "DUNGEON" | "RAID"): ActivityEligibility {
     const selectedMode = mode ?? (config().mode === "RAID" ? "RAID" : "DUNGEON");
