@@ -40,6 +40,9 @@ QUIET_BOT_PATCH = (ROOT / "patches/0040-playerbot-quiet-routine-whispers.patch")
 ADVENTURE_START = (ROOT / "modules/mod-raid-roster/src/AdventureStart.cpp").read_text(encoding="utf-8")
 ADVENTURE_START_CONTROL = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.cpp").read_text(encoding="utf-8")
 ADVENTURE_START_CONTROL_H = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.h").read_text(encoding="utf-8")
+ADVENTURE_CATALOG = (ROOT / "modules/mod-raid-roster/src/AdventureCatalog.cpp").read_text(encoding="utf-8")
+PROGRESSION_PAGE = (ROOT / "client-ui/src/components/ProgressionPage.ts").read_text(encoding="utf-8")
+RECOMMENDATIONS_PAGE = (ROOT / "client-ui/src/components/RecommendationsPage.ts").read_text(encoding="utf-8")
 
 
 def section(text: str, start: str, end: str) -> str:
@@ -66,7 +69,11 @@ for entry in re.finditer(r'\{\s*id\s*=\s*"([^"]+)"([^}]*)\}', dungeon_data):
 
 server_dungeons = {
     name: int(map_id)
-    for name, map_id in re.findall(r'\{\s*"([^"]+)"\s*,\s*(\d+)\s*\}', dungeon_server)
+    for name, map_id in re.findall(
+        r'\{\s*"[^"]+"\s*,\s*"([^"]+)"\s*,\s*"[^"]+"\s*,\s*'
+        r'AdventureActivityKind::Dungeon\s*,\s*AdventureEra::\w+\s*,\s*(\d+)',
+        ADVENTURE_CATALOG,
+    )
 }
 assert client_dungeons, "No addon dungeon map metadata parsed"
 assert client_dungeons == server_dungeons, (
@@ -101,7 +108,7 @@ assert "GetLFGDungeon(mapId, difficulty)" in SERVER
 
 for command in (
     "begin", "pref", "humanrole", "human", "pin", "arrangepref", "find", "arrange",
-    "move", "assemble", "teleport", "activities", "queue", "anchors", "diagnostics", "clear", "status",
+    "move", "assemble", "teleport", "activities", "journey", "queue", "anchors", "diagnostics", "clear", "status",
 ):
     assert re.search(r'\{\s*"' + re.escape(command) + r'"\s*,', SERVER), (
         f"Missing server command registration: {command}"
@@ -111,7 +118,7 @@ for command in (
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
 assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
-assert '## Version: 0.13.1' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
+assert '## Version: 0.14.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
@@ -571,8 +578,8 @@ assert 'EnsureRaidReadyAccess(player, profile);' in ADVENTURE_START_CONTROL
 
 # Activity visibility and execution use the same authoritative server-side access contract.
 assert "uint8 RequiredProgressionFor(Config const& config)" in SERVER
-assert 'config.activity == "forge_souls"' in SERVER and "ProgressionWotlkTier3" in SERVER
-assert 'config.activity == "zulaman"' in SERVER and "RequiredZulAmanProgression" in SERVER
+assert '"forge_souls"' in ADVENTURE_CATALOG and "AdventureEra::Wotlk" in ADVENTURE_CATALOG
+assert '"zulaman"' in ADVENTURE_CATALOG and "RequiredZulAmanProgression" in SERVER
 assert '#include "IndividualProgression.h"' not in SERVER, (
     "GroupComposerCommand must not include IndividualProgression.h beside PlayerbotAI.h; both define legacy GENERAL"
 )
@@ -763,7 +770,7 @@ assert "const nextColor = phase === \"ERROR\"" in MODERN and '"ACTION REQUIRED"'
 )
 assert "classIcons" not in MODERN, "Status rail brought back the overlapping class-icon strip"
 assert 'TemplateBrowserUI.createTemplateBrowser(frame)' in MODERN
-assert 'type TemplateTab = "WotLK" | "TBC" | "Classic" | "CUSTOM";' in TEMPLATE_BROWSER
+assert 'type TemplateTab = "WotLK" | "TBC" | "Vanilla" | "CUSTOM";' in TEMPLATE_BROWSER
 assert 'Math.ceil(names.length / 2) * 92' in TEMPLATE_BROWSER, (
     "Templates must stay grouped by expansion and use a compact two-column browser"
 )
@@ -896,10 +903,15 @@ assert "function wheel(this: void" in CHOICE_SELECT
 assert "function wheel(this: void" in SCROLL_LIST
 assert "sync-group-composer-client.sh" in UPDATE_SH
 assert "GroupComposerModernUI.lua" in SYNC_CLIENT and "Interface/AddOns/GroupComposer" in SYNC_CLIENT
-assert "0.13.1" in TOC and "0.13.1" in DATA
+assert "0.14.0" in TOC and "0.14.0" in DATA
 
 # Long activity lists use a dedicated filtered two-column browser instead of the compact ChoiceSelect.
 assert 'ActivityBrowserUI.createActivityBrowser(frame)' in MODERN
-assert '"LEVELING"' in ACTIVITY_BROWSER and '"ENDGAME"' in ACTIVITY_BROWSER
-assert '"WotLK"' in ACTIVITY_BROWSER and '"TBC"' in ACTIVITY_BROWSER and '"Classic"' in ACTIVITY_BROWSER
+assert 'ProgressionPageUI.createProgressionPage(frame)' in MODERN
+assert 'RecommendationsPageUI.createRecommendationsPage(frame' in MODERN
+assert 'JOURNEYRAID' in SERVER and 'RECOMMEND' in SERVER
+assert '"You: Cleared ✓"' in PROGRESSION_PAGE and '"Guild: Cleared ✓"' in PROGRESSION_PAGE
+assert '"Recommended Activities"' in RECOMMENDATIONS_PAGE
+assert '"Vanilla"' in ACTIVITY_BROWSER and '"TBC"' in ACTIVITY_BROWSER and '"WotLK"' in ACTIVITY_BROWSER
+assert 'difficultyDetail' in ACTIVITY_BROWSER and '"Titan Rune"' in ACTIVITY_BROWSER
 assert 'const column = i % 2;' in ACTIVITY_BROWSER and 'Math.ceil(items.length / 2) * 86' in ACTIVITY_BROWSER

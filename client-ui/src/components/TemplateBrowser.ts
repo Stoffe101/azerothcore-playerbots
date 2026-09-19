@@ -7,7 +7,7 @@ import * as ModalUI from "../widgets/Modal";
 import * as ScrollUI from "../widgets/ScrollList";
 import * as InputUI from "../widgets/TextInput";
 
-type TemplateTab = "WotLK" | "TBC" | "Classic" | "CUSTOM";
+type TemplateTab = "WotLK" | "TBC" | "Vanilla" | "CUSTOM";
 
 interface TemplateCard {
     panel: any;
@@ -42,7 +42,7 @@ export function createTemplateBrowser(parent: WoWFrame): TemplateBrowser {
     const tabDefs: Array<{ key: TemplateTab; label: string; width: number }> = [
         { key: "WotLK", label: "WotLK", width: 116 },
         { key: "TBC", label: "TBC", width: 104 },
-        { key: "Classic", label: "Classic", width: 116 },
+        { key: "Vanilla", label: "Vanilla", width: 116 },
         { key: "CUSTOM", label: "My Templates", width: 150 },
     ];
     const tabs: UIButton[] = [];
@@ -187,7 +187,7 @@ export function createTemplateBrowser(parent: WoWFrame): TemplateBrowser {
         if (Model.config().mode === "RAID") {
             const raid = D.GetRaidById(Model.config().activity);
             const era = String(raid?.era ?? "WotLK");
-            tab = era === "TBC" ? "TBC" : (era === "Classic" ? "Classic" : "WotLK");
+            tab = era === "TBC" ? "TBC" : (era === "Vanilla" ? "Vanilla" : "WotLK");
         } else tab = "WotLK";
         scroll.scrollToTop(); refresh(); modal.show();
     }
