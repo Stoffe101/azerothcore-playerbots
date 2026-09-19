@@ -194,13 +194,15 @@ export function createModernDashboard(): Dashboard {
 
     const backendGlow = Native.createSolid(header.frame, Native.withAlpha(theme.colors.success, 0.18), "ARTWORK");
     backendGlow.SetSize(18, 18);
-    backendGlow.SetPoint("RIGHT", header.frame, "RIGHT", -233, 0);
+    backendGlow.SetPoint("RIGHT", header.frame, "RIGHT", -326, 0);
     backendGlow.Hide();
     const backendDot = Native.createSolid(header.frame, theme.colors.muted, "OVERLAY");
     backendDot.SetSize(8, 8);
-    backendDot.SetPoint("RIGHT", header.frame, "RIGHT", -238, 0);
+    backendDot.SetPoint("RIGHT", header.frame, "RIGHT", -331, 0);
     const backendText = Native.createText(header.frame, "Checking backend", "GameFontHighlightSmall", theme.colors.muted);
     backendText.SetPoint("LEFT", backendDot, "RIGHT", 8, 0);
+    backendText.SetWidth(160);
+    backendText.SetJustifyH("LEFT");
 
     const close = ButtonUI.createButton(header.frame, {
         text: "Close   X", width: 108, height: 34, accent: theme.colors.error, emphasis: true,
@@ -801,7 +803,7 @@ export function createModernDashboard(): Dashboard {
     const coverageCard = Native.createPanel(status.frame, theme.colors.background, theme.colors.border);
     coverageCard.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -307);
     coverageCard.frame.SetPoint("TOPRIGHT", status.frame, "TOPRIGHT", -16, -307);
-    coverageCard.frame.SetHeight(154);
+    coverageCard.frame.SetHeight(196);
 
     const coverageGlyph = Native.createPanel(coverageCard.frame, theme.colors.surfaceDeep, theme.colors.borderStrong);
     coverageGlyph.frame.SetSize(30, 30);
@@ -820,17 +822,17 @@ export function createModernDashboard(): Dashboard {
         { token: "dispel", label: "Dispel" },
         { token: "buffs", label: "Raid Buffs" },
         { token: "heroism", label: "Heroism" },
-        { token: "battle-rez", label: "Battle Rez" },
+        { token: "battle-rez", label: "Battle Res" },
         { token: "cc", label: "CC" },
         { token: "threat", label: "Threat" },
     ];
     const coverageChips: any[] = [];
     for (let i = 0; i < coverageDefs.length; i += 1) {
-        const column = i % 3;
-        const row = Math.floor(i / 3);
+        const column = i % 2;
+        const row = Math.floor(i / 2);
         const chip = Native.createPanel(coverageCard.frame, theme.colors.surfaceDeep, theme.colors.border);
-        chip.frame.SetSize(78, 24);
-        chip.frame.SetPoint("TOPLEFT", coverageCard.frame, "TOPLEFT", 12 + column * 82, -(50 + row * 29));
+        chip.frame.SetSize(122, 24);
+        chip.frame.SetPoint("TOPLEFT", coverageCard.frame, "TOPLEFT", 12 + column * 126, -(50 + row * 29));
         const check = chip.frame.CreateTexture(undefined, "ARTWORK");
         check.SetTexture("Interface\\Buttons\\UI-CheckBox-Check");
         check.SetSize(14, 14);
@@ -838,7 +840,7 @@ export function createModernDashboard(): Dashboard {
         check.Hide();
         const label = Native.createText(chip.frame, coverageDefs[i].label, "GameFontHighlightSmall", theme.colors.muted);
         label.SetPoint("LEFT", chip.frame, "LEFT", 22, 0);
-        label.SetWidth(53);
+        label.SetWidth(94);
         coverageChips.push({ panel: chip, check, label, token: coverageDefs[i].token });
     }
 
@@ -847,7 +849,7 @@ export function createModernDashboard(): Dashboard {
     coverageDamageText.SetWidth(246);
 
     const nextCard = Native.createPanel(status.frame, theme.colors.background, theme.colors.border);
-    nextCard.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -477);
+    nextCard.frame.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -519);
     nextCard.frame.SetPoint("TOPRIGHT", status.frame, "TOPRIGHT", -16, -477);
     nextCard.frame.SetHeight(116);
 

@@ -33,6 +33,7 @@ TYPES = (ROOT / "modules/mod-raid-roster/src/GroupComposerTypes.h").read_text(en
 GEAR_H = (ROOT / "modules/mod-raid-roster/src/RaidRosterGear.h").read_text(encoding="utf-8")
 GEAR_CPP = (ROOT / "modules/mod-raid-roster/src/RaidRosterGear.cpp").read_text(encoding="utf-8")
 SILENT_LOGIN_PATCH = (ROOT / "patches/0035-playerbot-group-composer-silent-login.patch").read_text(encoding="utf-8")
+CAPACITY_BYPASS_PATCH = (ROOT / "patches/0038-playerbot-group-composer-capacity-bypass.patch").read_text(encoding="utf-8")
 
 
 def section(text: str, start: str, end: str) -> str:
@@ -104,7 +105,7 @@ for command in (
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
 assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
-assert '## Version: 0.12.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
+assert '## Version: 0.12.1' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
@@ -222,6 +223,9 @@ assert "InviteToGroupAction" not in SERVER, (
 assert "mgr->AddPlayerBot(member.guid, account, true);" in SERVER, (
     "Composer preparation no longer requests the silent Playerbot login path"
 )
+assert "!groupComposerSilent && count >= uint32(PlayerbotAIConfig::instance().maxAddedBots)" in CAPACITY_BYPASS_PATCH, (
+    "Composer silent capacity is still incorrectly limited by the manual MaxAddedBots cap"
+)
 assert "bool groupComposerSilent = false" in SILENT_LOGIN_PATCH
 assert "s_groupComposerSilentLogins" in SILENT_LOGIN_PATCH
 assert "if (!groupComposerSilent)" in SILENT_LOGIN_PATCH
@@ -291,6 +295,10 @@ grouped_bonus = re.search(r'candidate\.alreadyGrouped\) score \+= (\d+)', score)
 assert guild_bonus and grouped_bonus, "Guild/grouped candidate priority bonuses are missing"
 assert int(guild_bonus.group(1)) > int(grouped_bonus.group(1)), (
     "An already-grouped world bot can still outrank a suitable guild candidate"
+)
+online_bonus = re.search(r'candidate\.online\) score \+= (\d+)', score)
+assert online_bonus and int(online_bonus.group(1)) >= 2000, (
+    "Composer no longer strongly prefers already-online capacity for instant preparation"
 )
 assert "if (!c.guild && !config.fillWorld && !c.alreadyGrouped) continue;" in PLANNER, (
     "Non-guild managed reserve bots bypass the Fill World fallback switch"
@@ -371,11 +379,37 @@ assert "s_pendingSync[member.guid.GetCounter()]" in prepare, "Offline prepared b
 assert "bool preparing = false;" in TYPES and "bool prepared = false;" in TYPES, (
     "Plan lost the explicit V4 preparation state"
 )
-assert "plan.prepareElapsed > 50000" in SERVER, "Preparation timeout must allow bulk async login/provisioning to settle"
+assert "plan.prepareElapsed > 15000" in SERVER, "Offline fallback preparation must stay bounded instead of stalling for 50 seconds"
+assert "itr->second.elapsed > 12000" in SERVER, "Individual login/provision callbacks must have a short bounded fallback window"
 assert "ReplaceUnreadyCandidates" not in SERVER, (
     "Composer regressed to whole-roster replacement churn"
 )
 assert 'PSendSysMessage("[GC]|PROGRESS|' in SERVER, "Server no longer publishes granular V4 progress"
+
+# Readiness validates the finalized combat build, not a strategy flag that can lag one AI tick.
+readiness = section(SERVER, "std::string PreparedMemberBlocker(", "uint32 SelectedBotCount(")
+assert "SpecCanFillRole(member.cls, liveSpec, member.role)" in readiness
+assert "Planner::InferRole(bot)" not in readiness, "Readiness regressed to lagging AI strategy role inference"
+assert '"is still offline"' in readiness and '"Playerbot AI is not initialized"' in readiness
+assert "PreparedItemLevelFloor" in readiness
+
+# Progression/era is finalized before talents and gear so an EraTalents transition cannot erase the
+# build Composer just prepared.
+sync_body = section(SERVER, "void SyncManagedBot(", "bool FullProvisionFor(")
+assert "EraTransition::Detect(bot);" in sync_body
+assert sync_body.index("RaidRosterEra::SyncBotToMaster(master, bot);") < sync_body.index("FactoryReconcile"), (
+    "Composer still changes progression era after finalizing talents"
+)
+assert "ComposerGearProfile" in SERVER and "GearProfileFor(plan.config)" in SERVER
+assert "preferredItemLevel" in GEAR_H and "preferredItemLevel" in GEAR_CPP
+
+# Build & Prepare is the normal one-click path. Once bots are Ready, server-side group assembly
+# begins automatically; the explicit Assemble action remains a recovery/manual boundary.
+world_prepare = section(SERVER, "if (plan.preparing)", "if (plan.travelPending)")
+assert "BeginPreparedAssembly(master, plan, assemblyError)" in world_prepare
+find_handler = section(SERVER, "bool GroupComposerCommand::HandleFind", "bool GroupComposerCommand::HandleArrange")
+assert "BeginPreparedAssembly(master, stored, assemblyError)" in find_handler
+
 assemble = section(SERVER, "bool GroupComposerCommand::HandleAssemble", "bool GroupComposerCommand::HandleQueue")
 assert "!plan.prepared || plan.preparing || OwnerHasPendingSync(owner)" in assemble, (
     "Assemble can commit before Build & Prepare is complete"
@@ -547,7 +581,7 @@ assert human_snapshot.count("GetLevel() < plan.config.requiredLevel") >= 2, (
 )
 assert "minimumItemLevel" not in human_snapshot, "Assembly item-level validation must never apply to real humans"
 
-assert "SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel, 0, false);" in SERVER, (
+assert "SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel, 0, 0, false);" in SERVER, (
     "Persistent guild spec retask lost the expanded managed-sync contract"
 )
 
@@ -631,8 +665,14 @@ assert '"Human anchor"' in MODERN and "widgets.humanAnchor.frame.Show()" in MODE
 assert "resetRoles.frame.SetPoint" in MODERN and 'resetRoles.frame.SetPoint("TOPRIGHT", raidView' in MODERN
 assert "backendGlow" in MODERN and "phaseGlow" in MODERN and "coverageGlyph" in MODERN
 assert "sidebarDivider" in MODERN, "Sidebar hierarchy lost the Compose/Tools divider"
-assert "coverageDefs" in MODERN and '"Interrupt"' in MODERN and '"Battle Rez"' in MODERN, (
+assert "coverageDefs" in MODERN and '"Interrupt"' in MODERN and '"Battle Res"' in MODERN, (
     "Status rail regressed from bounded utility chips to overlapping free-form coverage"
+)
+assert "const column = i % 2;" in MODERN and "chip.frame.SetSize(122, 24)" in MODERN, (
+    "Utility coverage regressed to narrow clipping-prone columns"
+)
+assert "backendText.SetWidth(160)" in MODERN and '"RIGHT", header.frame, "RIGHT", -331' in MODERN, (
+    "Backend connection label is no longer bounded away from the Close button"
 )
 assert "const nextColor = phase === \"ERROR\"" in MODERN and '"ACTION REQUIRED"' in MODERN, (
     "Next Step card lost semantic phase coloring"
@@ -770,4 +810,4 @@ assert "function wheel(this: void" in CHOICE_SELECT
 assert "function wheel(this: void" in SCROLL_LIST
 assert "sync-group-composer-client.sh" in UPDATE_SH
 assert "GroupComposerModernUI.lua" in SYNC_CLIENT and "Interface/AddOns/GroupComposer" in SYNC_CLIENT
-assert "0.12.0" in TOC and "0.12.0" in DATA
+assert "0.12.1" in TOC and "0.12.1" in DATA

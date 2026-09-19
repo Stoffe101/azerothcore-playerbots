@@ -1066,10 +1066,10 @@ std::string PreparedMemberBlocker(Plan const& plan, Member const& member)
     if (liveSpec == ANY_SPEC)
         return "has no resolved active specialization";
     if (member.spec != ANY_SPEC && liveSpec != member.spec)
-        return "resolved to " + SpecName(member.cls, liveSpec) + " instead of " +
+        return std::string("resolved to ") + SpecName(member.cls, liveSpec) + " instead of " +
             SpecName(member.cls, member.spec);
     if (!SpecCanFillRole(member.cls, liveSpec, member.role))
-        return "final specialization " + SpecName(member.cls, liveSpec) +
+        return std::string("final specialization ") + SpecName(member.cls, liveSpec) +
             " cannot fill the requested " + std::string(RoleToken(member.role)) + " role";
 
     uint16 floor = PreparedItemLevelFloor(plan, member);
