@@ -1,0 +1,42 @@
+name: Group Composer client checks
+
+on:
+  push:
+    branches:
+      - test/group-composer-v4
+
+jobs:
+  validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1
+
+      - name: Validate client addon
+        run: |
+          set -euo pipefail
+          bash -n fetch-client-addons.sh
+          bash -n install-group-composer-wsl.sh
+          find client-addons-src/GroupComposer -type f -name '*.lua' -print0 | xargs -0 -n1 luac5.1 -p
+          lua5.1 client-addons-src/GroupComposer/tests/test_data_profiles.lua
+          python3 client-addons-src/GroupComposer/tests/test_server_contract.py
+          python3 client-addons-src/GroupComposer/tests/test_titan_bridge_contract.py
+
+          # During the migration the checked-in generated bundle may appear one bot commit
+          # after the TypeScript source commit. Once the new shell is activated in the TOC,
+          # require that generated output to exist and parse cleanly.
+          if grep -Fxq 'GroupComposerModernUI.lua' client-addons-src/GroupComposer/GroupComposer.toc; then
+            test -f client-addons-src/GroupComposer/GroupComposerModernUI.lua
+            luac5.1 -p client-addons-src/GroupComposer/GroupComposerModernUI.lua
+            ! grep -q '^DashboardV4.lua$' client-addons-src/GroupComposer/GroupComposer.toc
+          fi
+
+          ! grep -R 'SetShown(' client-addons-src/GroupComposer --include='*.lua'
+          git diff --check

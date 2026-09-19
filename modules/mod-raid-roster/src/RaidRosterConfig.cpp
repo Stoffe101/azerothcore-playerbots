@@ -1,6 +1,7 @@
 #include "RaidRosterConfig.h"
 #include "Config.h"
 #include "Log.h"
+#include "PlayerbotAIConfig.h"
 
 bool g_RaidRosterEnable = false;
 
@@ -46,6 +47,35 @@ float g_AdventureStartWotlkRaidReadyTeleportX = 5807.75f;
 float g_AdventureStartWotlkRaidReadyTeleportY = 588.27f;
 float g_AdventureStartWotlkRaidReadyTeleportZ = 660.94f;
 float g_AdventureStartWotlkRaidReadyTeleportO = 1.64f;
+
+bool g_GuildDirectorEnable = true;
+bool g_GuildDirectorAutoTravel = true;
+uint32 g_GuildDirectorReadyTimeoutMs = 30000;
+
+bool g_EncounterLifecycleEnable = true;
+bool g_WipeRecoveryEnable = true;
+uint32 g_WipeRecoveryDelayMs = 5000;
+bool g_WipeRecoveryResurrectHumans = true;
+bool g_AutoPrepEnable = true;
+bool g_AutoPrepRefillConsumables = true;
+bool g_AutoPrepWarlockSupport = true;
+bool g_AutoPrepSmartPets = true;
+
+bool g_AutoDungeonClearEnable = true;
+bool g_AutoDungeonClearRaids = true;
+
+bool g_SmartLootEnable = true;
+bool g_SmartLootBotNeedUpgrades = true;
+bool g_SmartLootBotGreedUseful = true;
+bool g_BadLuckProtectionEnable = true;
+uint32 g_BadLuckUpgradeWindowSeconds = 120;
+
+bool g_AdventureEconomyEnable = true;
+uint32 g_AdventureEconomyDungeonBossFirstKillGold = 5;
+uint32 g_AdventureEconomyRaidBossFirstKillGold = 20;
+uint32 g_AdventureEconomyDungeonBossRepeatGold = 1;
+uint32 g_AdventureEconomyRaidBossRepeatGold = 3;
+uint32 g_AdventureEconomyDailyRepeatCapGold = 30;
 
 namespace
 {
@@ -127,6 +157,50 @@ void RaidRosterLoadConfig()
     g_AdventureStartWotlkRaidReadyTeleportZ = sConfigMgr->GetOption<float>("AdventureStart.WotlkRaidReady.Teleport.Z", 660.94f);
     g_AdventureStartWotlkRaidReadyTeleportO = sConfigMgr->GetOption<float>("AdventureStart.WotlkRaidReady.Teleport.O", 1.64f);
 
+    g_GuildDirectorEnable = sConfigMgr->GetOption<bool>("GuildDirector.Enable", true);
+    g_GuildDirectorAutoTravel = sConfigMgr->GetOption<bool>("GuildDirector.AutoTravel", true);
+    g_GuildDirectorReadyTimeoutMs = ClampU32(
+        sConfigMgr->GetOption<uint32>("GuildDirector.ReadyTimeoutMs", 30000), 5000, 60000);
+
+    g_EncounterLifecycleEnable = sConfigMgr->GetOption<bool>("EncounterLifecycle.Enable", true);
+    g_WipeRecoveryEnable = sConfigMgr->GetOption<bool>("WipeRecovery.Enable", true);
+    g_WipeRecoveryDelayMs = ClampU32(
+        sConfigMgr->GetOption<uint32>("WipeRecovery.DelayMs", 5000), 2000, 30000);
+    g_WipeRecoveryResurrectHumans = sConfigMgr->GetOption<bool>("WipeRecovery.ResurrectHumans", true);
+    g_AutoPrepEnable = sConfigMgr->GetOption<bool>("AutoPrep.Enable", true);
+    g_AutoPrepRefillConsumables = sConfigMgr->GetOption<bool>("AutoPrep.RefillConsumables", true);
+    g_AutoPrepWarlockSupport = sConfigMgr->GetOption<bool>("AutoPrep.WarlockSupport", true);
+    g_AutoPrepSmartPets = sConfigMgr->GetOption<bool>("AutoPrep.SmartPets", true);
+
+    g_AutoDungeonClearEnable = sConfigMgr->GetOption<bool>("AutoDungeonClear.Enable", true);
+    g_AutoDungeonClearRaids = sConfigMgr->GetOption<bool>("AutoDungeonClear.Raids", true);
+
+    g_SmartLootEnable = sConfigMgr->GetOption<bool>("SmartLoot.Enable", true);
+    g_SmartLootBotNeedUpgrades = sConfigMgr->GetOption<bool>("SmartLoot.BotNeedUpgrades", true);
+    g_SmartLootBotGreedUseful = sConfigMgr->GetOption<bool>("SmartLoot.BotGreedUseful", true);
+    g_BadLuckProtectionEnable = sConfigMgr->GetOption<bool>("BadLuckProtection.Enable", true);
+    g_BadLuckUpgradeWindowSeconds = ClampU32(
+        sConfigMgr->GetOption<uint32>("BadLuckProtection.UpgradeWindowSeconds", 120), 30, 600);
+
+    if (g_SmartLootEnable)
+    {
+        PlayerbotAIConfig& botConfig = PlayerbotAIConfig::instance();
+        botConfig.lootNeedRollLevel = g_SmartLootBotNeedUpgrades ? 2 : 1;
+        botConfig.lootGreedRollLevel = g_SmartLootBotGreedUseful;
+    }
+
+    g_AdventureEconomyEnable = sConfigMgr->GetOption<bool>("AdventureEconomy.Enable", true);
+    g_AdventureEconomyDungeonBossFirstKillGold = ClampU32(
+        sConfigMgr->GetOption<uint32>("AdventureEconomy.DungeonBossFirstKillGold", 5), 0, 1000);
+    g_AdventureEconomyRaidBossFirstKillGold = ClampU32(
+        sConfigMgr->GetOption<uint32>("AdventureEconomy.RaidBossFirstKillGold", 20), 0, 5000);
+    g_AdventureEconomyDungeonBossRepeatGold = ClampU32(
+        sConfigMgr->GetOption<uint32>("AdventureEconomy.DungeonBossRepeatGold", 1), 0, 100);
+    g_AdventureEconomyRaidBossRepeatGold = ClampU32(
+        sConfigMgr->GetOption<uint32>("AdventureEconomy.RaidBossRepeatGold", 3), 0, 500);
+    g_AdventureEconomyDailyRepeatCapGold = ClampU32(
+        sConfigMgr->GetOption<uint32>("AdventureEconomy.DailyRepeatCapGold", 30), 0, 1000);
+
     LOG_INFO("server.loading", "[RaidRoster] Enable={}", g_RaidRosterEnable ? 1 : 0);
     LOG_INFO(
         "server.loading",
@@ -147,4 +221,22 @@ void RaidRosterLoadConfig()
         g_AdventureStartWotlkRaidReadyStartingGold,
         g_AdventureStartWotlkRaidReadyBasicGearItemLevel,
         g_AdventureStartWotlkRaidReadyGearItemLevel);
+    LOG_INFO("server.loading", "[GuildDirector] Enable={}, AutoTravel={}, ReadyTimeoutMs={}",
+        g_GuildDirectorEnable ? 1 : 0, g_GuildDirectorAutoTravel ? 1 : 0, g_GuildDirectorReadyTimeoutMs);
+    LOG_INFO("server.loading", "[EncounterLifecycle] Enable={}, WipeRecovery={}, Delay={}ms, ResurrectHumans={}, AutoPrep={}, RefillConsumables={}, WarlockSupport={}, SmartPets={}",
+        g_EncounterLifecycleEnable ? 1 : 0, g_WipeRecoveryEnable ? 1 : 0, g_WipeRecoveryDelayMs,
+        g_WipeRecoveryResurrectHumans ? 1 : 0, g_AutoPrepEnable ? 1 : 0, g_AutoPrepRefillConsumables ? 1 : 0,
+        g_AutoPrepWarlockSupport ? 1 : 0, g_AutoPrepSmartPets ? 1 : 0);
+    LOG_INFO("server.loading", "[AutoDungeonClear] Enable={}, Raids={}",
+        g_AutoDungeonClearEnable ? 1 : 0, g_AutoDungeonClearRaids ? 1 : 0);
+    LOG_INFO("server.loading", "[SmartLoot] Enable={}, BotNeedUpgrades={}, BotGreedUseful={}, BadLuckProtection={}, UpgradeWindow={}s",
+        g_SmartLootEnable ? 1 : 0, g_SmartLootBotNeedUpgrades ? 1 : 0,
+        g_SmartLootBotGreedUseful ? 1 : 0, g_BadLuckProtectionEnable ? 1 : 0, g_BadLuckUpgradeWindowSeconds);
+    LOG_INFO("server.loading", "[AdventureEconomy] Enable={}, firstKill(dungeon={}g, raid={}g), repeat(dungeon={}g, raid={}g, dailyCap={}g)",
+        g_AdventureEconomyEnable ? 1 : 0,
+        g_AdventureEconomyDungeonBossFirstKillGold,
+        g_AdventureEconomyRaidBossFirstKillGold,
+        g_AdventureEconomyDungeonBossRepeatGold,
+        g_AdventureEconomyRaidBossRepeatGold,
+        g_AdventureEconomyDailyRepeatCapGold);
 }

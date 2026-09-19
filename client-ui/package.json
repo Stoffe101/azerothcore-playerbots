@@ -1,0 +1,16 @@
+{
+  "name": "azerothcore-group-composer-ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed native-WoW UI authoring layer for Group Composer.",
+  "scripts": {
+    "build": "tstl -p tsconfig.json",
+    "check": "tstl -p tsconfig.json --noEmit",
+    "watch": "tstl -p tsconfig.json --watch",
+    "build:sync": "npm run build && bash scripts/sync-generated.sh"
+  },
+  "devDependencies": {
+    "typescript": "6.0.2",
+    "typescript-to-lua": "1.37.1"
+  }
+}

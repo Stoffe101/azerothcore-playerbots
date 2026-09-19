@@ -1,0 +1,13 @@
+diff --git a/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp b/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp
+--- a/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp
++++ b/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp
+@@ -130,8 +130,8 @@ void PlayerbotHolder::AddPlayerBot(ObjectGuid playerGuid, uint32 masterAccountId, bool groupComposerSilent)
+             if (acctId == masterAccountId)
+                 ++loadingForMaster;
+         }
+         uint32 count = mgr->GetPlayerbotsCount() + loadingForMaster;
+-        if (count >= uint32(PlayerbotAIConfig::instance().maxAddedBots))
++        if (!groupComposerSilent && count >= uint32(PlayerbotAIConfig::instance().maxAddedBots))
+         {
+             allowed = false;
+             out << "Failure: You have added too many bots (more than " << sPlayerbotAIConfig.maxAddedBots << ")";

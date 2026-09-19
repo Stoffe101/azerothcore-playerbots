@@ -1,0 +1,6 @@
+#ifndef MOD_PLAYERBOT_CHATTER_AI_GUILD_LIFE_H
+#define MOD_PLAYERBOT_CHATTER_AI_GUILD_LIFE_H
+
+void AddPBAIGuildLifeScripts();
+
+#endif

@@ -1,0 +1,40 @@
+diff --git a/modules/mod-era-talents/src/EraTalentPin.cpp b/modules/mod-era-talents/src/EraTalentPin.cpp
+--- a/modules/mod-era-talents/src/EraTalentPin.cpp
++++ b/modules/mod-era-talents/src/EraTalentPin.cpp
+@@ -7,6 +7,8 @@
+ #include "Pet.h"
+ #include "ObjectAccessor.h"
+ #include "World.h"           // sWorld / CONFIG_NO_RESET_TALENT_COST (trainer-reset hook)
++#include "WorldSession.h"    // PlayerLoading(): login lifecycle is independent of IsInWorld()
++#include "Log.h"
+ #include "EraTalentBots.h"   // bot-only era paths (players keep the pipeline below)
+ #include "EraSoulLink.h"     // EraSoulLink::kPairs — shared with era_soul_link/_relink (EraTalentProcScripts.cpp)
+ 
+@@ -292,10 +294,24 @@ public:
+         if (EraTransition::IsInternalTalentReset())
+             return;
+ 
+-        // Core login can also issue no-cost native resets before the player is in-world.
+-        // Those are lifecycle cleanup, not an explicit request to erase the custom era build.
+-        if (noCost && !p->IsInWorld())
++        // A managed-era build lives in era_character_talent, not Player::m_talents. Core login
++        // initialization may call resetTalents() while validating/refunding the NATIVE talent map,
++        // and CharacterHandler also consumes AT_LOGIN_RESET_TALENTS after AddPlayerToMap(). The
++        // latter means IsInWorld() is already true and cannot distinguish a login reset from an
++        // intentional in-game respec. WorldSession::PlayerLoading() spans both login phases and is
++        // the authoritative lifecycle boundary on this core.
++        //
++        // Never let a native talent reset that fires during login own/delete the custom era rows.
++        // Trainer resets and online GM resets happen after PlayerLoading() becomes false and still
++        // flow through the normal EraTalents::Reset path.
++        if (p->GetSession() && p->GetSession()->PlayerLoading())
++        {
++            // Keep this one diagnostic unconditional: it only fires when the core actually attempts
++            // a login-time reset, and tells us which reset source reached the custom-tree boundary.
++            LOG_INFO("module", "[mod-era-talents] preserved custom talents during login reset for {} (noCost={}, atLoginReset={}, inWorld={})",
++                     p->GetName(), noCost, p->HasAtLoginFlag(AT_LOGIN_RESET_TALENTS), p->IsInWorld());
+             return;
++        }
+ 
+         EraId era = EraFromIP(p);
+         if (!EraHasTalentTrees(era))

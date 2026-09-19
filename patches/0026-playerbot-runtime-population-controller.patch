@@ -1,0 +1,598 @@
+diff --git a/modules/mod-playerbots/src/Bot/Factory/RandomPlayerbotFactory.h b/modules/mod-playerbots/src/Bot/Factory/RandomPlayerbotFactory.h
+--- a/modules/mod-playerbots/src/Bot/Factory/RandomPlayerbotFactory.h
++++ b/modules/mod-playerbots/src/Bot/Factory/RandomPlayerbotFactory.h
+@@ -23,6 +23,17 @@
+ class RandomPlayerbotFactory
+ {
+ public:
++    struct CapacityProvisionStatus
++    {
++        uint32 requiredAccounts = 0;
++        uint32 existingAccounts = 0;
++        uint32 existingCharacters = 0;
++        uint32 accountsQueued = 0;
++        uint32 charactersQueued = 0;
++        bool waitingForDatabase = false;
++        bool complete = false;
++    };
++
+     enum class NameRaceAndGender : uint8
+     {
+         // Generic is the category used for human & undead
+@@ -53,6 +64,7 @@
+ 
+     Player* CreateRandomBot(WorldSession* session, uint8 cls, std::unordered_map<NameRaceAndGender, std::vector<std::string>>& names);
+     static void CreateRandomBots();
++    static CapacityProvisionStatus ProvisionRandomBotCapacityStep(uint32 maxAccountsPerStep = 1);
+     static std::string const CreateRandomGuildName();
+     static uint32 CalculateTotalAccountCount();
+     static uint32 CalculateAvailableCharsPerAccount();
+diff --git a/modules/mod-playerbots/src/Bot/Factory/RandomPlayerbotFactory.cpp b/modules/mod-playerbots/src/Bot/Factory/RandomPlayerbotFactory.cpp
+--- a/modules/mod-playerbots/src/Bot/Factory/RandomPlayerbotFactory.cpp
++++ b/modules/mod-playerbots/src/Bot/Factory/RandomPlayerbotFactory.cpp
+@@ -22,6 +22,101 @@
+ #include "SocialMgr.h"
+ #include "Timer.h"
+ 
++#include <cctype>
++#include <unordered_set>
++
++namespace
++{
++using RandomBotNameCache = std::unordered_map<RandomPlayerbotFactory::NameRaceAndGender, std::vector<std::string>>;
++
++std::string RandomBotAccountName(uint32 accountNumber)
++{
++    std::ostringstream out;
++    out << sPlayerbotAIConfig.randomBotAccountPrefix << accountNumber;
++    std::string accountName = out.str();
++    std::transform(accountName.begin(), accountName.end(), accountName.begin(),
++        [](unsigned char character) { return static_cast<char>(std::toupper(character)); });
++    return accountName;
++}
++
++bool LoadAvailableRandomBotNames(RandomBotNameCache& nameCache)
++{
++    QueryResult result = CharacterDatabase.Query(
++        "SELECT n.name, n.gender FROM playerbots_names n "
++        "LEFT JOIN characters c ON c.name = n.name WHERE c.guid IS NULL");
++    if (!result)
++    {
++        LOG_ERROR("playerbots", "No more unused names left");
++        return false;
++    }
++
++    do
++    {
++        Field* fields = result->Fetch();
++        std::string name = fields[0].Get<std::string>();
++        auto raceAndGender = static_cast<RandomPlayerbotFactory::NameRaceAndGender>(fields[1].Get<uint8>());
++        if (sObjectMgr->CheckPlayerName(name) == CHAR_NAME_SUCCESS)
++            nameCache[raceAndGender].push_back(std::move(name));
++    } while (result->NextRow());
++
++    return true;
++}
++
++std::unordered_set<uint8> ExistingClassesForAccount(uint32 accountId)
++{
++    std::unordered_set<uint8> classes;
++    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHARS_BY_ACCOUNT_ID);
++    stmt->SetData(0, accountId);
++    if (PreparedQueryResult result = CharacterDatabase.Query(stmt))
++    {
++        do
++        {
++            classes.insert(result->Fetch()[1].Get<uint8>());
++        } while (result->NextRow());
++    }
++    return classes;
++}
++
++uint32 CreateMissingCharacters(uint32 accountId, RandomBotNameCache& nameCache)
++{
++    std::unordered_set<uint8> existingClasses = ExistingClassesForAccount(accountId);
++    if (existingClasses.size() >= 10)
++        return 0;
++
++    RandomPlayerbotFactory factory;
++    WorldSession session(accountId, "", 0x0, nullptr, SEC_PLAYER, EXPANSION_WRATH_OF_THE_LICH_KING,
++                         time_t(0), LOCALE_enUS, 0, false, false, 0, true);
++    uint32 created = 0;
++
++    for (uint8 cls = CLASS_WARRIOR; cls < MAX_CLASSES && existingClasses.size() + created < 10; ++cls)
++    {
++        if (existingClasses.contains(cls))
++            continue;
++        if (!((1 << (cls - 1)) & CLASSMASK_ALL_PLAYABLE) || !sChrClassesStore.LookupEntry(cls))
++            continue;
++        if ((1 << (cls - 1)) & sWorld->getIntConfig(CONFIG_CHARACTER_CREATING_DISABLED_CLASSMASK))
++            continue;
++
++        Player* playerBot = factory.CreateRandomBot(&session, cls, nameCache);
++        if (!playerBot)
++        {
++            LOG_ERROR("playerbots", "Fail to create class {} character for account {}", cls, accountId);
++            continue;
++        }
++
++        playerBot->SaveToDB(true, false);
++        sCharacterCache->AddCharacterCacheEntry(playerBot->GetGUID(), accountId, playerBot->GetName(),
++                                                playerBot->getGender(), playerBot->getRace(),
++                                                playerBot->getClass(), playerBot->GetLevel());
++        playerBot->CleanupsBeforeDelete();
++        delete playerBot;
++        ++created;
++    }
++
++    return created;
++}
++}
++
+ constexpr RandomPlayerbotFactory::NameRaceAndGender RandomPlayerbotFactory::CombineRaceAndGender(uint8 race,
+                                                                                                 uint8 gender)
+ {
+@@ -352,7 +447,12 @@
+     uint32 existingAddClassAccounts = 0;
+     uint32 existingUnassignedAccounts = 0;
+ 
+-    QueryResult typeCheck = PlayerbotsDatabase.Query("SELECT account_type, COUNT(*) FROM playerbots_account_type GROUP BY account_type");
++    std::string const loginDBName = LoginDatabase.GetConnectionInfo()->database;
++    QueryResult typeCheck = PlayerbotsDatabase.Query(
++        "SELECT pat.account_type, COUNT(*) FROM playerbots_account_type pat "
++        "INNER JOIN {}.account a ON a.id = pat.account_id "
++        "WHERE a.username LIKE '{}%%' GROUP BY pat.account_type",
++        loginDBName, sPlayerbotAIConfig.randomBotAccountPrefix.c_str());
+     if (typeCheck)
+     {
+         do
+@@ -594,6 +694,9 @@
+     }
+ 
+     LOG_INFO("playerbots", "Creating random bot accounts...");
++    // This method can be called again after a runtime target change. Rebuild the configured
++    // account list from the database instead of appending duplicate ids on every repair.
++    sPlayerbotAIConfig.randomBotAccounts.clear();
+     std::unordered_map<NameRaceAndGender, std::vector<std::string>> nameCache;
+     std::vector<std::future<void>> account_creations;
+     int account_creation = 0;
+@@ -677,29 +780,8 @@
+         {
+             nameCached = true;
+             LOG_INFO("playerbots", "Creating cache for names per gender and race...");
+-            QueryResult result = CharacterDatabase.Query("SELECT name, gender FROM playerbots_names");
+-            if (!result)
+-            {
+-                LOG_ERROR("playerbots", "No more unused names left");
++            if (!LoadAvailableRandomBotNames(nameCache))
+                 return;
+-            }
+-            do
+-            {
+-                Field* fields = result->Fetch();
+-                std::string name = fields[0].Get<std::string>();
+-                NameRaceAndGender raceAndGender = static_cast<NameRaceAndGender>(fields[1].Get<uint8>());
+-                if (sObjectMgr->CheckPlayerName(name) == CHAR_NAME_SUCCESS)
+-                {
+-                    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHECK_NAME);
+-                    stmt->SetData(0, name);
+-
+-                    if (PreparedQueryResult result = CharacterDatabase.Query(stmt))
+-                        continue;
+-
+-                    nameCache[raceAndGender].push_back(name);
+-                }
+-
+-            } while (result->NextRow());
+         }
+ 
+         LOG_DEBUG("playerbots", "Creating random bot characters for account: [{}/{}]", accountNumber + 1, totalAccountCount);
+@@ -709,8 +791,12 @@
+                                                 time_t(0), LOCALE_enUS, 0, false, false, 0, true);
+         sessionBots.push_back(session);
+ 
+-        for (uint8 cls = CLASS_WARRIOR; cls < MAX_CLASSES - count; ++cls)
+-        {
++        std::unordered_set<uint8> existingClasses = ExistingClassesForAccount(accountId);
++        uint32 createdForAccount = 0;
++        for (uint8 cls = CLASS_WARRIOR; cls < MAX_CLASSES && count + createdForAccount < 10; ++cls)
++        {
++            if (existingClasses.contains(cls))
++                continue;
+             // skip nonexistent classes
+             if (!((1 << (cls - 1)) & CLASSMASK_ALL_PLAYABLE) || !sChrClassesStore.LookupEntry(cls))
+                 continue;
+@@ -733,6 +819,7 @@
+             playerBot->CleanupsBeforeDelete();
+             delete playerBot;
+             bot_creation++;
++            createdForAccount++;
+         }
+     }
+ 
+@@ -757,6 +844,123 @@
+ 
+     LOG_INFO("server.loading", ">> {} random bot accounts with {} characters available",
+             sPlayerbotAIConfig.randomBotAccounts.size(), totalRandomBotChars);
++}
++
++RandomPlayerbotFactory::CapacityProvisionStatus RandomPlayerbotFactory::ProvisionRandomBotCapacityStep(
++    uint32 maxAccountsPerStep)
++{
++    CapacityProvisionStatus status;
++    status.requiredAccounts = CalculateTotalAccountCount();
++    maxAccountsPerStep = std::max<uint32>(1, maxAccountsPerStep);
++
++    std::unordered_map<std::string, uint32> existingByName;
++    QueryResult accounts = LoginDatabase.Query(
++        "SELECT id, username FROM account WHERE username LIKE '{}%%' ORDER BY id",
++        sPlayerbotAIConfig.randomBotAccountPrefix.c_str());
++    if (accounts)
++    {
++        do
++        {
++            Field* fields = accounts->Fetch();
++            existingByName.emplace(fields[1].Get<std::string>(), fields[0].Get<uint32>());
++        } while (accounts->NextRow());
++    }
++
++    std::vector<uint32> expectedAccounts;
++    std::vector<std::string> missingAccounts;
++    expectedAccounts.reserve(status.requiredAccounts);
++    for (uint32 accountNumber = 0; accountNumber < status.requiredAccounts; ++accountNumber)
++    {
++        std::string accountName = RandomBotAccountName(accountNumber);
++        auto const account = existingByName.find(accountName);
++        if (account == existingByName.end())
++            missingAccounts.push_back(std::move(accountName));
++        else
++            expectedAccounts.push_back(account->second);
++    }
++
++    status.existingAccounts = static_cast<uint32>(expectedAccounts.size());
++    sPlayerbotAIConfig.randomBotAccounts = expectedAccounts;
++
++    std::unordered_map<uint32, uint32> characterCounts;
++    if (!expectedAccounts.empty())
++    {
++        std::string accountList;
++        for (uint32 accountId : expectedAccounts)
++        {
++            if (!accountList.empty())
++                accountList += ',';
++            accountList += std::to_string(accountId);
++        }
++
++        QueryResult characters = CharacterDatabase.Query(
++            "SELECT account, COUNT(*) FROM characters WHERE account IN ({}) GROUP BY account", accountList);
++        if (characters)
++        {
++            do
++            {
++                Field* fields = characters->Fetch();
++                characterCounts[fields[0].Get<uint32>()] = static_cast<uint32>(fields[1].Get<uint64>());
++            } while (characters->NextRow());
++        }
++    }
++
++    std::vector<uint32> incompleteAccounts;
++    for (uint32 accountId : expectedAccounts)
++    {
++        uint32 count = characterCounts[accountId];
++        status.existingCharacters += count;
++        if (count < 10)
++            incompleteAccounts.push_back(accountId);
++    }
++
++    bool const loginBusy = LoginDatabase.QueueSize() != 0;
++    bool const characterBusy = CharacterDatabase.QueueSize() != 0;
++    status.waitingForDatabase = loginBusy || characterBusy;
++
++    if (!loginBusy)
++    {
++        uint32 queued = 0;
++        for (std::string const& accountName : missingAccounts)
++        {
++            if (queued >= maxAccountsPerStep)
++                break;
++
++            std::string password = accountName;
++            if (sPlayerbotAIConfig.randomBotRandomPassword)
++            {
++                password.clear();
++                for (uint8 index = 0; index < 10; ++index)
++                    password += static_cast<char>(urand('!', 'z'));
++            }
++
++            if (sAccountMgr->CreateAccount(accountName, password) == AOR_OK)
++            {
++                ++queued;
++                ++status.accountsQueued;
++            }
++        }
++    }
++
++    if (!characterBusy && !incompleteAccounts.empty())
++    {
++        RandomBotNameCache nameCache;
++        if (LoadAvailableRandomBotNames(nameCache))
++        {
++            uint32 populated = 0;
++            for (uint32 accountId : incompleteAccounts)
++            {
++                if (populated >= maxAccountsPerStep)
++                    break;
++                status.charactersQueued += CreateMissingCharacters(accountId, nameCache);
++                ++populated;
++            }
++        }
++    }
++
++    status.complete = missingAccounts.empty() && incompleteAccounts.empty() &&
++        !status.accountsQueued && !status.charactersQueued && !status.waitingForDatabase;
++    return status;
+ }
+ 
+ std::string const RandomPlayerbotFactory::CreateRandomGuildName()
+diff --git a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.h b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.h
+--- a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.h
++++ b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.h
+@@ -178,6 +178,7 @@
+     // Runtime population diagnostics/recovery for server control surfaces. These intentionally
+     // expose counts rather than the underlying containers so callers cannot mutate manager state.
+     uint32 GetRandomBotCandidateCount() const { return static_cast<uint32>(currentBots.size()); }
++    uint32 GetRandomBotCharacterCapacity() const { return randomBotCharacterCapacity; }
+     uint32 GetRandomBotAccountPoolCount() const { return static_cast<uint32>(rndBotTypeAccounts.size()); }
+     uint32 GetPendingBotLoginCount() const { return static_cast<uint32>(botLoading.size()); }
+     void RepairRandomBotPopulationState();
+@@ -243,6 +244,7 @@
+     time_t DelayLoginBotsTimer;
+     time_t printStatsTimer;
+     uint32 AddRandomBots();
++    uint32 ScaleDownRandomBots(uint32 target);
+     bool ProcessBot(uint32 bot);
+     void ScheduleRandomize(uint32 bot, uint32 time);
+     void RandomTeleport(Player* bot);
+@@ -257,6 +259,7 @@
+     std::map<TeamId, std::map<BattlegroundTypeId, std::vector<uint32>>> BattleMastersCache;
+     std::unordered_map<uint32, BotEventCache> eventCache;
+     std::unordered_set<uint32> currentBots;
++    uint32 randomBotCharacterCapacity = 0;
+     uint32 playersLevel;
+ 
+     // Account lists
+diff --git a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
+--- a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
++++ b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
+@@ -41,6 +41,7 @@
+ #include "SharedDefines.h"
+ #include "TravelMgr.h"
+ #include "Unit.h"
++#include "UpdateTime.h"
+ #include "World.h"
+ #include "WorldSessionMgr.h"
+ #include <algorithm>
+@@ -54,6 +55,8 @@
+ 
+ namespace
+ {
++    constexpr uint32 WORLD_UPDATE_LOGIN_BACKPRESSURE_MS = 250;
++
+     // True while the bot is a Wintergrasp combatant. WG is a Battlefield, not a Battleground,
+     // so InBattleground() is false there and the random-bot manager would otherwise relocate
+     // WG bots out of the fight.
+@@ -63,6 +66,20 @@
+             return false;
+         Battlefield* bf = sBattlefieldMgr->GetBattlefieldToZoneId(4197);
+         return bf && bf->IsWarTime();
++    }
++
++    bool IsProtectedFromPopulationRemoval(ObjectGuid guid, Player* bot)
++    {
++        uint32 const guildId = bot ? bot->GetGuildId() : sCharacterCache->GetCharacterGuildIdByGuid(guid);
++        if (guildId && PlayerbotGuildMgr::instance().IsRealGuild(guildId))
++            return true;
++
++        if (!bot)
++            return sLFGMgr->GetState(guid) != lfg::LFG_STATE_NONE;
++
++        return bot->GetGroup() || bot->IsInCombat() || bot->InBattleground() ||
++            bot->InBattlegroundQueue() || bot->HasUnitState(UNIT_STATE_IN_FLIGHT) ||
++            bot->IsBeingTeleported() || sLFGMgr->GetState(guid) != lfg::LFG_STATE_NONE;
+     }
+ }
+ 
+@@ -325,6 +342,9 @@
+     }
+ 
+     GetBots();
++    if (currentBots.size() > maxAllowedBotCount || playerBots.size() > maxAllowedBotCount)
++        ScaleDownRandomBots(maxAllowedBotCount);
++
+     // Copied deliberately: ProcessBot() erases from currentBots while this is
+     // being iterated below, so the loops must run over a snapshot.
+     std::unordered_set<uint32> availableBots = currentBots;
+@@ -427,7 +447,10 @@
+                  (realPlayerIsLogged && DelayLoginBotsTimer != 0 && time(nullptr) >= DelayLoginBotsTimer))
+             ? maxAllowedBotCount - onlineBotCount
+             : 0;
+-    uint32 loginBots = std::min(sPlayerbotAIConfig.randomBotsPerInterval - updateBots, maxNewBots);
++    bool const worldUpdateBackpressure =
++        sWorldUpdateTime.GetLastUpdateTime() >= WORLD_UPDATE_LOGIN_BACKPRESSURE_MS;
++    uint32 loginBots = worldUpdateBackpressure ? 0 :
++        std::min(sPlayerbotAIConfig.randomBotsPerInterval - updateBots, maxNewBots);
+ 
+     if (!availableBots.empty())
+     {
+@@ -513,25 +536,15 @@
+     rndBotTypeAccounts.clear();
+     addClassTypeAccounts.clear();
+ 
+-    // First, get ALL randombot accounts from the database
+-    std::vector<uint32> allRandomBotAccounts;
+-    QueryResult allAccounts = LoginDatabase.Query(
+-        "SELECT id FROM account WHERE username LIKE '{}%%' ORDER BY id",
+-        sPlayerbotAIConfig.randomBotAccountPrefix.c_str());
+-
+-    if (allAccounts)
+-    {
+-        do
+-        {
+-            Field* fields = allAccounts->Fetch();
+-            uint32 accountId = fields[0].Get<uint32>();
+-            allRandomBotAccounts.push_back(accountId);
+-        } while (allAccounts->NextRow());
+-    }
++    // The factory owns the reserved, exact account-name sequence. Do not broaden this list with a
++    // LIKE query here: an unrelated account sharing the prefix must not become an RNDbot/AddClass
++    // candidate merely because an account_type row exists for it.
++    std::vector<uint32> allRandomBotAccounts = sPlayerbotAIConfig.randomBotAccounts;
+ 
+     LOG_INFO("playerbots", "Found {} total randombot accounts in database", allRandomBotAccounts.size());
+ 
+     // Check existing assignments
++    std::unordered_set<uint32> randomAccountIds(allRandomBotAccounts.begin(), allRandomBotAccounts.end());
+     QueryResult existingAssignments = PlayerbotsDatabase.Query("SELECT account_id, account_type FROM playerbots_account_type");
+     std::map<uint32, uint8> currentAssignments;
+ 
+@@ -542,7 +555,10 @@
+             Field* fields = existingAssignments->Fetch();
+             uint32 accountId = fields[0].Get<uint32>();
+             uint8 accountType = fields[1].Get<uint8>();
+-            currentAssignments[accountId] = accountType;
++            // A stale or manually-created account_type row must never make a human account a
++            // random-bot candidate. Only accounts with the configured RNDbot prefix are eligible.
++            if (randomAccountIds.contains(accountId))
++                currentAssignments[accountId] = accountType;
+         } while (existingAssignments->NextRow());
+     }
+ 
+@@ -638,15 +654,89 @@
+         else if (accountType == 2) addClassTypeAccounts.push_back(accountId);
+     }
+ 
+-    LOG_INFO("playerbots", "Account type assignment complete: {} RNDbot accounts, {} AddClass accounts, {} unassigned",
+-             rndBotTypeAccounts.size(), addClassTypeAccounts.size(),
++    randomBotCharacterCapacity = 0;
++    if (!rndBotTypeAccounts.empty())
++    {
++        std::string accountList;
++        for (uint32 accountId : rndBotTypeAccounts)
++        {
++            if (!accountList.empty())
++                accountList += ',';
++            accountList += std::to_string(accountId);
++        }
++        QueryResult result = sPlayerbotAIConfig.disableDeathKnightLogin
++            ? CharacterDatabase.Query(
++                "SELECT COUNT(*) FROM characters WHERE account IN ({}) AND class <> {}",
++                accountList, CLASS_DEATH_KNIGHT)
++            : CharacterDatabase.Query(
++                "SELECT COUNT(*) FROM characters WHERE account IN ({})", accountList);
++        if (result)
++            randomBotCharacterCapacity = static_cast<uint32>(result->Fetch()[0].Get<uint64>());
++    }
++
++    LOG_INFO("playerbots", "Account type assignment complete: {} RNDbot accounts, {} usable characters, {} AddClass accounts, {} unassigned",
++             rndBotTypeAccounts.size(), randomBotCharacterCapacity, addClassTypeAccounts.size(),
+              currentAssignments.size() - rndBotTypeAccounts.size() - addClassTypeAccounts.size());
+ }
+ 
+ bool RandomPlayerbotMgr::IsAccountType(uint32 accountId, uint8 accountType)
+ {
++    if (!sPlayerbotAIConfig.IsInRandomAccountList(accountId))
++        return false;
+     QueryResult result = PlayerbotsDatabase.Query("SELECT 1 FROM playerbots_account_type WHERE account_id = {} AND account_type = {}", accountId, accountType);
+     return result != nullptr;
++}
++
++uint32 RandomPlayerbotMgr::ScaleDownRandomBots(uint32 target)
++{
++    uint32 const selected = static_cast<uint32>(currentBots.size());
++    uint32 const online = static_cast<uint32>(playerBots.size());
++    uint32 const excess = std::max(selected, online) > target ? std::max(selected, online) - target : 0;
++    uint32 const limit = std::min<uint32>(std::max<uint32>(1, sPlayerbotAIConfig.randomBotsPerInterval), excess);
++    if (!limit)
++        return 0;
++
++    uint32 removed = 0;
++    uint32 protectedCount = 0;
++    std::vector<uint32> candidates(currentBots.begin(), currentBots.end());
++    for (uint32 botId : candidates)
++    {
++        if (removed >= limit)
++            break;
++
++        ObjectGuid const guid = ObjectGuid::Create<HighGuid::Player>(botId);
++        if (botLoading.contains(guid))
++        {
++            ++protectedCount;
++            continue;
++        }
++
++        uint32 const accountId = sCharacterCache->GetCharacterAccountIdByGuid(guid);
++        if (!accountId || std::find(rndBotTypeAccounts.begin(), rndBotTypeAccounts.end(), accountId) == rndBotTypeAccounts.end())
++        {
++            LOG_ERROR("playerbots", "Population scale-down refused non-RNDbot candidate {} account {}", botId, accountId);
++            ++protectedCount;
++            continue;
++        }
++
++        Player* bot = GetPlayerBot(guid);
++        if (IsProtectedFromPopulationRemoval(guid, bot))
++        {
++            ++protectedCount;
++            continue;
++        }
++
++        SetEventValue(botId, "add", 0, 0);
++        currentBots.erase(botId);
++        if (bot)
++            LogoutPlayerBot(guid);
++        ++removed;
++    }
++
++    if (removed || protectedCount)
++        LOG_INFO("playerbots", "Population scale-down target={} removed={} deferredProtected={} selected={} online={}",
++                 target, removed, protectedCount, selected, online);
++    return removed;
+ }
+ 
+ // Logs-in bots in 4 phases. Phase 1 logs Alliance bots up to how much is expected according to the faction ratio,
+@@ -818,9 +908,15 @@
+             {
+                 int divisor = RandomPlayerbotFactory::CalculateAvailableCharsPerAccount();
+                 uint32 moreAccountsNeeded = (maxAllowedBotCount + divisor - 1) / divisor;
+-                LOG_ERROR("playerbots",
+-                          "Can't log-in all the requested bots. Try increasing RandomBotAccountCount in your conf file.\n"
+-                          "{} more accounts needed.", moreAccountsNeeded);
++                if (randomBotCharacterCapacity < sPlayerbotAIConfig.maxRandomBots)
++                    LOG_INFO("playerbots",
++                             "Population capacity is provisioning: usableCapacity={} target={} estimatedAdditionalAccounts={}",
++                             randomBotCharacterCapacity, sPlayerbotAIConfig.maxRandomBots, moreAccountsNeeded);
++                else
++                    LOG_ERROR("playerbots",
++                              "Can't log-in all the requested bots despite usable capacity {}. "
++                              "Estimated additional accounts needed: {}.",
++                              randomBotCharacterCapacity, moreAccountsNeeded);
+                 missingBotsTimer = 0;    // Reset timer so error is not spammed every tick
+             }
+         }
+@@ -1360,7 +1456,7 @@
+     uint32 isValid = GetEventValue(bot, "add");
+     if (!isValid)
+     {
+-        if (!player || !player->GetGroup())
++        if (!IsProtectedFromPopulationRemoval(botGUID, player))
+         {
+             if (player)
+                 LOG_DEBUG("playerbots", "Bot #{} {}:{} <{}>: log out", bot, IsAlliance(player->getRace()) ? "A" : "H",
+@@ -2336,6 +2432,8 @@
+     stmt->SetData(0, 0);
+     stmt->SetData(1, "add");
+     uint32 maxAllowedBotCount = GetEventValue(0, "bot_count");
++    if (!maxAllowedBotCount)
++        return;
+     if (PreparedQueryResult result = PlayerbotsDatabase.Query(stmt))
+     {
+         do

@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: Adventure Controls
+## Notes: In-game playstyle rates, quest helpers and raid progression shortcuts for the AzerothCore playerbots server.
+## Author: Stoffe101 server fork
+## Version: 0.3.0
+## SavedVariables: AdventureControlsDB
+
+AdventureControls.lua

@@ -1,5 +1,6 @@
 #include "AdminPanelGameplay.h"
 
+#include "DatabaseEnv.h"
 #include "EraTalentIP.h"
 #include "EraTalents.h"
 #include "EraTalentsComms.h"
@@ -9,18 +10,43 @@
 #include "Player.h"
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotFactory.h"
+#include "QueryResult.h"
+#include "RandomPlayerbotFactory.h"
 #include "RandomPlayerbotMgr.h"
 #include "WorldSession.h"
 #include "WorldSessionMgr.h"
 
 #include <algorithm>
+#include <array>
 
 namespace
 {
 constexpr uint32 COPPER_PER_GOLD = 10000u;
-constexpr uint32 MAX_BOT_TARGET = 1000u;
+constexpr uint32 MAX_BOT_TARGET = 1500u;
 constexpr uint32 DEFAULT_BOT_BATCH = 10u;
 constexpr uint32 TBC_PRE_RAID_ILVL = 115u;
+
+uint32 CountBotAccounts()
+{
+    QueryResult result = LoginDatabase.Query(
+        "SELECT COUNT(*) FROM account WHERE username LIKE '{}%%'",
+        sPlayerbotAIConfig.randomBotAccountPrefix.c_str());
+    return result ? static_cast<uint32>(result->Fetch()[0].Get<uint64>()) : 0u;
+}
+
+uint32 CountAssignedBotAccounts()
+{
+    QueryResult result = PlayerbotsDatabase.Query(
+        "SELECT COUNT(*) FROM playerbots_account_type WHERE account_type = 1");
+    return result ? static_cast<uint32>(result->Fetch()[0].Get<uint64>()) : 0u;
+}
+
+uint32 RequiredBotAccounts()
+{
+    if (!sPlayerbotAIConfig.maxRandomBots)
+        return 0u;
+    return RandomPlayerbotFactory::CalculateTotalAccountCount();
+}
 
 void RestoreUnit(Unit* unit)
 {
@@ -50,6 +76,7 @@ void PrepareOne(Player* player)
     RestoreUnit(player->GetPet());
 
     PlayerbotFactory factory(player, player->GetLevel());
+    factory.InitBags(false);
     factory.InitAmmo();
     factory.InitPotions();
     factory.InitFood();
@@ -65,6 +92,11 @@ PopulationStats GetPopulationStats()
     PopulationStats stats;
     stats.sessions = sWorldSessionMgr->GetActiveSessionCount();
 
+    // Random Playerbots own their bot WorldSessions outside the ordinary real-player
+    // WorldSessionMgr accounting path. Count the manager's actual live bot collection
+    // so AdminPanel/watchdog does not report a healthy population as 0/N.
+    stats.bots = sRandomPlayerbotMgr.GetPlayerbotsCount();
+
     for (auto const& entry : sWorldSessionMgr->GetAllSessions())
     {
         WorldSession* session = entry.second;
@@ -74,32 +106,122 @@ PopulationStats GetPopulationStats()
         if (!player || !player->IsInWorld())
             continue;
 
-        if (session->IsBot())
-            ++stats.bots;
-        else
+        if (!session->IsBot())
             ++stats.realPlayers;
     }
 
     stats.botTarget = sPlayerbotAIConfig.maxRandomBots;
     stats.botBatch = sPlayerbotAIConfig.randomBotsPerInterval;
     stats.botActivity = sRandomPlayerbotMgr.getActivityPercentage();
+    stats.botEngineEnabled = sPlayerbotAIConfig.enabled;
+    stats.botAutologinEnabled = sPlayerbotAIConfig.randomBotAutologin;
+    stats.botAccounts = CountBotAccounts();
+    stats.assignedBotAccounts = CountAssignedBotAccounts();
+    stats.requiredBotAccounts = stats.botTarget ? RequiredBotAccounts() : 0u;
+    stats.managerCandidates = sRandomPlayerbotMgr.GetRandomBotCandidateCount();
+    stats.candidateCapacity = sRandomPlayerbotMgr.GetRandomBotCharacterCapacity();
+    stats.managerRandomAccounts = sRandomPlayerbotMgr.GetRandomBotAccountPoolCount();
+    stats.pendingBotLogins = sRandomPlayerbotMgr.GetPendingBotLoginCount();
+    if (!stats.botTarget)
+        stats.populationState = stats.bots ? "ScalingDown" : "Paused";
+    else if (stats.botAccounts < stats.requiredBotAccounts || stats.candidateCapacity < stats.botTarget)
+        stats.populationState = "Provisioning";
+    else if (stats.bots < stats.botTarget || stats.pendingBotLogins)
+        stats.populationState = "ScalingUp";
+    else if (stats.bots > stats.botTarget)
+        stats.populationState = "ScalingDown";
+    else
+        stats.populationState = "Stable";
     return stats;
+}
+
+bool AdvanceBotPopulationCapacity(uint32 maxAccountsPerStep)
+{
+    if (!sPlayerbotAIConfig.maxRandomBots)
+        return false;
+
+    RandomPlayerbotFactory::CapacityProvisionStatus const status =
+        RandomPlayerbotFactory::ProvisionRandomBotCapacityStep(maxAccountsPerStep);
+
+    // Refresh assignments after every completed/queued capacity step. AssignAccountTypes filters
+    // by the RNDbot prefix and builds the exact usable-character capacity in one aggregate query.
+    sRandomPlayerbotMgr.AssignAccountTypes();
+
+    if (status.accountsQueued || status.charactersQueued)
+    {
+        LOG_INFO(
+            "server.loading",
+            "[AdminPanel] RNDbot capacity step: requiredAccounts={} existingAccounts={} existingCharacters={} queuedAccounts={} queuedCharacters={} dbBackpressure={}",
+            status.requiredAccounts,
+            status.existingAccounts,
+            status.existingCharacters,
+            status.accountsQueued,
+            status.charactersQueued,
+            status.waitingForDatabase ? 1 : 0);
+    }
+
+    return status.accountsQueued || status.charactersQueued || !status.complete;
+}
+
+void RepairBotPopulation()
+{
+    uint32 const beforeAccounts = CountBotAccounts();
+    uint32 const beforeAssigned = CountAssignedBotAccounts();
+    uint32 const required = RequiredBotAccounts();
+
+    if (sPlayerbotAIConfig.maxRandomBots && beforeAccounts < required)
+        AdvanceBotPopulationCapacity(1);
+
+    sRandomPlayerbotMgr.RepairRandomBotPopulationState();
+
+    LOG_INFO(
+        "server.loading",
+        "[AdminPanel] RNDbot repair complete: accounts {}->{} assignedDB {}->{} requiredAccounts={} target={} batch={} selectedCandidates={} usableCapacity={} pending={} managerAccounts={}",
+        beforeAccounts,
+        CountBotAccounts(),
+        beforeAssigned,
+        CountAssignedBotAccounts(),
+        required,
+        sPlayerbotAIConfig.maxRandomBots,
+        sPlayerbotAIConfig.randomBotsPerInterval,
+        sRandomPlayerbotMgr.GetRandomBotCandidateCount(),
+        sRandomPlayerbotMgr.GetRandomBotCharacterCapacity(),
+        sRandomPlayerbotMgr.GetPendingBotLoginCount(),
+        sRandomPlayerbotMgr.GetRandomBotAccountPoolCount());
 }
 
 void SetBotTarget(uint32 target, uint32 batch)
 {
+    uint32 const previousTarget = sPlayerbotAIConfig.maxRandomBots;
     target = std::min(target, MAX_BOT_TARGET);
     batch = std::max<uint32>(1, std::min<uint32>(batch ? batch : DEFAULT_BOT_BATCH, 50));
 
-    // Keep the manager enabled even at target=0 so it can actively drain existing random bots.
-    // The deliberately small batch is the fix for the old 150-bot login storm that starved the
-    // character DB and made real-player login hang for minutes.
+    // RandomPlayerbotMgr exits early unless both switches are on. AdminPanel is intentionally
+    // authoritative for runtime population, even if an older persistent playerbots.conf says off.
+    sPlayerbotAIConfig.enabled = true;
     sPlayerbotAIConfig.randomBotAutologin = true;
     sPlayerbotAIConfig.minRandomBots = target;
     sPlayerbotAIConfig.maxRandomBots = target;
     sPlayerbotAIConfig.randomBotsPerInterval = batch;
 
-    LOG_INFO("server.loading", "[AdminPanel] Random-bot target={} batch={}", target, batch);
+    // This is the only runtime target transition. The persisted AdminPanel value overrides the
+    // playerbots.conf boot default, while RandomPlayerbotMgr consumes these live values. A new
+    // request replaces the old target; no independent population job is created.
+    RepairBotPopulation();
+
+    LOG_INFO(
+        "server.loading",
+        "[AdminPanel] Random-bot target accepted: previous={} desired={} batch={} enabled={} autologin={} accounts={} assignedDB={} selectedCandidates={} usableCapacity={} pending={}",
+        previousTarget,
+        target,
+        batch,
+        sPlayerbotAIConfig.enabled ? 1 : 0,
+        sPlayerbotAIConfig.randomBotAutologin ? 1 : 0,
+        CountBotAccounts(),
+        CountAssignedBotAccounts(),
+        sRandomPlayerbotMgr.GetRandomBotCandidateCount(),
+        sRandomPlayerbotMgr.GetRandomBotCharacterCapacity(),
+        sRandomPlayerbotMgr.GetPendingBotLoginCount());
 }
 
 void SetBotActivity(float percent)
@@ -148,11 +270,54 @@ void MaxSkills(Player* player)
     player->SaveToDB(false, false);
 }
 
+uint32 MaxProfessions(Player* player)
+{
+    if (!player)
+        return 0;
+
+    static constexpr std::array<uint16, 14> professionSkills = {
+        SKILL_ALCHEMY,
+        SKILL_BLACKSMITHING,
+        SKILL_ENCHANTING,
+        SKILL_ENGINEERING,
+        SKILL_HERBALISM,
+        SKILL_JEWELCRAFTING,
+        SKILL_LEATHERWORKING,
+        SKILL_MINING,
+        SKILL_SKINNING,
+        SKILL_TAILORING,
+        SKILL_INSCRIPTION,
+        SKILL_COOKING,
+        SKILL_FIRST_AID,
+        SKILL_FISHING,
+    };
+
+    uint32 changed = 0;
+    for (uint16 skill : professionSkills)
+    {
+        if (!player->HasSkill(skill))
+            continue;
+
+        constexpr uint16 WOTLK_PROFESSION_CAP = 450;
+        if (player->GetPureSkillValue(skill) != WOTLK_PROFESSION_CAP ||
+            player->GetPureMaxSkillValue(skill) != WOTLK_PROFESSION_CAP ||
+            player->GetSkillStep(skill) != 6)
+        {
+            player->SetSkill(skill, 6, WOTLK_PROFESSION_CAP, WOTLK_PROFESSION_CAP);
+            ++changed;
+        }
+    }
+
+    player->SaveToDB(false, false);
+    return changed;
+}
+
 void RefreshConsumables(Player* player)
 {
     if (!player)
         return;
     PlayerbotFactory factory(player, player->GetLevel());
+    factory.InitBags(false);
     factory.InitAmmo();
     factory.InitPotions();
     factory.InitFood();
@@ -181,12 +346,15 @@ void RegearTbcPreRaid(Player* player)
 {
     if (!player)
         return;
+
+    PlayerbotFactory factory(player, player->GetLevel());
+    factory.InitBags(false);
     PlayerbotFactory::AutoGear(
         player,
         ITEM_QUALITY_EPIC,
         TBC_PRE_RAID_ILVL,
         false,
-        false,
+        true,
         true);
     player->SaveToDB(false, false);
 }
@@ -244,7 +412,6 @@ uint32 SummonGroup(Player* leader)
 uint32 RaidNight(Player* leader)
 {
     uint32 const prepared = PrepareGroup(leader);
-    // Raise activity while raiding without changing the configured population target.
     SetBotActivity(100.0f);
     return prepared;
 }

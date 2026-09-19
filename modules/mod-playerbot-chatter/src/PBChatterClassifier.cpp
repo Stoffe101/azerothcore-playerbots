@@ -2,7 +2,10 @@
 #include "PBChatterConfig.h"
 #include "Player.h"
 #include "Group.h"
+#include "Guild.h"
 #include "Playerbots.h"
+#include "WorldSession.h"
+#include "WorldSessionMgr.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
@@ -131,6 +134,67 @@ std::vector<Player*> PBChatterClassifier::ResolveGroupTargets(Player* sender, Gr
     }
     return PickFanout(std::move(bots), Lower(msg), g_PBChatGroupMaxBots, g_PBChatGroupChance,
                       g_PBChatGroupGuaranteeOne);
+}
+
+std::vector<Player*> PBChatterClassifier::ResolveGuildTargets(Player* sender, Guild* guild, std::string const& msg)
+{
+    std::vector<Player*> bots;
+    if (!sender || !guild)
+        return bots;
+
+    uint32 const guildId = guild->GetId();
+    if (!guildId || sender->GetGuildId() != guildId)
+        return bots;
+
+    // Guild chat is realm-wide, so look across online bot sessions rather than only the
+    // sender's map/zone. Reuse the party fanout knobs to avoid a 30-bot reply avalanche.
+    for (auto const& entry : sWorldSessionMgr->GetAllSessions())
+    {
+        WorldSession* session = entry.second;
+        if (!session || !session->IsBot())
+            continue;
+
+        Player* bot = session->GetPlayer();
+        if (!bot || bot == sender || !bot->IsInWorld() || !IsBot(bot))
+            continue;
+        if (bot->GetGuildId() != guildId)
+            continue;
+
+        bots.push_back(bot);
+    }
+
+    return PickFanout(std::move(bots), Lower(msg), g_PBChatGroupMaxBots, g_PBChatGroupChance,
+                      g_PBChatGroupGuaranteeOne);
+}
+
+std::vector<Player*> PBChatterClassifier::ResolveGeneralTargets(Player* sender, std::string const& msg)
+{
+    std::vector<Player*> bots;
+    if (!sender || !sender->IsInWorld())
+        return bots;
+
+    uint32 const zoneId = sender->GetZoneId();
+    TeamId const team = sender->GetTeamId();
+
+    // General is a zone/faction channel. Draw only from bot sessions that are actually present
+    // in the same channel, rather than picking a bot on another continent that could never have
+    // seen the line. One guaranteed responder keeps a private realm from feeling eerily silent.
+    for (auto const& entry : sWorldSessionMgr->GetAllSessions())
+    {
+        WorldSession* session = entry.second;
+        if (!session || !session->IsBot())
+            continue;
+
+        Player* bot = session->GetPlayer();
+        if (!bot || bot == sender || !bot->IsInWorld() || !bot->IsAlive())
+            continue;
+        if (bot->GetZoneId() != zoneId || bot->GetTeamId() != team || !IsBot(bot))
+            continue;
+
+        bots.push_back(bot);
+    }
+
+    return PickFanout(std::move(bots), Lower(msg), 1, 100, true);
 }
 
 Player* PBChatterClassifier::ResolveWhisperTarget(Player* receiver)

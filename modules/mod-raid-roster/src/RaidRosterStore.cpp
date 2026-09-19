@@ -1,7 +1,27 @@
 #include "RaidRosterStore.h"
+#include "RaidRosterGuild.h"
 #include "DatabaseEnv.h"
-#include "QueryResult.h"
 #include "Field.h"
+#include "ObjectAccessor.h"
+#include "ObjectGuid.h"
+#include "Player.h"
+#include "QueryResult.h"
+
+namespace
+{
+void SyncConnectedOwnerGuild(uint32 ownerGuid, std::vector<RaidRosterRow> const& rows)
+{
+    Player* owner = ObjectAccessor::FindConnectedPlayer(
+        ObjectGuid::Create<HighGuid::Player>(static_cast<ObjectGuid::LowType>(ownerGuid)));
+    if (!owner || !owner->GetGuildId() || rows.empty())
+        return;
+
+    // Use the caller's in-memory rows directly. CharacterDatabase.CommitTransaction is allowed to
+    // queue work asynchronously, so immediately SELECTing the just-written roster here could race
+    // the commit and make a brand-new roster look empty for one tick.
+    RaidRosterGuild::SyncRosterToOwnerGuild(owner, rows);
+}
+}
 
 namespace RaidRosterStore
 {
@@ -49,6 +69,10 @@ namespace RaidRosterStore
         trans->Append("DELETE FROM mod_raid_roster WHERE owner_guid = {}", ownerGuid);
         AppendInserts(trans, ownerGuid, rows);
         CharacterDatabase.CommitTransaction(trans);
+
+        // A roster created while its owner is already in a guild should become that guild's
+        // actual membership immediately, not merely a private list of controllable bots.
+        SyncConnectedOwnerGuild(ownerGuid, rows);
     }
 
     void Append(uint32 ownerGuid, std::vector<RaidRosterRow> const& rows)
@@ -57,6 +81,10 @@ namespace RaidRosterStore
         CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
         AppendInserts(trans, ownerGuid, rows);
         CharacterDatabase.CommitTransaction(trans);
+
+        // Top-ups inherit the same real-guild membership contract as the original roster. Existing
+        // rows are migrated on player login/guild join, so only the newly appended rows are needed.
+        SyncConnectedOwnerGuild(ownerGuid, rows);
     }
 
     void UpdateBands(uint32 ownerGuid, std::vector<std::pair<uint8, uint8>> const& slotBands)

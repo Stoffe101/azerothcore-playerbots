@@ -1,0 +1,80 @@
+name: Stage Group Composer V4 backend
+
+on:
+  push:
+    branches:
+      - test/group-composer-v4
+
+permissions:
+  contents: write
+
+jobs:
+  stage:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/group-composer-v4
+
+      - name: Apply V4 backend stages
+        run: |
+          set -euo pipefail
+          if ! grep -q 'void SendProgress' modules/mod-raid-roster/src/GroupComposerCommand.cpp; then
+            python3 .github/scripts/apply_group_composer_v4_backend.py
+            python3 .github/scripts/apply_group_composer_v4_contract.py
+          fi
+          if ! grep -q 'rejectedCandidates' modules/mod-raid-roster/src/GroupComposerTypes.h; then
+            python3 .github/scripts/apply_group_composer_v4_replacement.py
+          fi
+          if ! grep -q 'bool TeleportCompletedPlan' modules/mod-raid-roster/src/GroupComposerCommand.cpp; then
+            python3 .github/scripts/apply_group_composer_v4_travel.py
+          fi
+          python3 .github/scripts/fix_group_composer_v4_travel_contract.py
+
+      - name: Focused source checks
+        run: |
+          set -euo pipefail
+          python3 client-addons-src/GroupComposer/tests/test_server_contract.py
+          git diff --check
+          grep -q 'group->AddMember(bot)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'AddPlayerBot(member.guid, account, true)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'groupComposerSilent' patches/0035-playerbot-group-composer-silent-login.patch
+          grep -q 'PROGRESS' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          ! grep -q 'InviteToGroupAction' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'prepared previews stay reserved for three minutes' modules/mod-raid-roster/src/GroupComposerReserve.cpp
+          grep -q 'AvailableTo' modules/mod-raid-roster/src/GroupComposerReserve.cpp
+          grep -q 'addclassCache' modules/mod-raid-roster/src/GroupComposerPlanner.cpp
+          ! grep -q 'PruneUnselectedBots' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          ! grep -q 'ReplaceUnreadyCandidates' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'GetMapEntranceTrigger(mapId)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'TeleportCompletedPlan' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'TitanRune::SaveSelectedMode(travelLeader, titanMode)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'Player\* travelLeader = group->GetLeader()' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'SendProtocol(master, "STATUS", travelError)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'HandleTeleport' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'plan.assembled = true' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          grep -q 'Teleport to Instance' client-ui/src/components/ModernDashboard.ts
+          ! grep -q 'press Enter Activity to retry' modules/mod-raid-roster/src/GroupComposerCommand.cpp
+          ! grep -Fxq 'DashboardV4.lua' client-addons-src/GroupComposer/GroupComposer.toc
+
+      - name: Commit generated backend changes
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'V4 backend stages already applied.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            modules/mod-raid-roster/src/GroupComposerCommand.cpp \
+            modules/mod-raid-roster/src/GroupComposerReserve.cpp \
+            modules/mod-raid-roster/src/GroupComposerPlanner.cpp \
+            modules/mod-raid-roster/src/GroupComposerPlanner.h \
+            modules/mod-raid-roster/src/GroupComposerTypes.h \
+            client-addons-src/GroupComposer/Core.lua \
+            client-addons-src/GroupComposer/DashboardV4.lua \
+            client-addons-src/GroupComposer/tests/test_server_contract.py
+          git commit -m 'build(group-composer): refresh staged backend contracts'
+          git push origin HEAD:test/group-composer-v4

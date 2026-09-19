@@ -1,0 +1,731 @@
+diff --git a/src/server/game/Scripting/ScriptDefines/PlayerScript.h b/src/server/game/Scripting/ScriptDefines/PlayerScript.h
+--- a/src/server/game/Scripting/ScriptDefines/PlayerScript.h
++++ b/src/server/game/Scripting/ScriptDefines/PlayerScript.h
+@@ -69,6 +69,7 @@
+     PLAYERHOOK_ON_TEXT_EMOTE,
+     PLAYERHOOK_ON_SPELL_CAST,
+     PLAYERHOOK_ON_LOAD_FROM_DB,
++    PLAYERHOOK_ON_BEFORE_LOAD_ACTION_BUTTONS,
+     PLAYERHOOK_ON_LOGIN,
+     PLAYERHOOK_ON_BEFORE_LOGOUT,
+     PLAYERHOOK_ON_LOGOUT,
+@@ -333,6 +334,10 @@
+     // Called during data loading
+     virtual void OnPlayerLoadFromDB(Player* /*player*/) { };
+ 
++    // Called after spells/talents/inventory are loaded and immediately before action-button
++    // validation. Modules that own persisted custom spells can restore them deterministically here.
++    virtual void OnPlayerBeforeLoadActionButtons(Player* /*player*/) { }
++
+     // Called when a player logs in.
+     virtual void OnPlayerLogin(Player* /*player*/) { }
+ 
+diff --git a/src/server/game/Scripting/ScriptDefines/PlayerScript.cpp b/src/server/game/Scripting/ScriptDefines/PlayerScript.cpp
+--- a/src/server/game/Scripting/ScriptDefines/PlayerScript.cpp
++++ b/src/server/game/Scripting/ScriptDefines/PlayerScript.cpp
+@@ -228,6 +228,12 @@
+     CALL_ENABLED_HOOKS(PlayerScript, PLAYERHOOK_ON_LOAD_FROM_DB, script->OnPlayerLoadFromDB(player));
+ }
+ 
++void ScriptMgr::OnPlayerBeforeLoadActionButtons(Player* player)
++{
++    CALL_ENABLED_HOOKS(PlayerScript, PLAYERHOOK_ON_BEFORE_LOAD_ACTION_BUTTONS,
++        script->OnPlayerBeforeLoadActionButtons(player));
++}
++
+ void ScriptMgr::OnPlayerBeforeLogout(Player* player)
+ {
+     CALL_ENABLED_HOOKS(PlayerScript, PLAYERHOOK_ON_BEFORE_LOGOUT, script->OnPlayerBeforeLogout(player));
+diff --git a/src/server/game/Scripting/ScriptMgr.h b/src/server/game/Scripting/ScriptMgr.h
+--- a/src/server/game/Scripting/ScriptMgr.h
++++ b/src/server/game/Scripting/ScriptMgr.h
+@@ -349,6 +349,7 @@
+     void OnPlayerSpellCast(Player* player, Spell* spell, bool skipCheck);
+     void OnPlayerLogin(Player* player);
+     void OnPlayerLoadFromDB(Player* player);
++    void OnPlayerBeforeLoadActionButtons(Player* player);
+     void OnPlayerBeforeLogout(Player* player);
+     void OnPlayerLogout(Player* player);
+     void OnPlayerCreate(Player* player);
+diff --git a/src/server/game/Entities/Player/PlayerStorage.cpp b/src/server/game/Entities/Player/PlayerStorage.cpp
+--- a/src/server/game/Entities/Player/PlayerStorage.cpp
++++ b/src/server/game/Entities/Player/PlayerStorage.cpp
+@@ -5583,6 +5583,7 @@
+     // update items with duration and realtime
+     UpdateItemDuration(time_diff, true);
+ 
++    sScriptMgr->OnPlayerBeforeLoadActionButtons(this);
+     _LoadActions(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_ACTIONS));
+ 
+     m_social = sSocialMgr->LoadFromDB(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_SOCIAL_LIST), GetGUID());
+@@ -5806,7 +5807,13 @@
+             else
+             {
+ 
+-                LOG_ERROR("entities.player", "ActionButton loading problem, will be deleted from db. player: {}, guid: {}, button: {}, action: {}, type: {}", GetName(), GetGUID().GetCounter(), button, action, type);
++                LOG_ERROR(
++                    "entities.player",
++                    "ActionButton loading problem, will be deleted from db. ownerType={}, player={}, guid={}, button={}, action={}, type={}, spellExists={}, spellKnown={}",
++                    GetSession() && GetSession()->IsBot() ? "bot" : "human",
++                    GetName(), GetGUID().GetCounter(), button, action, type,
++                    type == ACTION_BUTTON_SPELL && sSpellMgr->GetSpellInfo(action) ? 1 : 0,
++                    type == ACTION_BUTTON_SPELL && HasSpell(action) ? 1 : 0);
+ 
+                 // Will deleted in DB at next save (it can create data until save but marked as deleted)
+                 m_actionButtons[button].uState = ACTIONBUTTON_DELETED;
+diff --git a/modules/mod-era-talents/src/EraTalentPin.cpp b/modules/mod-era-talents/src/EraTalentPin.cpp
+--- a/modules/mod-era-talents/src/EraTalentPin.cpp
++++ b/modules/mod-era-talents/src/EraTalentPin.cpp
+@@ -41,6 +41,8 @@
+     // prod via EraTalentBots' resolve cache (2026-08-26); few players kept the odds low, not zero.
+     std::unordered_map<ObjectGuid, uint32> g_checkTimer;
+     std::mutex g_checkTimerMutex;
++    std::unordered_set<ObjectGuid> g_preparedBeforeActions;
++    std::mutex g_preparedBeforeActionsMutex;
+     constexpr uint32 kCheckIntervalMs = 2000;
+ 
+     // Two-Handed Axes and Maces (node 18822) grants proficiency clone 932406; the weapon-gate hook
+@@ -53,10 +55,31 @@
+ public:
+     era_talent_pin() : PlayerScript("era_talent_pin") {}
+ 
++    void OnPlayerBeforeLoadActionButtons(Player* p) override
++    {
++        if (!sEraTalentsConfig->Enabled() || IsBot(p))
++            return;
++
++        PrepareLoginState(p);
++        std::lock_guard<std::mutex> guard(g_preparedBeforeActionsMutex);
++        g_preparedBeforeActions.insert(p->GetGUID());
++    }
++
+     void OnPlayerLogin(Player* p) override
+     {
+         if (!sEraTalentsConfig->Enabled())
+             return;
++        {
++            std::lock_guard<std::mutex> guard(g_preparedBeforeActionsMutex);
++            if (g_preparedBeforeActions.erase(p->GetGUID()))
++                return;
++        }
++        PrepareLoginState(p);
++    }
++
++private:
++    void PrepareLoginState(Player* p)
++    {
+         if (IsBot(p))
+         {
+             EraTalentBots::OnBotLogin(p);   // gated internally on EraTalents.BotTalents
+@@ -72,6 +95,27 @@
+         }
+         EraTalents::ReconcileBaselineSpells(p, now); // unconditional: must also run for WotLK priests
+         pin(p, now);
++    }
++
++public:
++
++    void OnPlayerFirstLogin(Player* p) override
++    {
++        if (!sEraTalentsConfig->Enabled() || IsBot(p))
++            return;
++
++        // Other first-login scripts can apply a starter profile after the ordinary login hooks.
++        // Reconcile on the next world event so the final level/progression state is authoritative,
++        // then push a snapshot to the already-loaded addon. No client reload timing is involved.
++        ObjectGuid const guid = p->GetGUID();
++        p->m_Events.AddEventAtOffset([this, guid]()
++        {
++            if (Player* player = ObjectAccessor::FindPlayer(guid))
++            {
++                PrepareLoginState(player);
++                EraTalentsComms::SendSync(player);
++            }
++        }, Milliseconds(1));
+     }
+ 
+     // Mid-session era changes that are NOT level-ups (a GM `.ip set`, or a progression milestone
+@@ -251,6 +295,10 @@
+             std::lock_guard<std::mutex> guard(g_checkTimerMutex);
+             g_checkTimer.erase(p->GetGUID());        // don't leak timer entries for logged-out players
+         }
++        {
++            std::lock_guard<std::mutex> guard(g_preparedBeforeActionsMutex);
++            g_preparedBeforeActions.erase(p->GetGUID());
++        }
+         EraTalentBots::OnLogout(p);                  // drop the bot spec-tab cache entry (cheap erase)
+         EraTalents::EvictCache(p);                   // drop the rank cache (re-loaded on next login)
+     }
+diff --git a/modules/mod-era-talents/src/EraTalents.cpp b/modules/mod-era-talents/src/EraTalents.cpp
+--- a/modules/mod-era-talents/src/EraTalents.cpp
++++ b/modules/mod-era-talents/src/EraTalents.cpp
+@@ -12,9 +12,11 @@
+ #include "Field.h"
+ #include "SpellMgr.h"
+ #include "ObjectAccessor.h"
++#include "WorldSession.h"
+ 
+ #include <algorithm>
+ #include <mutex>
++#include <vector>
+ 
+ // Master Demonologist (EraTalentPetScripts.cpp): re-apply/strip the active demon's branch for the
+ // CURRENT talent state. Must run on TryLearn/Reset so a respec strips the buff without a resummon.
+@@ -87,6 +89,33 @@
+     {
+         return g_botBuild.active && g_botBuild.guid == p->GetGUID().GetCounter();
+     }
++
++    std::vector<uint8> HumanActionSlotsForSpell(Player* p, uint32 spellId)
++    {
++        std::vector<uint8> slots;
++        if (!p || !p->GetSession() || p->GetSession()->IsBot() || !spellId)
++            return slots;
++
++        for (uint16 button = 0; button < MAX_ACTION_BUTTONS; ++button)
++        {
++            ActionButton const* action = p->GetActionButton(static_cast<uint8>(button));
++            if (action && action->GetType() == ACTION_BUTTON_SPELL && action->GetAction() == spellId)
++                slots.push_back(static_cast<uint8>(button));
++        }
++        return slots;
++    }
++
++    void ReplaceActionBarSpell(Player* p, std::vector<uint8> const& slots, uint32 replacementSpell)
++    {
++        if (!p || slots.empty() || !p->HasSpell(replacementSpell))
++            return;
++
++        for (uint8 button : slots)
++            p->addActionButton(button, replacementSpell, ACTION_BUTTON_SPELL);
++
++        if (p->IsInWorld())
++            p->SendActionButtons(1);
++    }
+ }
+ 
+ namespace EraTalents
+@@ -262,6 +291,9 @@
+             return false;
+         }
+ 
++        uint32 const oldSpell = rank > 0 && uint32(rank - 1) < n->rankSpell.size() ? n->rankSpell[rank - 1] : 0;
++        std::vector<uint8> const actionSlots = HumanActionSlotsForSpell(p, oldSpell);
++
+         // Record the new rank BEFORE granting the spell. learnSpell() below fires OnPlayerLearnSpell,
+         // which for a gate-managed stock grant (Divine Spirit 14752, Shield Slam 23922, Ice Block 45438,
+         // Consecration/BoK, …) re-runs ReconcileBaselineSpells — and that gate STRIPS the spell when it
+@@ -283,6 +315,7 @@
+             p->removeSpell(n->rankSpell[rank - 1], SPEC_MASK_ALL, false);
+ 
+         p->learnSpell(newSpell);
++        ReplaceActionBarSpell(p, actionSlots, newSpell);
+ 
+         if (!InBotBuild(p))
+         {
+diff --git a/modules/mod-era-talents/src/EraTalentsComms.cpp b/modules/mod-era-talents/src/EraTalentsComms.cpp
+--- a/modules/mod-era-talents/src/EraTalentsComms.cpp
++++ b/modules/mod-era-talents/src/EraTalentsComms.cpp
+@@ -149,7 +149,22 @@
+             uint32 talentId = 0;
+             iss >> talentId;
+             std::string err;
+-            EraTalents::TryLearn(p, talentId, err);   // engine re-validates authoritatively; client just gets fresh SYNC
++            if (EraTalents::TryLearn(p, talentId, err))
++            {
++                EraId const era = EraFromIP(p);
++                uint32 const rank = EraTalents::CurrentRank(p, era, talentId);
++                int const available = EraTalents::AvailablePoints(p, era);
++                p->Whisper(
++                    std::string("ERATAL\tDELTA ") + std::to_string(talentId) + " " +
++                        std::to_string(rank) + " " + std::to_string(available),
++                    LANG_ADDON, p);
++            }
++            else
++            {
++                p->Whisper(std::string("ERATAL\tERROR ") + std::to_string(talentId) + " " + err,
++                           LANG_ADDON, p);
++            }
++            return;
+         }
+         else if (verb == "HELLO")
+         {
+@@ -160,7 +175,7 @@
+             return;
+         }
+ 
+-        EraTalentsComms::SendSync(p);   // always answer with fresh state
++        EraTalentsComms::SendSync(p);
+     }
+ };
+ 
+diff --git a/modules/mod-era-talents/client-addon/EraTalents/EraTalents.lua b/modules/mod-era-talents/client-addon/EraTalents/EraTalents.lua
+--- a/modules/mod-era-talents/client-addon/EraTalents/EraTalents.lua
++++ b/modules/mod-era-talents/client-addon/EraTalents/EraTalents.lua
+@@ -4,7 +4,7 @@
+ 
+ ET.PREFIX = "ERATAL"
+ -- Server-authoritative state; populated ONLY from SYNC (the client never computes points).
+-ET.state = { era = nil, availPts = 0, ranks = {}, isEraChar = false }
++ET.state = { era = nil, availPts = 0, ranks = {}, isEraChar = false, syncReady = false, pendingTalent = nil }
+ 
+ -- Wire the subsystems (each Init* is defined in its own file; safe to call once).
+ function ET.Init()
+@@ -20,7 +20,7 @@
+ boot:RegisterEvent("PLAYER_ENTERING_WORLD")
+ boot:SetScript("OnEvent", function()
+   ET.Init()
+-  if ET.RequestSync then ET.RequestSync() end   -- pull fresh state (HELLO)
++  if ET.BeginSyncHandshake then ET.BeginSyncHandshake() elseif ET.RequestSync then ET.RequestSync() end
+ end)
+ 
+ -- /pettalents -- open the stock WotLK talent frame so a hunter can reach the Pet talent
+diff --git a/modules/mod-era-talents/client-addon/EraTalents/Comms.lua b/modules/mod-era-talents/client-addon/EraTalents/Comms.lua
+--- a/modules/mod-era-talents/client-addon/EraTalents/Comms.lua
++++ b/modules/mod-era-talents/client-addon/EraTalents/Comms.lua
+@@ -23,11 +23,25 @@
+   state.era = tonumber(era)
+   state.availPts = tonumber(pts)
+   state.isEraChar = (tonumber(managed) == 1)
++  state.syncReady = (not seq) or (tonumber(seq) == tonumber(total))
++  state.pendingTalent = nil
+   if isFirst then state.ranks = {} end
+   for id, rank in string.gmatch(rest, "(%d+):(%d+)") do
+     state.ranks[tonumber(id)] = tonumber(rank)
+   end
+   return true
++end
++
++function ET.ParseDelta(state, message)
++  local id, rank, pts = string.match(message, "^DELTA%s+(%d+)%s+(%d+)%s+(%-?%d+)$")
++  if not id then return false end
++  id, rank = tonumber(id), tonumber(rank)
++  state.ranks = state.ranks or {}
++  state.ranks[id] = rank
++  state.availPts = tonumber(pts)
++  state.syncReady = true
++  state.pendingTalent = nil
++  return true, id
+ end
+ 
+ -- Generation canary. The server sends "GEN <stamp>" (from era_talent_meta) after every SYNC;
+@@ -57,7 +71,26 @@
+     ET.CheckGeneration(gen)
+     return
+   end
++  local delta, talentId = ET.ParseDelta(ET.state, message)
++  if delta then
++    ET._pendingElapsed = 0
++    if ET.RefreshTalentChange then ET.RefreshTalentChange(talentId) elseif ET.Refresh then ET.Refresh() end
++    return
++  end
++  local errorTalent, reason = string.match(message, "^ERROR%s+(%d+)%s+(.+)$")
++  if errorTalent then
++    ET.state.pendingTalent = nil
++    ET._pendingElapsed = 0
++    if UIErrorsFrame then UIErrorsFrame:AddMessage(reason, 1, 0.2, 0.2, 1, 3) end
++    ET.RequestSync()
++    return
++  end
+   if ET.ParseSync(ET.state, message) then
++    ET._pendingElapsed = 0
++    if ET.state.syncReady then
++      ET._syncRetries = nil
++      ET._syncRetryIndex = nil
++    end
+     if ET.Refresh then ET.Refresh() end   -- TalentUI hook (may be absent in tests)
+   end
+ end
+@@ -68,10 +101,40 @@
+ function ET.RequestSync() ET.Send("HELLO") end
+ function ET.Learn(id) ET.Send("LEARN " .. id) end
+ 
++function ET.BeginSyncHandshake()
++  ET.state.syncReady = false
++  ET.state.pendingTalent = nil
++  ET._syncRetries = { 0, 0.5, 1.0, 2.0, 4.0, 8.0 }
++  ET._syncRetryIndex = 1
++  ET._syncElapsed = 0
++  ET._pendingElapsed = 0
++end
++
+ function ET.InitComms()
+   local f = CreateFrame("Frame")
+   f:RegisterEvent("CHAT_MSG_ADDON")
+   f:SetScript("OnEvent", function(self, event, prefix, message)
+     ET.OnAddonMsg(prefix, message)
+   end)
++  f:SetScript("OnUpdate", function(self, elapsed)
++    elapsed = elapsed or 0
++    if ET._syncRetries and ET._syncRetryIndex and ET._syncRetryIndex <= table.getn(ET._syncRetries) then
++      ET._syncElapsed = (ET._syncElapsed or 0) + elapsed
++      local due = ET._syncRetries[ET._syncRetryIndex]
++      if ET._syncElapsed >= due then
++        ET._syncElapsed = 0
++        ET._syncRetryIndex = ET._syncRetryIndex + 1
++        ET.RequestSync()
++      end
++    end
++    if ET.state.pendingTalent then
++      ET._pendingElapsed = (ET._pendingElapsed or 0) + elapsed
++      if ET._pendingElapsed >= 2.0 then
++        ET.state.pendingTalent = nil
++        ET._pendingElapsed = 0
++        ET.RequestSync()
++        if ET.Refresh then ET.Refresh() end
++      end
++    end
++  end)
+ end
+diff --git a/modules/mod-era-talents/client-addon/EraTalents/TalentUI.lua b/modules/mod-era-talents/client-addon/EraTalents/TalentUI.lua
+--- a/modules/mod-era-talents/client-addon/EraTalents/TalentUI.lua
++++ b/modules/mod-era-talents/client-addon/EraTalents/TalentUI.lua
+@@ -310,13 +310,24 @@
+ -- nodes get wired server-side they start responding without any addon change.
+ local function OnNodeClick(btn)
+   local node = btn.node
++  if not ET.state.syncReady then
++    UIErrorsFrame:AddMessage("Synchronizing talent state...", 1, 0.82, 0.2, 1, 2)
++    if ET.RequestSync then ET.RequestSync() end
++    return
++  end
++  if ET.state.pendingTalent then
++    return
++  end
+   local rank = ET.state.ranks[node.id] or 0
+   if rank >= node.maxRank then return end
+   if (ET.state.availPts or 0) < 1 then
+     UIErrorsFrame:AddMessage("Not enough talent points.", 1, 0.2, 0.2, 1, 3)
+     return
+   end
+-  ET.Learn(node.id)     -- server validates; UI updates when the SYNC arrives
++  ET.state.pendingTalent = node.id
++  ET._pendingElapsed = 0
++  if ET.RefreshTalentChange then ET.RefreshTalentChange(node.id) end
++  ET.Learn(node.id)     -- server validates; UI updates when the DELTA arrives
+ end
+ 
+ local function EnsureButtons(tree)
+@@ -374,11 +385,14 @@
+     local rank = ET.state.ranks[node.id] or 0
+     if node.tab == ET._activeTab then
+       b:Show()
+-      b.rank:SetText(rank .. "/" .. node.maxRank)
++      b.rank:SetText(rank .. "/" .. node.maxRank .. (ET.state.pendingTalent == node.id and "…" or ""))
+       local icon = b:GetNormalTexture()
+       -- Mirror the real tree's state colouring (no glow box): trained/maxed = full colour + green
+       -- rank, reachable-but-empty = full colour + white rank, locked tier/prereq = greyed + dim rank.
+-      if rank > 0 then
++      if ET.state.pendingTalent == node.id then
++        if icon then icon:SetDesaturated(nil) end
++        b.rank:SetTextColor(1, 0.82, 0.2)
++      elseif rank > 0 then
+         if icon then icon:SetDesaturated(nil) end
+         b.rank:SetTextColor(0.1, 1, 0.1)          -- has points (incl. maxed): green
+       elseif NodeAvailable(node) then
+@@ -542,6 +556,24 @@
+   ET.ShowTab(ET._activeTab or 2)   -- default to Fire (where Improved Fireball lives); repaints + footer
+ end
+ 
++-- DELTA updates never change the tree/class/generation, so repaint the existing active tree
++-- without rebuilding tabs, layout or button frames. Dependencies still update because the active
++-- tab's spent count, button availability and arrows are recomputed together.
++function ET.RefreshTalentChange()
++  if not ET.frame then return end
++  local tree = TreeForState()
++  if not tree then return end
++  ET._spentActive = 0
++  for _, node in ipairs(tree.talents) do
++    if node.tab == ET._activeTab then
++      ET._spentActive = ET._spentActive + (ET.state.ranks[node.id] or 0)
++    end
++  end
++  RenderButtons(tree)
++  ET.DrawArrows(tree)
++  UpdateFooter(tree)
++end
++
+ function ET.TogglePanel()
+   BuildFrame()
+   if ET.frame:IsShown() then ET.frame:Hide() else ET.frame:Show(); ET.Refresh() end
+diff --git a/modules/mod-era-talents/client-addon/EraTalents/test_comms.lua b/modules/mod-era-talents/client-addon/EraTalents/test_comms.lua
+--- a/modules/mod-era-talents/client-addon/EraTalents/test_comms.lua
++++ b/modules/mod-era-talents/client-addon/EraTalents/test_comms.lua
+@@ -33,10 +33,23 @@
+ ET.ParseSync(ET.state, "SYNC 0 1 47 1/2 18001:3,18002:1")
+ assert(ET.state.era == 0 and ET.state.availPts == 47, "chunk 1 header parsed past sentinel")
+ assert(ET.state.isEraChar == true, "chunk 1 managed flag parsed")
++assert(ET.state.syncReady == false, "partial snapshot keeps controls disabled")
+ assert(ET.state.ranks[18001] == 3 and ET.state.ranks[18002] == 1, "chunk 1 ranks parsed")
+ ET.ParseSync(ET.state, "SYNC 0 1 47 2/2 18003:5")
++assert(ET.state.syncReady == true, "final snapshot enables controls")
+ assert(ET.state.ranks[18001] == 3, "chunk 2 (seq>1) accumulates — keeps chunk-1 ranks, no reset")
+ assert(ET.state.ranks[18003] == 5, "chunk 2 merged its new rank")
++
++ET.state.pendingTalent = 18003
++local delta, talentId = ET.ParseDelta(ET.state, "DELTA 18003 6 46")
++assert(delta == true and talentId == 18003, "DELTA identifies the changed node")
++assert(ET.state.ranks[18003] == 6 and ET.state.availPts == 46, "DELTA applies authoritative rank and points")
++assert(ET.state.pendingTalent == nil, "DELTA clears the in-flight click")
++assert(ET.ParseDelta(ET.state, "ERROR 18003 rejected") == false, "non-DELTA returns false")
++
++ET.state.pendingTalent = 18003
++ET.BeginSyncHandshake()
++assert(ET.state.syncReady == false and ET.state.pendingTalent == nil, "handshake resets readiness and pending state")
+ print("comms OK")
+ 
+ -- GEN canary: server stamp vs client sentinel spell 932999
+diff --git a/modules/mod-era-talents/patches/playerbots/02-era-ai.patch b/modules/mod-era-talents/patches/playerbots/02-era-ai.patch
+--- a/modules/mod-era-talents/patches/playerbots/02-era-ai.patch
++++ b/modules/mod-era-talents/patches/playerbots/02-era-ai.patch
+@@ -1,5 +1,5 @@
+-diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/LfgActions.cpp b/modules/mod-playerbots/src/Ai/Base/Actions/LfgActions.cpp
+-index a43b405..6af5849 100644
++diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/LfgActions.cpp b/src/Ai/Base/Actions/LfgActions.cpp
++index a43b4058dfbf0fbb7311226b22c958873304edd5..6af58498cfc88faec854c83e18bfa6f076355324 100644
+ --- a/modules/mod-playerbots/src/Ai/Base/Actions/LfgActions.cpp
+ +++ b/modules/mod-playerbots/src/Ai/Base/Actions/LfgActions.cpp
+ @@ -14,6 +14,12 @@
+@@ -24,8 +24,8 @@
+                  return PLAYER_ROLE_TANK;
+              else
+                  return PLAYER_ROLE_DAMAGE;
+-diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/WorldBuffAction.cpp b/modules/mod-playerbots/src/Ai/Base/Actions/WorldBuffAction.cpp
+-index 0c9a679..8911398 100644
++diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/WorldBuffAction.cpp b/src/Ai/Base/Actions/WorldBuffAction.cpp
++index 0c9a679ff6b7ff056cfb25d435b26a4d3449360d..89113985fc4df253e829b1eb3b1a1aec24fd1b9e 100644
+ --- a/modules/mod-playerbots/src/Ai/Base/Actions/WorldBuffAction.cpp
+ +++ b/modules/mod-playerbots/src/Ai/Base/Actions/WorldBuffAction.cpp
+ @@ -5,6 +5,11 @@
+@@ -50,8 +50,8 @@
+          if (!isBear)
+          {
+              // If not bear, then treat it as "cat" spec = 3
+-diff --git a/modules/mod-playerbots/src/Ai/Base/Value/SpellIdValue.cpp b/modules/mod-playerbots/src/Ai/Base/Value/SpellIdValue.cpp
+-index 2e2628d..36b1509 100644
++diff --git a/modules/mod-playerbots/src/Ai/Base/Value/SpellIdValue.cpp b/src/Ai/Base/Value/SpellIdValue.cpp
++index 2e2628d8eb5fcc60e8961e5004672074f7c96889..36b150913f57f6acefd702b5a544885f6ff6db73 100644
+ --- a/modules/mod-playerbots/src/Ai/Base/Value/SpellIdValue.cpp
+ +++ b/modules/mod-playerbots/src/Ai/Base/Value/SpellIdValue.cpp
+ @@ -42,6 +42,14 @@ uint32 SpellIdValue::Calculate()
+@@ -69,8 +69,8 @@
+          SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
+          if (!spellInfo || spellInfo->IsPassive())
+              continue;
+-diff --git a/modules/mod-playerbots/src/Ai/Class/Druid/DruidTriggers.h b/modules/mod-playerbots/src/Ai/Class/Druid/DruidTriggers.h
+-index be28d6a..abfee09 100644
++diff --git a/modules/mod-playerbots/src/Ai/Class/Druid/DruidTriggers.h b/src/Ai/Class/Druid/DruidTriggers.h
++index be28d6a84fb73db27c65186a63da6173f92711f3..abfee0921fdbc5a7d26dbcdf23ef3bfa16e34e0f 100644
+ --- a/modules/mod-playerbots/src/Ai/Class/Druid/DruidTriggers.h
+ +++ b/modules/mod-playerbots/src/Ai/Class/Druid/DruidTriggers.h
+ @@ -19,6 +19,10 @@
+@@ -93,8 +93,8 @@
+          {
+              Unit* target = GetTarget();
+              return target && target->IsAlive() && target->IsInWorld();
+-diff --git a/modules/mod-playerbots/src/Ai/Class/Druid/Strategy/FeralDruidStrategy.cpp b/modules/mod-playerbots/src/Ai/Class/Druid/Strategy/FeralDruidStrategy.cpp
+-index acb7d1e..33f8e76 100644
++diff --git a/modules/mod-playerbots/src/Ai/Class/Druid/Strategy/FeralDruidStrategy.cpp b/src/Ai/Class/Druid/Strategy/FeralDruidStrategy.cpp
++index acb7d1ef8bad7783e7cb4c759fbab11d01cd2e9a..33f8e76477a485aa6cfc964c9a6bd3896d9e7e5b 100644
+ --- a/modules/mod-playerbots/src/Ai/Class/Druid/Strategy/FeralDruidStrategy.cpp
+ +++ b/modules/mod-playerbots/src/Ai/Class/Druid/Strategy/FeralDruidStrategy.cpp
+ @@ -7,6 +7,12 @@
+@@ -119,8 +119,8 @@
+          triggers.push_back(new TriggerNode(
+              "enemy out of melee", { NextAction("feral charge - cat", 29.0f) }));
+      else
+-diff --git a/modules/mod-playerbots/src/Ai/Class/Druid/Strategy/GenericDruidStrategy.cpp b/modules/mod-playerbots/src/Ai/Class/Druid/Strategy/GenericDruidStrategy.cpp
+-index 491ac9f..50f6c97 100644
++diff --git a/modules/mod-playerbots/src/Ai/Class/Druid/Strategy/GenericDruidStrategy.cpp b/src/Ai/Class/Druid/Strategy/GenericDruidStrategy.cpp
++index 491ac9f573c351f5d3a8863126831a045cb12e61..50f6c9776c27bf61cf4f0b89dc82ce04f89030ac 100644
+ --- a/modules/mod-playerbots/src/Ai/Class/Druid/Strategy/GenericDruidStrategy.cpp
+ +++ b/modules/mod-playerbots/src/Ai/Class/Druid/Strategy/GenericDruidStrategy.cpp
+ @@ -9,6 +9,12 @@
+@@ -163,8 +163,8 @@
+      {
+          triggers.push_back(new TriggerNode("clearcasting and medium aoe", { NextAction("swipe (cat)", 25.5f) }));
+          triggers.push_back(new TriggerNode("medium aoe", { NextAction("swipe (cat)", 25.0f) }));
+-diff --git a/modules/mod-playerbots/src/Ai/Class/Paladin/Actions/PaladinActions.cpp b/modules/mod-playerbots/src/Ai/Class/Paladin/Actions/PaladinActions.cpp
+-index 8bf1b45..e67c59b 100644
++diff --git a/modules/mod-playerbots/src/Ai/Class/Paladin/Actions/PaladinActions.cpp b/src/Ai/Class/Paladin/Actions/PaladinActions.cpp
++index 8bf1b45d59c21bc89503f197470f3013b2ba0631..e67c59bdc0a035babd6277d33a4bed6f027c4948 100644
+ --- a/modules/mod-playerbots/src/Ai/Class/Paladin/Actions/PaladinActions.cpp
+ +++ b/modules/mod-playerbots/src/Ai/Class/Paladin/Actions/PaladinActions.cpp
+ @@ -13,6 +13,11 @@
+@@ -216,8 +216,8 @@
+          const bool hasSanctAny =
+              botAI->HasAura("blessing of sanctuary", target) ||
+              botAI->HasAura("greater blessing of sanctuary", target);
+-diff --git a/modules/mod-playerbots/src/Ai/Class/Paladin/Actions/PaladinGreaterBlessingAction.cpp b/modules/mod-playerbots/src/Ai/Class/Paladin/Actions/PaladinGreaterBlessingAction.cpp
+-index 8c48658..76586ca 100644
++diff --git a/modules/mod-playerbots/src/Ai/Class/Paladin/Actions/PaladinGreaterBlessingAction.cpp b/src/Ai/Class/Paladin/Actions/PaladinGreaterBlessingAction.cpp
++index 8c48658256749a7587d67b02eae59d00b0ecb442..76586ca7a916321fac0328c1885f087305f703ce 100644
+ --- a/modules/mod-playerbots/src/Ai/Class/Paladin/Actions/PaladinGreaterBlessingAction.cpp
+ +++ b/modules/mod-playerbots/src/Ai/Class/Paladin/Actions/PaladinGreaterBlessingAction.cpp
+ @@ -12,6 +12,11 @@
+@@ -272,8 +272,8 @@
+                  return amount * 120 / 100;
+              if (caster->HasAura(SPELL_IMPROVED_WISDOM_R1))
+                  return amount * 110 / 100;
+-diff --git a/modules/mod-playerbots/src/Ai/Class/Paladin/Strategy/GenericPaladinStrategyActionNodeFactory.h b/modules/mod-playerbots/src/Ai/Class/Paladin/Strategy/GenericPaladinStrategyActionNodeFactory.h
+-index 7096a14..cabdecd 100644
++diff --git a/modules/mod-playerbots/src/Ai/Class/Paladin/Strategy/GenericPaladinStrategyActionNodeFactory.h b/src/Ai/Class/Paladin/Strategy/GenericPaladinStrategyActionNodeFactory.h
++index 7096a140817bf162455fb9d810e657df459d5c6a..cabdecd8719a3c99c896cd5f34beb44d8f839e34 100644
+ --- a/modules/mod-playerbots/src/Ai/Class/Paladin/Strategy/GenericPaladinStrategyActionNodeFactory.h
+ +++ b/modules/mod-playerbots/src/Ai/Class/Paladin/Strategy/GenericPaladinStrategyActionNodeFactory.h
+ @@ -28,6 +28,7 @@ public:
+@@ -301,8 +301,8 @@
+      static ActionNode* divine_shield(PlayerbotAI* /* ai */)
+      {
+          return new ActionNode("divine shield",
+-diff --git a/modules/mod-playerbots/src/Ai/Class/Priest/PriestActions.h b/modules/mod-playerbots/src/Ai/Class/Priest/PriestActions.h
+-index 6710914..8326c34 100644
++diff --git a/modules/mod-playerbots/src/Ai/Class/Priest/PriestActions.h b/src/Ai/Class/Priest/PriestActions.h
++index 6f20a45e5252dce8d2b4fa1b5ac5456e14931003..1cdcb48fee28f393a89ab8b2cda0c82f8068c2ff 100644
+ --- a/modules/mod-playerbots/src/Ai/Class/Priest/PriestActions.h
+ +++ b/modules/mod-playerbots/src/Ai/Class/Priest/PriestActions.h
+ @@ -140,7 +140,19 @@ public:
+@@ -326,8 +326,8 @@
+  BUFF_ACTION(CastShadowformAction, "shadowform");
+  SPELL_ACTION(CastSilenceAction, "silence");
+  ENEMY_HEALER_ACTION(CastSilenceOnEnemyHealerAction, "silence");
+-diff --git a/modules/mod-playerbots/src/Ai/Class/Priest/PriestTriggers.h b/modules/mod-playerbots/src/Ai/Class/Priest/PriestTriggers.h
+-index 13d35e4..cc781f5 100644
++diff --git a/modules/mod-playerbots/src/Ai/Class/Priest/PriestTriggers.h b/src/Ai/Class/Priest/PriestTriggers.h
++index cae141e138f6ea5e1467d44f6a6fb1b4816d714b..8241e5baec59c5b09d9512c6ce72685eb74c15b5 100644
+ --- a/modules/mod-playerbots/src/Ai/Class/Priest/PriestTriggers.h
+ +++ b/modules/mod-playerbots/src/Ai/Class/Priest/PriestTriggers.h
+ @@ -19,7 +19,19 @@ DEBUFF_CHECKISOWNER_TRIGGER(ShadowWordPainTrigger, "shadow word: pain");
+@@ -351,8 +351,8 @@
+  CURE_TRIGGER(DispelMagicTrigger, "dispel magic", DISPEL_MAGIC);
+  CURE_PARTY_TRIGGER(DispelMagicPartyMemberTrigger, "dispel magic", DISPEL_MAGIC);
+  CURE_TRIGGER(CureDiseaseTrigger, "cure disease", DISPEL_DISEASE);
+-diff --git a/modules/mod-playerbots/src/Ai/Class/Priest/Strategy/ShadowPriestStrategy.cpp b/modules/mod-playerbots/src/Ai/Class/Priest/Strategy/ShadowPriestStrategy.cpp
+-index 57d0550..66ce1ef 100644
++diff --git a/modules/mod-playerbots/src/Ai/Class/Priest/Strategy/ShadowPriestStrategy.cpp b/src/Ai/Class/Priest/Strategy/ShadowPriestStrategy.cpp
++index 57d0550b908be4ef156e738bef73e18ea960e4da..66ce1ef9a2feed9d494f87a003bcabb6a6ae028d 100644
+ --- a/modules/mod-playerbots/src/Ai/Class/Priest/Strategy/ShadowPriestStrategy.cpp
+ +++ b/modules/mod-playerbots/src/Ai/Class/Priest/Strategy/ShadowPriestStrategy.cpp
+ @@ -35,6 +35,17 @@ void ShadowPriestStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
+@@ -373,8 +373,8 @@
+      triggers.push_back(
+          new TriggerNode(
+              "low mana",
+-diff --git a/modules/mod-playerbots/src/Ai/Class/Shaman/ShamanActions.cpp b/modules/mod-playerbots/src/Ai/Class/Shaman/ShamanActions.cpp
+-index 6469c11..16625f5 100644
++diff --git a/modules/mod-playerbots/src/Ai/Class/Shaman/ShamanActions.cpp b/src/Ai/Class/Shaman/ShamanActions.cpp
++index 6469c11c1cabdd85cfbd713a04a4faff5fbf437f..38b8b3c546fff093826894c4b583f712f8915112 100644
+ --- a/modules/mod-playerbots/src/Ai/Class/Shaman/ShamanActions.cpp
+ +++ b/modules/mod-playerbots/src/Ai/Class/Shaman/ShamanActions.cpp
+ @@ -10,6 +10,10 @@
+@@ -388,7 +388,7 @@
+  bool CastTotemAction::isUseful()
+  {
+      return CastBuffSpellAction::isUseful()
+-@@ -98,9 +102,9 @@ bool SetTotemAction::Execute(Event /*event*/)
++@@ -98,15 +102,28 @@ bool SetTotemAction::Execute(Event /*event*/)
+      uint32 totemSpell = 0;
+      for (size_t i = 0; i < totemSpellIdsCount; ++i)
+      {
+@@ -400,8 +400,27 @@
+              break;
+          }
+      }
+-diff --git a/modules/mod-playerbots/src/Ai/Class/Shaman/ShamanTriggers.cpp b/modules/mod-playerbots/src/Ai/Class/Shaman/ShamanTriggers.cpp
+-index 91c51a5..d6d79be 100644
++ 
++     if (!totemSpell)
+++    {
+++        // These four slots are generated exclusively for the bot's totem bar. A spell can
+++        // disappear after an era/progression transition; remove that stale generated entry now
+++        // so it is not saved and rejected again during the next login.
+++        if (ActionButton const* button = bot->GetActionButton(actionButtonId);
+++            button && button->GetType() == ACTION_BUTTON_SPELL &&
+++            button->GetAction() && !bot->HasSpell(button->GetAction()))
+++        {
+++            bot->removeActionButton(actionButtonId);
+++            return true;
+++        }
+++
++         return false;
+++    }
++ 
++     if (ActionButton const* button = bot->GetActionButton(actionButtonId);
++         button && button->GetType() == ACTION_BUTTON_SPELL &&
++diff --git a/modules/mod-playerbots/src/Ai/Class/Shaman/ShamanTriggers.cpp b/src/Ai/Class/Shaman/ShamanTriggers.cpp
++index 91c51a52310e27b5296223427cbe023cb5c68915..78c6fe82e50a07436dd3b6010dc86e7f7975efba 100644
+ --- a/modules/mod-playerbots/src/Ai/Class/Shaman/ShamanTriggers.cpp
+ +++ b/modules/mod-playerbots/src/Ai/Class/Shaman/ShamanTriggers.cpp
+ @@ -15,6 +15,25 @@
+@@ -568,7 +587,7 @@
+          return false;
+  
+      ObjectGuid guid = bot->m_SummonSlot[SUMMON_SLOT_TOTEM_AIR];
+-@@ -451,10 +460,9 @@ bool SetTotemTrigger::IsActive()
++@@ -451,18 +460,22 @@ bool SetTotemTrigger::IsActive()
+     uint32 highestKnownSpell = 0;
+     for (size_t i = 0; i < totemSpellIdsCount; ++i)
+     {
+@@ -581,8 +600,23 @@
+             break;
+         }
+     }
+-diff --git a/modules/mod-playerbots/src/Ai/Class/Shaman/Strategy/TotemsShamanStrategy.cpp b/modules/mod-playerbots/src/Ai/Class/Shaman/Strategy/TotemsShamanStrategy.cpp
+-index 8066d57..6ce8cc8 100644
++ 
+++   ActionButton const* button = bot->GetActionButton(actionButtonId);
++    if (!highestKnownSpell)
++-       return false;
+++   {
+++       // Wake the matching action only to clean an obsolete generated totem entry. Valid
+++       // buttons, including a different totem selected for this element, remain untouched.
+++       return button && button->GetType() == ACTION_BUTTON_SPELL &&
+++           button->GetAction() && !bot->HasSpell(button->GetAction());
+++   }
++ 
++-   ActionButton const* button = bot->GetActionButton(actionButtonId);
++    if (!button || button->GetType() != ACTION_BUTTON_SPELL || button->GetAction() == 0)
++        return true;
++ 
++diff --git a/modules/mod-playerbots/src/Ai/Class/Shaman/Strategy/TotemsShamanStrategy.cpp b/src/Ai/Class/Shaman/Strategy/TotemsShamanStrategy.cpp
++index 8066d57b8cfb960db1b9141310f9dfcb4bcf1d91..6ce8cc897094b81ac35a662ee495264abcdd9fef 100644
+ --- a/modules/mod-playerbots/src/Ai/Class/Shaman/Strategy/TotemsShamanStrategy.cpp
+ +++ b/modules/mod-playerbots/src/Ai/Class/Shaman/Strategy/TotemsShamanStrategy.cpp
+ @@ -18,6 +18,12 @@ constexpr uint32 SPELL_GROUNDING_TOTEM = 8177;
+@@ -646,8 +680,8 @@
+          triggers.push_back(new TriggerNode("set grounding totem", { NextAction("set grounding totem", 60.0f) }));
+      triggers.push_back(new TriggerNode("no air totem", { NextAction("windfury totem", 55.0f) }));
+  }
+-diff --git a/modules/mod-playerbots/src/Ai/Class/Warrior/WarriorTriggers.cpp b/modules/mod-playerbots/src/Ai/Class/Warrior/WarriorTriggers.cpp
+-index 976a66c..2f0724c 100644
++diff --git a/modules/mod-playerbots/src/Ai/Class/Warrior/WarriorTriggers.cpp b/src/Ai/Class/Warrior/WarriorTriggers.cpp
++index 976a66cb738c8938b83aac37a8cc5f5718204cb9..2f0724cce58c649fab45945168f1cfe73da69e58 100644
+ --- a/modules/mod-playerbots/src/Ai/Class/Warrior/WarriorTriggers.cpp
+ +++ b/modules/mod-playerbots/src/Ai/Class/Warrior/WarriorTriggers.cpp
+ @@ -7,6 +7,11 @@
+@@ -673,11 +707,11 @@
+          {
+              cpBonus = commandingPresenceBonus[rank];
+              break;
+-diff --git a/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp b/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp
+-index dfe7813..4b9947a 100644
++diff --git a/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp b/src/Bot/PlayerbotAI.cpp
++index b0e9c1f2e9e98b38698cb777993a4cfc36efe55a..62bbcdb695ce39d3093a3e9107ee43b46eb43b87 100644
+ --- a/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp
+ +++ b/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp
+-@@ -2327,10 +2327,16 @@ bool PlayerbotAI::IsTank(Player* player, bool bySpec)
++@@ -2303,10 +2303,16 @@ bool PlayerbotAI::IsTank(Player* player, bool bySpec)
+              }
+              break;
+          case CLASS_DRUID:
+@@ -697,8 +731,8 @@
+              }
+              break;
+      }
+-diff --git a/modules/mod-playerbots/src/Mgr/Item/StatsWeightCalculator.cpp b/modules/mod-playerbots/src/Mgr/Item/StatsWeightCalculator.cpp
+-index 5d81e47..704e7db 100644
++diff --git a/modules/mod-playerbots/src/Mgr/Item/StatsWeightCalculator.cpp b/src/Mgr/Item/StatsWeightCalculator.cpp
++index 5d81e47e752523292091d09e2200426bd3ea0b0d..704e7dbd6efeb34c2ce6f8614ddad08f95b61ab6 100644
+ --- a/modules/mod-playerbots/src/Mgr/Item/StatsWeightCalculator.cpp
+ +++ b/modules/mod-playerbots/src/Mgr/Item/StatsWeightCalculator.cpp
+ @@ -20,6 +20,11 @@

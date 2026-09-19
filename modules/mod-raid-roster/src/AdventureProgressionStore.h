@@ -2,6 +2,7 @@
 #define MOD_RAID_ROSTER_ADVENTURE_PROGRESSION_STORE_H
 
 #include "Define.h"
+class Player;
 
 namespace AdventureProgressionStore
 {
@@ -16,8 +17,8 @@ struct State
 };
 
 State LoadOrCreate(uint32 playerGuid);
-void MarkStarterInitialized(uint32 playerGuid, uint8 profile = 0);
-void MarkStarterGearGranted(uint32 playerGuid, uint8 specTab);
+void MarkStarterInitialized(Player* player, uint8 profile = 0);
+void MarkStarterGearGranted(Player* player, uint8 specTab);
 void PrepareStarterProfile(uint32 playerGuid, uint8 profile);
 void AddPendingCache(uint32 playerGuid, uint16 count = 1);
 bool ConsumePendingCache(uint32 playerGuid);

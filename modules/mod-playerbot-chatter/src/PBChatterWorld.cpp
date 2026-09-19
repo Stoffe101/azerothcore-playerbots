@@ -8,6 +8,8 @@
 #include "Player.h"
 #include "ObjectAccessor.h"
 #include "ObjectGuid.h"
+#include "Group.h"
+#include "Timer.h"
 
 void PBChatterWorld::OnAfterConfigLoad(bool /*reload*/)
 {
@@ -43,6 +45,23 @@ void PBChatterWorld::OnUpdate(uint32 diff)
         PlayerbotAI* ai = GET_PLAYERBOT_AI(bot);
         if (!ai)
             continue;
+
+        if (r.briefGroupGuid)
+        {
+            Group* group = bot->GetGroup();
+            if (!group || group->GetGUID().GetRawValue() != r.briefGroupGuid ||
+                bot->GetMapId() != r.briefMapId || bot->GetInstanceId() != r.briefInstanceId ||
+                getMSTimeDiff(r.briefCreatedMs, getMSTime()) > 30000)
+                continue;
+            bool fighting = false;
+            group->DoForAllMembers([&](Player* member)
+            {
+                if (member && member->IsInCombat())
+                    fighting = true;
+            });
+            if (fighting)
+                continue;
+        }
 
         bool sent = false;
         switch (r.channel)

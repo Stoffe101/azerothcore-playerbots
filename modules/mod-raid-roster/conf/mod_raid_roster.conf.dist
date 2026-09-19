@@ -4,42 +4,27 @@
 # mod-raid-roster configuration
 ########################################
 
-RaidRoster.Enable = 0
+# The full adventure stack depends on the persistent roster for Guild Director dungeon filling
+# and raid preparation, so it is enabled by default. Set to 0 only if you intentionally want to
+# disable those player-facing systems.
+RaidRoster.Enable = 1
 
 ########################################
 # Adventure start (TBC-first server)
 ########################################
 
-# Bootstrap newly-created REAL player characters. Random bots / addclass bots / playerbots are
-# excluded. WotLK remains globally locked by the Admin Panel expansion gate until deliberately
-# released.
 AdventureStart.Enable = 1
-
-# 0 = TBC Adventure: level 60 at the Dark Portal with late-Vanilla raid gear after spec choice.
-# 1 = TBC Raid Ready: level 70 in Shattrath with pre-Karazhan gear after spec choice.
-# 2 = WotLK Raid Ready: level 80 in Dalaran with pre-Naxx gear after spec choice.
-# The Admin Panel only exposes profile 2 after WotLK has actually been released.
 AdventureStart.DefaultProfile = 0
-
-# TBC Adventure profile. Stage 8 = Vanilla completed / beginning of TBC.
 AdventureStart.Level = 60
 AdventureStart.Progression = 8
 AdventureStart.RevealMap = 1
 AdventureStart.StarterKit = 1
 AdventureStart.StartingGold = 50
-
-# Temporary gear while the custom EraTalents tree has no committed spec.
 AdventureStart.BasicGear = 1
 AdventureStart.BasicGearItemLevel = 58
-
-# Once enough points are committed, replace the temporary set once with spec-aware epic gear.
 AdventureStart.AutoGear = 1
 AdventureStart.GearMinTalentPoints = 5
-
-# ilvl 88 models a successful late-Vanilla AQ40/Naxx40 raider walking through the Dark Portal.
 AdventureStart.GearItemLevel = 88
-
-# TBC Adventure destination: Blasted Lands side of the Dark Portal.
 AdventureStart.Teleport.Enable = 1
 AdventureStart.Teleport.Map = 0
 AdventureStart.Teleport.X = -11894.80
@@ -51,18 +36,11 @@ AdventureStart.Teleport.O = 0.0
 # TBC max-level / raid-ready profile
 ########################################
 
-# Stay at stage 8 so Karazhan/Gruul/Mag are still the first progression raids. This shortcut
-# skips leveling/gearing friction, not the actual TBC raid ladder.
 AdventureStart.TbcRaidReady.Level = 70
 AdventureStart.TbcRaidReady.Progression = 8
 AdventureStart.TbcRaidReady.StartingGold = 500
-
-# Immediate heroic-quality blues prevent a naked boost. After 5 talent points the spec-aware pass
-# upgrades the character to an ilvl-115 epic pre-raid set suitable for starting Kara/Gruul/Mag.
 AdventureStart.TbcRaidReady.BasicGearItemLevel = 110
 AdventureStart.TbcRaidReady.GearItemLevel = 115
-
-# Raid-ready spawn: Shattrath.
 AdventureStart.TbcRaidReady.Teleport.Enable = 1
 AdventureStart.TbcRaidReady.Teleport.Map = 530
 AdventureStart.TbcRaidReady.Teleport.X = -1838.16
@@ -74,21 +52,87 @@ AdventureStart.TbcRaidReady.Teleport.O = 5.95
 # WotLK max-level / raid-ready profile
 ########################################
 
-# The Admin Panel keeps this unavailable until the persistent WotLK release gate is open. Stage 13
-# is the beginning of Wrath, so Naxxramas remains the first raid rather than being auto-completed.
 AdventureStart.WotlkRaidReady.Level = 80
 AdventureStart.WotlkRaidReady.Progression = 13
 AdventureStart.WotlkRaidReady.StartingGold = 1000
-
-# Immediate level-80 blues keep the character playable before a spec is known. Once at least five
-# talent points are committed, the final pass gives spec-aware ilvl-200 epics suitable for Naxx.
 AdventureStart.WotlkRaidReady.BasicGearItemLevel = 187
 AdventureStart.WotlkRaidReady.GearItemLevel = 200
-
-# WotLK raid-ready spawn: Dalaran.
 AdventureStart.WotlkRaidReady.Teleport.Enable = 1
 AdventureStart.WotlkRaidReady.Teleport.Map = 571
 AdventureStart.WotlkRaidReady.Teleport.X = 5807.75
 AdventureStart.WotlkRaidReady.Teleport.Y = 588.27
 AdventureStart.WotlkRaidReady.Teleport.Z = 660.94
 AdventureStart.WotlkRaidReady.Teleport.O = 1.64
+
+########################################
+# Adventure progression rewards
+########################################
+
+# Persistent caches earned by naturally reaching levels 65 and 70. Intentional starter/admin
+# boosts do not receive skipped milestone caches. Use .cache status and .cache open in game.
+AdventureProgression.Caches.Enable = 1
+
+########################################
+# Guild Group Director
+########################################
+
+# Turns guild activity requests into balanced AI-assisted five-player groups. Thirty seconds gives
+# cold-login bots time to join on a busy persistent world without making normal requests feel stuck.
+GuildDirector.Enable = 1
+GuildDirector.AutoTravel = 1
+GuildDirector.ReadyTimeoutMs = 30000
+
+########################################
+# Encounter lifecycle / wipe recovery
+########################################
+
+EncounterLifecycle.Enable = 1
+WipeRecovery.Enable = 1
+WipeRecovery.DelayMs = 5000
+WipeRecovery.ResurrectHumans = 1
+
+# Rebuild the party after a wipe without initiating a pull: paid repairs, standard Playerbots
+# food/potion/ammo/reagent refills, rebuffs, warlock utility and suitable pets.
+AutoPrep.Enable = 1
+AutoPrep.RefillConsumables = 1
+AutoPrep.WarlockSupport = 1
+AutoPrep.SmartPets = 1
+
+########################################
+# Hands-off instance navigation
+########################################
+
+# When a real-player group enters an instance and an eligible bot tank is present, automatically
+# start the pinned mod-dungeon-clear route/pull driver. This removes the normal `.dc on` step.
+# The module itself handles navmesh routing, trash pulls, rest/loot/regroup, scripted doors/events,
+# resurrection holds and heroic tuning. Boss combat stays with Playerbots' encounter strategies.
+AutoDungeonClear.Enable = 1
+
+# mod-dungeon-clear also contains raid-run support and deliberately stands its route driver down
+# during raid boss combat so Playerbots' deterministic raid strategy owns mechanics. Leave enabled
+# for hands-off supported raid navigation; unsupported maps simply do not start a run.
+AutoDungeonClear.Raids = 1
+
+########################################
+# Smart loot protection
+########################################
+
+SmartLoot.Enable = 1
+SmartLoot.BotNeedUpgrades = 1
+SmartLoot.BotGreedUseful = 1
+BadLuckProtection.Enable = 1
+BadLuckProtection.UpgradeWindowSeconds = 120
+
+########################################
+# Adventurer economy
+########################################
+
+# First-ever boss kills remain meaningful milestones. Repeat boss kills pay a much smaller activity
+# reward with a shared per-character daily ceiling, so normal dungeon/raid play can cover repairs,
+# consumables and travel without becoming an unlimited gold faucet or replacing the AH economy.
+AdventureEconomy.Enable = 1
+AdventureEconomy.DungeonBossFirstKillGold = 5
+AdventureEconomy.RaidBossFirstKillGold = 20
+AdventureEconomy.DungeonBossRepeatGold = 1
+AdventureEconomy.RaidBossRepeatGold = 3
+AdventureEconomy.DailyRepeatCapGold = 30

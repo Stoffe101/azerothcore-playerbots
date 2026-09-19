@@ -8,30 +8,32 @@
 # Blank lines and lines starting with # are ignored. <repo-dir> is the directory basename:
 #     azerothcore-wotlk   = the core playerbots fork (AC_DIR)
 #     mod-playerbots      = the bot engine (azerothcore-wotlk/modules/mod-playerbots)
+#     mod-dungeon-clear   = autonomous dungeon-driving extension for playerbots
 #     mod-aoe-loot, ...   = any other module under azerothcore-wotlk/modules/
 #
 # --- ACTIVE PINS ---
-# Every repo our tracked patches (patches/0001-0017, plus mod-era-talents' own) modify is pinned so an upstream push can
-# never break an update. Bumped 2026-09-07 (from core 190184a0 / mpb ba46fcd / IP df10164 /
-# bridge 5e5ff75 — 416 / 65 / 2 / 36 commits behind): all patches re-verified applying cleanly
-# in setup.sh order at these tips. 0002 (Heigan dance) was RETIRED — upstream re-enabled the
-# safety dance itself (mod-playerbots a773b8c, a Plague-Cloud-anchored fight clock); our version
-# is recoverable from git history if the upstream dance proves worse in-game. The playerbots-side
-# patches (0003-0006, 0014, 0016, 0017, 0020, 0021) were regenerated for upstream refactors
-# (include order, east-const, raid-helper move to Util/EncounterHelpers, GenericAction removal).
-# mod-player-bot-level-brackets was DROPPED from setup.sh — upstream merged it into mod-playerbots
-# (6cc5e3a, AiPlayerbot.LevelBrackets.*) and the module README says it is no longer needed.
-# To take upstream later: comment out the pin(s), run ./update.sh, regenerate any patch that
-# aborts, test, then re-pin at new tips.
-azerothcore-wotlk 413bea61a85e20d9caef7d66fc601a661fdddd9d
-mod-playerbots b949b50bfcdd4fab937781bac2d7765e39330e4b
+# 2026-09-14 AI refresh: bumped the paired mod-playerbots + Playerbot-core pins to the
+# current upstream integration tips. These tips are direct descendants of our previous pins
+# (old pins were the first parent of the upstream merge), bringing in the September dungeon,
+# class-AI, RPG/world-behaviour, guild and Ulduar/core fixes while preserving deterministic
+# reproducibility. The local ./update.sh build remains the final compatibility gate for our
+# overlay patches and EraTalents patch stack.
+azerothcore-wotlk 06234df3d5ab26c93f4f1f06f3edb828b73ecd3c
+mod-playerbots b6696bdbd3740e575598d167d69f39f68cc0b907
 mod-individual-progression 977e2005bacf97f35e506eb27b8af6b2ea1136af
 # mod-multibot-bridge: its old pin (5e5ff75) only existed because the bridge's Self-Bot code needed
 # IsSelfBot(), which mod-playerbots ba46fcd lacked; b949b50 defines it, so the bridge now rides its
 # tip. Upstream REWROTE the bridge's main as an orphan history (no shared ancestry with 5e5ff75) —
 # patch 0022 was re-verified against it. Pinned like the others so an update can't outrun 0022.
 mod-multibot-bridge 759c100d5e508b9af28531a2642ded70619828ba
+# Autonomous dungeon driving. Pinned to the 2026-09-14 Oculus/ToC/CoS-capable revision so the
+# server gets reproducible navmesh routing, scripted-event handling, recovery and heroic tuning.
+# We deliberately keep this as a normal upstream git module instead of vendoring a fork.
+mod-dungeon-clear 29c53fd10f99c1f978fba6cecd326bde8ce170d9
 # era talents module (own repo: https://github.com/lathcf/azerothcore-mod-era-talents). The sha is a commit on the PUBLIC
 # GitHub history (an orphan branch; the private Gitea history has different shas) — production clones from
 # GitHub, so a private sha would never fetch. Bump after each public sync, after verifying a build.
 mod-era-talents 3a0d9776c6837d8a5e5038c23c01c4fc388d90f8
+# Keep the remaining compiled economy modules on the revisions validated with this integration.
+mod-junk-to-gold 2134690bb03899e5c9e44d0682e8e6abf0bbbaf2
+mod-ah-bot-plus f685832994c825f90aa5a3dc0e1620aa568e875b

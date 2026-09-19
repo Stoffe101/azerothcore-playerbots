@@ -1,0 +1,49 @@
+diff --git a/modules/mod-era-talents/src/EraTalentIP.cpp b/modules/mod-era-talents/src/EraTalentIP.cpp
+--- a/modules/mod-era-talents/src/EraTalentIP.cpp
++++ b/modules/mod-era-talents/src/EraTalentIP.cpp
+@@ -1,12 +1,33 @@
+ #include "EraTalentIP.h"
+ #include "IndividualProgression.h"   // sIndividualProgression, ProgressionState
+ #include "Player.h"
++
++namespace
++{
++uint8 LoadedProgressionState(Player* p)
++{
++    if (!p)
++        return 0;
++
++    // IndividualProgression::GetPlayerProgressionFromQuests intentionally returns 0 until the
++    // player is in-world. EraTalents also runs once inside Player::LoadFromDB, before AddPlayerToMap,
++    // so using that API there falsely turns every TBC/WotLK login into a Vanilla era transition.
++    //
++    // At this point LoadFromDB has already populated the rewarded-quest set. Mirror IP's own
++    // progression scan directly so the era is stable both before and after AddPlayerToMap.
++    uint8 state = 0;
++    for (uint8 i = PROGRESSION_MOLTEN_CORE; i <= PROGRESSION_WOTLK_TIER_5; ++i)
++        if (p->IsQuestRewarded(66000 + i))
++            state = i;
++    return state;
++}
++}
+ 
+ EraId EraFromIP(Player* p)
+ {
+     if (!p)
+         return ERA_WOTLK;
+-    uint8 state = sIndividualProgression->GetPlayerProgressionFromQuests(p);
++    uint8 state = LoadedProgressionState(p);
+     if (state <= PROGRESSION_NAXX40)        // 0..7
+         return ERA_VANILLA;
+     if (state <= PROGRESSION_TBC_TIER_4)    // 8..12
+@@ -30,9 +51,7 @@ bool EraHasTalentTrees(EraId era)
+ 
+ uint8 EraIP::State(Player* p)
+ {
+-    if (!p || !p->IsInWorld())
+-        return 0;
+-    return sIndividualProgression->GetPlayerProgressionFromQuests(p);
++    return LoadedProgressionState(p);
+ }
+ 
+ void EraIP::ForceState(Player* p, uint8 state)

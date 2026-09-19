@@ -1,0 +1,8 @@
+diff --git a/modules/mod-multibot-bridge/src/MultiBotBridge.cpp b/modules/mod-multibot-bridge/src/MultiBotBridge.cpp
+--- a/modules/mod-multibot-bridge/src/MultiBotBridge.cpp
++++ b/modules/mod-multibot-bridge/src/MultiBotBridge.cpp
+@@ -301,3 +301,3 @@ std::size_t GetAddonWireLength(std::string const& opcode, std::string const& payload)
+-    std::size_t length = std::char_traits<char>::length(kAddonEnvelope) + opcode.size();
++    std::size_t length = std::char_traits<char>::length(kAddonPrefix) + 1 + opcode.size();
+     if (!payload.empty())
+         length += 1 + payload.size();

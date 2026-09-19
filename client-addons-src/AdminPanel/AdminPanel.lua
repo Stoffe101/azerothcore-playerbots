@@ -22,6 +22,10 @@ local state = {
     bottarget = "?",
     botbatch = "10",
     botactivity = "?",
+    botstate = "?",
+    botcapacity = "?",
+    botcandidates = "?",
+    botpending = "?",
     uptime = "?",
     sessions = "?",
     tick = "?",
@@ -258,8 +262,8 @@ local tbcNote = Text(tbcStartCard, "Stage 8 stays intact, so Kara / Gruul / Mag 
 local wrathCard = Card(character, 662, 132); wrathCard:SetPoint("TOPLEFT", tbcStartCard, "BOTTOMLEFT", 0, -10); CardLabel(wrathCard, "Wrath of the Lich King")
 local wrathCharStatus = Text(wrathCard, "LOCKED • release WotLK from the World page first", "GameFontNormal", C.warning[1], C.warning[2], C.warning[3]); wrathCharStatus:SetPoint("TOPLEFT", 14, -39)
 local starter80 = Button(wrathCard, "New chars: Raid Ready 80", 208, 28, function() Send("starter wotlkraid"); Send("status") end, "Unlocked only after WotLK release. New characters start at level 80/stage 13 in Dalaran."); starter80:SetPoint("TOPLEFT", 14, -75)
-local makeWrathReady = Button(wrathCard, "Make THIS char WotLK Raid Ready", 252, 28, function() Send("wotlkraidready"); Send("status") end, "Level 80, stage 13, Dalaran, max riding, supplies and spec-aware ilvl-200 pre-Naxx gear."); makeWrathReady:SetPoint("LEFT", starter80, "RIGHT", 10, 0)
-local wrathGearNote = Text(wrathCard, "Pre-Naxx ilvl 200 • does not mark Naxx/Ulduar/ToC/ICC complete", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); wrathGearNote:SetPoint("BOTTOMLEFT", 14, 12)
+local makeWrathReady = Button(wrathCard, "Make THIS char WotLK Raid Ready", 252, 28, function() Send("wotlkraidready"); Send("status") end, "Level 80, Dalaran, max riding, supplies and ilvl-200 pre-Naxx gear. Also completes this realm's WotLK progression/access campaign (stage 18), Frozen Halls, Undercity phasing and DK intro access. Heroic achievement gates stay normal."); makeWrathReady:SetPoint("LEFT", starter80, "RIGHT", 10, 0)
+local wrathGearNote = Text(wrathCard, "Pre-Naxx ilvl 200 • WotLK progression/access complete • heroic achievements stay normal", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); wrathGearNote:SetPoint("BOTTOMLEFT", 14, 12)
 
 -- WORLD ---------------------------------------------------------------------
 local world = CreatePage("World")
@@ -310,19 +314,27 @@ StaticPopupDialogs["AZEROTH_RELEASE_WOTLK"] = {
 -- AI & RAID -----------------------------------------------------------------
 local ai = CreatePage("AI & Raid")
 PageTitle(ai, "AI & Raid", "Safe bot-population controls plus the one-click tools for dungeon and raid nights.")
-local botCard = Card(ai, 662, 178); botCard:SetPoint("TOPLEFT", 8, -58); CardLabel(botCard, "World population")
-local botSummary = Text(botCard, "Bots ? / ? • Activity ?% • ramp 10/cycle", "GameFontNormal", C.text[1], C.text[2], C.text[3]); botSummary:SetPoint("TOPLEFT", 14, -40)
-local botNote = Text(botCard, "Population changes use the safe throttled ramp instead of the old 150-bot database avalanche.", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); botNote:SetPoint("TOPLEFT", 14, -66)
-local lastBot
-for _, target in ipairs({ 0, 100, 250, 500, 750 }) do
+local botCard = Card(ai, 662, 218); botCard:SetPoint("TOPLEFT", 8, -58); CardLabel(botCard, "World population")
+local botSummary = Text(botCard, "Bots ? / ? • capacity ? • pending ? • ?", "GameFontNormal", C.text[1], C.text[2], C.text[3]); botSummary:SetPoint("TOPLEFT", 14, -40)
+local botNote = Text(botCard, "One saved target controls provisioning, login backpressure and protected scale-down.", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); botNote:SetPoint("TOPLEFT", 14, -66)
+local botPresetButtons = {}
+for index, target in ipairs({ 500, 750, 1000, 1500 }) do
     local targetValue = target
-    local label = targetValue == 0 and "Pause / 0" or tostring(targetValue)
-    local b = Button(botCard, label, 84, 24, function() Send("bots " .. targetValue); Send("status") end)
-    if lastBot then b:SetPoint("LEFT", lastBot, "RIGHT", 6, 0) else b:SetPoint("TOPLEFT", 14, -96) end
-    lastBot = b
+    local b = Button(botCard, targetValue .. " Bots", 145, 27, function() Send("bots " .. targetValue); Send("status") end)
+    b:SetPoint("TOPLEFT", 14 + (index - 1) * 157, -94)
+    botPresetButtons[targetValue] = b
 end
-local botCustom = Edit(botCard, 70, "500"); botCustom:SetPoint("LEFT", lastBot, "RIGHT", 10, 0)
-local botSet = Button(botCard, "Set", 52, 24, function() local v = tonumber(botCustom:GetText()); if v then Send("bots " .. math.floor(v)); Send("status") end end); botSet:SetPoint("LEFT", botCustom, "RIGHT", 5, 0)
+local lastBot
+for _, target in ipairs({ 0, 100, 250 }) do
+    local targetValue = target
+    local label = targetValue == 0 and "Pause / 0" or tostring(targetValue) .. " Bots"
+    local b = Button(botCard, label, 92, 24, function() Send("bots " .. targetValue); Send("status") end)
+    if lastBot then b:SetPoint("LEFT", lastBot, "RIGHT", 6, 0) else b:SetPoint("TOPLEFT", 14, -132) end
+    lastBot = b
+    botPresetButtons[targetValue] = b
+end
+local botCustom = Edit(botCard, 70, "500"); botCustom:SetPoint("LEFT", lastBot, "RIGHT", 12, 0)
+local botSet = Button(botCard, "Set target", 82, 24, function() local v = tonumber(botCustom:GetText()); if v then Send("bots " .. math.floor(v)); Send("status") end end); botSet:SetPoint("LEFT", botCustom, "RIGHT", 5, 0)
 local activityLabel = Text(botCard, "Activity", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); activityLabel:SetPoint("BOTTOMLEFT", 14, 17)
 local lastAct
 for _, pct in ipairs({ 25, 50, 75, 100 }) do
@@ -331,14 +343,14 @@ for _, pct in ipairs({ 25, 50, 75, 100 }) do
     if lastAct then b:SetPoint("LEFT", lastAct, "RIGHT", 5, 0) else b:SetPoint("LEFT", activityLabel, "RIGHT", 12, 0) end
     lastAct = b
 end
-local raidCard = Card(ai, 662, 154); raidCard:SetPoint("TOPLEFT", botCard, "BOTTOMLEFT", 0, -10); CardLabel(raidCard, "Raid night")
+local raidCard = Card(ai, 662, 134); raidCard:SetPoint("TOPLEFT", botCard, "BOTTOMLEFT", 0, -10); CardLabel(raidCard, "Raid night")
 local raidDesc = Text(raidCard, "Repair, resurrect, restore and resupply the current group, then push bot activity to 100%.", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); raidDesc:SetPoint("TOPLEFT", 14, -40)
 local raidNight = Button(raidCard, "RAID NIGHT", 152, 31, function() Send("raidnight"); Send("health") end); raidNight:SetPoint("TOPLEFT", 14, -70)
 local prepGroup = Button(raidCard, "Prep Group", 120, 27, function() Send("groupprep") end); prepGroup:SetPoint("LEFT", raidNight, "RIGHT", 10, 0)
 local summonGroup = Button(raidCard, "Summon Group", 126, 27, function() Send("groupsummon") end); summonGroup:SetPoint("LEFT", prepGroup, "RIGHT", 10, 0)
 local listBinds = Button(raidCard, "Lockouts", 92, 27, function() SendRaw(".instance listbinds") end); listBinds:SetPoint("LEFT", summonGroup, "RIGHT", 10, 0)
 local clearBinds = Button(raidCard, "Clear Lockouts", 116, 27, function() StaticPopup_Show("AZEROTH_CLEAR_LOCKOUTS") end); clearBinds:SetPoint("LEFT", listBinds, "RIGHT", 8, 0)
-local rosterCard = Card(ai, 662, 170); rosterCard:SetPoint("TOPLEFT", raidCard, "BOTTOMLEFT", 0, -10); CardLabel(rosterCard, "AI raid roster")
+local rosterCard = Card(ai, 662, 150); rosterCard:SetPoint("TOPLEFT", raidCard, "BOTTOMLEFT", 0, -10); CardLabel(rosterCard, "AI raid roster")
 local rosterDesc = Text(rosterCard, "Create your persistent roster once, then log in the size you want and sync their level/spec/gear to you.", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); rosterDesc:SetPoint("TOPLEFT", 14, -40)
 local rosterCreate = Button(rosterCard, "Create / Top Up", 122, 25, function() SendRaw(".raidroster create") end); rosterCreate:SetPoint("TOPLEFT", 14, -72)
 local rosterSync = Button(rosterCard, "Sync", 82, 25, function() SendRaw(".raidroster sync") end); rosterSync:SetPoint("LEFT", rosterCreate, "RIGHT", 8, 0)
@@ -398,14 +410,18 @@ local function UpdateUI()
     sidebarEra:SetText(wotlk and "WOTLK LIVE" or "TBC LIVE"); sidebarEra:SetTextColor(r, g, b); sidebarCap:SetText("Cap " .. tostring(state.levelcap) .. " • stage " .. tostring(state.progressionlimit))
     dashEra:SetText(eraName); dashEra:SetTextColor(r, g, b); dashCharacter:SetText("Level " .. tostring(state.level) .. "  •  Stage " .. tostring(state.stage)); dashMoney:SetText(tostring(state.money) .. " gold"); goldCurrent:SetText("Current: " .. tostring(state.money) .. "g")
     dashRates:SetText("XP " .. tostring(state.xp) .. "x     REP " .. tostring(state.rep) .. "x     GOLD " .. tostring(state.goldrate) .. "x")
-    dashPopulation:SetText("Players " .. tostring(state.players) .. "   •   Bots " .. tostring(state.bots) .. " / " .. tostring(state.bottarget)); dashActivity:SetText("Activity " .. tostring(state.botactivity) .. "% • ramp " .. tostring(state.botbatch) .. "/cycle"); botSummary:SetText("Bots " .. tostring(state.bots) .. " / " .. tostring(state.bottarget) .. " • Activity " .. tostring(state.botactivity) .. "% • ramp " .. tostring(state.botbatch) .. "/cycle")
+    dashPopulation:SetText("Players " .. tostring(state.players) .. "   •   Bots " .. tostring(state.bots) .. " / " .. tostring(state.bottarget)); dashActivity:SetText("Activity " .. tostring(state.botactivity) .. "% • " .. tostring(state.botstate) .. " • pending " .. tostring(state.botpending)); botSummary:SetText("Bots " .. tostring(state.bots) .. " / " .. tostring(state.bottarget) .. " • capacity " .. tostring(state.botcapacity) .. " • pending " .. tostring(state.botpending) .. " • " .. tostring(state.botstate))
+    local selectedTarget = tonumber(state.bottarget)
+    for target, button in pairs(botPresetButtons) do
+        if target == selectedTarget then button:LockHighlight() else button:UnlockHighlight() end
+    end
     if rateRows.xp then rateRows.xp:SetText(tostring(state.xp)) end; if rateRows.rep then rateRows.rep:SetText(tostring(state.rep)) end; if rateRows.gold then rateRows.gold:SetText(tostring(state.goldrate)) end
     if tostring(state.starter) == "wotlkraid" then currentStarter:SetText("Default new character: WotLK Raid Ready • Level 80") elseif tostring(state.starter) == "tbcraid" then currentStarter:SetText("Default new character: TBC Raid Ready • Level 70") else currentStarter:SetText("Default new character: TBC Adventure • Level 60") end
     expansionTitle:SetText(eraName .. " • LIVE"); expansionTitle:SetTextColor(r, g, b); expansionInfo:SetText("Level cap " .. tostring(state.levelcap) .. " • progression ceiling " .. tostring(state.progressionlimit) .. (wotlk and " • WotLK live" or " • WotLK locked"))
     if wotlk then
         dashLock:SetText("WotLK LIVE • cap 80 • progression open"); dashExpansionAction:Hide(); dashRaidReady:SetText("WotLK Raid Ready"); dashRaidReady:SetScript("OnClick", function() Send("wotlkraidready"); Send("status") end)
         releaseButton:Hide(); releaseStatus:SetText("WOTLK LIVE"); releaseStatus:SetTextColor(C.wrath[1], C.wrath[2], C.wrath[3]); expansionDesc:SetText("Wrath is released. Northrend and level-80 progression are open normally. Raid-ready shortcuts are now available, but no character was auto-boosted.")
-        wrathCharStatus:SetText("UNLOCKED • level 80 / stage 13 / pre-Naxx ilvl 200"); wrathCharStatus:SetTextColor(C.wrath[1], C.wrath[2], C.wrath[3]); SetEnabled(starter80, true); SetEnabled(makeWrathReady, true)
+        wrathCharStatus:SetText("UNLOCKED • raid-ready shortcut completes WotLK access / stage 18"); wrathCharStatus:SetTextColor(C.wrath[1], C.wrath[2], C.wrath[3]); SetEnabled(starter80, true); SetEnabled(makeWrathReady, true)
         tpLock:SetText("WotLK is live. Northrend destinations are unlocked."); tpLock:SetTextColor(C.wrath[1], C.wrath[2], C.wrath[3])
     else
         dashLock:SetText("WotLK locked • cap 70 • stage limit " .. tostring(state.progressionlimit)); dashExpansionAction:Show(); dashRaidReady:SetText("TBC Raid Ready"); dashRaidReady:SetScript("OnClick", function() Send("tbcraidready"); Send("status") end)

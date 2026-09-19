@@ -1,0 +1,95 @@
+diff --git a/src/server/game/DungeonFinding/LFGMgr.cpp b/src/server/game/DungeonFinding/LFGMgr.cpp
+--- a/src/server/game/DungeonFinding/LFGMgr.cpp
++++ b/src/server/game/DungeonFinding/LFGMgr.cpp
+@@ -32,6 +32,7 @@
+ #include "LFGQueue.h"
+ #include "Language.h"
+ #include "ObjectMgr.h"
++#include "ObjectAccessor.h"
+ #include "Opcodes.h"
+ #include "Player.h"
+ #include "RBAC.h"
+@@ -607,6 +608,10 @@
+         LfgGuidSet players;
+         uint32 rDungeonId = 0;
+         bool isContinue = grp && grp->isLFGGroup() && GetState(gguid) != LFG_STATE_FINISHED_DUNGEON;
++        bool const humanRequest = player->GetSession() && !player->GetSession()->IsBot();
++        if (humanRequest)
++            LOG_INFO("lfg", "Human LFG request: player={} guid={} roles={} requestedDungeons={} state={} grouped={}",
++                     player->GetName(), guid.GetCounter(), roles, dungeons.size(), GetState(gguid), grp ? 1 : 0);
+ 
+         if (grp && (grp->isBGGroup() || grp->isBFGroup()))
+             return;
+@@ -807,6 +812,9 @@
+             if (!dungeons.empty())                             // Only should show lockmap when have no dungeons available
+                 joinData.lockmap.clear();
+             player->GetSession()->SendLfgJoinResult(joinData);
++            if (humanRequest)
++                LOG_WARN("lfg", "Human LFG request rejected: player={} guid={} result={} state={} grouped={}",
++                         player->GetName(), guid.GetCounter(), joinData.result, GetState(gguid), grp ? 1 : 0);
+             return;
+         }
+ 
+@@ -883,6 +891,9 @@
+             SetState(guid, LFG_STATE_QUEUED);
+             SetRoles(guid, roles);
+         }
++        if (humanRequest)
++            LOG_INFO("lfg", "Human LFG request accepted: player={} guid={} state={} randomDungeon={} compatibleDungeons={} grouped={}",
++                     player->GetName(), guid.GetCounter(), GetState(gguid), rDungeonId, dungeons.size(), grp ? 1 : 0);
+     }
+ 
+     void LFGMgr::ToggleTesting()
+@@ -908,6 +919,10 @@
+     void LFGMgr::LeaveLfg(ObjectGuid guid)
+     {
+         LOG_DEBUG("lfg", "LFGMgr::Leave: [{}]", guid.ToString());
++        Player* human = guid.IsPlayer() ? ObjectAccessor::FindConnectedPlayer(guid) : nullptr;
++        if (human && human->GetSession() && !human->GetSession()->IsBot())
++            LOG_INFO("lfg", "Human LFG leave: player={} guid={} state={}",
++                     human->GetName(), guid.GetCounter(), GetState(guid));
+         ObjectGuid gguid = guid.IsGroup() ? guid : GetGroup(guid);
+         LfgState state = GetState(guid);
+         switch (state)
+@@ -2239,6 +2254,9 @@
+ 
+         if (!dungeon)
+         {
++            if (player->GetSession() && !player->GetSession()->IsBot())
++                LOG_WARN("lfg", "Human LFG teleport rejected: player={} direction={} reason=no-dungeon groupState={}",
++                         player->GetName(), out ? "out" : "in", group ? GetState(group->GetGUID()) : LFG_STATE_NONE);
+             player->GetSession()->SendLfgTeleportError(uint8(LFG_TELEPORTERROR_INVALID_LOCATION));
+             return;
+         }
+@@ -2271,6 +2289,11 @@
+         {
+             if (player->GetMapId() == uint32(dungeon->map))
+                 player->TeleportToEntryPoint();
++
++            if (player->GetSession() && !player->GetSession()->IsBot())
++                LOG_INFO("lfg", "Human LFG teleport accepted: player={} direction=out map={} state={}",
++                         player->GetName(), dungeon->map,
++                         group ? GetState(group->GetGUID()) : LFG_STATE_NONE);
+ 
+             return;
+         }
+@@ -2304,11 +2327,19 @@
+ 
+             LOG_DEBUG("lfg", "Player [{}] could NOT be teleported in to map [{}] (x: {}, y: {}, z: {}) Error: {}",
+             player->GetName(), dungeon->map, dungeon->x, dungeon->y, dungeon->z, error);
++            if (player->GetSession() && !player->GetSession()->IsBot())
++                LOG_WARN("lfg", "Human LFG teleport rejected: player={} direction={} map={} error={} state={}",
++                         player->GetName(), out ? "out" : "in", dungeon->map, error,
++                         group ? GetState(group->GetGUID()) : LFG_STATE_NONE);
+         }
+         else
+         {
+             LOG_DEBUG("lfg", "Player [{}] is being teleported in to map [{}] (x: {}, y: {}, z: {})",
+             player->GetName(), dungeon->map, dungeon->x, dungeon->y, dungeon->z);
++            if (player->GetSession() && !player->GetSession()->IsBot())
++                LOG_INFO("lfg", "Human LFG teleport accepted: player={} direction={} map={} state={}",
++                         player->GetName(), out ? "out" : "in", dungeon->map,
++                         group ? GetState(group->GetGUID()) : LFG_STATE_NONE);
+         }
+ 
+     }

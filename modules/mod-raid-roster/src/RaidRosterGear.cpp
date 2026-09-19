@@ -1,3 +1,4 @@
+#include "PlayerbotFactory.h"
 #include "RaidRosterGear.h"
 #include "DBCStores.h"
 #include "ItemTemplate.h"
@@ -402,7 +403,8 @@ bool PickSet(Player* bot, StatsWeightCalculator& calc, int32 target, ChosenSet& 
 namespace RaidRosterGear
 {
 
-bool EquipForSpec(Player* bot, Player* master, int specTab)
+bool EquipForSpec(Player* bot, Player* master, int specTab, uint16 minimumItemLevel,
+                  uint16 preferredItemLevel)
 {
     if (!bot || !master)
         return false;
@@ -420,7 +422,11 @@ bool EquipForSpec(Player* bot, Player* master, int specTab)
     // heirlooms as level-equivalent gear; the non-DF variant mixes quality multipliers
     // into the value and would skew the window). Sub-50 keeps the uncapped
     // best-in-slot-for-level special case: no target at all.
-    int32 const target = targeted ? int32(master->GetAverageItemLevelForDF() + 0.5f) : 0;
+    int32 const target = targeted
+        ? (preferredItemLevel
+            ? std::max<int32>(int32(preferredItemLevel), int32(minimumItemLevel))
+            : std::max<int32>(int32(master->GetAverageItemLevelForDF() + 0.5f), int32(minimumItemLevel)))
+        : 0;
 
     // Strip everything except the cosmetic shirt/tabard (factory second_chance style).
     for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
@@ -578,3 +584,8 @@ bool EquipForSpec(Player* bot, Player* master, int specTab)
 }
 
 } // namespace RaidRosterGear
+
+void RaidRosterGear::EquipCatchup(Player* player, uint32 quality, uint32 itemLevel)
+{
+    PlayerbotFactory::AutoGear(player, quality, itemLevel, true, false, false);
+}

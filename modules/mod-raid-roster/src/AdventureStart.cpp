@@ -30,6 +30,8 @@ void TrackStarterGear(Player* player)
 {
     if (!player || !g_AdventureStartAutoGear)
         return;
+    if (!AdventureProgressionStore::LoadOrCreate(player->GetGUID().GetCounter()).starterInitialized)
+        return;
 
     if (AdventureStartKit::TryGiveSpecStarterGear(player))
         return;
@@ -82,13 +84,13 @@ public:
         }
 
         AdventureStartProfile const profile = AdventureStartControl::GetDefaultProfile();
-        if (AdventureStartControl::ApplyProfile(player, profile, true))
+        if (AdventureStartControl::ApplyProfile(player, profile, false))
             TrackStarterGear(player);
     }
 
     void OnPlayerLogin(Player* player) override
     {
-        if (!g_AdventureStartEnable || !player || IsPlayerbot(player) || IsDeathKnight(player))
+        if (!g_AdventureStartEnable || !player || IsPlayerbot(player))
             return;
 
         uint32 const guid = player->GetGUID().GetCounter();
@@ -96,6 +98,10 @@ public:
 
         if (!state.starterInitialized)
         {
+            // Ordinary DKs keep the intro lifecycle. Explicitly initialized raid-ready DKs
+            // still need the same later spec-aware gear pass as every other class.
+            if (IsDeathKnight(player))
+                return;
             AdventureStartProfile recoveredProfile;
             bool matched = false;
             if (AdventureStartControl::MatchesProfile(player, AdventureStartProfile::WotlkRaidReady))
@@ -126,25 +132,37 @@ public:
             return;
         }
 
+        // Older WotLK raid-ready characters predate the explicit Frozen Halls access backfill.
+        // Repair them once on login so an existing boosted character can immediately enter PoS/HoR.
+        if (state.starterProfile == static_cast<uint8>(AdventureStartProfile::WotlkRaidReady) &&
+            AdventureStartControl::EnsureRaidReadyAccess(player, AdventureStartProfile::WotlkRaidReady))
+            player->SaveToDB(false, false);
+
         if (!state.starterGearGranted)
             TrackStarterGear(player);
     }
 
     void OnPlayerLearnTalents(Player* player, uint32 /*talentId*/, uint32 /*talentRank*/, uint32 /*spellid*/) override
     {
-        if (!g_AdventureStartEnable || !player || IsPlayerbot(player) || IsDeathKnight(player))
+        if (!g_AdventureStartEnable || !player || IsPlayerbot(player))
             return;
         TrackStarterGear(player);
     }
 
     void OnPlayerUpdate(Player* player, uint32 diff) override
     {
-        if (!g_AdventureStartEnable || !player || IsPlayerbot(player) || IsDeathKnight(player) || !player->IsInWorld())
+        if (!g_AdventureStartEnable || !player || IsPlayerbot(player) || !player->IsInWorld())
             return;
         if (!ShouldPollStarterGear(player, diff))
             return;
 
         if (AdventureStartKit::TryGiveSpecStarterGear(player))
+            StopTrackingStarterGear(player->GetGUID().GetCounter());
+    }
+
+    void OnPlayerLogout(Player* player) override
+    {
+        if (player)
             StopTrackingStarterGear(player->GetGUID().GetCounter());
     }
 };

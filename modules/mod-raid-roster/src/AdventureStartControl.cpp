@@ -8,6 +8,8 @@
 #include "Log.h"
 #include "Player.h"
 
+#include <array>
+
 namespace
 {
 struct ProfileData
@@ -73,6 +75,36 @@ void RevealAllMap(Player* player)
 
 namespace AdventureStartControl
 {
+uint8 CurrentProgression(Player* player)
+{
+    if (!player || !sIndividualProgression->enabled)
+        return ProgressionStart;
+    return sIndividualProgression->GetPlayerProgressionFromQuests(player);
+}
+
+bool HasPassedProgression(Player* player, uint8 progression)
+{
+    if (!player)
+        return false;
+    if (!sIndividualProgression->enabled || progression == ProgressionStart)
+        return true;
+    return sIndividualProgression->hasPassedProgression(player, static_cast<ProgressionState>(progression));
+}
+
+uint8 RequiredZulGurubProgression()
+{
+    return sIndividualProgression->enabled
+        ? static_cast<uint8>(sIndividualProgression->RequiredZulGurubProgression)
+        : ProgressionStart;
+}
+
+uint8 RequiredZulAmanProgression()
+{
+    return sIndividualProgression->enabled
+        ? static_cast<uint8>(sIndividualProgression->RequiredZulAmanProgression)
+        : ProgressionStart;
+}
+
 AdventureStartProfile GetDefaultProfile()
 {
     if (g_AdventureStartDefaultProfile == static_cast<uint8>(AdventureStartProfile::WotlkRaidReady))
@@ -110,13 +142,146 @@ bool MatchesProfile(Player* player, AdventureStartProfile profile)
     return current == data.progression;
 }
 
+bool EnsureRaidReadyAccess(Player* player, AdventureStartProfile profile)
+{
+    if (!player || profile != AdventureStartProfile::WotlkRaidReady)
+        return false;
+
+    // A WotLK raid-ready boost is deliberately past the mandatory Frozen Halls story gate. Do not
+    // complete arbitrary Northrend quests; only record the faction-specific access chain that gates
+    // Forge of Souls -> Pit of Saron -> Halls of Reflection.
+    static constexpr std::array<uint32, 6> AllianceFrozenHalls = {
+        24510u, // Inside the Frozen Citadel
+        24499u, // Echoes of Tortured Souls
+        24683u, // The Pit of Saron
+        24498u, // The Path to the Citadel
+        24710u, // Deliverance from the Pit
+        24711u, // Frostmourne
+    };
+    static constexpr std::array<uint32, 6> HordeFrozenHalls = {
+        24506u, // Inside the Frozen Citadel
+        24511u, // Echoes of Tortured Souls
+        24682u, // The Pit of Saron
+        24507u, // The Path to the Citadel
+        24712u, // Deliverance from the Pit
+        24713u, // Frostmourne
+    };
+
+    auto const& quests = player->GetTeamId() == TEAM_ALLIANCE ? AllianceFrozenHalls : HordeFrozenHalls;
+    bool changed = false;
+    for (uint32 questId : quests)
+    {
+        if (player->IsQuestRewarded(questId))
+            continue;
+
+        // Raid-ready skips the story rather than granting its normal rewards. Remove an in-progress
+        // copy if present, then persist only the rewarded/access flag used by AzerothCore gates.
+        player->RemoveActiveQuest(questId, false);
+        player->SetRewardedQuest(questId);
+        player->SendQuestUpdate(questId);
+        changed = true;
+    }
+
+    if (changed)
+        LOG_INFO("server.loading", "[AdventureStart] Repaired WotLK raid-ready Frozen Halls access for {}.", player->GetName());
+    return changed;
+}
+
+bool CompleteWotlkExpansionAccess(Player* player)
+{
+    if (!player || !player->IsInWorld() || !sIndividualProgression->enabled)
+        return false;
+
+    // The Admin Panel action is intentionally a full WotLK access skip. Individual Progression
+    // stores raid milestones as hidden quests, so moving to tier 5 (18) represents having cleared
+    // every WotLK progression gate, including the stage-16 Forge of Souls / ICC gate.
+    sIndividualProgression->ForceUpdateProgressionState(player, PROGRESSION_WOTLK_TIER_5);
+    if (!sIndividualProgression->hasPassedProgression(player, PROGRESSION_WOTLK_TIER_5))
+        return false;
+
+    // Keep the two real WotLK campaign/access chains used by this stack in sync with that skip:
+    // Battle for the Undercity drives capital-city phasing, while Frozen Halls drives Pit/HoR entry.
+    uint32 const undercityQuest = player->GetTeamId() == TEAM_ALLIANCE ? BATTLE_UNDERCITY_ALLIANCE : BATTLE_UNDERCITY_HORDE;
+    if (!player->IsQuestRewarded(undercityQuest))
+    {
+        player->RemoveActiveQuest(undercityQuest, false);
+        player->SetRewardedQuest(undercityQuest);
+        player->SendQuestUpdate(undercityQuest);
+    }
+
+    if (player->IsClass(CLASS_DEATH_KNIGHT))
+    {
+        uint32 const dkIntroCompletionQuest = player->GetTeamId() == TEAM_ALLIANCE ? 13188u : 13189u;
+        if (!player->IsQuestRewarded(dkIntroCompletionQuest))
+        {
+            player->RemoveActiveQuest(dkIntroCompletionQuest, false);
+            player->SetRewardedQuest(dkIntroCompletionQuest);
+            player->SendQuestUpdate(dkIntroCompletionQuest);
+        }
+    }
+
+    EnsureRaidReadyAccess(player, AdventureStartProfile::WotlkRaidReady);
+    sIndividualProgression->CheckAdjustments(player);
+    sIndividualProgression->checkIPPhasing(player, player->GetAreaId());
+    player->SaveToDB(false, false);
+
+    LOG_INFO("server.loading",
+        "[AdventureStart] Completed WotLK expansion access for {}: progression={}, Frozen Halls/Undercity access repaired.",
+        player->GetName(), uint32(sIndividualProgression->GetPlayerProgressionFromQuests(player)));
+    return true;
+}
+
 bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStarterReset)
 {
-    if (!player)
+    if (!player || !player->IsInWorld())
         return false;
 
     ProfileData const data = DataFor(profile);
     uint32 const guid = player->GetGUID().GetCounter();
+
+    // Reject unavailable profiles before level, inventory, talents or starter state can change.
+    if (data.progression > 0 && (!sIndividualProgression->enabled ||
+        (sIndividualProgression->progressionLimit && data.progression > sIndividualProgression->progressionLimit)))
+    {
+        LOG_WARN("server.loading", "[AdventureStart] Profile {} is outside the enabled progression ceiling for {}.",
+            ProfileName(profile), player->GetName());
+        return false;
+    }
+
+    // Starter profiles are normal forward progression, not a back-door around Individual
+    // Progression. Respect IP enablement and the configured live-expansion ceiling. The Admin
+    // Panel already opens that ceiling before WotLK raid-ready can be selected.
+    if (data.progression > 0 && player->IsInWorld() && sIndividualProgression->enabled)
+    {
+        uint8 const current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+        if (current < data.progression)
+            sIndividualProgression->UpdateProgressionState(player, static_cast<ProgressionState>(data.progression));
+
+        // Individual Progression's normal login hook runs before OnPlayerFirstLogin. Reapply the
+        // progression-derived state immediately after changing the hidden progression quests so a
+        // new starter does not wait for a later zone/equipment event to receive correct phasing.
+        sIndividualProgression->CheckAdjustments(player);
+        sIndividualProgression->checkIPPhasing(player, player->GetAreaId());
+
+        uint8 const applied = sIndividualProgression->GetPlayerProgressionFromQuests(player);
+        if (applied < data.progression)
+        {
+            LOG_WARN(
+                "server.loading",
+                "[AdventureStart] {} requested profile={} progression={} but IP applied only {} (enabled={}, limit={})",
+                player->GetName(), ProfileName(profile), data.progression, applied,
+                sIndividualProgression->enabled ? 1 : 0, sIndividualProgression->progressionLimit);
+            return false;
+        }
+    }
+    else if (data.progression > 0 && player->IsInWorld())
+    {
+        LOG_WARN(
+            "server.loading",
+            "[AdventureStart] Refusing profile={} progression={} for {} because Individual Progression is disabled.",
+            ProfileName(profile), data.progression, player->GetName());
+        return false;
+    }
 
     bool levelChanged = false;
     if (data.level > player->GetLevel())
@@ -124,20 +289,6 @@ bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStart
         player->GiveLevel(static_cast<uint8>(data.level));
         player->SetUInt32Value(PLAYER_XP, 0);
         levelChanged = true;
-    }
-
-    // Progression is exact to the profile's opening tier: stage 8 for TBC, stage 13 for WotLK.
-    // The Admin Panel separately prevents the WotLK profile from being selected before the realm's
-    // persistent WotLK release gate is open.
-    if (data.progression > 0 && player->IsInWorld())
-    {
-        uint8 const current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
-        if (current < data.progression)
-        {
-            sIndividualProgression->ForceUpdateProgressionState(
-                player,
-                static_cast<ProgressionState>(data.progression));
-        }
     }
 
     if (levelChanged)
@@ -161,6 +312,26 @@ bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStart
     if (data.teleport && player->IsInWorld())
         player->TeleportTo(data.map, data.x, data.y, data.z, data.o);
 
+    // A newly-created DK that is boosted while still in Ebon Hold only calculates the quest-gated
+    // DK talent pool (25 points at level 80). The raid-ready shortcut deliberately skips that intro,
+    // so an unspecced DK must receive the normal level-based WotLK pool instead. The stock LFG
+    // manager also hard-locks every DK out of dungeon finder until the faction-specific final intro
+    // quest is rewarded (13188 Alliance / 13189 Horde), so mark that final gate as completed as part
+    // of the same intentional starter-zone skip.
+    if (profile == AdventureStartProfile::WotlkRaidReady && player->getClass() == CLASS_DEATH_KNIGHT)
+    {
+        uint32 const dkIntroCompletionQuest = player->GetTeamId() == TEAM_ALLIANCE ? 13188u : 13189u;
+        if (!player->IsQuestRewarded(dkIntroCompletionQuest))
+            player->SetRewardedQuest(dkIntroCompletionQuest);
+
+        player->InitTalentForLevel();
+        uint32 const expectedTalentPoints = player->GetLevel() >= 10 ? player->GetLevel() - 9 : 0;
+        if (player->GetTalentMap().empty() && player->GetFreeTalentPoints() < expectedTalentPoints)
+            player->SetFreeTalentPoints(expectedTalentPoints);
+        player->SendTalentsInfoData(false);
+    }
+
+    EnsureRaidReadyAccess(player, profile);
     player->SaveToDB(false, false);
 
     LOG_INFO(

@@ -2,8 +2,9 @@
 # Build the complete WoW 3.3.5a client pack used by this project.
 #
 # This wrapper stages the pinned UI/combat addons (ElvUI, ThreatPlates, RestedXP,
-# WeakAuras and DBM), then delegates to fetch-client-addons.sh which adds the
-# server-specific addons, maps/data patches and produces client-addons.zip.
+# Pawn, MinimapButtonButton, WeakAuras and DBM), then delegates to
+# fetch-client-addons.sh which adds the server-specific addons, maps/data patches
+# and produces client-dist/client-addons.zip.
 set -euo pipefail
 shopt -s nullglob
 
@@ -127,9 +128,7 @@ force_enable_pack() {
   done
 }
 
-# UI foundation. These are the exact pins from the earlier client-ui-pack work,
-# now folded into the same bundle as our custom server addons instead of living on
-# a disconnected draft branch.
+# UI foundation. These are exact, reproducible 3.3.5a-compatible pins.
 stage_pinned_folders \
   "ElvUI-Pack" \
   "https://github.com/ElvUI-WotLK/ElvUI" \
@@ -146,6 +145,19 @@ stage_pinned_root_addon \
   "RXPGuides" \
   "https://github.com/PottedSalame/RestedXP_RXPGuides-WotLK_3.3.5a" \
   "fb3e0b1e77c589ea58e28fa53d8c17ed0661cef9"
+
+# Gear comparison/scoring for the original 3.3.5a client.
+stage_pinned_root_addon \
+  "Pawn" \
+  "https://github.com/Road-block/Pawn" \
+  "d63fbac5ef9c2094c9e3d7f55a07d0575873b423"
+
+# Collapses addon minimap buttons into one expandable button. This fork explicitly
+# declares Interface 30300 and includes ElvUI as an optional dependency.
+stage_pinned_root_addon \
+  "MinimapButtonButton" \
+  "https://github.com/Gaisberg/MinimapButtonButton-3.3.5a" \
+  "b69f2dd3a8d17bce51cb865301aff8d9c4db3d75"
 
 stage_pinned_folders \
   "WeakAuras-Pack" \
@@ -173,12 +185,14 @@ cat <<EOF
  COMPLETE CLIENT PACK READY
 
  File:
-   $ROOT/client-addons.zip
+   $ROOT/client-dist/client-addons.zip
 
  The zip now contains BOTH the server-specific client pieces and the UI stack:
    - ElvUI + ElvUI Options
    - TidyPlates + ThreatPlates
    - RestedXP Guides
+   - Pawn gear comparison
+   - MinimapButtonButton
    - WeakAuras
    - DBM (Vanilla/TBC/WotLK modules included and enabled by the pinned addon pack)
    - MultiBot + PlayerBotManager

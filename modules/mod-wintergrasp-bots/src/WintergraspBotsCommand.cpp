@@ -74,23 +74,6 @@ namespace
         return nullptr;
     }
 
-    // Attacker bot closest to the fortress door (the one siegeprep parked there).
-    Player* FindAttackerBotNearDoor(Battlefield* bf)
-    {
-        Player* best = nullptr; float bestD = 1e9f;
-        for (auto const& itr : sRandomPlayerbotMgr.GetAllBots())
-        {
-            Player* b = itr.second;
-            if (!b || !b->IsInWorld() || !b->IsAlive())
-                continue;
-            if (b->GetZoneId() != WG_ZONE_ID || b->GetTeamId() != bf->GetAttackerTeam())
-                continue;
-            float dx = b->GetPositionX() - DOOR_X, dy = b->GetPositionY() - DOOR_Y;
-            float d = dx * dx + dy * dy;
-            if (d < bestD) { bestD = d; best = b; }
-        }
-        return best;
-    }
 }
 
 class WintergraspBotsCommandScript : public CommandScript

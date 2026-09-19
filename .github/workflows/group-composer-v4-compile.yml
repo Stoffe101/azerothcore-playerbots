@@ -1,0 +1,353 @@
+name: Group Composer V4 compile
+
+on:
+  push:
+    branches:
+      - test/group-composer-v4
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: Build runner
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - local
+          - github
+
+permissions:
+  contents: read
+
+concurrency:
+  group: group-composer-v4-compile
+  cancel-in-progress: true
+
+jobs:
+  route:
+    name: Select build runner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      runs_on: ${{ steps.select.outputs.runs_on }}
+      is_local: ${{ steps.select.outputs.is_local }}
+      parallel_jobs: ${{ steps.select.outputs.parallel_jobs }}
+    steps:
+      - name: Select local or GitHub-hosted runner
+        id: select
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RUNNER_STATUS_TOKEN }}
+          REQUESTED_RUNNER: ${{ github.event_name == 'workflow_dispatch' && inputs.runner || 'auto' }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+
+          use_github() {
+            echo 'runs_on=["ubuntu-24.04"]' >> "$GITHUB_OUTPUT"
+            echo 'is_local=false' >> "$GITHUB_OUTPUT"
+            echo 'parallel_jobs=4' >> "$GITHUB_OUTPUT"
+            echo "Selected GitHub-hosted ubuntu-24.04 runner."
+          }
+
+          use_local() {
+            echo 'runs_on=["self-hosted","Linux","X64","wow-builder"]' >> "$GITHUB_OUTPUT"
+            echo 'is_local=true' >> "$GITHUB_OUTPUT"
+            echo 'parallel_jobs=8' >> "$GITHUB_OUTPUT"
+            echo "Selected local stoffes-pc runner."
+          }
+
+          if [[ "$REQUESTED_RUNNER" == "auto" ]]; then
+            if grep -Fq "[local-ci]" <<< "${COMMIT_MESSAGE:-}"; then
+              REQUESTED_RUNNER="local"
+              echo "Commit requested local CI override."
+            elif grep -Fq "[github-ci]" <<< "${COMMIT_MESSAGE:-}"; then
+              REQUESTED_RUNNER="github"
+              echo "Commit requested GitHub-hosted CI override."
+            fi
+          fi
+
+          case "$REQUESTED_RUNNER" in
+            github)
+              use_github
+              exit 0
+              ;;
+            local)
+              use_local
+              exit 0
+              ;;
+            auto)
+              ;;
+            *)
+              echo "Unknown runner selection: $REQUESTED_RUNNER" >&2
+              exit 1
+              ;;
+          esac
+
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "RUNNER_STATUS_TOKEN is unavailable; safely falling back to GitHub-hosted."
+            use_github
+            exit 0
+          fi
+
+          for attempt in 1 2 3 4 5 6; do
+            DATA="$(
+              curl -fsSL \
+                --connect-timeout 5 \
+                --max-time 10 \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners" \
+                || true
+            )"
+
+            RUNNER="$(
+              jq -c '
+                .runners[]?
+                | select(.name == "stoffes-pc")
+              ' <<< "$DATA" 2>/dev/null | head -n 1 || true
+            )"
+
+            if [[ -n "$RUNNER" ]]; then
+              STATUS="$(jq -r '.status // "unknown"' <<< "$RUNNER")"
+              BUSY="$(jq -r '.busy // true' <<< "$RUNNER")"
+              echo "Runner probe $attempt/6: stoffes-pc status=$STATUS busy=$BUSY"
+
+              if [[ "$STATUS" == "online" && "$BUSY" == "false" ]]; then
+                use_local
+                exit 0
+              fi
+            else
+              echo "Runner probe $attempt/6: no readable stoffes-pc runner record."
+            fi
+
+            if (( attempt < 6 )); then
+              sleep 5
+            fi
+          done
+
+          echo "stoffes-pc did not become online+idle during the 25-second grace window."
+          use_github
+
+  compile:
+    name: Compile complete Group Composer stack
+    needs: route
+    runs-on: ${{ fromJSON(needs.route.outputs.runs_on) }}
+    timeout-minutes: 100
+    env:
+      BUILD_IS_LOCAL: ${{ needs.route.outputs.is_local }}
+      REQUESTED_PARALLEL_JOBS: ${{ needs.route.outputs.parallel_jobs }}
+
+    steps:
+      - name: Show selected runner
+        shell: bash
+        run: |
+          echo "Runner name: ${RUNNER_NAME:-unknown}"
+          echo "Runner OS:   ${RUNNER_OS:-unknown}"
+          echo "Local build: $BUILD_IS_LOCAL"
+          echo "Requested parallel jobs: $REQUESTED_PARALLEL_JOBS"
+          echo "CPU threads: $(nproc)"
+          free -h || true
+
+      - name: Checkout server overlay
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies on GitHub-hosted runner
+        if: needs.route.outputs.is_local != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get remove -y needrestart || true
+          sudo apt-get install -y \
+            ccache clang-18 cmake ninja-build make build-essential cmake-data \
+            libboost-all-dev libbz2-dev libmysql++-dev libreadline-dev libssl-dev libtool \
+            openssl zlib1g-dev libgoogle-perftools-dev libmysqlclient-dev libncurses-dev
+
+      - name: Verify local build dependencies
+        if: needs.route.outputs.is_local == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for command in git curl ccache clang-18 clang++-18 cmake ninja; do
+            command -v "$command" >/dev/null || {
+              echo "Missing required local dependency: $command" >&2
+              exit 1
+            }
+          done
+          test -d /usr/lib/gcc/x86_64-linux-gnu/15 || {
+            echo "Missing GCC 15 runtime/development files required by local Clang 18." >&2
+            exit 1
+          }
+
+          clang-18 --version | head -n 1
+          cmake --version | head -n 1
+          ninja --version
+          ccache --version | head -n 1
+
+          cat >/tmp/group-composer-ci-filesystem-test.cpp <<'EOF'
+          #include <filesystem>
+          int main()
+          {
+              std::filesystem::path p{"test"};
+              return p.empty() ? 1 : 0;
+          }
+          EOF
+
+          clang++-18 \
+            --gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/15 \
+            -std=c++20 \
+            /tmp/group-composer-ci-filesystem-test.cpp \
+            -o /tmp/group-composer-ci-filesystem-test
+          /tmp/group-composer-ci-filesystem-test
+
+      - name: Restore GitHub compiler cache
+        if: needs.route.outputs.is_local != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: gc-v4-clang18-ccache-${{ runner.os }}-${{ hashFiles('.github/workflows/group-composer-v4-compile.yml') }}
+          restore-keys: |
+            gc-v4-clang18-ccache-${{ runner.os }}-
+
+      - name: Configure compiler cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          ccache --set-config=compression=true
+          if [[ "$BUILD_IS_LOCAL" == "true" ]]; then
+            ccache --max-size=10G
+          else
+            ccache --max-size=4G
+          fi
+          ccache --zero-stats
+          ccache --show-config | grep -E 'cache_dir|compression|max_size|direct_mode' || true
+
+      - name: Assemble exact pinned tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          CORE="$GITHUB_WORKSPACE/azerothcore-wotlk"
+          rm -rf "$CORE"
+          git clone https://github.com/mod-playerbots/azerothcore-wotlk.git "$CORE"
+          git -C "$CORE" checkout 06234df3d5ab26c93f4f1f06f3edb828b73ecd3c
+          clone_module() {
+            local name="$1" url="$2" pin="$3"
+            git clone "$url" "$CORE/modules/$name"
+            git -C "$CORE/modules/$name" checkout "$pin"
+          }
+          clone_module mod-playerbots https://github.com/mod-playerbots/mod-playerbots.git b6696bdbd3740e575598d167d69f39f68cc0b907
+          clone_module mod-junk-to-gold https://github.com/noisiver/mod-junk-to-gold.git 2134690bb03899e5c9e44d0682e8e6abf0bbbaf2
+          clone_module mod-multibot-bridge https://github.com/Wishmaster117/mod-multibot-bridge.git 759c100d5e508b9af28531a2642ded70619828ba
+          clone_module mod-ah-bot-plus https://github.com/NathanHandley/mod-ah-bot-plus.git f685832994c825f90aa5a3dc0e1620aa568e875b
+          clone_module mod-individual-progression https://github.com/ZhengPeiRu21/mod-individual-progression.git 977e2005bacf97f35e506eb27b8af6b2ea1136af
+          clone_module mod-era-talents https://github.com/lathcf/azerothcore-mod-era-talents.git 3a0d9776c6837d8a5e5038c23c01c4fc388d90f8
+          clone_module mod-dungeon-clear https://github.com/jrad7/mod-dungeon-clear.git 29c53fd10f99c1f978fba6cecd326bde8ce170d9
+          for lm in mod-playerbot-chatter mod-raid-roster mod-admin-panel mod-ahbot-price mod-wintergrasp-bots mod-arena-roster mod-titan-rune; do
+            rm -rf "$CORE/modules/$lm"
+            cp -a "$GITHUB_WORKSPACE/modules/$lm" "$CORE/modules/$lm"
+          done
+          for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
+            [[ -e "$patch" ]] || continue
+            name="$(basename "$patch")"
+            args=()
+            if [[ "$name" == "0014-playerbot-sunwell.patch" || "$name" == "0016-playerbot-aq40-twins.patch" ]]; then
+              args+=(--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp)
+            fi
+            if git -C "$CORE" apply "${args[@]}" --reverse --check "$patch" >/dev/null 2>&1; then
+              :
+            elif git -C "$CORE" apply "${args[@]}" --check "$patch" >/dev/null 2>&1; then
+              git -C "$CORE" apply "${args[@]}" "$patch"
+            else
+              git -C "$CORE" apply "${args[@]}" --check --verbose "$patch" || true
+              exit 1
+            fi
+          done
+          "$CORE/modules/mod-era-talents/apply-patches.sh" "$CORE"
+
+      - name: Verify EraTalents relog persistence guard
+        run: |
+          set -euo pipefail
+          ERA="$GITHUB_WORKSPACE/azerothcore-wotlk/modules/mod-era-talents/src"
+          grep -q 'thread_local uint32 g_internalTalentResetDepth = 0' "$ERA/EraTransition.cpp"
+          grep -q 'InternalTalentResetScope internalReset' "$ERA/EraTransition.cpp"
+          grep -q 'bool IsInternalTalentReset()' "$ERA/EraTransition.cpp"
+          grep -q 'if (EraTransition::IsInternalTalentReset())' "$ERA/EraTalentPin.cpp"
+          grep -q 'p->GetSession() && p->GetSession()->PlayerLoading()' "$ERA/EraTalentPin.cpp"
+          grep -q 'HasAtLoginFlag(AT_LOGIN_RESET_TALENTS)' "$ERA/EraTalentPin.cpp"
+          ! grep -q 'if (noCost && !p->IsInWorld())' "$ERA/EraTalentPin.cpp"
+          grep -q 'uint8 LoadedProgressionState(Player\* p)' "$ERA/EraTalentIP.cpp"
+          grep -q 'p->IsQuestRewarded(66000 + i)' "$ERA/EraTalentIP.cpp"
+          ! grep -A8 'EraId EraFromIP' "$ERA/EraTalentIP.cpp" | grep -q 'GetPlayerProgressionFromQuests'
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path("azerothcore-wotlk/modules/mod-era-talents/src/EraTalentPin.cpp").read_text()
+          hook = text[text.index("void OnPlayerTalentsReset"):text.index("private:", text.index("void OnPlayerTalentsReset"))]
+          assert hook.index("IsInternalTalentReset") < hook.index("EraTalents::Reset"), hook
+          assert hook.index("PlayerLoading()") < hook.index("EraTalents::Reset"), hook
+          assert "noCost && !p->IsInWorld()" not in hook, hook
+
+          storage = Path("azerothcore-wotlk/src/server/game/Entities/Player/PlayerStorage.cpp").read_text()
+          login = Path("azerothcore-wotlk/src/server/game/Handlers/CharacterHandler.cpp").read_text()
+          era_ip = Path("azerothcore-wotlk/modules/mod-era-talents/src/EraTalentIP.cpp").read_text()
+          assert storage.index("_LoadQuestStatusRewarded") < storage.index("OnPlayerBeforeLoadActionButtons"), storage
+          load_call = login.index("pCurrChar->LoadFromDB")
+          add_map = login.index("AddPlayerToMap", load_call)
+          assert load_call < add_map, login[load_call:add_map + 200]
+          era_from_ip = era_ip[era_ip.index("EraId EraFromIP"):era_ip.index("bool EraHasTalentTrees")]
+          assert "LoadedProgressionState(p)" in era_from_ip, era_from_ip
+          assert "GetPlayerProgressionFromQuests" not in era_from_ip, era_from_ip
+          assert "IsQuestRewarded(66000 + i)" in era_ip, era_ip
+          print("EraTalents relog persistence guard contract passed")
+          PY
+
+      - name: Configure
+        shell: bash
+        env:
+          CC: clang-18
+          CXX: clang++-18
+        run: |
+          set -euo pipefail
+          rm -rf "$GITHUB_WORKSPACE/build"
+
+          TOOLCHAIN_FLAGS=""
+          if [[ "$BUILD_IS_LOCAL" == "true" ]]; then
+            TOOLCHAIN_FLAGS="--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/15"
+            echo "Local Ubuntu 26.04 runner: pinning Clang 18 to GCC 15 libstdc++."
+          fi
+
+          cmake -S "$GITHUB_WORKSPACE/azerothcore-wotlk" -B "$GITHUB_WORKSPACE/build" \
+            -G Ninja \
+            -DCMAKE_C_COMPILER=clang-18 \
+            -DCMAKE_CXX_COMPILER=clang++-18 \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DAPPS_BUILD=all \
+            -DTOOLS_BUILD=none \
+            -DSCRIPTS=static \
+            -DMODULES=static \
+            -DWITH_WARNINGS=ON \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_FLAGS="$TOOLCHAIN_FLAGS -Werror -ferror-limit=0" \
+            -DCMAKE_CXX_FLAGS="$TOOLCHAIN_FLAGS -Werror -ferror-limit=0"
+
+      - name: Compile complete stack
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          CPU_JOBS="$(nproc)"
+          MEM_KB="$(awk '/MemTotal:/ { print $2 }' /proc/meminfo)"
+          MEM_JOBS=$(( MEM_KB / 2500000 ))
+          if (( MEM_JOBS < 2 )); then MEM_JOBS=2; fi
+
+          JOBS="$REQUESTED_PARALLEL_JOBS"
+          if (( JOBS > CPU_JOBS )); then JOBS="$CPU_JOBS"; fi
+          if (( JOBS > MEM_JOBS )); then JOBS="$MEM_JOBS"; fi
+          if (( JOBS < 2 )); then JOBS=2; fi
+
+          echo "Building Group Composer stack with $JOBS parallel jobs."
+          cmake --build "$GITHUB_WORKSPACE/build" --config Release --parallel "$JOBS"
+
+      - name: Show compiler cache statistics
+        if: always()
+        run: ccache --show-stats || true

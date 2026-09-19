@@ -1,0 +1,70 @@
+diff --git a/src/server/game/Entities/Unit/Unit.cpp b/src/server/game/Entities/Unit/Unit.cpp
+index 93e0e2a0..adfa9b57 100644
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -7669,15 +7669,31 @@ void Unit::ModifyAuraState(AuraStateType flag, bool apply)
+         if (!HasFlag(UNIT_FIELD_AURASTATE, 1 << (flag - 1)))
+         {
+             SetFlag(UNIT_FIELD_AURASTATE, 1 << (flag - 1));
+-            Unit::AuraMap& tAuras = GetOwnedAuras();
+-            for (Unit::AuraMap::iterator itr = tAuras.begin(); itr != tAuras.end(); ++itr)
++
++            // Snapshot before iterating: AuraMap is a boost flat_multimap (contiguous storage),
++            // so HandleAllEffects() below — which can add or remove owned auras — invalidates
++            // every iterator into it. Walking it live overran the container in production: the
++            // size shrank under the cursor (measured: iterator at index 30, size 27, capacity
++            // still 35 and the buffer never moved), the loop sailed past end() and dereferenced
++            // a null Aura*. Snapshot pointers stay valid for the whole loop — a removed aura is
++            // erased from the map but not deleted until _DeleteRemovedAuras() — which is the
++            // same invariant _UpdateSpells' m_auraUpdateSnapshot relies on. IsRemoved() skips
++            // the ones that went away mid-loop. A local vector, NOT the shared member buffer:
++            // ModifyAuraState can nest. Only built on an actual state transition, so this is
++            // not a per-proc cost.
++            std::vector<Aura*> snapshot;
++            snapshot.reserve(GetOwnedAuras().size());
++            for (auto const& pair : GetOwnedAuras())
++                snapshot.push_back(pair.second);
++
++            for (Aura* aura : snapshot)
+             {
+-                if ((*itr).second->IsRemoved())
++                if (aura->IsRemoved())
+                     continue;
+ 
+-                if ((*itr).second->GetSpellInfo()->CasterAuraState == flag )
+-                    if (AuraApplication* aurApp = (*itr).second->GetApplicationOfTarget(GetGUID()))
+-                        (*itr).second->HandleAllEffects(aurApp, AURA_EFFECT_HANDLE_REAL, true);
++                if (aura->GetSpellInfo()->CasterAuraState == flag)
++                    if (AuraApplication* aurApp = aura->GetApplicationOfTarget(GetGUID()))
++                        aura->HandleAllEffects(aurApp, AURA_EFFECT_HANDLE_REAL, true);
+             }
+         }
+     }
+@@ -7689,12 +7705,22 @@ void Unit::ModifyAuraState(AuraStateType flag, bool apply)
+ 
+             if (flag != AURA_STATE_ENRAGE)                  // enrage aura state triggering continues auras
+             {
+-                Unit::AuraMap& tAuras = GetOwnedAuras();
+-                for (Unit::AuraMap::iterator itr = tAuras.begin(); itr != tAuras.end(); ++itr)
++                // Same snapshot hazard as the apply branch. This branch additionally had NO
++                // IsRemoved() check at all, so it could touch an aura removed earlier in the
++                // same loop; the guard is added here too.
++                std::vector<Aura*> snapshot;
++                snapshot.reserve(GetOwnedAuras().size());
++                for (auto const& pair : GetOwnedAuras())
++                    snapshot.push_back(pair.second);
++
++                for (Aura* aura : snapshot)
+                 {
+-                    if ((*itr).second->GetSpellInfo()->CasterAuraState == flag )
+-                        if (AuraApplication* aurApp = (*itr).second->GetApplicationOfTarget(GetGUID()))
+-                            (*itr).second->HandleAllEffects(aurApp, AURA_EFFECT_HANDLE_REAL, false);
++                    if (aura->IsRemoved())
++                        continue;
++
++                    if (aura->GetSpellInfo()->CasterAuraState == flag)
++                        if (AuraApplication* aurApp = aura->GetApplicationOfTarget(GetGUID()))
++                            aura->HandleAllEffects(aurApp, AURA_EFFECT_HANDLE_REAL, false);
+                 }
+             }
+         }
