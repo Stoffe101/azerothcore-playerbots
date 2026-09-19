@@ -1,0 +1,94 @@
+diff --git a/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp b/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp
+--- a/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp
++++ b/modules/mod-playerbots/src/Bot/PlayerbotAI.cpp
+@@ -455,12 +455,8 @@
+             {
+                 botAI->ChangeStrategy("+follow", BOT_STATE_NON_COMBAT);
+ 
+-                if (botAI->GetMaster() == botAI->GetGroupLeader())
+-                    botAI->TellMaster(PlayerbotTextMgr::instance().GetBotTextOrDefault(
+-                        "hello_follow", "Hello, I follow you!", {}));
+-                else
+-                    botAI->TellMaster(PlayerbotTextMgr::instance().GetBotTextOrDefault(
+-                        "hello", "Hello!", {}));
++                // Routine group joins stay quiet. Social personality belongs in party/raid chatter,
++                // not one private hello from every bot when a Composer roster changes master.
+             }
+             else
+             {
+diff --git a/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp b/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp
+--- a/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp
++++ b/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp
+@@ -399,9 +399,8 @@
+ */
+         // Instant logout (the only option right now)
+         {
+-            std::string message = PlayerbotTextMgr::instance().GetBotTextOrDefault(
+-                "goodbye", "Goodbye!", {});
+-            botAI->TellMaster(message);
++            // Routine bot logout is intentionally silent; a 25/40-player Composer teardown must
++            // not flood the real player's whispers with one goodbye per bot.
+             RemoveFromPlayerbotsMap(guid);              // deletes bot player ptr inside this WorldSession PlayerBotMap
+             botWorldSessionPtr->LogoutPlayer(true);     // this will delete the bot Player object and PlayerbotAI object
+             delete botWorldSessionPtr;                  // finally delete the bot's WorldSession
+diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/LeaveGroupAction.cpp b/modules/mod-playerbots/src/Ai/Base/Actions/LeaveGroupAction.cpp
+--- a/modules/mod-playerbots/src/Ai/Base/Actions/LeaveGroupAction.cpp
++++ b/modules/mod-playerbots/src/Ai/Base/Actions/LeaveGroupAction.cpp
+@@ -85,12 +85,8 @@
+     if (!botAI)
+         return false;
+ 
+-    Player* master = botAI -> GetMaster();
+-    if (master)
+-        botAI->TellMaster(
+-            PlayerbotTextMgr::instance().GetBotTextOrDefault("goodbye", "Goodbye!", {}),
+-            PLAYERBOT_SECURITY_TALK);
+-
++    // Leaving a group is state, not conversation. Keep it silent and let the chatter layer decide
++    // whether a bot has anything social worth saying in party/raid chat.
+     botAI->LeaveOrDisbandGroup();
+     return true;
+ }
+diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp b/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp
+--- a/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp
++++ b/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp
+@@ -309,27 +309,18 @@
+     if (!spellId)
+         return false;
+ 
+-    // botAI->SetNextCheckDelay(sPlayerbotAIConfig.globalCoolDown);
+-    std::string useText = targetSelected
+-        ? PlayerbotTextMgr::instance().GetBotTextOrDefault(
+-            "use_item_on_target", "Using %item on %target", {{"%item", itemText}, {"%target", targetText}})
+-        : PlayerbotTextMgr::instance().GetBotTextOrDefault(
+-            "use_item", "Using %item", {{"%item", itemText}});
+-    botAI->TellMasterNoFacing(useText);
+-    bot->GetSession()->HandleUseItemOpcode(packet);
+-    return true;
+-}
+-
+-void UseItemAction::TellConsumableUse(Item* item, std::string const action, float percent)
+-{
+-    std::ostringstream out;
+-    out << action << " " << chat->FormatItem(item->GetTemplate());
+-
+-    if (item->GetTemplate()->Stackable > 1)
+-        out << "/x" << item->GetCount();
+-
+-    out << " (" << round(percent) << "%)";
+-    botAI->TellMasterNoFacing(out.str());
++    // Routine item usage (poisons, stones, oils, consumables) is not chat-worthy. Execute the
++    // action without whispering an inventory/status receipt to the real player.
++    bot->GetSession()->HandleUseItemOpcode(packet);
++    return true;
++}
++
++void UseItemAction::TellConsumableUse(Item* item, std::string const action, float percent)
++{
++    // Food/drink telemetry is intentionally silent for the same reason as weapon imbues.
++    (void)item;
++    (void)action;
++    (void)percent;
+ }
+ 
+ bool UseItemAction::SocketItem(Item* item, Item* gem, bool replace)
