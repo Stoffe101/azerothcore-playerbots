@@ -341,10 +341,10 @@ export function createModernDashboard(): Dashboard {
     humanPanel.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -136);
     humanPanel.frame.SetPoint("TOPRIGHT", center, "TOPRIGHT", 0, -136);
     humanPanel.frame.SetHeight(78);
-    const humanTop = Native.createSolid(humanPanel.frame, Native.withAlpha(theme.colors.chromeBright, 0.38), "ARTWORK");
+    const humanTop = Native.createSolid(humanPanel.frame, Native.withAlpha(theme.colors.primary, 0.40), "ARTWORK");
     humanTop.SetPoint("TOPLEFT", humanPanel.frame, "TOPLEFT", 0, 0);
     humanTop.SetPoint("TOPRIGHT", humanPanel.frame, "TOPRIGHT", 0, 0);
-    humanTop.SetHeight(1);
+    humanTop.SetHeight(2);
 
     const humanTitle = Native.createText(humanPanel.frame, "YOUR PARTY", "GameFontNormalSmall", theme.colors.muted);
     humanTitle.SetPoint("TOPLEFT", humanPanel.frame, "TOPLEFT", 16, -12);
@@ -664,37 +664,63 @@ export function createModernDashboard(): Dashboard {
 
     const groupCards: any[] = [];
     for (let g = 0; g < 8; g += 1) {
-        const card = Native.createPanel(rosterView, theme.colors.background, theme.colors.border);
-        const groupTitle = Native.createText(card.frame, "GROUP " + String(g + 1), "GameFontNormalSmall", theme.colors.muted);
+        const card = Native.createPanel(rosterView, theme.colors.surfaceDeep, theme.colors.border);
+        const headerAccent = Native.createSolid(card.frame, Native.withAlpha(theme.colors.primary, 0.72), "ARTWORK");
+        headerAccent.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 0, 0);
+        headerAccent.SetPoint("TOPRIGHT", card.frame, "TOPRIGHT", 0, 0);
+        headerAccent.SetHeight(2);
+
+        const groupTitle = Native.createText(card.frame, "GROUP " + String(g + 1), "GameFontNormalSmall", theme.colors.text);
         groupTitle.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 10, -10);
+        const groupHint = Native.createText(card.frame, "SUBGROUP", "GameFontHighlightSmall", theme.colors.muted);
+        groupHint.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 10, -27);
+        const groupCount = Native.createText(card.frame, "0 / 5", "GameFontHighlightSmall", theme.colors.primary);
+        groupCount.SetPoint("TOPRIGHT", card.frame, "TOPRIGHT", -10, -12);
+        groupCount.SetWidth(54);
+        groupCount.SetJustifyH("RIGHT");
+
+        const headerRule = Native.createSolid(card.frame, theme.colors.border, "ARTWORK");
+        headerRule.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 10, -45);
+        headerRule.SetPoint("TOPRIGHT", card.frame, "TOPRIGHT", -10, -45);
+        headerRule.SetHeight(1);
+
         const rows: any[] = [];
         for (let r = 0; r < 5; r += 1) {
             const row = CreateFrame("Frame", undefined, card.frame);
-            row.SetHeight(28);
-            row.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 8, -(32 + r * 29));
+            row.SetHeight(30);
+            row.SetPoint("TOPLEFT", card.frame, "TOPLEFT", 8, -(50 + r * 31));
             row.SetPoint("RIGHT", card.frame, "RIGHT", -8, 0);
+
+            const rowBg = Native.createSolid(row, Native.withAlpha(theme.colors.surfaceRaised, 0.58), "BACKGROUND");
+            rowBg.SetAllPoints(row);
 
             const roleBar = Native.createSolid(row, theme.colors.dps, "ARTWORK");
             roleBar.SetWidth(3);
             roleBar.SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0);
             roleBar.SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0);
 
-            const iconBadge = Native.createFramedIcon(row, "Interface\\Icons\\INV_Misc_QuestionMark", 28, theme.colors.border);
-            iconBadge.frame.SetPoint("LEFT", row, "LEFT", 6, 0);
+            const iconBadge = Native.createFramedIcon(row, "Interface\\Icons\\INV_Misc_QuestionMark", 26, theme.colors.border);
+            iconBadge.frame.SetPoint("LEFT", row, "LEFT", 7, 0);
             const icon = iconBadge.icon;
             iconBadge.frame.Hide();
 
-            const name = Native.createText(row, "Empty", "GameFontHighlightSmall", theme.colors.muted);
-            name.SetPoint("LEFT", row, "LEFT", 42, 7);
-            name.SetWidth(150);
+            const name = Native.createText(row, "Empty slot", "GameFontHighlightSmall", theme.colors.muted);
+            name.SetPoint("TOPLEFT", row, "TOPLEFT", 40, -4);
+            name.SetWidth(146);
             const spec = Native.createText(row, "", "GameFontHighlightSmall", theme.colors.muted);
-            spec.SetPoint("LEFT", row, "LEFT", 42, -8);
-            spec.SetWidth(160);
+            spec.SetPoint("TOPLEFT", row, "TOPLEFT", 40, -18);
+            spec.SetWidth(156);
 
-            rows.push({ row, roleBar, iconBadge, icon, name, spec });
+            const roleIcon = row.CreateTexture(undefined, "ARTWORK");
+            roleIcon.SetSize(15, 15);
+            roleIcon.SetPoint("RIGHT", row, "RIGHT", -7, 0);
+            Native.setRoleIcon(roleIcon, "DPS");
+            roleIcon.SetAlpha(0.85);
+
+            rows.push({ row, rowBg, roleBar, iconBadge, icon, name, spec, roleIcon });
         }
         card.frame.Hide();
-        groupCards.push({ card, groupTitle, rows });
+        groupCards.push({ card, headerAccent, groupTitle, groupHint, groupCount, rows });
     }
 
     // Status ----------------------------------------------------------------
@@ -1687,7 +1713,7 @@ export function createModernDashboard(): Dashboard {
         const totalGroups = Math.max(1, Math.ceil(Number(cfg.size ?? 5) / 5));
         const columns = totalGroups <= 3 ? totalGroups : (totalGroups <= 5 ? 3 : 4);
         const cardWidth = Math.floor((934 - (columns - 1) * 10) / columns);
-        const cardHeight = 184;
+        const cardHeight = 214;
 
         for (let g = 0; g < groupCards.length; g += 1) {
             const widgets = groupCards[g];
@@ -1699,33 +1725,55 @@ export function createModernDashboard(): Dashboard {
             const column = g % columns;
             const row = Math.floor(g / columns);
             widgets.card.frame.ClearAllPoints();
-            widgets.card.frame.SetPoint("TOPLEFT", rosterView, "TOPLEFT", column * (cardWidth + 10), -(8 + row * (cardHeight + 10)));
+            widgets.card.frame.SetPoint("TOPLEFT", rosterView, "TOPLEFT", column * (cardWidth + 10), -(6 + row * (cardHeight + 10)));
             widgets.card.frame.SetSize(cardWidth, cardHeight);
             widgets.groupTitle.SetText("GROUP " + String(g + 1));
 
             const members: any[] = [];
             for (const member of Model.planMembers()) if (Number(member.subgroup) === g + 1) members.push(member);
+            widgets.groupCount.SetText(String(members.length) + " / 5");
+            widgets.groupCount.SetTextColor(
+                members.length === 5 ? theme.colors.success[0] : theme.colors.primary[0],
+                members.length === 5 ? theme.colors.success[1] : theme.colors.primary[1],
+                members.length === 5 ? theme.colors.success[2] : theme.colors.primary[2],
+                1
+            );
 
             for (let r = 0; r < 5; r += 1) {
-                const rowWidgets = widgets.rows[r + 1];
+                const rowWidgets = widgets.rows[r];
                 const member = members[r];
+                const textWidth = Math.max(82, cardWidth - 80);
+                rowWidgets.name.SetWidth(textWidth);
+                rowWidgets.spec.SetWidth(textWidth);
+
                 if (member === undefined) {
                     rowWidgets.iconBadge.frame.Hide();
-                    rowWidgets.name.SetText("Empty");
-                    rowWidgets.name.SetTextColor(theme.colors.muted[0], theme.colors.muted[1], theme.colors.muted[2], 1);
+                    rowWidgets.roleIcon.Hide();
+                    rowWidgets.name.SetText("Empty slot");
+                    rowWidgets.name.SetTextColor(theme.colors.muted[0], theme.colors.muted[1], theme.colors.muted[2], 0.72);
                     rowWidgets.spec.SetText("");
                     Native.setTextureColor(rowWidgets.roleBar, theme.colors.borderStrong);
+                    Native.setTextureColor(rowWidgets.rowBg, Native.withAlpha(theme.colors.surfaceRaised, 0.32));
                 } else {
+                    const role = member.role as Role;
+                    const accent = Model.roleAccent(role);
                     Native.setClassIcon(rowWidgets.icon, String(member.class));
                     rowWidgets.iconBadge.outline.setColor(Native.classColor(String(member.class)));
                     rowWidgets.iconBadge.frame.Show();
-                    const identity = member.isPlayer ? "YOU  ·  " : (member.pinned ? "PIN  ·  " : "");
+                    Native.setRoleIcon(rowWidgets.roleIcon, role);
+                    rowWidgets.roleIcon.Show();
+
+                    const identity = member.isPlayer ? "YOU  ·  " : (member.pinned ? "PINNED  ·  " : "");
                     rowWidgets.name.SetText(identity + String(member.name));
                     rowWidgets.name.SetTextColor(theme.colors.text[0], theme.colors.text[1], theme.colors.text[2], 1);
-                    rowWidgets.name.SetWidth(Math.max(110, cardWidth - 54));
-                    rowWidgets.spec.SetText(String(member.spec ?? Model.classLabel(String(member.class))) + "  ·  " + Model.roleLabel(member.role as Role));
-                    rowWidgets.spec.SetWidth(Math.max(110, cardWidth - 54));
-                    Native.setTextureColor(rowWidgets.roleBar, Model.roleAccent(member.role as Role));
+
+                    const source = member.isPlayer
+                        ? "Human"
+                        : (member.pinned ? "Pinned" : (String(member.source ?? "") !== "" ? String(member.source) : "Prepared bot"));
+                    rowWidgets.spec.SetText(String(member.spec ?? Model.classLabel(String(member.class))) + "  ·  " + source);
+                    rowWidgets.spec.SetTextColor(theme.colors.muted[0], theme.colors.muted[1], theme.colors.muted[2], 1);
+                    Native.setTextureColor(rowWidgets.roleBar, accent);
+                    Native.setTextureColor(rowWidgets.rowBg, Native.withAlpha(accent, member.isPlayer ? 0.10 : 0.045));
                 }
             }
             widgets.card.frame.Show();
