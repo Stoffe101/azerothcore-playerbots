@@ -568,9 +568,11 @@ assert 'const modal = createModal(parent, 1040, 680);' in SELECTOR
 assert 'Any valid spec' in SELECTOR and 'Use this build' in SELECTOR
 assert "specSummary" in SELECTOR and 'labels.join("  ·  ")' in SELECTOR
 assert "modal.setHeaderRole(currentRole)" in SELECTOR
+assert "classStepBadge" in SELECTOR and "specStepBadge" in SELECTOR
+assert '"Select a class above to unlock specializations."' in SELECTOR
 assert "const classRows = Math.max(1, Math.ceil(validClasses.length / columns));" in SELECTOR
 assert "const classHeight = classRows > 1 ? 258 : 164;" in SELECTOR
-assert "const specHeight = currentClass === undefined ? 108 : 176;" in SELECTOR
+assert "const specHeight = currentClass === undefined ? 68 : 176;" in SELECTOR
 assert "modal.frame.SetHeight(classHeight + specHeight + 222);" in SELECTOR, (
     "Build selector lost content-sensitive Tank/Healer/DPS sizing"
 )
@@ -585,6 +587,9 @@ assert "createPanel(parent, theme.colors.background, theme.colors.chrome)" in MO
 )
 assert "headerDivider" in MODAL and "setHeaderIcon(path?: string)" in MODAL
 assert "createChrome(popup.frame" not in CHOICE_SELECT, "Dropdown popup must stay single-border"
+assert 'height: rowHeight - 2, accent: theme.colors.primary, flat: true' in CHOICE_SELECT, (
+    "Dropdown rows regressed to individually boxed buttons"
+)
 assert "track.SetWidth(2)" in SCROLL_LIST and "thumb.SetWidth(5)" in SCROLL_LIST
 assert "GetVerticalScrollRange" not in SCROLL_LIST, "Scroll behavior must remain deterministic"
 assert "UI-CheckBox-Check" in TOGGLE and "createOutline" in TOGGLE
@@ -629,6 +634,9 @@ assert "sidebarDivider" in MODERN, "Sidebar hierarchy lost the Compose/Tools div
 assert "coverageDefs" in MODERN and '"Interrupt"' in MODERN and '"Battle Rez"' in MODERN, (
     "Status rail regressed from bounded utility chips to overlapping free-form coverage"
 )
+assert "const nextColor = phase === \"ERROR\"" in MODERN and '"ACTION REQUIRED"' in MODERN, (
+    "Next Step card lost semantic phase coloring"
+)
 assert "classIcons" not in MODERN, "Status rail brought back the overlapping class-icon strip"
 assert "templateBuiltinTab" in MODERN and "templateCustomTab" in MODERN and "templateScroll" in MODERN, (
     "Templates regressed to permanently split Built-in/Custom columns"
@@ -652,6 +660,12 @@ assert '" TANK"' in MODERN and '" HEALER"' in MODERN and '" DPS"' in MODERN, (
     "Roster status chips regressed from full role labels"
 )
 assert "iconBadge = Native.createFramedIcon" in MODERN, "Prepared roster lost framed class icons"
+assert "groupCount" in MODERN and '"SUBGROUP"' in MODERN and "headerAccent" in MODERN, (
+    "Prepared roster lost its subgroup review hierarchy"
+)
+assert "rowWidgets.roleIcon" in MODERN and "member.source" in MODERN and '"PINNED  ·  "' in MODERN, (
+    "Prepared roster lost role/source identity cues"
+)
 assert 'activity.frame.SetHeight(124)' in MODERN
 assert 'humanPanel.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -136)' in MODERN
 assert 'composition.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -226)' in MODERN
@@ -731,10 +745,12 @@ assert "if (exact !== undefined) widgets.auto.frame.Show();" in MODERN and "else
     "Dungeon Auto slots must not show a disabled redundant Auto action"
 )
 
-# Raid tabs retain semantic composition accents while the common button primitive supplies the
-# quieter one-border selected/hover treatment.
-assert 'Quick Composition", width: 164, height: 38, accent: theme.colors.warning' in MODERN
-assert 'Specific Builds", width: 150, height: 38, accent: theme.colors.warning' in MODERN
+# Raid tabs are navigation, not competing primary actions. They share the Composer-blue
+# flat selected treatment and sit over one restrained divider.
+assert 'Quick Composition", width: 164, height: 36, accent: theme.colors.primary, flat: true' in MODERN
+assert 'Specific Builds", width: 150, height: 36, accent: theme.colors.primary, flat: true' in MODERN
+assert 'Prepared Roster", width: 150, height: 36, accent: theme.colors.primary, flat: true' in MODERN
+assert "tabUnderline" in MODERN
 
 
 # WoW 3.3.5 callback ABI regression guards.
