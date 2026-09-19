@@ -403,7 +403,8 @@ bool PickSet(Player* bot, StatsWeightCalculator& calc, int32 target, ChosenSet& 
 namespace RaidRosterGear
 {
 
-bool EquipForSpec(Player* bot, Player* master, int specTab, uint16 minimumItemLevel)
+bool EquipForSpec(Player* bot, Player* master, int specTab, uint16 minimumItemLevel,
+                  uint16 preferredItemLevel)
 {
     if (!bot || !master)
         return false;
@@ -422,7 +423,9 @@ bool EquipForSpec(Player* bot, Player* master, int specTab, uint16 minimumItemLe
     // into the value and would skew the window). Sub-50 keeps the uncapped
     // best-in-slot-for-level special case: no target at all.
     int32 const target = targeted
-        ? std::max<int32>(int32(master->GetAverageItemLevelForDF() + 0.5f), int32(minimumItemLevel))
+        ? (preferredItemLevel
+            ? std::max<int32>(int32(preferredItemLevel), int32(minimumItemLevel))
+            : std::max<int32>(int32(master->GetAverageItemLevelForDF() + 0.5f), int32(minimumItemLevel)))
         : 0;
 
     // Strip everything except the cosmetic shirt/tabard (factory second_chance style).

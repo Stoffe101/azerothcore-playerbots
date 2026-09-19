@@ -642,10 +642,11 @@ int CandidateScore(Candidate const& candidate, Config const& config,
     // that bonus must not overpower "Prefer Guild Members" and turn the option into a cosmetic flag.
     if (config.preferGuild && candidate.guild) score += 5000;
     if (candidate.alreadyGrouped) score += 1200;
-    if (candidate.online) score += 250;
-    // Offline AddClass capacity is intentionally preferred over arbitrary offline RNDbot rotation,
-    // while an already-online suitable world/guild bot remains cheaper than either.
-    if (candidate.managed && !candidate.reserve && sRandomPlayerbotMgr.IsAddclassBot(candidate.guid.GetCounter())) score += 180;
+    // A live safe candidate can be retasked synchronously. Make it decisively cheaper than waking
+    // an offline identity so Build & Prepare normally completes in the same interaction.
+    if (candidate.online) score += 2400;
+    // Dedicated AddClass remains the first offline fallback; arbitrary RNDbot reserve is last.
+    if (candidate.managed && !candidate.reserve && sRandomPlayerbotMgr.IsAddclassBot(candidate.guid.GetCounter())) score += 500;
     if (candidate.managed) score += 80;
 
     if (config.balanceClasses && candidate.cls < classCounts.size())

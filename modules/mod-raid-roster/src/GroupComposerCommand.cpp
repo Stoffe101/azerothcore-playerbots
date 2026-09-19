@@ -9,6 +9,7 @@
 #include "CharacterCache.h"
 #include "DBCStores.h"
 #include "EraTalentBots.h"
+#include "EraTransition.h"
 #include "Group.h"
 #include "GroupMgr.h"
 #include "LFG.h"
@@ -54,6 +55,7 @@ struct PendingSync
     uint8 spec = ANY_SPEC;
     uint8 targetLevel = 1;
     uint16 minimumItemLevel = 0;
+    uint16 targetItemLevel = 0;
     bool fullRebuild = false;
     uint32 elapsed = 0;
 };
@@ -345,6 +347,109 @@ uint8 RequiredActivityLevel(Player* master, Config const& config)
     return difficulty == DUNGEON_DIFFICULTY_HEROIC ? 80 : (master ? std::min<uint8>(master->GetLevel(), 80) : 80);
 }
 
+struct ComposerGearProfile
+{
+    uint16 minimum = 0;
+    uint16 target = 0;
+};
+
+ComposerGearProfile GearProfileFor(Config const& config)
+{
+    ComposerGearProfile profile;
+    profile.minimum = config.minimumItemLevel;
+    uint16 floor = 0;
+    uint16 target = 0;
+
+    if (config.mode == "dungeon")
+    {
+        if (config.difficulty == "gamma") { floor = 225; target = 232; }
+        else if (config.difficulty == "beta") { floor = 213; target = 225; }
+        else if (config.difficulty == "alpha") { floor = 200; target = 213; }
+        else if (config.requiredLevel >= 80)
+        {
+            bool const finalFive =
+                config.activity == "trial_champion" || config.activity == "forge_souls" ||
+                config.activity == "pit_saron" || config.activity == "halls_reflection";
+            if (config.difficulty == "heroic")
+            {
+                floor = finalFive ? 200 : 187;
+                target = finalFive ? 213 : 200;
+            }
+            else
+            {
+                floor = finalFive ? 187 : 174;
+                target = finalFive ? 200 : 187;
+            }
+        }
+    }
+    else if (config.mode == "raid")
+    {
+        bool heroic = config.difficulty == "heroic";
+        if (config.activity == "molten_core")             { floor = 58;  target = 65; }
+        else if (config.activity == "zul_gurub")          { floor = 58;  target = 65; }
+        else if (config.activity == "aq20")               { floor = 60;  target = 68; }
+        else if (config.activity == "blackwing_lair")     { floor = 62;  target = 70; }
+        else if (config.activity == "aq40")               { floor = 65;  target = 75; }
+        else if (config.activity == "karazhan")           { floor = 105; target = 115; }
+        else if (config.activity == "gruul" ||
+                 config.activity == "magtheridon")        { floor = 110; target = 120; }
+        else if (config.activity == "serpentshrine" ||
+                 config.activity == "tempest_keep" ||
+                 config.activity == "zulaman")            { floor = 118; target = 128; }
+        else if (config.activity == "hyjal" ||
+                 config.activity == "black_temple")       { floor = 128; target = 141; }
+        else if (config.activity == "sunwell")            { floor = 141; target = 154; }
+        else if (config.activity == "naxxramas" ||
+                 config.activity == "obsidian_sanctum" ||
+                 config.activity == "eye_of_eternity" ||
+                 config.activity == "vault_archavon")
+        {
+            floor = config.size >= 25 ? 187 : 174;
+            target = config.size >= 25 ? 200 : 187;
+        }
+        else if (config.activity == "ulduar")
+        {
+            floor = config.size >= 25 ? 200 : 187;
+            target = config.size >= 25 ? 213 : 200;
+        }
+        else if (config.activity == "trial_crusader")
+        {
+            if (heroic)
+            {
+                floor = config.size >= 25 ? 232 : 219;
+                target = config.size >= 25 ? 245 : 232;
+            }
+            else
+            {
+                floor = config.size >= 25 ? 219 : 200;
+                target = config.size >= 25 ? 226 : 219;
+            }
+        }
+        else if (config.activity == "onyxia")
+        {
+            floor = config.size >= 25 ? 219 : 200;
+            target = config.size >= 25 ? 226 : 219;
+        }
+        else if (config.activity == "icecrown" || config.activity == "ruby_sanctum")
+        {
+            if (heroic)
+            {
+                floor = config.size >= 25 ? 245 : 232;
+                target = config.size >= 25 ? 251 : 245;
+            }
+            else
+            {
+                floor = config.size >= 25 ? 232 : 219;
+                target = config.size >= 25 ? 245 : 232;
+            }
+        }
+    }
+
+    profile.minimum = std::max<uint16>(profile.minimum, floor);
+    profile.target = std::max<uint16>(profile.minimum, target);
+    return profile;
+}
+
 bool IsBotGuid(ObjectGuid guid)
 {
     if (Player* player = ObjectAccessor::FindConnectedPlayer(guid)) return GET_PLAYERBOT_AI(player) != nullptr;
@@ -379,7 +484,7 @@ bool ConflictingInstances(Player* master, Player* other)
 }
 
 void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, uint8 targetLevel,
-    uint16 minimumItemLevel, bool fullRebuild)
+    uint16 minimumItemLevel, uint16 targetItemLevel, bool fullRebuild)
 {
     if (!master || !bot) return;
     if (spec > 2) spec = Planner::InferSpec(bot);
@@ -402,6 +507,11 @@ void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, uint8 t
             bot->GiveLevel(targetLevel);
             bot->InitStatsForLevel(true);
         }
+
+        // Progression/era owns the available talent system. Finalize that state before Composer
+        // chooses talents, rebuilds AI strategies, or equips the activity build.
+        RaidRosterEra::SyncBotToMaster(master, bot);
+        EraTransition::Detect(bot);
 
         factory.UnbindInstance();
         bot->LearnDefaultSkills();
@@ -426,7 +536,7 @@ void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, uint8 t
 
     if (fullRebuild)
     {
-        RaidRosterGear::EquipForSpec(bot, master, spec, minimumItemLevel);
+        RaidRosterGear::EquipForSpec(bot, master, spec, minimumItemLevel, targetItemLevel);
         factory.ApplyEnchantAndGemsNew();
         factory.InitAmmo();
         factory.CleanupConsumables();
@@ -444,7 +554,6 @@ void SyncManagedBot(Player* master, Player* bot, uint8 role, uint8 spec, uint8 t
             if (!bot->IsQuestRewarded(quest)) bot->SetRewardedQuest(quest);
         }
 
-        RaidRosterEra::SyncBotToMaster(master, bot);
         bot->SetHealth(bot->GetMaxHealth());
         if (bot->GetMaxPower(POWER_MANA) > 0)
             bot->SetPower(POWER_MANA, bot->GetMaxPower(POWER_MANA));
@@ -930,21 +1039,49 @@ void ClearPendingSync(uint32 ownerLow)
     }
 }
 
+uint16 PreparedItemLevelFloor(Plan const& plan, Member const& member)
+{
+    if (!FullProvisionFor(member))
+        return plan.config.minimumItemLevel;
+    return GearProfileFor(plan.config).minimum;
+}
+
+std::string PreparedMemberBlocker(Plan const& plan, Member const& member)
+{
+    if (BotHasPendingSync(member.guid))
+        return "is still waiting for its login/provision callback";
+
+    Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid);
+    if (!bot)
+        return "is still offline";
+    if (!GET_PLAYERBOT_AI(bot))
+        return "is online but Playerbot AI is not initialized";
+    if (bot->GetLevel() < plan.config.requiredLevel)
+        return "is level " + std::to_string(unsigned(bot->GetLevel())) +
+            ", below the required level " + std::to_string(unsigned(plan.config.requiredLevel));
+
+    // Validate the finalized combat build itself. Playerbot strategy flags can lag a talent reset by
+    // one AI tick, which previously stranded correctly-specced healers at 3/4 ready.
+    uint8 liveSpec = Planner::InferSpec(bot);
+    if (liveSpec == ANY_SPEC)
+        return "has no resolved active specialization";
+    if (member.spec != ANY_SPEC && liveSpec != member.spec)
+        return "resolved to " + SpecName(member.cls, liveSpec) + " instead of " +
+            SpecName(member.cls, member.spec);
+    if (!SpecCanFillRole(member.cls, liveSpec, member.role))
+        return "final specialization " + SpecName(member.cls, liveSpec) +
+            " cannot fill the requested " + std::string(RoleToken(member.role)) + " role";
+
+    uint16 floor = PreparedItemLevelFloor(plan, member);
+    if (floor && bot->GetAverageItemLevel() + 0.001f < floor)
+        return "average item level " + std::to_string(uint32(bot->GetAverageItemLevel() + 0.5f)) +
+            " is below the preparation floor " + std::to_string(uint32(floor));
+    return "";
+}
+
 bool PreparedMemberReady(Plan const& plan, Member const& member)
 {
-    Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid);
-    if (!bot || !GET_PLAYERBOT_AI(bot) || BotHasPendingSync(member.guid)) return false;
-    if (bot->GetLevel() < plan.config.requiredLevel) return false;
-
-    uint8 liveRole = Planner::InferRole(bot);
-    if (liveRole != member.role) return false;
-    uint8 liveSpec = Planner::InferSpec(bot);
-    if (member.spec != ANY_SPEC && liveSpec != ANY_SPEC && liveSpec != member.spec) return false;
-
-    if (plan.config.minimumItemLevel &&
-        bot->GetAverageItemLevel() + 0.001f < plan.config.minimumItemLevel)
-        return false;
-    return true;
+    return PreparedMemberBlocker(plan, member).empty();
 }
 
 uint32 SelectedBotCount(Plan const& plan)
@@ -980,31 +1117,31 @@ bool PreparePlan(Player* master, Plan& plan, std::string& error)
     if (needsManagedLogin && !mgr) { error = "Playerbot manager is unavailable for an offline managed roster bot."; return false; }
 
     uint32 account = master->GetSession()->GetAccountId();
+    ComposerGearProfile const activityGear = GearProfileFor(plan.config);
     for (Member const& member : plan.members)
     {
         if (member.human) continue;
         bool ownsPreparation = member.reserve || member.managed || member.needsPreparation;
         if (!ownsPreparation) continue;
 
+        bool const fullProvision = FullProvisionFor(member);
+        uint16 const minimumItemLevel = fullProvision ? activityGear.minimum : plan.config.minimumItemLevel;
+        uint16 const targetItemLevel = fullProvision ? activityGear.target : 0;
+
         Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid);
         if (bot)
         {
-            // Preserve persistent guild identity until the user actually commits the roster. They
-            // are deliberately ranked below disposable fallbacks when a spec swap would be needed.
             if (!(member.guild && member.needsPreparation))
                 SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel,
-                    plan.config.minimumItemLevel, FullProvisionFor(member));
+                    minimumItemLevel, targetItemLevel, fullProvision);
             continue;
         }
 
         if (!member.reserve)
-            // Keep Composer preparation quiet and non-destructive. The patched Playerbots login path
-            // still gives the bot its normal master/AI, but skips the login greeting and automatic
-            // group invite. Composer owns membership later, during the reviewed Assemble commit.
             mgr->AddPlayerBot(member.guid, account, true);
         s_pendingSync[member.guid.GetCounter()] = {
-            owner, member.role, member.spec, plan.config.requiredLevel, plan.config.minimumItemLevel,
-            FullProvisionFor(member), 0
+            owner, member.role, member.spec, plan.config.requiredLevel, minimumItemLevel,
+            targetItemLevel, fullProvision, 0
         };
     }
 
@@ -1102,6 +1239,41 @@ void TryAttachMissing(Player* master, Plan& plan)
     }
 }
 
+bool BeginPreparedAssembly(Player* master, Plan& plan, std::string& error)
+{
+    if (!master) { error = "Group Composer lost the live owner before assembly."; return false; }
+    if (plan.travelPending) { error = "Instance entry is already in progress."; return false; }
+    if (plan.assembling) return true;
+
+    uint32 owner = master->GetGUID().GetCounter();
+    if (!plan.prepared || plan.preparing || OwnerHasPendingSync(owner))
+    {
+        error = "Roster preparation has not finished yet.";
+        return false;
+    }
+    if (!ValidateAssemblySnapshot(master, plan, error)) return false;
+    if (!Reserve::AcquirePlan(master, plan, error)) return false;
+
+    plan.humanInvitesSent.clear();
+    for (Member const& member : plan.members)
+    {
+        if (member.human || !member.guild || !member.needsPreparation) continue;
+        if (Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid))
+            SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel, 0, 0, false);
+    }
+
+    plan.travelPending = false;
+    plan.travelElapsed = 0;
+    plan.travelAttempts = 0;
+    plan.assembling = true;
+    plan.assembleElapsed = 0;
+    plan.assembleProgressElapsed = 0;
+    TryAttachMissing(master, plan);
+    SendProgress(master, "ASSEMBLING", JoinedPlanMembers(master, plan), uint32(plan.members.size()),
+        "Prepared bots are joining your live group...");
+    return true;
+}
+
 uint8 LfgRole(uint8 role, bool leader)
 {
     uint8 value = role == ROLE_TANK ? lfg::PLAYER_ROLE_TANK : role == ROLE_HEALER ? lfg::PLAYER_ROLE_HEALER : lfg::PLAYER_ROLE_DAMAGE;
@@ -1166,10 +1338,10 @@ public:
             if (bot && master)
             {
                 SyncManagedBot(master, bot, itr->second.role, itr->second.spec, itr->second.targetLevel,
-                    itr->second.minimumItemLevel, itr->second.fullRebuild);
+                    itr->second.minimumItemLevel, itr->second.targetItemLevel, itr->second.fullRebuild);
                 itr = s_pendingSync.erase(itr);
             }
-            else if (itr->second.elapsed > 45000) itr = s_pendingSync.erase(itr);
+            else if (itr->second.elapsed > 12000) itr = s_pendingSync.erase(itr);
             else ++itr;
         }
 
@@ -1197,28 +1369,37 @@ public:
                 {
                     plan.preparing = false;
                     plan.prepared = true;
-                    if (master) SendProgress(master, "READY", readyBots, totalBots, "All selected bots are online and ready to assemble.");
+                    if (master)
+                    {
+                        std::string assemblyError;
+                        if (!BeginPreparedAssembly(master, plan, assemblyError))
+                        {
+                            SendProgress(master, "ERROR", readyBots, totalBots, assemblyError);
+                            SendProtocol(master, "ERROR", assemblyError);
+                        }
+                        else
+                            SendProtocol(master, "STATUS", "Prepared roster is joining your live group.");
+                    }
                 }
-                else if (plan.prepareElapsed > 50000 && master)
+                else if (plan.prepareElapsed > 15000 && master)
                 {
-                    // Do not throw away and rebuild an otherwise-ready 25-player roster because one
-                    // asynchronous login stalled. Whole-plan replacement multiplied login/provision
-                    // work and caused repeated full-roster retry loops.
-                    // Keep the failure precise; a new explicit Build & Prepare gets a fresh candidate
-                    // snapshot while every currently grouped member remains protected.
                     std::string failed = "a selected bot";
+                    std::string blocker = "did not become ready";
                     for (Member const& member : plan.members)
                     {
-                        if (!member.human && !PreparedMemberReady(plan, member))
+                        if (member.human) continue;
+                        std::string reason = PreparedMemberBlocker(plan, member);
+                        if (!reason.empty())
                         {
                             failed = "'" + member.name + "'";
+                            blocker = reason;
                             break;
                         }
                     }
 
-                    std::string detail = "Preparation timed out waiting for " + failed + " (" +
+                    std::string detail = "Preparation stalled on " + failed + ": " + blocker + " (" +
                         std::to_string(readyBots) + "/" + std::to_string(totalBots) +
-                        " bots ready). No live group member was removed; press Build & Prepare to retry with fresh capacity.";
+                        " bots ready). Composer stopped instead of waiting or rebuilding the whole roster; press Build & Prepare to select fresh capacity.";
                     plan.preparing = false;
                     plan.prepared = false;
                     Reserve::ReleaseUnjoined(master);
@@ -1559,8 +1740,19 @@ bool GroupComposerCommand::HandleFind(ChatHandler* handler)
     SendPlan(handler, stored);
     uint32 totalBots = SelectedBotCount(stored);
     uint32 readyBots = PreparedBotCount(stored);
-    SendProgress(master, stored.prepared ? "READY" : "PREPARING", readyBots, totalBots,
-        stored.prepared ? "All selected bots are online and ready to assemble." : "Logging in and preparing selected bots...");
+    if (stored.prepared)
+    {
+        std::string assemblyError;
+        if (!BeginPreparedAssembly(master, stored, assemblyError))
+        {
+            SendProgress(master, "ERROR", readyBots, totalBots, assemblyError);
+            SendError(handler, assemblyError);
+        }
+        else
+            handler->SendSysMessage("[GC]|STATUS|Prepared roster is joining your live group.");
+    }
+    else
+        SendProgress(master, "PREPARING", readyBots, totalBots, "Preparing selected bots for immediate group assembly...");
     return true;
 }
 
@@ -1598,55 +1790,25 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
     uint32 owner = master->GetGUID().GetCounter();
     auto itr = s_plans.find(owner);
     if (itr == s_plans.end() || !itr->second.valid) { SendError(handler, "Find a valid roster before assembling it."); return true; }
+
     Plan& plan = itr->second;
     if (plan.travelPending) { handler->SendSysMessage("[GC]|STATUS|Instance entry is already in progress."); return true; }
     if (plan.assembling) { handler->SendSysMessage("[GC]|STATUS|Assembly is already in progress."); return true; }
-
     if (!plan.prepared || plan.preparing || OwnerHasPendingSync(owner))
     {
-        handler->SendSysMessage("[GC]|STATUS|Roster preparation is still running. Assemble unlocks automatically when every selected bot is ready.");
-        SendProgress(master, "PREPARING", PreparedBotCount(plan), SelectedBotCount(plan), "Waiting for selected bots to finish preparation...");
+        handler->SendSysMessage("[GC]|STATUS|Roster preparation is still running. Composer will assemble it automatically when ready.");
+        SendProgress(master, "PREPARING", PreparedBotCount(plan), SelectedBotCount(plan),
+            "Waiting for selected bots to finish preparation...");
         return true;
     }
 
-    std::string validationError;
-    if (!ValidateAssemblySnapshot(master, plan, validationError))
+    std::string assemblyError;
+    if (!BeginPreparedAssembly(master, plan, assemblyError))
     {
-        SendError(handler, validationError);
+        SendError(handler, assemblyError);
         return true;
     }
-
-    std::string reserveError;
-    if (!Reserve::AcquirePlan(master, plan, reserveError))
-    {
-        SendError(handler, reserveError);
-        return true;
-    }
-
-    plan.humanInvitesSent.clear();
-
-    // Build & Prepare already locked every live group member into the reviewed plan. Assembly never
-    // removes an existing Playerbot implicitly; it only attaches prepared missing members and sends
-    // one normal invitation to each missing real human.
-
-    // A specifically pinned persistent guild companion can still require a deliberate spec retask.
-    // Apply that narrow combat-build change at commit time, preserving its gear/inventory/history.
-    for (Member const& member : plan.members)
-    {
-        if (member.human || !member.guild || !member.needsPreparation) continue;
-        if (Player* bot = ObjectAccessor::FindConnectedPlayer(member.guid))
-            SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel, 0, false);
-    }
-
-    plan.travelPending = false;
-    plan.travelElapsed = 0;
-    plan.travelAttempts = 0;
-    plan.assembling = true;
-    plan.assembleElapsed = 0;
-    plan.assembleProgressElapsed = 0;
-    TryAttachMissing(master, plan);
-    SendProgress(master, "ASSEMBLING", JoinedPlanMembers(master, plan), uint32(plan.members.size()), "Committing prepared roster to the live group...");
-    handler->SendSysMessage("[GC]|STATUS|Assembly started. Prepared Playerbots are attached server-side; real players accept normally.");
+    handler->SendSysMessage("[GC]|STATUS|Prepared Playerbots are joining server-side; real players accept normally.");
     return true;
 }
 
