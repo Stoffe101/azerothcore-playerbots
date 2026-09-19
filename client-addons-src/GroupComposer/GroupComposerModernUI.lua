@@ -6046,24 +6046,17 @@ function ____exports.createModernDashboard(self)
         9,
         0
     )
-    local warningRows = {}
-    do
-        local i = 0
-        while i < 3 do
-            local row = Native:createText(nextCard.frame, "", "GameFontHighlightSmall", i == 0 and theme.colors.warning or theme.colors.muted)
-            row:SetPoint(
-                "TOPLEFT",
-                nextCard.frame,
-                "TOPLEFT",
-                12,
-                -(48 + i * 21)
-            )
-            row:SetWidth(246)
-            row:SetJustifyV("TOP")
-            warningRows[#warningRows + 1] = row
-            i = i + 1
-        end
-    end
+    local nextDetail = Native:createText(nextCard.frame, "", "GameFontHighlightSmall", theme.colors.warning)
+    nextDetail:SetPoint(
+        "TOPLEFT",
+        nextCard.frame,
+        "TOPLEFT",
+        12,
+        -48
+    )
+    nextDetail:SetWidth(246)
+    nextDetail:SetHeight(58)
+    nextDetail:SetJustifyV("TOP")
     local buildButton = ButtonUI:createButton(
         status.frame,
         {
@@ -6816,7 +6809,7 @@ function ____exports.createModernDashboard(self)
             local i = 0
             while i < #dungeonRows do
                 do
-                    local __continue171
+                    local __continue169
                     repeat
                         local widgets = dungeonRows[i + 1]
                         local slot = slots[i + 1]
@@ -6849,7 +6842,7 @@ function ____exports.createModernDashboard(self)
                             widgets.choose.frame:Hide()
                             widgets.auto.frame:Hide()
                             widgets.humanAnchor.frame:Show()
-                            __continue171 = true
+                            __continue169 = true
                             break
                         end
                         local exact = slot.exact
@@ -6937,9 +6930,9 @@ function ____exports.createModernDashboard(self)
                         else
                             widgets.auto.frame:Hide()
                         end
-                        __continue171 = true
+                        __continue169 = true
                     until true
-                    if not __continue171 then
+                    if not __continue169 then
                         break
                     end
                 end
@@ -7196,12 +7189,12 @@ function ____exports.createModernDashboard(self)
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue205
+                    local __continue203
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue205 = true
+                            __continue203 = true
                             break
                         end
                         local column = g % columns
@@ -7264,9 +7257,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue205 = true
+                        __continue203 = true
                     until true
-                    if not __continue205 then
+                    if not __continue203 then
                         break
                     end
                 end
@@ -7534,49 +7527,39 @@ function ____exports.createModernDashboard(self)
         end
         ____coverageDamageText_SetText_92(coverageDamageText, ____hasPreparedCoverage_91)
         local warnings = Model:planWarnings()
-        do
-            local i = 0
-            while i < #warningRows do
-                local text
-                if i == 0 and phase == "ERROR" then
-                    text = "Adjust the highlighted requirement, then Build & Prepare again."
-                elseif phase == "ERROR" then
-                    text = warnings[i]
-                else
-                    text = warnings[i + 1]
+        local nextText = ""
+        if phase == "ERROR" then
+            nextText = "Adjust the highlighted requirement, then Build & Prepare again."
+        elseif not Model:humanReady() then
+            nextText = "Choose a legal role for every real player."
+        else
+            local ____temp_95 = Model:config().mode == "RAID"
+            if ____temp_95 then
+                local ____temp_94 = Model:roleTargetTotal()
+                local ____table_size_93 = Model:config().size
+                if ____table_size_93 == nil then
+                    ____table_size_93 = 25
                 end
-                if text == nil and i == 0 then
-                    if phase == "READY" then
-                        text = Model:isTravelRetry() and "Clear the travel blocker, then enter the activity." or "Prepared roster is ready for review. Assemble when it looks right."
-                    elseif phase == "PREPARING" then
-                        text = "Composer is provisioning and validating the selected bots."
-                    elseif not Model:humanReady() then
-                        text = "Choose a legal role for every real player."
-                    else
-                        local ____temp_95 = Model:config().mode == "RAID"
-                        if ____temp_95 then
-                            local ____temp_94 = Model:roleTargetTotal()
-                            local ____table_size_93 = Model:config().size
-                            if ____table_size_93 == nil then
-                                ____table_size_93 = 25
-                            end
-                            ____temp_95 = ____temp_94 ~= __TS__Number(____table_size_93)
-                        end
-                        if ____temp_95 then
-                            local ____table_size_96 = Model:config().size
-                            if ____table_size_96 == nil then
-                                ____table_size_96 = 25
-                            end
-                            text = ("Role counts must total " .. tostring(____table_size_96)) .. " before preparing."
-                        else
-                            text = "Build & Prepare when the composition looks right."
-                        end
-                    end
+                ____temp_95 = ____temp_94 ~= __TS__Number(____table_size_93)
+            end
+            if ____temp_95 then
+                local ____table_size_96 = Model:config().size
+                if ____table_size_96 == nil then
+                    ____table_size_96 = 25
                 end
-                warningRows[i + 1]:SetText(tostring(text or ""))
-                i = i + 1
+                nextText = ("Role counts must total " .. tostring(____table_size_96)) .. " before preparing."
+            elseif phase == "READY" then
+                nextText = Model:isTravelRetry() and "Clear the travel blocker, then enter the activity." or "Prepared roster is ready for review. Assemble when it looks right."
+            elseif phase == "PREPARING" then
+                nextText = "Composer is provisioning and validating the selected bots."
+            else
+                nextText = "Build & Prepare when the composition looks right."
             end
         end
+        if #warnings > 0 then
+            nextText = nextText .. "\n" .. tostring(warnings[1])
+        end
+        nextDetail:SetText(nextText)
         local ____buildButton_setEnabled_101 = buildButton.setEnabled
         local ____temp_100 = Model:humanReady() and not Model:isBusy()
         if ____temp_100 then
