@@ -45,6 +45,7 @@ PROGRESSION_PAGE = (ROOT / "client-ui/src/components/ProgressionPage.ts").read_t
 RECOMMENDATIONS_PAGE = (ROOT / "client-ui/src/components/RecommendationsPage.ts").read_text(encoding="utf-8")
 MEMBER_DETAILS = (ROOT / "client-ui/src/components/MemberDetailsModal.ts").read_text(encoding="utf-8")
 GROUP_ACTIONS = (ROOT / "client-ui/src/components/GroupActionsModal.ts").read_text(encoding="utf-8")
+GENERATED_UI = (ROOT / "client-addons-src/GroupComposer/GroupComposerModernUI.lua").read_text(encoding="utf-8")
 
 
 def section(text: str, start: str, end: str) -> str:
@@ -955,3 +956,12 @@ assert "Group Actions" in MODERN and "Leave Instance Together" in GROUP_ACTIONS
 assert "Rebuild / Repair Roster" in GROUP_ACTIONS and "Disband Composer Group" in GROUP_ACTIONS
 assert "Why this bot?" in MEMBER_DETAILS and "click for why" in MODERN
 assert "memberDetails.open" in MODERN and "member.why" in MEMBER_DETAILS
+
+
+# Generated bundle must contain the latest lifecycle/rationale surfaces before a checkpoint can ship.
+assert "Group Actions" in GENERATED_UI
+assert "Leave Instance Together" in GENERATED_UI
+assert "Rebuild / Repair Roster" in GENERATED_UI
+assert "Disband Composer Group" in GENERATED_UI
+assert "Why this bot?" in GENERATED_UI
+assert "click for why" in GENERATED_UI

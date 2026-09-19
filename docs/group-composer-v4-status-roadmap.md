@@ -275,6 +275,21 @@ The server's public-access support already has useful hardening:
 
 ---
 
+### Latest implementation checkpoint
+
+The current V4 feature set now includes the remaining original UX items:
+
+- exact activity lock explanations;
+- Vanilla/TBC/WotLK-aware browsing and difficulty rules;
+- Progression and Recommended Activities pages;
+- Favorites and Recent Activities;
+- saved dungeon party templates;
+- anti-boost peer-level bot selection;
+- post-assembly Group Actions;
+- clickable server-authored **Why this bot?** rationale.
+
+The current development checkpoint still follows the exact-commit CI rule below before deployment.
+
 ## 4. CI status and definition of green
 
 For every exact Group Composer commit we care about these workflows:
