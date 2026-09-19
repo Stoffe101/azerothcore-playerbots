@@ -524,6 +524,8 @@ assert "minimumItemLevel" in GEAR_H and "std::max<int32>" in GEAR_CPP, (
 assert "below the selected activity's required level" in SERVER, "Assembly no longer revalidates selected bot levels"
 assert "activityEligibilityText" in MODEL and "Minimum item level" in MODERN
 assert "const exactScroll = ScrollUI.createScrollList" in MODERN, "Specific Builds regressed to fixed clipping columns"
+assert "const exactScroll = ScrollUI.createScrollList(exactView, 936, 418);" in MODERN
+assert "exactScroll.setContentHeight(Math.max(418, cursor));" in MODERN
 assert "let contentHeight = height;" in SCROLL_LIST and "function maxOffset()" in SCROLL_LIST
 assert "GetVerticalScrollRange" not in SCROLL_LIST, "3.3.5 ScrollFrame range must not drive Composer scrolling"
 assert "bindWheel(target: WoWFrame)" in SCROLL_LIST and "exactScroll.bindWheel" in MODERN
@@ -554,7 +556,7 @@ assert "SyncManagedBot(master, bot, member.role, member.spec, plan.config.requir
 # These deliberately enforce the new one-border / content-first system instead of the old
 # "premium = more chrome" implementation that produced the noisy live screenshots.
 assert 'frame.SetSize(1520, 900)' in MODERN, "Modern shell lost the redesigned workspace dimensions"
-assert 'center.SetSize(970, 768)' in MODERN, "Composition workspace lost its expanded layout"
+assert 'center.SetSize(970, 800)' in MODERN, "Composition workspace lost its reclaimed footer space"
 assert 'Adjust the highlighted requirement, then Build & Prepare again.' in MODERN, (
     "Status rail regressed to repeating backend errors instead of giving an actionable next step"
 )
@@ -691,6 +693,12 @@ assert "UI-DialogBox-Gold-Corner" not in NATIVE
 assert 'return "Ready to configure";' in MODEL
 assert 'const composed = Model.config().mode === "RAID" ? Model.roleTargetTotal() : humanCount;' in MODERN
 assert 'phase === "IDLE" && target > 0' in MODERN
+assert "const footer =" not in MODERN and "footerText" not in MODERN, (
+    "Modern shell regressed to the duplicate bottom debug-status footer"
+)
+assert 'let statusNotice = "";' in MODERN and 'statusNotice = String(text ?? "");' in MODERN, (
+    "Transient server status must stay visible after removing the debug footer"
+)
 assert 'Add specific builds or keep Auto to prepare your raid.' in MODERN
 assert '"Level " + String(slot.human.level ?? "?")' in MODERN
 
