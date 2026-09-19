@@ -666,6 +666,9 @@ assert "groupCount" in MODERN and '"SUBGROUP"' in MODERN and "headerAccent" in M
 assert "rowWidgets.roleIcon" in MODERN and "member.source" in MODERN and '"PINNED  ·  "' in MODERN, (
     "Prepared roster lost role/source identity cues"
 )
+assert "const rowWidgets = widgets.rows[r + 1];" in MODERN, (
+    "Prepared roster row pool must preserve the TypeScriptToLua 1-based runtime boundary"
+)
 assert 'activity.frame.SetHeight(124)' in MODERN
 assert 'humanPanel.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -136)' in MODERN
 assert 'composition.frame.SetPoint("TOPLEFT", center, "TOPLEFT", 0, -226)' in MODERN
