@@ -4503,6 +4503,7 @@ function ____exports.createModernDashboard(self)
             accent = theme.colors.primary,
             icon = ICON_DUNGEON,
             iconSize = 24,
+            flat = true,
             onClick = function() return Model:setMode("DUNGEON") end
         }
     )
@@ -4523,6 +4524,7 @@ function ____exports.createModernDashboard(self)
             accent = theme.colors.warning,
             icon = ICON_RAID,
             iconSize = 24,
+            flat = true,
             onClick = function() return Model:setMode("RAID") end
         }
     )
@@ -4572,6 +4574,7 @@ function ____exports.createModernDashboard(self)
             height = 42,
             icon = ICON_TEMPLATES,
             iconSize = 22,
+            flat = true,
             onClick = function() return showTemplates(nil) end
         }
     )
@@ -4591,6 +4594,7 @@ function ____exports.createModernDashboard(self)
             height = 42,
             icon = ICON_PEOPLE,
             iconSize = 22,
+            flat = true,
             onClick = function() return showPeople(nil) end
         }
     )
@@ -4610,6 +4614,7 @@ function ____exports.createModernDashboard(self)
             height = 42,
             icon = ICON_OPTIONS,
             iconSize = 22,
+            flat = true,
             onClick = function() return showOptions(nil) end
         }
     )
