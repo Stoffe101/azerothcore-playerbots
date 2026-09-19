@@ -826,14 +826,11 @@ export function createModernDashboard(): Dashboard {
     nextBang.SetJustifyH("CENTER");
     const warningsTitle = Native.createText(nextCard.frame, "NEXT STEP", "GameFontNormalSmall", theme.colors.warning);
     warningsTitle.SetPoint("LEFT", nextBadge.frame, "RIGHT", 9, 0);
-    const warningRows: WoWFontString[] = [];
-    for (let i = 0; i < 3; i += 1) {
-        const row = Native.createText(nextCard.frame, "", "GameFontHighlightSmall", i === 0 ? theme.colors.warning : theme.colors.muted);
-        row.SetPoint("TOPLEFT", nextCard.frame, "TOPLEFT", 12, -(48 + i * 21));
-        row.SetWidth(246);
-        row.SetJustifyV("TOP");
-        warningRows.push(row);
-    }
+    const nextDetail = Native.createText(nextCard.frame, "", "GameFontHighlightSmall", theme.colors.warning);
+    nextDetail.SetPoint("TOPLEFT", nextCard.frame, "TOPLEFT", 12, -48);
+    nextDetail.SetWidth(246);
+    nextDetail.SetHeight(58);
+    nextDetail.SetJustifyV("TOP");
 
     const buildButton = ButtonUI.createButton(status.frame, {
         text: "Build & Prepare", width: 270, height: 52, accent: theme.colors.primary, emphasis: true,
@@ -1850,26 +1847,24 @@ export function createModernDashboard(): Dashboard {
         );
 
         const warnings = Model.planWarnings();
-        for (let i = 0; i < warningRows.length; i += 1) {
-            let text: string | undefined;
-            if (i === 0 && phase === "ERROR") {
-                text = "Adjust the highlighted requirement, then Build & Prepare again.";
-            } else if (phase === "ERROR") {
-                text = warnings[i - 1];
-            } else {
-                text = warnings[i];
-            }
-
-            if (text === undefined && i === 0) {
-                if (phase === "READY") text = Model.isTravelRetry() ? "Clear the travel blocker, then enter the activity." : "Prepared roster is ready for review. Assemble when it looks right.";
-                else if (phase === "PREPARING") text = "Composer is provisioning and validating the selected bots.";
-                else if (!Model.humanReady()) text = "Choose a legal role for every real player.";
-                else if (Model.config().mode === "RAID" && Model.roleTargetTotal() !== Number(Model.config().size ?? 25)) {
-                    text = "Role counts must total " + String(Model.config().size ?? 25) + " before preparing.";
-                } else text = "Build & Prepare when the composition looks right.";
-            }
-            warningRows[i].SetText(String(text ?? ""));
+        let nextText = "";
+        if (phase === "ERROR") {
+            nextText = "Adjust the highlighted requirement, then Build & Prepare again.";
+        } else if (!Model.humanReady()) {
+            nextText = "Choose a legal role for every real player.";
+        } else if (Model.config().mode === "RAID" && Model.roleTargetTotal() !== Number(Model.config().size ?? 25)) {
+            nextText = "Role counts must total " + String(Model.config().size ?? 25) + " before preparing.";
+        } else if (phase === "READY") {
+            nextText = Model.isTravelRetry()
+                ? "Clear the travel blocker, then enter the activity."
+                : "Prepared roster is ready for review. Assemble when it looks right.";
+        } else if (phase === "PREPARING") {
+            nextText = "Composer is provisioning and validating the selected bots.";
+        } else {
+            nextText = "Build & Prepare when the composition looks right.";
         }
+        if (warnings.length > 0) nextText += "\n" + String(warnings[0]);
+        nextDetail.SetText(nextText);
 
         buildButton.setEnabled(Model.humanReady() && !Model.isBusy() && (Model.config().mode !== "RAID" || Model.roleTargetTotal() === Number(Model.config().size ?? 25)));
         assembleButton.setEnabled(Model.plan().ready === true && Model.plan().valid === true && phase === "READY");
