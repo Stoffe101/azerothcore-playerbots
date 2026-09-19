@@ -1131,6 +1131,7 @@ export function createModernDashboard(): Dashboard {
                 name.SetWidth(150);
                 const identity = Native.createText(panel.frame, "REAL PLAYER", "GameFontNormalSmall", theme.colors.primary);
                 identity.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 52, -33);
+                identity.SetWidth(150);
                 const buttons: Record<Role, UIButton> = {
                     TANK: ButtonUI.createButton(panel.frame, { text: "Tank", width: 62, height: 26, accent: theme.colors.tank }),
                     HEALER: ButtonUI.createButton(panel.frame, { text: "Healer", width: 62, height: 26, accent: theme.colors.healer }),
@@ -1142,6 +1143,7 @@ export function createModernDashboard(): Dashboard {
                 (panel.frame as any)._classBadge = classBadge;
                 (panel.frame as any)._icon = icon;
                 (panel.frame as any)._name = name;
+                (panel.frame as any)._identity = identity;
                 (panel.frame as any)._buttons = buttons;
                 humanScroll.bindWheel(panel.frame);
                 for (const wheelRole of roleOrder) humanScroll.bindWheel(buttons[wheelRole].frame);
@@ -1153,7 +1155,8 @@ export function createModernDashboard(): Dashboard {
             row.SetPoint("TOPLEFT", humanScroll.content, "TOPLEFT", 0, -(i * 70));
             Native.setClassIcon((row as any)._icon, String(human.class));
             (row as any)._classBadge.outline.setColor(Native.classColor(String(human.class)));
-            (row as any)._name.SetText((human.isPlayer ? "YOU  ·  " : "") + human.name + "  ·  " + Model.classLabel(String(human.class)));
+            (row as any)._name.SetText((human.isPlayer ? "YOU  ·  " : "") + human.name);
+            (row as any)._identity.SetText(Model.classLabel(String(human.class)) + "  ·  REAL PLAYER");
             const selected = Model.config().humanRoles?.[human.name] as Role | undefined;
 
             for (const role of roleOrder) {
