@@ -78,8 +78,8 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
     }
 
     const specSection = createPanel(modal.content, theme.colors.surface, theme.colors.border);
-    specSection.frame.SetPoint("TOPLEFT", modal.content, "TOPLEFT", 0, -270);
-    specSection.frame.SetPoint("TOPRIGHT", modal.content, "TOPRIGHT", 0, -270);
+    specSection.frame.SetPoint("TOPLEFT", classSection.frame, "BOTTOMLEFT", 0, -12);
+    specSection.frame.SetPoint("TOPRIGHT", classSection.frame, "BOTTOMRIGHT", 0, -12);
     specSection.frame.SetHeight(176);
     const specStep = createText(specSection.frame, "02", "GameFontNormalLarge", theme.colors.primary); specStep.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 14, -14);
     const specTitle = createText(specSection.frame, "Choose a specialization", "GameFontNormalLarge"); specTitle.SetPoint("TOPLEFT", specSection.frame, "TOPLEFT", 52, -12);
@@ -147,6 +147,13 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
 
         const validClasses = selectorClassesForRole(currentRole, getClassesForRole(currentRole));
         const columns = Math.min(5, Math.max(1, validClasses.length));
+        const classRows = Math.max(1, Math.ceil(validClasses.length / columns));
+        const classHeight = classRows > 1 ? 258 : 164;
+        const specHeight = currentClass === undefined ? 108 : 176;
+        classSection.frame.SetHeight(classHeight);
+        specSection.frame.SetHeight(specHeight);
+        modal.frame.SetHeight(classHeight + specHeight + 222);
+
         const tileWidth = 174;
         const gap = 10;
         const totalWidth = columns * tileWidth + (columns - 1) * gap;
