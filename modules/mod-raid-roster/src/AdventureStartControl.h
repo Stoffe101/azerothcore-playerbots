@@ -10,6 +10,7 @@ enum class AdventureStartProfile : uint8
     TbcAdventure = 0,
     TbcRaidReady = 1,
     WotlkRaidReady = 2,
+    VanillaFresh = 3,
 };
 
 namespace AdventureStartControl

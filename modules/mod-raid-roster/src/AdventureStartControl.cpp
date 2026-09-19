@@ -26,6 +26,9 @@ struct ProfileData
 
 ProfileData DataFor(AdventureStartProfile profile)
 {
+    if (profile == AdventureStartProfile::VanillaFresh)
+        return { 1, AdventureStartControl::ProgressionStart, false, 0, 0.f, 0.f, 0.f, 0.f };
+
     if (profile == AdventureStartProfile::WotlkRaidReady)
     {
         return {
@@ -107,6 +110,8 @@ uint8 RequiredZulAmanProgression()
 
 AdventureStartProfile GetDefaultProfile()
 {
+    if (g_AdventureStartDefaultProfile == static_cast<uint8>(AdventureStartProfile::VanillaFresh))
+        return AdventureStartProfile::VanillaFresh;
     if (g_AdventureStartDefaultProfile == static_cast<uint8>(AdventureStartProfile::WotlkRaidReady))
         return AdventureStartProfile::WotlkRaidReady;
     if (g_AdventureStartDefaultProfile == static_cast<uint8>(AdventureStartProfile::TbcRaidReady))
@@ -122,6 +127,8 @@ void SetDefaultProfile(AdventureStartProfile profile)
 
 char const* ProfileName(AdventureStartProfile profile)
 {
+    if (profile == AdventureStartProfile::VanillaFresh)
+        return "vanilla";
     if (profile == AdventureStartProfile::WotlkRaidReady)
         return "wotlkraid";
     if (profile == AdventureStartProfile::TbcRaidReady)
@@ -235,6 +242,15 @@ bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStart
 {
     if (!player || !player->IsInWorld())
         return false;
+
+    // Vanilla is a genuinely clean start. Do not grant levels, gear, map reveal or teleport.
+    // This profile exists so the global expansion gate can make fresh realms start at level 1
+    // without disabling AdventureStart for later TBC/WotLK convenience profiles.
+    if (profile == AdventureStartProfile::VanillaFresh)
+    {
+        LOG_INFO("server.loading", "[AdventureStart] Vanilla fresh start left {} untouched at level {}.", player->GetName(), player->GetLevel());
+        return true;
+    }
 
     ProfileData const data = DataFor(profile);
     uint32 const guid = player->GetGUID().GetCounter();

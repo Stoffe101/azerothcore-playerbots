@@ -5,21 +5,31 @@
 
 class Player;
 
+enum class RealmEra : uint8
+{
+    Vanilla = 0,
+    Tbc = 1,
+    Wotlk = 2,
+};
+
 namespace AdminPanelExpansion
 {
-// TBC is the default live expansion. WotLK only becomes available after the administrator
-// deliberately releases it; that persisted state is applied again on every worldserver start.
+RealmEra CurrentEra();
+void SetEra(RealmEra era);
+bool IsTbcReleased();
 bool IsWotlkReleased();
-void SetWotlkReleased(bool released);
 uint8 CurrentLevelCap();
 uint8 CurrentProgressionLimit();
+uint8 MinimumProgressionForCurrentEra();
 uint8 PlayerProgression(Player* player);
 
 // Exact manual progression control for the current character. The global live-expansion ceiling
-// is always enforced, so a TBC realm cannot be accidentally pushed into stage 13 by the panel.
+// is always enforced. Stage 0 is supported explicitly by clearing the hidden progression quests.
 bool SetPlayerProgression(Player* player, uint8 stage);
 
 char const* CurrentExpansionName();
+char const* EraKey(RealmEra era);
+bool ParseEra(char const* value, RealmEra& era);
 }
 
 #endif

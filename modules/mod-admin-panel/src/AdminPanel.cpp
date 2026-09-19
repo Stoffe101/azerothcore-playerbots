@@ -39,7 +39,8 @@ constexpr char XP_KEY[] = "xp_rate";
 constexpr char REP_KEY[] = "rep_rate";
 constexpr char GOLD_RATE_KEY[] = "gold_rate";
 constexpr char STARTER_KEY[] = "starter_profile";
-constexpr char WOTLK_KEY[] = "wotlk_released";
+constexpr char ERA_KEY[] = "realm_era";
+constexpr char WOTLK_KEY[] = "wotlk_released"; // legacy migration only
 constexpr char BOT_TARGET_KEY[] = "bot_target";
 constexpr char BOT_ACTIVITY_KEY[] = "bot_activity";
 constexpr char PREFIX[] = "[AdminPanel]";
@@ -175,6 +176,8 @@ std::string StarterName()
 {
     switch (AdventureStartControl::GetDefaultProfile())
     {
+        case AdventureStartProfile::VanillaFresh:
+            return "vanilla";
         case AdventureStartProfile::WotlkRaidReady:
             return "wotlkraid";
         case AdventureStartProfile::TbcRaidReady:
@@ -246,21 +249,37 @@ void LoadPersistedSettings()
         LOG_INFO("server.loading", "[AdminPanel] Migrated legacy fast-preset gold rate 2.00 -> 1.00");
     }
 
-    // Expansion state must be restored BEFORE the starter profile so a saved WotLK raid-ready
-    // starter can only become active on a realm where WotLK has actually been released.
-    bool wotlkReleased = false;
-    if (LoadSetting(WOTLK_KEY, raw))
-        wotlkReleased = raw == "1" || Lower(raw) == "true";
-    AdminPanelExpansion::SetWotlkReleased(wotlkReleased);
+    // Restore the real three-era gate before starter settings. Migrate the historical
+    // wotlk_released boolean once so existing WotLK test realms remain WotLK after this upgrade.
+    RealmEra era = RealmEra::Vanilla;
+    if (LoadSetting(ERA_KEY, raw))
+    {
+        if (!AdminPanelExpansion::ParseEra(raw.c_str(), era))
+            era = RealmEra::Vanilla;
+    }
+    else
+    {
+        bool legacyWotlk = false;
+        if (LoadSetting(WOTLK_KEY, raw))
+            legacyWotlk = raw == "1" || Lower(raw) == "true";
+        era = legacyWotlk ? RealmEra::Wotlk : RealmEra::Vanilla;
+        SaveSetting(ERA_KEY, AdminPanelExpansion::EraKey(era));
+    }
+    AdminPanelExpansion::SetEra(era);
 
-    if (LoadSetting(STARTER_KEY, raw))
+    if (AdminPanelExpansion::CurrentEra() == RealmEra::Vanilla)
+    {
+        AdventureStartControl::SetDefaultProfile(AdventureStartProfile::VanillaFresh);
+        SaveSetting(STARTER_KEY, "vanilla");
+    }
+    else if (LoadSetting(STARTER_KEY, raw))
     {
         std::string const mode = Lower(raw);
         if (mode == "wotlkraid" || mode == "wrathraid" || mode == "80")
         {
             AdventureStartControl::SetDefaultProfile(
-                wotlkReleased ? AdventureStartProfile::WotlkRaidReady : AdventureStartProfile::TbcAdventure);
-            if (!wotlkReleased)
+                AdminPanelExpansion::IsWotlkReleased() ? AdventureStartProfile::WotlkRaidReady : AdventureStartProfile::TbcAdventure);
+            if (!AdminPanelExpansion::IsWotlkReleased())
                 SaveSetting(STARTER_KEY, "tbc");
         }
         else if (mode == "tbcraid" || mode == "raid" || mode == "raidready" || mode == "70")
@@ -343,6 +362,8 @@ public:
             { "tbcraidready",    HandleTbcRaidReady,    SEC_GAMEMASTER, Console::No },
             { "wotlkraidready",  HandleWotlkRaidReady,  SEC_GAMEMASTER, Console::No },
             { "progression",     HandleProgression,     SEC_GAMEMASTER, Console::No },
+            { "era",             HandleEra,             SEC_GAMEMASTER, Console::No },
+            { "releasetbc",      HandleReleaseTbc,      SEC_GAMEMASTER, Console::No },
             { "releasewotlk",    HandleReleaseWotlk,    SEC_GAMEMASTER, Console::No },
             { "announce",        HandleAnnounce,        SEC_GAMEMASTER, Console::No },
             { "repair",          HandleRepair,          SEC_GAMEMASTER, Console::No },
@@ -416,9 +437,10 @@ private:
         double const moneyGold = player ? double(player->GetMoney()) / COPPER_PER_GOLD : 0.0;
 
         handler->PSendSysMessage(
-            "{} STATUS era={} wotlk={} levelcap={} progressionlimit={} stage={} level={} money={:.2f} xp={:.2f} rep={:.2f} goldrate={:.2f} starter={} players={} bots={} bottarget={} botbatch={} botactivity={:.0f} botstate={} botcapacity={} botcandidates={} botpending={} botaccounts={} botrequired={} botmanageraccounts={}",
+            "{} STATUS era={} tbc={} wotlk={} levelcap={} progressionlimit={} stage={} level={} money={:.2f} xp={:.2f} rep={:.2f} goldrate={:.2f} starter={} players={} bots={} bottarget={} botbatch={} botactivity={:.0f} botstate={} botcapacity={} botcandidates={} botpending={} botaccounts={} botrequired={} botmanageraccounts={}",
             PREFIX,
             AdminPanelExpansion::CurrentExpansionName(),
+            AdminPanelExpansion::IsTbcReleased() ? 1 : 0,
             AdminPanelExpansion::IsWotlkReleased() ? 1 : 0,
             AdminPanelExpansion::CurrentLevelCap(),
             AdminPanelExpansion::CurrentProgressionLimit(),
@@ -525,12 +547,31 @@ private:
 
         std::string const mode = Lower(std::string(rawMode));
         AdventureStartProfile profile;
-        if (mode == "tbc" || mode == "60" || mode == "adventure")
+        if (mode == "vanilla" || mode == "classic" || mode == "1")
         {
+            if (AdminPanelExpansion::CurrentEra() != RealmEra::Vanilla)
+            {
+                handler->PSendSysMessage("{} Vanilla fresh start is only the default while Vanilla is the live era.", PREFIX);
+                return true;
+            }
+            profile = AdventureStartProfile::VanillaFresh;
+        }
+        else if (mode == "tbc" || mode == "60" || mode == "adventure")
+        {
+            if (!AdminPanelExpansion::IsTbcReleased())
+            {
+                handler->PSendSysMessage("{} TBC Adventure start is locked until The Burning Crusade is released.", PREFIX);
+                return true;
+            }
             profile = AdventureStartProfile::TbcAdventure;
         }
         else if (mode == "tbcraid" || mode == "raid" || mode == "raidready" || mode == "70")
         {
+            if (!AdminPanelExpansion::IsTbcReleased())
+            {
+                handler->PSendSysMessage("{} TBC raid-ready start is locked until The Burning Crusade is released.", PREFIX);
+                return true;
+            }
             profile = AdventureStartProfile::TbcRaidReady;
         }
         else if (mode == "wotlkraid" || mode == "wrathraid" || mode == "80")
@@ -544,7 +585,7 @@ private:
         }
         else
         {
-            handler->PSendSysMessage("{} starter must be 'tbc', 'tbcraid' or (after release) 'wotlkraid'.", PREFIX);
+            handler->PSendSysMessage("{} starter must be 'vanilla', 'tbc', 'tbcraid' or (after release) 'wotlkraid'.", PREFIX);
             return true;
         }
 
@@ -611,7 +652,7 @@ private:
     {
         if (!EnsureEnabled(handler))
             return true;
-        if (stage == 11 || stage < 8 || stage > AdminPanelExpansion::CurrentProgressionLimit())
+        if (stage == 11 || stage > AdminPanelExpansion::CurrentProgressionLimit())
         {
             handler->PSendSysMessage(
                 "{} Invalid progression stage for the live expansion. Current maximum is {}.",
@@ -630,10 +671,78 @@ private:
         return true;
     }
 
+    static bool HandleEra(ChatHandler* handler, std::string_view rawEra, std::string_view rawConfirm)
+    {
+        if (!EnsureEnabled(handler))
+            return true;
+
+        RealmEra era;
+        std::string const eraText = Lower(std::string(rawEra));
+        if (!AdminPanelExpansion::ParseEra(eraText.c_str(), era))
+        {
+            handler->PSendSysMessage("{} era must be vanilla, tbc or wotlk.", PREFIX);
+            return true;
+        }
+        if (Lower(std::string(rawConfirm)) != "confirm")
+        {
+            handler->PSendSysMessage("{} Changing the live realm era changes level/progression caps. Use: .ap era {} confirm", PREFIX, eraText);
+            return true;
+        }
+
+        AdminPanelExpansion::SetEra(era);
+        SaveSetting(ERA_KEY, AdminPanelExpansion::EraKey(era));
+        SaveSetting(WOTLK_KEY, AdminPanelExpansion::IsWotlkReleased() ? "1" : "0");
+
+        if (era == RealmEra::Vanilla)
+        {
+            AdventureStartControl::SetDefaultProfile(AdventureStartProfile::VanillaFresh);
+            SaveSetting(STARTER_KEY, "vanilla");
+        }
+        else if (AdventureStartControl::GetDefaultProfile() == AdventureStartProfile::VanillaFresh)
+        {
+            AdventureStartControl::SetDefaultProfile(AdventureStartProfile::TbcAdventure);
+            SaveSetting(STARTER_KEY, "tbc");
+        }
+
+        handler->PSendSysMessage("{} Live realm era set to {} and saved.", PREFIX, AdminPanelExpansion::CurrentExpansionName());
+        return true;
+    }
+
+    static bool HandleReleaseTbc(ChatHandler* handler, std::string_view rawConfirm)
+    {
+        if (!EnsureEnabled(handler))
+            return true;
+        if (AdminPanelExpansion::IsTbcReleased())
+        {
+            handler->PSendSysMessage("{} The Burning Crusade is already released.", PREFIX);
+            return true;
+        }
+        if (Lower(std::string(rawConfirm)) != "confirm")
+        {
+            handler->PSendSysMessage("{} This opens TBC progression and level 70. Use: .ap releasetbc confirm", PREFIX);
+            return true;
+        }
+
+        AdminPanelExpansion::SetEra(RealmEra::Tbc);
+        SaveSetting(ERA_KEY, "tbc");
+        AdventureStartControl::SetDefaultProfile(AdventureStartProfile::TbcAdventure);
+        SaveSetting(STARTER_KEY, "tbc");
+        sWorldSessionMgr->SendServerMessage(
+            SERVER_MSG_STRING,
+            "The Burning Crusade has been released! Outland, level 70 progression and TBC group content are now available.");
+        handler->PSendSysMessage("{} TBC RELEASED. Vanilla progression remains completed/available and the realm cap is now 70.", PREFIX);
+        return true;
+    }
+
     static bool HandleReleaseWotlk(ChatHandler* handler, std::string_view rawConfirm)
     {
         if (!EnsureEnabled(handler))
             return true;
+        if (!AdminPanelExpansion::IsTbcReleased())
+        {
+            handler->PSendSysMessage("{} Release The Burning Crusade before releasing Wrath of the Lich King.", PREFIX);
+            return true;
+        }
         if (AdminPanelExpansion::IsWotlkReleased())
         {
             handler->PSendSysMessage("{} Wrath of the Lich King is already LIVE.", PREFIX);
@@ -641,16 +750,17 @@ private:
         }
         if (Lower(std::string(rawConfirm)) != "confirm")
         {
-            handler->PSendSysMessage("{} This permanently opens WotLK progression. Use: .ap releasewotlk confirm", PREFIX);
+            handler->PSendSysMessage("{} This opens WotLK progression and level 80. Use: .ap releasewotlk confirm", PREFIX);
             return true;
         }
 
-        AdminPanelExpansion::SetWotlkReleased(true);
+        AdminPanelExpansion::SetEra(RealmEra::Wotlk);
+        SaveSetting(ERA_KEY, "wotlk");
         SaveSetting(WOTLK_KEY, "1");
         sWorldSessionMgr->SendServerMessage(
             SERVER_MSG_STRING,
             "Wrath of the Lich King has been released! Northrend, level 80 progression and WotLK raid-ready controls are now available.");
-        handler->PSendSysMessage("{} WOTLK RELEASED. The expansion gate is permanently saved as open.", PREFIX);
+        handler->PSendSysMessage("{} WOTLK RELEASED. The expansion gate is permanently saved as WotLK.", PREFIX);
         return true;
     }
 
