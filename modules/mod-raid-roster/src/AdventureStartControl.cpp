@@ -8,6 +8,8 @@
 #include "Log.h"
 #include "Player.h"
 
+#include <array>
+
 namespace
 {
 struct ProfileData
@@ -110,6 +112,51 @@ bool MatchesProfile(Player* player, AdventureStartProfile profile)
     return current == data.progression;
 }
 
+bool EnsureRaidReadyAccess(Player* player, AdventureStartProfile profile)
+{
+    if (!player || profile != AdventureStartProfile::WotlkRaidReady)
+        return false;
+
+    // A WotLK raid-ready boost is deliberately past the mandatory Frozen Halls story gate. Do not
+    // complete arbitrary Northrend quests; only record the faction-specific access chain that gates
+    // Forge of Souls -> Pit of Saron -> Halls of Reflection.
+    static constexpr std::array<uint32, 6> AllianceFrozenHalls = {
+        24510u, // Inside the Frozen Citadel
+        24499u, // Echoes of Tortured Souls
+        24683u, // The Pit of Saron
+        24498u, // The Path to the Citadel
+        24710u, // Deliverance from the Pit
+        24711u, // Frostmourne
+    };
+    static constexpr std::array<uint32, 6> HordeFrozenHalls = {
+        24506u, // Inside the Frozen Citadel
+        24511u, // Echoes of Tortured Souls
+        24682u, // The Pit of Saron
+        24507u, // The Path to the Citadel
+        24712u, // Deliverance from the Pit
+        24713u, // Frostmourne
+    };
+
+    auto const& quests = player->GetTeamId() == TEAM_ALLIANCE ? AllianceFrozenHalls : HordeFrozenHalls;
+    bool changed = false;
+    for (uint32 questId : quests)
+    {
+        if (player->IsQuestRewarded(questId))
+            continue;
+
+        // Raid-ready skips the story rather than granting its normal rewards. Remove an in-progress
+        // copy if present, then persist only the rewarded/access flag used by AzerothCore gates.
+        player->RemoveActiveQuest(questId, false);
+        player->SetRewardedQuest(questId);
+        player->SendQuestUpdate(questId);
+        changed = true;
+    }
+
+    if (changed)
+        LOG_INFO("server.loading", "[AdventureStart] Repaired WotLK raid-ready Frozen Halls access for {}.", player->GetName());
+    return changed;
+}
+
 bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStarterReset)
 {
     if (!player || !player->IsInWorld())
@@ -210,6 +257,7 @@ bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStart
         player->SendTalentsInfoData(false);
     }
 
+    EnsureRaidReadyAccess(player, profile);
     player->SaveToDB(false, false);
 
     LOG_INFO(

@@ -34,6 +34,10 @@ GEAR_H = (ROOT / "modules/mod-raid-roster/src/RaidRosterGear.h").read_text(encod
 GEAR_CPP = (ROOT / "modules/mod-raid-roster/src/RaidRosterGear.cpp").read_text(encoding="utf-8")
 SILENT_LOGIN_PATCH = (ROOT / "patches/0035-playerbot-group-composer-silent-login.patch").read_text(encoding="utf-8")
 CAPACITY_BYPASS_PATCH = (ROOT / "patches/0038-playerbot-group-composer-capacity-bypass.patch").read_text(encoding="utf-8")
+QUIET_BOT_PATCH = (ROOT / "patches/0040-playerbot-quiet-routine-whispers.patch").read_text(encoding="utf-8")
+ADVENTURE_START = (ROOT / "modules/mod-raid-roster/src/AdventureStart.cpp").read_text(encoding="utf-8")
+ADVENTURE_START_CONTROL = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.cpp").read_text(encoding="utf-8")
+ADVENTURE_START_CONTROL_H = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.h").read_text(encoding="utf-8")
 
 
 def section(text: str, start: str, end: str) -> str:
@@ -460,6 +464,27 @@ assert "IsGroupComposerReserved(guid)" in RESERVE_PATCH, (
 )
 
 
+# Routine Playerbots status messages are deliberately silent. Actual social personality belongs
+# to the chatter layer, not one private hello/goodbye/item receipt per bot.
+assert "Routine group joins stay quiet" in QUIET_BOT_PATCH
+assert "Routine bot logout is intentionally silent" in QUIET_BOT_PATCH
+assert "Leaving a group is state, not conversation" in QUIET_BOT_PATCH
+assert "Routine item usage (poisons, stones, oils, consumables) is not chat-worthy" in QUIET_BOT_PATCH
+assert "-    botAI->TellMasterNoFacing(useText);" in QUIET_BOT_PATCH
+assert "+    (void)item;" in QUIET_BOT_PATCH and "+    (void)action;" in QUIET_BOT_PATCH
+assert "-                    botAI->TellMaster(PlayerbotTextMgr::instance().GetBotTextOrDefault(" in QUIET_BOT_PATCH
+
+# WotLK raid-ready means mandatory endgame access/story gates are already complete. Existing boosted
+# characters must be repaired on login rather than requiring a new boost or manual quest chain.
+assert "bool EnsureRaidReadyAccess(Player* player, AdventureStartProfile profile);" in ADVENTURE_START_CONTROL_H
+for quest_id in (24510, 24499, 24683, 24498, 24710, 24711, 24506, 24511, 24682, 24507, 24712, 24713):
+    assert str(quest_id) in ADVENTURE_START_CONTROL, f"Frozen Halls raid-ready access quest {quest_id} is missing"
+assert "player->SetRewardedQuest(questId);" in ADVENTURE_START_CONTROL
+assert "EnsureRaidReadyAccess(player, profile);" in ADVENTURE_START_CONTROL
+login_start = section(ADVENTURE_START, "void OnPlayerLogin", "void OnPlayerLearnTalents")
+assert "state.starterProfile" in login_start and "EnsureRaidReadyAccess" in login_start
+assert "player->SaveToDB(false, false);" in login_start, "Existing raid-ready access repair is not persisted"
+
 # V4 selected-activity travel. A named dungeon/raid is entered only after the exact reviewed roster
 # is complete and subgroup application succeeds. Runtime coordinates come from AzerothCore's
 # canonical map entrance trigger; Random Dungeon remains queue-selected and is never guessed here.
@@ -473,10 +498,19 @@ assert "group->GetLeader()" in travel and "GET_PLAYERBOT_AI(travelLeader)" in tr
 assert "TitanRune::SaveSelectedMode(travelLeader, titanMode)" in travel, (
     "Named Titan Rune travel must persist the reviewed protocol on the actual group leader"
 )
-assert "teleport(travelLeader)" in travel and "player != travelLeader" in travel, (
-    "Selected activity travel must start from the authoritative group leader"
+assert "if (!teleport(travelLeader))" in travel and "player == travelLeader" in travel, (
+    "Selected activity travel must require the authoritative group leader to teleport successfully before bots"
 )
-assert "player->TeleportTo(destination->target_mapId" in travel, "Completed rosters are no longer teleported into the selected activity"
+assert "return player->TeleportTo(destination->target_mapId" in travel, (
+    "Automatic travel is ignoring Player::TeleportTo failure again"
+)
+assert travel.index("if (!teleport(travelLeader))") < travel.index("for (Player* player : travelers)", travel.index("if (!teleport(travelLeader))")), (
+    "Bots may not teleport before the real group leader succeeds"
+)
+enter_reason = section(SERVER, "char const* EnterStateReason", "bool ResolveTitanTravelMode")
+assert "CANNOT_ENTER_UNSPECIFIED_REASON" in enter_reason and "access requirement" in enter_reason, (
+    "Quest/item/script access failures regressed to an opaque instance-entry error"
+)
 assert 'plan.config.activity == "random"' in travel, "Random Dungeon must remain destination-less until Dungeon Finder selects it"
 for map_id in (533, 615, 616, 603, 649, 249, 624, 631, 724, 532, 568, 565, 544, 548, 550, 534, 564, 580, 309, 509, 409, 469, 531):
     assert str(map_id) in SERVER, f"Raid map {map_id} disappeared from Group Composer travel mapping"

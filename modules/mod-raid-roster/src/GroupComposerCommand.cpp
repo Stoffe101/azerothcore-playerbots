@@ -672,6 +672,7 @@ char const* EnterStateReason(Map::EnterState state)
         case Map::CANNOT_ENTER_TOO_MANY_INSTANCES: return "they have entered too many instances recently";
         case Map::CANNOT_ENTER_MAX_PLAYERS: return "the target instance is already full";
         case Map::CANNOT_ENTER_ZONE_IN_COMBAT: return "an encounter is already in progress in the target instance";
+        case Map::CANNOT_ENTER_UNSPECIFIED_REASON: return "an instance access requirement (level, quest, item or script gate) is not satisfied";
         default: return "AzerothCore rejected instance entry";
     }
 }
@@ -799,9 +800,9 @@ bool TeleportCompletedPlan(Player* master, Plan const& plan, std::string& detail
     if (plan.config.mode == "dungeon")
         TitanRune::SaveSelectedMode(travelLeader, titanMode);
 
-    auto teleport = [&](Player* player)
+    auto teleport = [&](Player* player) -> bool
     {
-        if (!player) return;
+        if (!player) return false;
         if (player->IsInFlight())
         {
             player->GetMotionMaster()->MovementExpired();
@@ -810,16 +811,30 @@ bool TeleportCompletedPlan(Player* master, Plan const& plan, std::string& detail
         else
             player->SaveRecallPosition();
 
-        player->TeleportTo(destination->target_mapId, destination->target_X, destination->target_Y,
+        return player->TeleportTo(destination->target_mapId, destination->target_X, destination->target_Y,
             destination->target_Z, destination->target_Orientation);
     };
 
-    // Start with the authoritative group leader, then move every other reviewed member. This keeps
-    // raid lockouts and instance ownership on AzerothCore's normal group path instead of binding them
-    // to whichever assistant happened to operate Composer.
-    teleport(travelLeader);
+    // The real leader goes first. Never strand the human outside while the Playerbots disappear
+    // into an instance the leader could not enter. Every teleport return value is authoritative.
+    if (!teleport(travelLeader))
+    {
+        error = "'" + travelLeader->GetName() + "' could not enter the selected instance after preflight. "
+            "Check the access requirement or retry once the current teleport/state transition has settled.";
+        return false;
+    }
+
     for (Player* player : travelers)
-        if (player != travelLeader) teleport(player);
+    {
+        if (player == travelLeader)
+            continue;
+        if (!teleport(player))
+        {
+            error = "'" + player->GetName() + "' could not enter the selected instance after the leader. "
+                "The roster remains assembled; retry Enter Activity to move the missing member.";
+            return false;
+        }
+    }
 
     detail = std::string("Roster assembled and entering the selected ") +
         (plan.config.mode == "raid" ? "raid." : "dungeon.");

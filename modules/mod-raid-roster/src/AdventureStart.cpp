@@ -132,6 +132,12 @@ public:
             return;
         }
 
+        // Older WotLK raid-ready characters predate the explicit Frozen Halls access backfill.
+        // Repair them once on login so an existing boosted character can immediately enter PoS/HoR.
+        if (state.starterProfile == static_cast<uint8>(AdventureStartProfile::WotlkRaidReady) &&
+            AdventureStartControl::EnsureRaidReadyAccess(player, AdventureStartProfile::WotlkRaidReady))
+            player->SaveToDB(false, false);
+
         if (!state.starterGearGranted)
             TrackStarterGear(player);
     }
