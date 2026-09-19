@@ -73,8 +73,6 @@ export interface Panel {
     readonly frame: WoWFrame;
     readonly background: WoWTexture;
     readonly outline: Outline;
-    readonly topSheen: WoWTexture;
-    readonly bottomShade: WoWTexture;
     setBackground(color: Color): void;
 }
 
@@ -88,21 +86,10 @@ export function createPanel(
     background.SetAllPoints(frame);
     const outline = createOutline(frame, borderColor);
 
-    const topSheen = createSolid(frame, withAlpha(theme.colors.highlight, 0.04), "ARTWORK");
-    topSheen.SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1);
-    topSheen.SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -1);
-    topSheen.SetHeight(1);
-    const bottomShade = createSolid(frame, withAlpha(theme.colors.shadow, 0.30), "ARTWORK");
-    bottomShade.SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 1);
-    bottomShade.SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -1, 1);
-    bottomShade.SetHeight(1);
-
     return {
         frame,
         background,
         outline,
-        topSheen,
-        bottomShade,
         setBackground(color: Color): void { setTextureColor(background, color); },
     };
 }
