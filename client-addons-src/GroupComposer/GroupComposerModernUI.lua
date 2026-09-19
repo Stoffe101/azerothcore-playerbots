@@ -181,54 +181,10 @@ function ____exports.createPanel(self, parent, backgroundColor, borderColor)
     local background = ____exports.createSolid(nil, frame, backgroundColor)
     background:SetAllPoints(frame)
     local outline = ____exports.createOutline(nil, frame, borderColor)
-    local topSheen = ____exports.createSolid(
-        nil,
-        frame,
-        ____exports.withAlpha(nil, theme.colors.highlight, 0.04),
-        "ARTWORK"
-    )
-    topSheen:SetPoint(
-        "TOPLEFT",
-        frame,
-        "TOPLEFT",
-        1,
-        -1
-    )
-    topSheen:SetPoint(
-        "TOPRIGHT",
-        frame,
-        "TOPRIGHT",
-        -1,
-        -1
-    )
-    topSheen:SetHeight(1)
-    local bottomShade = ____exports.createSolid(
-        nil,
-        frame,
-        ____exports.withAlpha(nil, theme.colors.shadow, 0.3),
-        "ARTWORK"
-    )
-    bottomShade:SetPoint(
-        "BOTTOMLEFT",
-        frame,
-        "BOTTOMLEFT",
-        1,
-        1
-    )
-    bottomShade:SetPoint(
-        "BOTTOMRIGHT",
-        frame,
-        "BOTTOMRIGHT",
-        -1,
-        1
-    )
-    bottomShade:SetHeight(1)
     return {
         frame = frame,
         background = background,
         outline = outline,
-        topSheen = topSheen,
-        bottomShade = bottomShade,
         setBackground = function(self, color)
             ____exports.setTextureColor(nil, background, color)
         end
