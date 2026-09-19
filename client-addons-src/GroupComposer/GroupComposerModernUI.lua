@@ -1977,8 +1977,58 @@ function ____exports.supportedRaidSizes(self)
     end
     return result
 end
+function ____exports.requestActivities(self, mode, difficulty, size)
+    local selectedMode = mode or (____exports.config(nil).mode == "RAID" and "RAID" or "DUNGEON")
+    GC:RequestActivities(selectedMode, difficulty, size)
+end
+function ____exports.activityEligibility(self, id, mode)
+    local selectedMode = mode or (____exports.config(nil).mode == "RAID" and "RAID" or "DUNGEON")
+    local ____GC_activityEligibilityReady_71 = GC.activityEligibilityReady
+    if ____GC_activityEligibilityReady_71 == nil then
+        ____GC_activityEligibilityReady_71 = {}
+    end
+    local readyByMode = ____GC_activityEligibilityReady_71
+    local ____GC_activityEligibility_72 = GC.activityEligibility
+    if ____GC_activityEligibility_72 == nil then
+        ____GC_activityEligibility_72 = {}
+    end
+    local eligibilityByMode = ____GC_activityEligibility_72
+    local ____eligibilityByMode_selectedMode_73 = eligibilityByMode[selectedMode]
+    if ____eligibilityByMode_selectedMode_73 == nil then
+        ____eligibilityByMode_selectedMode_73 = {}
+    end
+    local entries = ____eligibilityByMode_selectedMode_73
+    local entry = entries[id]
+    if readyByMode[selectedMode] ~= true or entry == nil then
+        return {known = false, eligible = false, reason = "Checking access..."}
+    end
+    local ____temp_75 = entry.eligible == true
+    local ____entry_reason_74 = entry.reason
+    if ____entry_reason_74 == nil then
+        ____entry_reason_74 = entry.eligible == true and "Available" or "Locked"
+    end
+    return {
+        known = true,
+        eligible = ____temp_75,
+        reason = tostring(____entry_reason_74)
+    }
+end
+function ____exports.selectedActivityEligibility(self)
+    local cfg = ____exports.config(nil)
+    local ____exports_activityEligibility_77 = ____exports.activityEligibility
+    local ____cfg_activity_76 = cfg.activity
+    if ____cfg_activity_76 == nil then
+        ____cfg_activity_76 = ""
+    end
+    return ____exports_activityEligibility_77(
+        nil,
+        tostring(____cfg_activity_76),
+        cfg.mode == "RAID" and "RAID" or "DUNGEON"
+    )
+end
 function ____exports.setMode(self, mode)
     GC:SetMode(mode)
+    ____exports.requestActivities(nil, mode)
 end
 function ____exports.setDungeonActivity(self, id)
     GC:SetDungeonActivity(id)
@@ -1988,10 +2038,15 @@ function ____exports.setRaidActivity(self, id)
 end
 function ____exports.setRaidSize(self, size)
     GC:SetRaidSize(size)
+    ____exports.requestActivities(nil, "RAID")
 end
 function ____exports.setDifficulty(self, id)
     ____exports.config(nil).difficulty = id
     ____exports.touch(nil, "Difficulty changed")
+    ____exports.requestActivities(
+        nil,
+        ____exports.config(nil).mode == "RAID" and "RAID" or "DUNGEON"
+    )
 end
 function ____exports.setHumanRole(self, name, role)
     GC:SetHumanRole(name, role)
@@ -2016,6 +2071,10 @@ function ____exports.clearPlan(self)
 end
 function ____exports.loadProfile(self, name)
     GC:LoadProfile(name)
+    ____exports.requestActivities(
+        nil,
+        ____exports.config(nil).mode == "RAID" and "RAID" or "DUNGEON"
+    )
 end
 function ____exports.saveProfile(self, name)
     GC:SaveProfile(name)
@@ -2042,11 +2101,11 @@ function ____exports.removePin(self, index)
     GC:RemovePinnedMember(index)
 end
 function ____exports.planMembers(self)
-    local ____exports_plan_result_members_71 = ____exports.plan(nil).members
-    if ____exports_plan_result_members_71 == nil then
-        ____exports_plan_result_members_71 = {}
+    local ____exports_plan_result_members_78 = ____exports.plan(nil).members
+    if ____exports_plan_result_members_78 == nil then
+        ____exports_plan_result_members_78 = {}
     end
-    return ____exports_plan_result_members_71
+    return ____exports_plan_result_members_78
 end
 function ____exports.roleAccent(self, role)
     if role == "TANK" then
@@ -2085,19 +2144,19 @@ function ____exports.phaseLabel(self, phase)
     return "Ready to configure"
 end
 function ____exports.isBusy(self)
-    local ____exports_progress_result_phase_72 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_72 == nil then
-        ____exports_progress_result_phase_72 = "IDLE"
+    local ____exports_progress_result_phase_79 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_79 == nil then
+        ____exports_progress_result_phase_79 = "IDLE"
     end
-    local phase = tostring(____exports_progress_result_phase_72)
+    local phase = tostring(____exports_progress_result_phase_79)
     return phase == "BUILDING" or phase == "PREPARING" or phase == "ASSEMBLING" or phase == "TRAVEL"
 end
 function ____exports.isAssembled(self)
-    local ____exports_progress_result_phase_73 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_73 == nil then
-        ____exports_progress_result_phase_73 = ""
+    local ____exports_progress_result_phase_80 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_80 == nil then
+        ____exports_progress_result_phase_80 = ""
     end
-    return tostring(____exports_progress_result_phase_73) == "ASSEMBLED"
+    return tostring(____exports_progress_result_phase_80) == "ASSEMBLED"
 end
 function ____exports.hasFixedActivityDestination(self)
     local cfg = ____exports.config(nil)
@@ -3914,17 +3973,40 @@ function ____exports.createActivityBrowser(self, parent)
                     column * 436,
                     -(row * 86)
                 )
-                card.button:setSelected(tostring(Model:config().activity) == item.id)
+                local access = Model:activityEligibility(
+                    item.id,
+                    mode(nil)
+                )
+                local selected = tostring(Model:config().activity) == item.id
+                card.button:setSelected(selected)
+                card.button:setEnabled(access.known and access.eligible)
                 card.iconBadge.icon:SetTexture(item.icon)
                 card.iconBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-                card.iconBadge.outline:setColor(tostring(Model:config().activity) == item.id and theme.colors.primary or theme.colors.borderStrong)
+                card.iconBadge.outline:setColor(not access.known and theme.colors.borderStrong or (access.eligible and (selected and theme.colors.primary or theme.colors.success) or theme.colors.warning))
                 card.title:SetText(item.label)
-                card.detail:SetText(item.detail)
-                card.tag:SetText(mode(nil) == "RAID" and string.upper(tostring(item.era or "")) or (item.id == "random" and "DUNGEON FINDER" or (__TS__Number(item.minLevel or 80) >= 80 and "ENDGAME" or "LEVELING")))
+                card.detail:SetText(access.known and not access.eligible and access.reason or item.detail)
+                if not access.known then
+                    card.tag:SetText("CHECKING ACCESS")
+                    card.tag:SetTextColor(theme.colors.muted[1], theme.colors.muted[2], theme.colors.muted[3], 1)
+                elseif not access.eligible then
+                    card.tag:SetText("LOCKED")
+                    card.tag:SetTextColor(theme.colors.warning[1], theme.colors.warning[2], theme.colors.warning[3], 1)
+                else
+                    card.tag:SetText(mode(nil) == "RAID" and string.upper(tostring(item.era or "")) .. " · AVAILABLE" or (item.id == "random" and "DUNGEON FINDER · AVAILABLE" or (__TS__Number(item.minLevel or 80) >= 80 and "ENDGAME · AVAILABLE" or "LEVELING · AVAILABLE")))
+                    card.tag:SetTextColor(theme.colors.success[1], theme.colors.success[2], theme.colors.success[3], 1)
+                end
                 local id = item.id
                 card.button.frame:SetScript(
                     "OnMouseDown",
                     function()
+                        local latest = Model:activityEligibility(
+                            id,
+                            mode(nil)
+                        )
+                        if not latest.known or not latest.eligible then
+                            Model:fireStatus(latest.reason)
+                            return
+                        end
                         if mode(nil) == "RAID" then
                             Model:setRaidActivity(id)
                         else
@@ -3942,7 +4024,16 @@ function ____exports.createActivityBrowser(self, parent)
             math.ceil(#items / 2) * 86
         ))
     end
+    Model:composer():RegisterCallback(
+        "ACTIVITIES_CHANGED",
+        function()
+            if modal.frame:IsShown() then
+                refresh(nil)
+            end
+        end
+    )
     local function open(self)
+        Model:requestActivities(mode(nil))
         if mode(nil) == "RAID" then
             filter = currentEra(nil)
             modal:setTitle("Choose Raid")
@@ -4041,6 +4132,34 @@ return ____exports
  end,
 ["components.TemplateBrowser"] = function(...) 
 --[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+-- Lua Library inline imports
+local function __TS__Number(value)
+    local valueType = type(value)
+    if valueType == "number" then
+        return value
+    elseif valueType == "string" then
+        local numberValue = tonumber(value)
+        if numberValue then
+            return numberValue
+        end
+        if value == "Infinity" then
+            return math.huge
+        end
+        if value == "-Infinity" then
+            return -math.huge
+        end
+        local stringWithoutSpaces = string.gsub(value, "%s", "")
+        if stringWithoutSpaces == "" then
+            return 0
+        end
+        return 0 / 0
+    elseif valueType == "boolean" then
+        return value and 1 or 0
+    else
+        return 0 / 0
+    end
+end
+-- End of Lua Library inline imports
 local ____exports = {}
 local Model = require("model.ComposerModel")
 local Native = require("core.Native")
@@ -4213,10 +4332,31 @@ function ____exports.createTemplateBrowser(self, parent)
                     )
                 )
                 card.iconBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                local ____opt_result_15
+                if profile ~= nil then
+                    ____opt_result_15 = profile.activity
+                end
+                local ____opt_result_15_16 = ____opt_result_15
+                if ____opt_result_15_16 == nil then
+                    ____opt_result_15_16 = ""
+                end
+                local activityId = tostring(____opt_result_15_16)
+                local access = Model:activityEligibility(activityId, "RAID")
                 card.name:SetText(profileName)
-                card.tag:SetText(builtin and string.upper(tostring(templateEra(nil, profileName))) .. " · BUILT-IN" or "CUSTOM")
-                card.tag:SetTextColor(accent[1], accent[2], accent[3], 1)
-                card.info:SetText(Model:profileDescription(profileName))
+                if not access.known then
+                    card.tag:SetText("CHECKING ACCESS")
+                    card.tag:SetTextColor(theme.colors.muted[1], theme.colors.muted[2], theme.colors.muted[3], 1)
+                    card.info:SetText(Model:profileDescription(profileName))
+                elseif not access.eligible then
+                    card.tag:SetText("LOCKED")
+                    card.tag:SetTextColor(theme.colors.warning[1], theme.colors.warning[2], theme.colors.warning[3], 1)
+                    card.info:SetText(access.reason)
+                else
+                    card.tag:SetText(builtin and string.upper(tostring(templateEra(nil, profileName))) .. " · BUILT-IN · AVAILABLE" or "CUSTOM · AVAILABLE")
+                    card.tag:SetTextColor(theme.colors.success[1], theme.colors.success[2], theme.colors.success[3], 1)
+                    card.info:SetText(Model:profileDescription(profileName))
+                end
+                card.load:setEnabled(access.known and access.eligible)
                 card.load.frame:ClearAllPoints()
                 card.remove.frame:ClearAllPoints()
                 if builtin then
@@ -4255,6 +4395,25 @@ function ____exports.createTemplateBrowser(self, parent)
                 card.load.frame:SetScript(
                     "OnMouseDown",
                     function()
+                        local ____Model_21 = Model
+                        local ____Model_activityEligibility_22 = Model.activityEligibility
+                        local ____opt_result_19
+                        if profile ~= nil then
+                            ____opt_result_19 = profile.activity
+                        end
+                        local ____opt_result_19_20 = ____opt_result_19
+                        if ____opt_result_19_20 == nil then
+                            ____opt_result_19_20 = ""
+                        end
+                        local latest = ____Model_activityEligibility_22(
+                            ____Model_21,
+                            tostring(____opt_result_19_20),
+                            "RAID"
+                        )
+                        if not latest.known or not latest.eligible then
+                            Model:fireStatus(latest.reason)
+                            return
+                        end
                         Model:loadProfile(profileName)
                         modal:hide()
                     end
@@ -4372,19 +4531,39 @@ function ____exports.createTemplateBrowser(self, parent)
         8,
         0
     )
+    Model:composer():RegisterCallback(
+        "ACTIVITIES_CHANGED",
+        function(____, mode)
+            if mode == "RAID" and modal.frame:IsShown() then
+                refresh(nil)
+            end
+        end
+    )
     local function open(self)
+        local ____Model_24 = Model
+        local ____Model_requestActivities_25 = Model.requestActivities
+        local ____table_size_23 = Model:config().size
+        if ____table_size_23 == nil then
+            ____table_size_23 = 25
+        end
+        ____Model_requestActivities_25(
+            ____Model_24,
+            "RAID",
+            "normal",
+            __TS__Number(____table_size_23)
+        )
         save:setEnabled(Model:config().mode == "RAID")
         if Model:config().mode == "RAID" then
             local raid = D:GetRaidById(Model:config().activity)
-            local ____opt_result_15
+            local ____opt_result_28
             if raid ~= nil then
-                ____opt_result_15 = raid.era
+                ____opt_result_28 = raid.era
             end
-            local ____opt_result_15_16 = ____opt_result_15
-            if ____opt_result_15_16 == nil then
-                ____opt_result_15_16 = "WotLK"
+            local ____opt_result_28_29 = ____opt_result_28
+            if ____opt_result_28_29 == nil then
+                ____opt_result_28_29 = "WotLK"
             end
-            local era = tostring(____opt_result_15_16)
+            local era = tostring(____opt_result_28_29)
             tab = era == "TBC" and "TBC" or (era == "Classic" and "Classic" or "WotLK")
         else
             tab = "WotLK"
@@ -8195,8 +8374,13 @@ function ____exports.createModernDashboard(self)
         end
         ____coverageDamageText_SetText_94(coverageDamageText, ____hasPreparedCoverage_93)
         local warnings = Model:planWarnings()
+        local selectedAccess = Model:selectedActivityEligibility()
         local nextText = ""
-        if phase == "ERROR" then
+        if not selectedAccess.known then
+            nextText = "Checking whether this character can enter the selected activity..."
+        elseif not selectedAccess.eligible then
+            nextText = "Selected activity is locked.\n" .. selectedAccess.reason
+        elseif phase == "ERROR" then
             nextText = "Adjust the highlighted requirement, then Build & Prepare again."
         elseif not Model:humanReady() then
             nextText = "Choose a legal role for every real player."
@@ -8242,9 +8426,10 @@ function ____exports.createModernDashboard(self)
         nextDetail:SetTextColor(nextColor[1], nextColor[2], nextColor[3], 1)
         nextDetail:SetText(nextText)
         local assembled = phase == "ASSEMBLED"
-        local canTeleport = assembled and Model:hasFixedActivityDestination()
+        local activityAvailable = selectedAccess.known and selectedAccess.eligible
+        local canTeleport = assembled and activityAvailable and Model:hasFixedActivityDestination()
         local ____buildButton_setEnabled_103 = buildButton.setEnabled
-        local ____temp_102 = Model:humanReady() and not Model:isBusy() and not assembled
+        local ____temp_102 = activityAvailable and Model:humanReady() and not Model:isBusy() and not assembled
         if ____temp_102 then
             local ____temp_101 = Model:config().mode ~= "RAID"
             if not ____temp_101 then
@@ -8327,6 +8512,7 @@ function ____exports.createModernDashboard(self)
             ChoiceUI:closeChoicePopup()
             applyScale(nil)
             frame:Show()
+            Model:requestActivities(Model:config().mode == "RAID" and "RAID" or "DUNGEON")
             refresh(nil)
             Model:requestAnchors()
             Model:requestStatus()
@@ -8369,6 +8555,10 @@ function ____exports.createModernDashboard(self)
     )
     GC:RegisterCallback(
         "HUMANS_CHANGED",
+        function() return refresh(nil) end
+    )
+    GC:RegisterCallback(
+        "ACTIVITIES_CHANGED",
         function() return refresh(nil) end
     )
     GC:RegisterCallback(
