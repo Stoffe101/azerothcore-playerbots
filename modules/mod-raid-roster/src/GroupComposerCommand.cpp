@@ -432,8 +432,11 @@ uint8 RequiredProgressionFor(Config const& config)
     if (config.activity == "sunwell")
         return PROGRESSION_TBC_TIER_4;
 
+    if (config.activity == "zulaman")
+        return static_cast<uint8>(sIndividualProgression->RequiredZulAmanProgression);
+
     static std::unordered_set<std::string> const tbcEntry = {
-        "karazhan", "zulaman", "gruul", "magtheridon"
+        "karazhan", "gruul", "magtheridon"
     };
     if (tbcEntry.count(config.activity)) return PROGRESSION_PRE_TBC;
 
@@ -1660,7 +1663,7 @@ public:
                     itr->second.minimumItemLevel, itr->second.targetItemLevel, itr->second.fullRebuild);
                 auto planItr = s_plans.find(itr->second.ownerGuid);
                 if (planItr != s_plans.end())
-                    EnsureComposerInstanceAccess(bot, planItr->second.config);
+                    EnsureComposerInstanceAccess(master, bot, planItr->second.config);
                 itr = s_pendingSync.erase(itr);
             }
             else if (itr->second.elapsed > 12000) itr = s_pendingSync.erase(itr);

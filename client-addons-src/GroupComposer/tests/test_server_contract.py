@@ -569,6 +569,7 @@ assert 'EnsureRaidReadyAccess(player, profile);' in ADVENTURE_START_CONTROL
 # Activity visibility and execution use the same authoritative server-side access contract.
 assert "uint8 RequiredProgressionFor(Config const& config)" in SERVER
 assert 'config.activity == "forge_souls"' in SERVER and "PROGRESSION_WOTLK_TIER_3" in SERVER
+assert 'config.activity == "zulaman"' in SERVER and "RequiredZulAmanProgression" in SERVER
 assert "bool ActivityEligible(Player* player, Config const& config, std::string& reason)" in SERVER
 assert "sIndividualProgression->hasPassedProgression" in SERVER
 assert "player->Satisfy(sObjectMgr->GetAccessRequirement(mapId, ActivityDifficulty(config)), mapId, false)" in SERVER
@@ -576,6 +577,7 @@ assert 'SendActivityEligibility' in SERVER and '"[GC]|ACTIVITY|{}|{}|{}|{}"' in 
 assert '"Selected activity is locked: " + eligibilityReason' in SERVER
 assert '"Selected dungeon is locked: " + eligibilityReason' in SERVER
 assert "ActivityEligible(player, plan.config, eligibilityReason)" in travel
+assert "EnsureComposerInstanceAccess(master, bot, planItr->second.config)" in SERVER
 assert 'function GC:RequestActivities' in CORE and 'kind == "ACTIVITY"' in CORE and 'kind == "ACTIVITYDONE"' in CORE
 assert 'activityEligibility' in MODEL and 'selectedActivityEligibility' in MODEL
 assert '"LOCKED"' in ACTIVITY_BROWSER and 'setEnabled(access.known && access.eligible)' in ACTIVITY_BROWSER

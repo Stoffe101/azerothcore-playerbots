@@ -164,6 +164,9 @@ GroupComposer = {
     config = nil,
     plan = { members = {}, warnings = {}, valid = false, ready = false, summary = {} },
     progress = { phase = "IDLE", current = 0, total = 0, detail = "Configure a roster to begin." },
+    activityEligibility = { DUNGEON = {}, RAID = {} },
+    activityEligibilityReady = { DUNGEON = false, RAID = false },
+    activityProgression = 18,
 }
 
 function GroupComposer:GetConfig() return self.config end
@@ -187,6 +190,16 @@ function GroupComposer:SetHumanRole(name, role) cfg.humanRoles[name] = role end
 function GroupComposer:FindRoster() end
 function GroupComposer:Assemble() end
 function GroupComposer:RequestAnchors() end
+function GroupComposer:RequestActivities(mode)
+    mode = mode == "RAID" and "RAID" or "DUNGEON"
+    self.activityEligibility[mode] = {}
+    local source = mode == "RAID" and GroupComposerData.RAIDS or GroupComposerData.DUNGEONS
+    for _, activity in ipairs(source) do
+        self.activityEligibility[mode][activity.id] = { eligible = true, reason = "Available" }
+    end
+    self.activityEligibilityReady[mode] = true
+    self:Fire("ACTIVITIES_CHANGED", mode)
+end
 function GroupComposer:RequestStatus() end
 function GroupComposer:ClearServerPlan() self:Touch("Cleared") end
 function GroupComposer:LoadProfile() end
