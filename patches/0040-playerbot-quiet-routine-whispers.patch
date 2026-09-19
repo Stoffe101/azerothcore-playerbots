@@ -52,7 +52,7 @@ diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/LeaveGroupAction.cpp b/m
 diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp b/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp
 --- a/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp
 +++ b/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp
-@@ -96,240 +96,215 @@
+@@ -96,240 +96,210 @@
  
      bool targetSelected = false;
  
@@ -399,7 +399,6 @@ diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp b/modu
 +                targetFlag = TARGET_FLAG_TRADE_ITEM;
 +                packet << targetFlag << (uint8)1 << ObjectGuid((uint64)TRADE_SLOT_NONTRADED).WriteAsPacked();
 +                targetSelected = true;
-+                targetText = "traded item";
 +            }
 +            else
 +            {
@@ -407,7 +406,6 @@ diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp b/modu
 +                packet << targetFlag;
 +                packet << itemForSpell->GetGUID().WriteAsPacked();
 +                targetSelected = true;
-+                targetText = chat->FormatItem(itemForSpell->GetTemplate());
 +            }
 +            uint32 castTime = spellInfo->CalcCastTime();
 +            botAI->SetNextCheckDelay(castTime + sPlayerbotAIConfig.reactDelay);
@@ -428,16 +426,13 @@ diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp b/modu
 +            targetSelected = true;
 +
 +            if (unitTarget == bot || !unitTarget->IsInWorld() || unitTarget->IsDuringRemoveFromWorld())
-+                targetText = "self";
 +            else if (unitTarget->IsHostileTo(bot))
-+                targetText = "self";
 +            else
-+                }
++        }
 +        else
 +        {
 +            packet << bot->GetPackGUID();
 +            targetSelected = true;
-+            targetText = "self";
 +        }
 +    }
 +
