@@ -78,6 +78,9 @@ jobs:
           grep -q 'p->GetSession() && p->GetSession()->PlayerLoading()' "$ERA/EraTalentPin.cpp"
           grep -q 'HasAtLoginFlag(AT_LOGIN_RESET_TALENTS)' "$ERA/EraTalentPin.cpp"
           ! grep -q 'if (noCost && !p->IsInWorld())' "$ERA/EraTalentPin.cpp"
+          grep -q 'uint8 LoadedProgressionState(Player\* p)' "$ERA/EraTalentIP.cpp"
+          grep -q 'p->IsQuestRewarded(66000 + i)' "$ERA/EraTalentIP.cpp"
+          ! grep -A8 'EraId EraFromIP' "$ERA/EraTalentIP.cpp" | grep -q 'GetPlayerProgressionFromQuests'
           # Internal native-spec cleanup and every reset fired while WorldSession is still loading
           # must never delete the custom era talent rows. IsInWorld is not a login boundary: the
           # core consumes AT_LOGIN_RESET_TALENTS after AddPlayerToMap but before PlayerLoading=false.
@@ -88,6 +91,21 @@ jobs:
           assert hook.index("IsInternalTalentReset") < hook.index("EraTalents::Reset"), hook
           assert hook.index("PlayerLoading()") < hook.index("EraTalents::Reset"), hook
           assert "noCost && !p->IsInWorld()" not in hook, hook
+
+          # The pre-action hook executes inside Player::LoadFromDB, before AddPlayerToMap. IP's
+          # public getter returns progression 0 outside the world, so EraFromIP must read the
+          # rewarded progression quests that LoadFromDB has already populated.
+          storage = Path("azerothcore-wotlk/src/server/game/Entities/Player/PlayerStorage.cpp").read_text()
+          login = Path("azerothcore-wotlk/src/server/game/Handlers/CharacterHandler.cpp").read_text()
+          era_ip = Path("azerothcore-wotlk/modules/mod-era-talents/src/EraTalentIP.cpp").read_text()
+          assert storage.index("_LoadQuestStatusRewarded") < storage.index("OnPlayerBeforeLoadActionButtons"), storage
+          load_call = login.index("pCurrChar->LoadFromDB")
+          add_map = login.index("AddPlayerToMap", load_call)
+          assert load_call < add_map, login[load_call:add_map + 200]
+          era_from_ip = era_ip[era_ip.index("EraId EraFromIP"):era_ip.index("bool EraHasTalentTrees")]
+          assert "LoadedProgressionState(p)" in era_from_ip, era_from_ip
+          assert "GetPlayerProgressionFromQuests" not in era_from_ip, era_from_ip
+          assert "IsQuestRewarded(66000 + i)" in era_ip, era_ip
           print("EraTalents relog persistence guard contract passed")
           PY
 
