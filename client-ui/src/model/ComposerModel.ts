@@ -19,6 +19,12 @@ export interface RequiredBuild {
     count: number;
 }
 
+export interface ActivityEligibility {
+    known: boolean;
+    eligible: boolean;
+    reason: string;
+}
+
 export interface PlanMember {
     subgroup: number;
     name: string;
@@ -512,13 +518,46 @@ export function supportedRaidSizes(): number[] {
     return result;
 }
 
-export function setMode(mode: "DUNGEON" | "RAID"): void { GC.SetMode(mode); }
+export function requestActivities(mode?: "DUNGEON" | "RAID", difficulty?: string, size?: number): void {
+    const selectedMode = mode ?? (config().mode === "RAID" ? "RAID" : "DUNGEON");
+    GC.RequestActivities(selectedMode, difficulty, size);
+}
+
+export function activityEligibility(id: string, mode?: "DUNGEON" | "RAID"): ActivityEligibility {
+    const selectedMode = mode ?? (config().mode === "RAID" ? "RAID" : "DUNGEON");
+    const readyByMode = GC.activityEligibilityReady ?? {};
+    const eligibilityByMode = GC.activityEligibility ?? {};
+    const entries = eligibilityByMode[selectedMode] ?? {};
+    const entry = entries[id];
+    if (readyByMode[selectedMode] !== true || entry === undefined) {
+        return { known: false, eligible: false, reason: "Checking access..." };
+    }
+    return {
+        known: true,
+        eligible: entry.eligible === true,
+        reason: String(entry.reason ?? (entry.eligible === true ? "Available" : "Locked")),
+    };
+}
+
+export function selectedActivityEligibility(): ActivityEligibility {
+    const cfg = config();
+    return activityEligibility(String(cfg.activity ?? ""), cfg.mode === "RAID" ? "RAID" : "DUNGEON");
+}
+
+export function setMode(mode: "DUNGEON" | "RAID"): void {
+    GC.SetMode(mode);
+    requestActivities(mode);
+}
 export function setDungeonActivity(id: string): void { GC.SetDungeonActivity(id); }
 export function setRaidActivity(id: string): void { GC.SetRaidActivity(id); }
-export function setRaidSize(size: number): void { GC.SetRaidSize(size); }
+export function setRaidSize(size: number): void {
+    GC.SetRaidSize(size);
+    requestActivities("RAID");
+}
 export function setDifficulty(id: string): void {
     config().difficulty = id;
     touch("Difficulty changed");
+    requestActivities(config().mode === "RAID" ? "RAID" : "DUNGEON");
 }
 export function setHumanRole(name: string, role: Role): void { GC.SetHumanRole(name, role); }
 export function buildAndPrepare(): void { GC.FindRoster(); }
@@ -527,7 +566,10 @@ export function teleportToInstance(): void { GC.TeleportToInstance(); }
 export function requestAnchors(): void { GC.RequestAnchors(); }
 export function requestStatus(): void { GC.RequestStatus(); }
 export function clearPlan(): void { GC.ClearServerPlan(); }
-export function loadProfile(name: string): void { GC.LoadProfile(name); }
+export function loadProfile(name: string): void {
+    GC.LoadProfile(name);
+    requestActivities(config().mode === "RAID" ? "RAID" : "DUNGEON");
+}
 export function saveProfile(name: string): void { GC.SaveProfile(name); }
 export function deleteProfile(name: string): void { GC.DeleteProfile(name); }
 export function listBuiltinProfiles(): string[] { return ProfileFns.ListBuiltins() ?? []; }

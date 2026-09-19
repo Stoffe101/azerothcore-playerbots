@@ -123,10 +123,23 @@ export function createTemplateBrowser(parent: WoWFrame): TemplateBrowser {
             card.iconBadge.outline.setColor(accent);
             card.iconBadge.icon.SetTexture(Model.activityIconFor(String(profile?.activity ?? ""), "RAID"));
             card.iconBadge.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
+            const activityId = String(profile?.activity ?? "");
+            const access = Model.activityEligibility(activityId, "RAID");
             card.name.SetText(profileName);
-            card.tag.SetText(builtin ? String(templateEra(profileName)).toUpperCase() + " · BUILT-IN" : "CUSTOM");
-            card.tag.SetTextColor(accent[0], accent[1], accent[2], 1);
-            card.info.SetText(Model.profileDescription(profileName));
+            if (!access.known) {
+                card.tag.SetText("CHECKING ACCESS");
+                card.tag.SetTextColor(theme.colors.muted[0], theme.colors.muted[1], theme.colors.muted[2], 1);
+                card.info.SetText(Model.profileDescription(profileName));
+            } else if (!access.eligible) {
+                card.tag.SetText("LOCKED");
+                card.tag.SetTextColor(theme.colors.warning[0], theme.colors.warning[1], theme.colors.warning[2], 1);
+                card.info.SetText(access.reason);
+            } else {
+                card.tag.SetText(builtin ? String(templateEra(profileName)).toUpperCase() + " · BUILT-IN · AVAILABLE" : "CUSTOM · AVAILABLE");
+                card.tag.SetTextColor(theme.colors.success[0], theme.colors.success[1], theme.colors.success[2], 1);
+                card.info.SetText(Model.profileDescription(profileName));
+            }
+            card.load.setEnabled(access.known && access.eligible);
 
             card.load.frame.ClearAllPoints(); card.remove.frame.ClearAllPoints();
             if (builtin) {
@@ -137,7 +150,15 @@ export function createTemplateBrowser(parent: WoWFrame): TemplateBrowser {
                 card.remove.frame.SetScript("OnMouseDown", () => { Model.deleteProfile(profileName); refresh(); });
                 card.remove.frame.Show();
             }
-            card.load.frame.SetScript("OnMouseDown", () => { Model.loadProfile(profileName); modal.hide(); });
+            card.load.frame.SetScript("OnMouseDown", () => {
+                const latest = Model.activityEligibility(String(profile?.activity ?? ""), "RAID");
+                if (!latest.known || !latest.eligible) {
+                    Model.fireStatus(latest.reason);
+                    return;
+                }
+                Model.loadProfile(profileName);
+                modal.hide();
+            });
             card.panel.frame.Show();
         }
         scroll.setContentHeight(Math.max(420, Math.ceil(names.length / 2) * 92));
@@ -154,7 +175,14 @@ export function createTemplateBrowser(parent: WoWFrame): TemplateBrowser {
     });
     save.frame.SetPoint("LEFT", nameInput.frame, "RIGHT", 8, 0);
 
+    Model.composer().RegisterCallback("ACTIVITIES_CHANGED", (mode: string) => {
+        if (mode === "RAID" && modal.frame.IsShown()) refresh();
+    });
+
     function open(): void {
+        // Template availability is based on progression/quest access using Normal difficulty.
+        // Heroic-only achievement requirements are rechecked after the profile is loaded.
+        Model.requestActivities("RAID", "normal", Number(Model.config().size ?? 25));
         save.setEnabled(Model.config().mode === "RAID");
         if (Model.config().mode === "RAID") {
             const raid = D.GetRaidById(Model.config().activity);

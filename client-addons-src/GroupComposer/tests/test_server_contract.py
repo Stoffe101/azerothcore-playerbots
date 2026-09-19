@@ -101,7 +101,7 @@ assert "GetLFGDungeon(mapId, difficulty)" in SERVER
 
 for command in (
     "begin", "pref", "humanrole", "human", "pin", "arrangepref", "find", "arrange",
-    "move", "assemble", "teleport", "queue", "anchors", "diagnostics", "clear", "status",
+    "move", "assemble", "teleport", "activities", "queue", "anchors", "diagnostics", "clear", "status",
 ):
     assert re.search(r'\{\s*"' + re.escape(command) + r'"\s*,', SERVER), (
         f"Missing server command registration: {command}"
@@ -111,7 +111,7 @@ for command in (
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
 assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
-assert '## Version: 0.13.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
+assert '## Version: 0.13.1' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
@@ -488,6 +488,12 @@ for quest_id in (24510, 24499, 24683, 24498, 24710, 24711, 24506, 24511, 24682, 
     assert str(quest_id) in ADVENTURE_START_CONTROL, f"Frozen Halls raid-ready access quest {quest_id} is missing"
 assert "player->SetRewardedQuest(questId);" in ADVENTURE_START_CONTROL
 assert "EnsureRaidReadyAccess(player, profile);" in ADVENTURE_START_CONTROL
+assert "bool CompleteWotlkExpansionAccess(Player* player);" in ADVENTURE_START_CONTROL_H
+complete_wotlk = section(ADVENTURE_START_CONTROL, "bool CompleteWotlkExpansionAccess(", "bool ApplyProfile(")
+assert "ForceUpdateProgressionState(player, PROGRESSION_WOTLK_TIER_5)" in complete_wotlk
+assert "BATTLE_UNDERCITY_ALLIANCE" in complete_wotlk and "BATTLE_UNDERCITY_HORDE" in complete_wotlk
+assert "EnsureRaidReadyAccess(player, AdventureStartProfile::WotlkRaidReady)" in complete_wotlk
+assert "13188u" in complete_wotlk and "13189u" in complete_wotlk
 login_start = section(ADVENTURE_START, "void OnPlayerLogin", "void OnPlayerLearnTalents")
 assert "state.starterProfile" in login_start and "EnsureRaidReadyAccess" in login_start
 assert "player->SaveToDB(false, false);" in login_start, "Existing raid-ready access repair is not persisted"
@@ -559,6 +565,22 @@ assert '24499u' in SERVER and '24511u' in SERVER and '24710u' in SERVER and '247
 assert 'AdventureStartControl::EnsureRaidReadyAccess(bot, AdventureStartProfile::WotlkRaidReady)' in SERVER
 assert 'Make THIS char WotLK Raid Ready' in SERVER
 assert 'EnsureRaidReadyAccess(player, profile);' in ADVENTURE_START_CONTROL
+
+# Activity visibility and execution use the same authoritative server-side access contract.
+assert "uint8 RequiredProgressionFor(Config const& config)" in SERVER
+assert 'config.activity == "forge_souls"' in SERVER and "PROGRESSION_WOTLK_TIER_3" in SERVER
+assert "bool ActivityEligible(Player* player, Config const& config, std::string& reason)" in SERVER
+assert "sIndividualProgression->hasPassedProgression" in SERVER
+assert "player->Satisfy(sObjectMgr->GetAccessRequirement(mapId, ActivityDifficulty(config)), mapId, false)" in SERVER
+assert 'SendActivityEligibility' in SERVER and '"[GC]|ACTIVITY|{}|{}|{}|{}"' in SERVER
+assert '"Selected activity is locked: " + eligibilityReason' in SERVER
+assert '"Selected dungeon is locked: " + eligibilityReason' in SERVER
+assert "ActivityEligible(player, plan.config, eligibilityReason)" in travel
+assert 'function GC:RequestActivities' in CORE and 'kind == "ACTIVITY"' in CORE and 'kind == "ACTIVITYDONE"' in CORE
+assert 'activityEligibility' in MODEL and 'selectedActivityEligibility' in MODEL
+assert '"LOCKED"' in ACTIVITY_BROWSER and 'setEnabled(access.known && access.eligible)' in ACTIVITY_BROWSER
+assert 'Model.requestActivities("RAID", "normal"' in TEMPLATE_BROWSER
+assert '"Selected activity is locked.' in MODERN
 
 # V4 sends an explicit local-player marker with each roster member. Human no longer implies YOU,
 # which matters as soon as a real friend is part of the reviewed raid.
@@ -861,7 +883,7 @@ assert "function wheel(this: void" in CHOICE_SELECT
 assert "function wheel(this: void" in SCROLL_LIST
 assert "sync-group-composer-client.sh" in UPDATE_SH
 assert "GroupComposerModernUI.lua" in SYNC_CLIENT and "Interface/AddOns/GroupComposer" in SYNC_CLIENT
-assert "0.13.0" in TOC and "0.13.0" in DATA
+assert "0.13.1" in TOC and "0.13.1" in DATA
 
 # Long activity lists use a dedicated filtered two-column browser instead of the compact ChoiceSelect.
 assert 'ActivityBrowserUI.createActivityBrowser(frame)' in MODERN

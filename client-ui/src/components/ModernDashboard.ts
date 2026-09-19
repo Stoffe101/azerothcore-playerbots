@@ -1767,8 +1767,13 @@ export function createModernDashboard(): Dashboard {
         );
 
         const warnings = Model.planWarnings();
+        const selectedAccess = Model.selectedActivityEligibility();
         let nextText = "";
-        if (phase === "ERROR") {
+        if (!selectedAccess.known) {
+            nextText = "Checking whether this character can enter the selected activity...";
+        } else if (!selectedAccess.eligible) {
+            nextText = "Selected activity is locked.\n" + selectedAccess.reason;
+        } else if (phase === "ERROR") {
             nextText = "Adjust the highlighted requirement, then Build & Prepare again.";
         } else if (!Model.humanReady()) {
             nextText = "Choose a legal role for every real player.";
@@ -1801,8 +1806,9 @@ export function createModernDashboard(): Dashboard {
         nextDetail.SetText(nextText);
 
         const assembled = phase === "ASSEMBLED";
-        const canTeleport = assembled && Model.hasFixedActivityDestination();
-        buildButton.setEnabled(Model.humanReady() && !Model.isBusy() && !assembled && (Model.config().mode !== "RAID" || Model.roleTargetTotal() === Number(Model.config().size ?? 25)));
+        const activityAvailable = selectedAccess.known && selectedAccess.eligible;
+        const canTeleport = assembled && activityAvailable && Model.hasFixedActivityDestination();
+        buildButton.setEnabled(activityAvailable && Model.humanReady() && !Model.isBusy() && !assembled && (Model.config().mode !== "RAID" || Model.roleTargetTotal() === Number(Model.config().size ?? 25)));
         if (assembled) buildButton.frame.Hide(); else buildButton.frame.Show();
 
         teleportButton.setEnabled(canTeleport);
@@ -1865,6 +1871,7 @@ export function createModernDashboard(): Dashboard {
             ChoiceUI.closeChoicePopup();
             applyScale();
             frame.Show();
+            Model.requestActivities(Model.config().mode === "RAID" ? "RAID" : "DUNGEON");
             refresh();
             Model.requestAnchors();
             Model.requestStatus();
@@ -1891,6 +1898,7 @@ export function createModernDashboard(): Dashboard {
     });
     GC.RegisterCallback("PROGRESS_CHANGED", () => refresh());
     GC.RegisterCallback("HUMANS_CHANGED", () => refresh());
+    GC.RegisterCallback("ACTIVITIES_CHANGED", () => refresh());
     GC.RegisterCallback("PROFILES_CHANGED", () => refresh());
     GC.RegisterCallback("STATUS", (text: string) => {
         statusNotice = String(text ?? "");

@@ -158,16 +158,37 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
             const row = Math.floor(i / 2);
             card.button.frame.ClearAllPoints();
             card.button.frame.SetPoint("TOPLEFT", scroll.content, "TOPLEFT", column * 436, -(row * 86));
-            card.button.setSelected(String(Model.config().activity) === item.id);
+            const access = Model.activityEligibility(item.id, mode());
+            const selected = String(Model.config().activity) === item.id;
+            card.button.setSelected(selected);
+            card.button.setEnabled(access.known && access.eligible);
             card.iconBadge.icon.SetTexture(item.icon);
             card.iconBadge.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
-            card.iconBadge.outline.setColor(String(Model.config().activity) === item.id ? theme.colors.primary : theme.colors.borderStrong);
+            card.iconBadge.outline.setColor(
+                !access.known ? theme.colors.borderStrong :
+                access.eligible ? (selected ? theme.colors.primary : theme.colors.success) : theme.colors.warning
+            );
             card.title.SetText(item.label);
-            card.detail.SetText(item.detail);
-            card.tag.SetText(mode() === "RAID" ? String(item.era ?? "").toUpperCase() :
-                (item.id === "random" ? "DUNGEON FINDER" : (Number(item.minLevel ?? 80) >= 80 ? "ENDGAME" : "LEVELING")));
+            card.detail.SetText(access.known && !access.eligible ? access.reason : item.detail);
+            if (!access.known) {
+                card.tag.SetText("CHECKING ACCESS");
+                card.tag.SetTextColor(theme.colors.muted[0], theme.colors.muted[1], theme.colors.muted[2], 1);
+            } else if (!access.eligible) {
+                card.tag.SetText("LOCKED");
+                card.tag.SetTextColor(theme.colors.warning[0], theme.colors.warning[1], theme.colors.warning[2], 1);
+            } else {
+                card.tag.SetText(mode() === "RAID" ? String(item.era ?? "").toUpperCase() + " · AVAILABLE" :
+                    (item.id === "random" ? "DUNGEON FINDER · AVAILABLE" :
+                        (Number(item.minLevel ?? 80) >= 80 ? "ENDGAME · AVAILABLE" : "LEVELING · AVAILABLE")));
+                card.tag.SetTextColor(theme.colors.success[0], theme.colors.success[1], theme.colors.success[2], 1);
+            }
             const id = item.id;
             card.button.frame.SetScript("OnMouseDown", () => {
+                const latest = Model.activityEligibility(id, mode());
+                if (!latest.known || !latest.eligible) {
+                    Model.fireStatus(latest.reason);
+                    return;
+                }
                 if (mode() === "RAID") Model.setRaidActivity(id); else Model.setDungeonActivity(id);
                 modal.hide();
             });
@@ -176,7 +197,12 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
         scroll.setContentHeight(Math.max(470, Math.ceil(items.length / 2) * 86));
     }
 
+    Model.composer().RegisterCallback("ACTIVITIES_CHANGED", () => {
+        if (modal.frame.IsShown()) refresh();
+    });
+
     function open(): void {
+        Model.requestActivities(mode());
         if (mode() === "RAID") {
             filter = currentEra();
             modal.setTitle("Choose Raid");

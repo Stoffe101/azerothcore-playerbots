@@ -14,6 +14,9 @@ GC.pendingCommand = nil
 GC.dragMember = nil
 GC.anchors = {}
 GC.anchorsReady = false
+GC.activityEligibility = { DUNGEON = {}, RAID = {} }
+GC.activityEligibilityReady = { DUNGEON = false, RAID = false }
+GC.activityProgression = 0
 
 local function Split(text, delim)
     local out = {}
@@ -270,6 +273,21 @@ function GC:RequestAnchors()
     SendRawServer("anchors")
 end
 
+function GC:RequestActivities(mode, difficulty, size)
+    local config = GC:GetConfig()
+    mode = mode == "RAID" and "RAID" or "DUNGEON"
+    difficulty = tostring(difficulty or config.difficulty or "normal")
+    if mode == "RAID" and difficulty ~= "heroic" then difficulty = "normal" end
+    if mode == "DUNGEON" and difficulty ~= "heroic" and difficulty ~= "alpha" and difficulty ~= "beta" and difficulty ~= "gamma" then
+        difficulty = "normal"
+    end
+    size = tonumber(size) or (mode == "RAID" and tonumber(config.size) or 5) or 5
+    GC.activityEligibility[mode] = {}
+    GC.activityEligibilityReady[mode] = false
+    GC:Fire("ACTIVITIES_CHANGED", mode)
+    SendRawServer("activities " .. string.lower(mode) .. " " .. difficulty .. " " .. tostring(math.floor(size)))
+end
+
 function GC:FindRoster()
     local valid, problems = GC:ValidateConfig()
     if not valid then
@@ -372,6 +390,25 @@ function GC:HandleProtocolMessage(message)
     elseif kind == "ANCHORDONE" then
         GC.anchorsReady = true
         GC:Fire("HUMANS_CHANGED", GC:ScanHumans())
+    elseif kind == "ACTIVITYRESET" then
+        local mode = fields[2] == "RAID" and "RAID" or "DUNGEON"
+        GC.activityEligibility[mode] = {}
+        GC.activityEligibilityReady[mode] = false
+        GC:Fire("ACTIVITIES_CHANGED", mode)
+    elseif kind == "ACTIVITY" then
+        local mode = fields[2] == "RAID" and "RAID" or "DUNGEON"
+        local id = fields[3] or ""
+        if id ~= "" then
+            GC.activityEligibility[mode][id] = {
+                eligible = fields[4] == "1",
+                reason = fields[5] or "",
+            }
+        end
+    elseif kind == "ACTIVITYDONE" then
+        local mode = fields[2] == "RAID" and "RAID" or "DUNGEON"
+        GC.activityEligibilityReady[mode] = true
+        GC.activityProgression = ParseNumber(fields[3], GC.activityProgression or 0)
+        GC:Fire("ACTIVITIES_CHANGED", mode)
     elseif kind == "PROGRESS" then
         local phase = fields[2] or "IDLE"
         local current = ParseNumber(fields[3], 0)
