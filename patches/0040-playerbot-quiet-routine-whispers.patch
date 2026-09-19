@@ -52,7 +52,7 @@ diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/LeaveGroupAction.cpp b/m
 diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp b/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp
 --- a/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp
 +++ b/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp
-@@ -96,240 +96,210 @@
+@@ -96,240 +96,207 @@
  
      bool targetSelected = false;
  
@@ -425,9 +425,6 @@ diff --git a/modules/mod-playerbots/src/Ai/Base/Actions/UseItemAction.cpp b/modu
 +            packet << unitTarget->GetGUID();
 +            targetSelected = true;
 +
-+            if (unitTarget == bot || !unitTarget->IsInWorld() || unitTarget->IsDuringRemoveFromWorld())
-+            else if (unitTarget->IsHostileTo(bot))
-+            else
 +        }
 +        else
 +        {
