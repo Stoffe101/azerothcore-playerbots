@@ -1753,7 +1753,7 @@ export function createModernDashboard(): Dashboard {
             );
 
             for (let r = 0; r < 5; r += 1) {
-                const rowWidgets = widgets.rows[r];
+                const rowWidgets = widgets.rows[r + 1];
                 const member = members[r];
                 const textWidth = Math.max(82, cardWidth - 80);
                 rowWidgets.name.SetWidth(textWidth);
