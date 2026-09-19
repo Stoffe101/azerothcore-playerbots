@@ -663,8 +663,11 @@ assert "iconBadge = Native.createFramedIcon" in MODERN, "Prepared roster lost fr
 assert "groupCount" in MODERN and '"SUBGROUP"' in MODERN and "headerAccent" in MODERN, (
     "Prepared roster lost its subgroup review hierarchy"
 )
-assert "rowWidgets.roleIcon" in MODERN and "member.source" in MODERN and '"PINNED  ·  "' in MODERN, (
-    "Prepared roster lost role/source identity cues"
+assert "rowWidgets.roleIcon" in MODERN and '"PINNED  ·  "' in MODERN, (
+    "Prepared roster lost role/identity cues"
+)
+assert '"Lv " + String(member.level ?? "?") + "  ·  "' in MODERN, (
+    "Prepared roster must keep level + specialization as its secondary identity line"
 )
 assert "const rowWidgets = widgets.rows[r + 1];" in MODERN, (
     "Prepared roster row pool must preserve the TypeScriptToLua 1-based runtime boundary"

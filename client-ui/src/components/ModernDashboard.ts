@@ -1780,10 +1780,10 @@ export function createModernDashboard(): Dashboard {
                     rowWidgets.name.SetText(identity + String(member.name));
                     rowWidgets.name.SetTextColor(theme.colors.text[0], theme.colors.text[1], theme.colors.text[2], 1);
 
-                    const source = member.isPlayer
-                        ? "Human"
-                        : (member.pinned ? "Pinned" : (String(member.source ?? "") !== "" ? String(member.source) : "Prepared bot"));
-                    rowWidgets.spec.SetText(String(member.spec ?? Model.classLabel(String(member.class))) + "  ·  " + source);
+                    rowWidgets.spec.SetText(
+                        "Lv " + String(member.level ?? "?") + "  ·  " +
+                        String(member.spec ?? Model.classLabel(String(member.class)))
+                    );
                     rowWidgets.spec.SetTextColor(theme.colors.muted[0], theme.colors.muted[1], theme.colors.muted[2], 1);
                     Native.setTextureColor(rowWidgets.roleBar, accent);
                     Native.setTextureColor(rowWidgets.rowBg, Native.withAlpha(accent, member.isPlayer ? 0.10 : 0.045));
