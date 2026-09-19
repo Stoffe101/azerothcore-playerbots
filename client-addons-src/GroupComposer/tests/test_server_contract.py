@@ -593,6 +593,9 @@ assert "ROLE_ICON_TEXTURES" in NATIVE and "UI-LFG-ICON-PORTRAITROLES" not in NAT
 assert "UI-DialogBox-Gold-Corner" not in NATIVE, (
     "Child/shell chrome regressed to duplicated Blizzard gold corner textures"
 )
+assert "topSheen" not in NATIVE and "bottomShade" not in NATIVE, (
+    "Common panels must stay surface + one boundary; decorative sheen/shade belongs to intentional screens"
+)
 
 # Specific Builds must reconcile pooled frames explicitly because WoW does not clip child frames
 # to a shrunken parent. This is the regression contract for the Protection Paladin ×2 ghost row.
