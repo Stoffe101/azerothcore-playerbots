@@ -482,7 +482,7 @@ assert 'Auto-enter after assembly' in MODERN and 'Dungeon Finder chooses destina
 send_plan = section(SERVER, "void SendPlan(", "bool RaidSupports(")
 assert "viewer && member.guid == viewer->GetGUID()" in send_plan, "Roster protocol lost the local-player marker"
 assert 'isPlayer = fields[13] == "1"' in CORE, "Client no longer parses the local-player roster marker"
-assert 'member.isPlayer ? "YOU  ·  " : (member.pinned ? "PIN  ·  " : "")' in MODERN, (
+assert 'member.isPlayer ? "YOU  ·  " : (member.pinned ? "PINNED  ·  " : "")' in MODERN, (
     "Raid preview lost explicit local-player/pinned identity without conflating every human with YOU"
 )
 
