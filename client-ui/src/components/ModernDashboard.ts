@@ -1922,6 +1922,17 @@ export function createModernDashboard(): Dashboard {
         }
         if (warnings.length > 0) nextText += "\n" + String(warnings[0]);
         if (phase === "IDLE" && statusNotice !== "") nextText += "\n" + statusNotice;
+
+        const nextColor = phase === "ERROR"
+            ? theme.colors.error
+            : (phase === "READY" ? theme.colors.success : theme.colors.warning);
+        nextCard.outline.setColor(phase === "ERROR" || phase === "READY" ? nextColor : theme.colors.border);
+        nextBadge.outline.setColor(nextColor);
+        nextBang.SetText(phase === "READY" ? ">" : "!");
+        nextBang.SetTextColor(nextColor[0], nextColor[1], nextColor[2], 1);
+        warningsTitle.SetText(phase === "ERROR" ? "ACTION REQUIRED" : (phase === "PREPARING" ? "PREPARING" : "NEXT STEP"));
+        warningsTitle.SetTextColor(nextColor[0], nextColor[1], nextColor[2], 1);
+        nextDetail.SetTextColor(nextColor[0], nextColor[1], nextColor[2], 1);
         nextDetail.SetText(nextText);
 
         buildButton.setEnabled(Model.humanReady() && !Model.isBusy() && (Model.config().mode !== "RAID" || Model.roleTargetTotal() === Number(Model.config().size ?? 25)));
