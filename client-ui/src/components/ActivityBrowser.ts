@@ -11,8 +11,9 @@ interface BrowserEntry {
     label: string;
     detail: string;
     icon: string;
-    era?: string;
-    minLevel?: number;
+    era: string;
+    minLevel: number;
+    support: string;
 }
 
 interface BrowserCard {
@@ -52,47 +53,68 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
     empty.SetJustifyH("CENTER");
     empty.Hide();
 
-    let filter = "ALL";
+    let filter = "Vanilla";
 
     function mode(): "DUNGEON" | "RAID" {
         return Model.config().mode === "RAID" ? "RAID" : "DUNGEON";
     }
 
     function currentEra(): string {
-        const raid = D.GetRaidById(Model.config().activity);
-        return String(raid?.era ?? "WotLK");
+        return Model.realm().era;
+    }
+
+    function difficultyDetail(era: string, minLevel: number): string {
+        if (era === "Vanilla") return "Normal · Level " + String(minLevel) + "+";
+        if (era === "TBC") return "Normal / Heroic · Level " + String(minLevel) + "+";
+        return "Normal / Heroic / Titan Rune · Level " + String(minLevel) + "+";
     }
 
     function entries(): BrowserEntry[] {
         const out: BrowserEntry[] = [];
+        const serverEntries = Model.activityMetaList(mode());
+        if (serverEntries.length > 0) {
+            for (const entry of serverEntries) {
+                if (entry.id !== "random" && entry.era !== filter) continue;
+                if (entry.id === "random" && entry.era !== filter) continue;
+                out.push({
+                    id: entry.id,
+                    label: entry.label,
+                    detail: mode() === "RAID"
+                        ? String(entry.size) + " player · Level " + String(entry.minLevel) + "+"
+                        : difficultyDetail(entry.era, entry.minLevel),
+                    icon: Model.activityIconFor(entry.id, mode()),
+                    era: entry.era,
+                    minLevel: entry.minLevel,
+                    support: entry.support,
+                });
+            }
+            return out;
+        }
+
+        // Short fallback while the authoritative server catalog is in flight.
         if (mode() === "DUNGEON") {
             for (const dungeon of D.DUNGEONS ?? []) {
-                const minLevel = Number(dungeon.minLevel ?? 68);
-                const endgame = dungeon.id === "random" || minLevel >= 80;
-                if (filter === "LEVELING" && endgame) continue;
-                if (filter === "ENDGAME" && !endgame) continue;
+                const era = dungeon.id === "random" ? currentEra() : String(dungeon.era ?? "WotLK");
+                if (era !== filter) continue;
+                const minLevel = Number(dungeon.minLevel ?? 1);
                 out.push({
-                    id: String(dungeon.id),
-                    label: String(dungeon.label),
-                    detail: dungeon.id === "random"
-                        ? "WotLK random · Normal Lv " + String(minLevel) + "+ · Heroic Lv 80"
-                        : "Normal Lv " + String(minLevel) + "+ · Heroic Lv 80",
+                    id: String(dungeon.id), label: String(dungeon.label),
+                    detail: difficultyDetail(era, minLevel),
                     icon: Model.activityIconFor(String(dungeon.id), "DUNGEON"),
-                    minLevel,
+                    era, minLevel, support: "Checking support",
                 });
             }
         } else {
             for (const raid of D.RAIDS ?? []) {
-                if (filter !== "ALL" && String(raid.era) !== filter) continue;
+                const era = String(raid.era ?? "WotLK");
+                if (era !== filter) continue;
                 const sizes: string[] = [];
                 for (const size of raid.sizes ?? []) sizes.push(String(size));
                 out.push({
-                    id: String(raid.id),
-                    label: String(raid.label),
-                    detail: sizes.join("/") + " player · Level " + String(raid.requiredLevel ?? 80) + "+" +
-                        (raid.heroic === true ? " · Heroic available" : ""),
+                    id: String(raid.id), label: String(raid.label),
+                    detail: sizes.join("/") + " player · Level " + String(raid.requiredLevel ?? 80) + "+",
                     icon: Model.activityIconFor(String(raid.id), "RAID"),
-                    era: String(raid.era),
+                    era, minLevel: Number(raid.requiredLevel ?? 80), support: "Checking support",
                 });
             }
         }
@@ -100,17 +122,10 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
     }
 
     function tabLabels(): Array<{ key: string; label: string }> {
-        if (mode() === "RAID") {
-            return [
-                { key: "WotLK", label: "WotLK" },
-                { key: "TBC", label: "TBC" },
-                { key: "Classic", label: "Classic" },
-            ];
-        }
         return [
-            { key: "ALL", label: "All" },
-            { key: "LEVELING", label: "Leveling" },
-            { key: "ENDGAME", label: "Level 80" },
+            { key: "Vanilla", label: "Vanilla" },
+            { key: "TBC", label: "TBC" },
+            { key: "WotLK", label: "WotLK" },
         ];
     }
 
@@ -177,9 +192,8 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
                 card.tag.SetText("LOCKED");
                 card.tag.SetTextColor(theme.colors.warning[0], theme.colors.warning[1], theme.colors.warning[2], 1);
             } else {
-                card.tag.SetText(mode() === "RAID" ? String(item.era ?? "").toUpperCase() + " · AVAILABLE" :
-                    (item.id === "random" ? "DUNGEON FINDER · AVAILABLE" :
-                        (Number(item.minLevel ?? 80) >= 80 ? "ENDGAME · AVAILABLE" : "LEVELING · AVAILABLE")));
+                const suffix = item.id === "random" ? " · RANDOM" : "";
+                card.tag.SetText(String(item.era).toUpperCase() + " · AVAILABLE" + suffix + " · " + item.support.toUpperCase());
                 card.tag.SetTextColor(theme.colors.success[0], theme.colors.success[1], theme.colors.success[2], 1);
             }
             const id = item.id;
@@ -203,15 +217,14 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
 
     function open(): void {
         Model.requestActivities(mode());
+        filter = currentEra();
         if (mode() === "RAID") {
-            filter = currentEra();
             modal.setTitle("Choose Raid");
-            modal.setSubtitle("Browse by expansion instead of hunting through one long list.");
+            modal.setSubtitle("Vanilla, TBC and WotLK live in one era-aware progression browser.");
             modal.setHeaderIcon("Interface\\Icons\\Achievement_Boss_LichKing");
         } else {
-            filter = "ALL";
             modal.setTitle("Choose Dungeon");
-            modal.setSubtitle("Browse all Wrath dungeons, or jump straight to leveling or level-80 activities.");
+            modal.setSubtitle("Only the live era's difficulty rules apply: Vanilla Normal, TBC Normal/Heroic, WotLK Titan Rune.");
             modal.setHeaderIcon("Interface\\Icons\\Spell_Arcane_PortalDalaran");
         }
         scroll.scrollToTop(); refresh(); modal.show();
