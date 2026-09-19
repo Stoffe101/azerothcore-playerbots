@@ -1890,54 +1890,61 @@ function ____exports.selectedActivityLabel(self)
     end
     return ____opt_result_52_53
 end
+function ____exports.activityIconFor(self, id, mode)
+    return ACTIVITY_ICONS[tostring(id)] or (mode == "RAID" and DEFAULT_RAID_ICON or DEFAULT_DUNGEON_ICON)
+end
 function ____exports.selectedActivityIcon(self)
     local cfg = ____exports.config(nil)
+    local ____exports_activityIconFor_55 = ____exports.activityIconFor
     local ____cfg_activity_54 = cfg.activity
     if ____cfg_activity_54 == nil then
         ____cfg_activity_54 = ""
     end
-    local key = tostring(____cfg_activity_54)
-    return ACTIVITY_ICONS[key] or (cfg.mode == "RAID" and DEFAULT_RAID_ICON or DEFAULT_DUNGEON_ICON)
+    return ____exports_activityIconFor_55(
+        nil,
+        tostring(____cfg_activity_54),
+        cfg.mode == "RAID" and "RAID" or "DUNGEON"
+    )
 end
 function ____exports.requiredActivityLevel(self)
     local cfg = ____exports.config(nil)
     if cfg.mode == "RAID" then
         local raid = raidById(nil, cfg.activity)
-        local ____opt_result_57
+        local ____opt_result_58
         if raid ~= nil then
-            ____opt_result_57 = raid.requiredLevel
+            ____opt_result_58 = raid.requiredLevel
         end
-        local ____opt_result_57_58 = ____opt_result_57
-        if ____opt_result_57_58 == nil then
-            ____opt_result_57_58 = 80
+        local ____opt_result_58_59 = ____opt_result_58
+        if ____opt_result_58_59 == nil then
+            ____opt_result_58_59 = 80
         end
-        return __TS__Number(____opt_result_57_58)
+        return __TS__Number(____opt_result_58_59)
     end
     if cfg.difficulty ~= "normal" then
         return 80
     end
     local dungeon = dungeonById(nil, cfg.activity)
-    local ____opt_result_61
+    local ____opt_result_62
     if dungeon ~= nil then
-        ____opt_result_61 = dungeon.minLevel
+        ____opt_result_62 = dungeon.minLevel
     end
-    local ____opt_result_61_62 = ____opt_result_61
-    if ____opt_result_61_62 == nil then
-        ____opt_result_61_62 = 68
+    local ____opt_result_62_63 = ____opt_result_62
+    if ____opt_result_62_63 == nil then
+        ____opt_result_62_63 = 68
     end
-    return __TS__Number(____opt_result_61_62)
+    return __TS__Number(____opt_result_62_63)
 end
 function ____exports.activityEligibilityText(self)
     local level = ____exports.requiredActivityLevel(nil)
-    local ____opt_63 = ____exports.config(nil).options
-    if ____opt_63 ~= nil then
-        ____opt_63 = ____opt_63.minimumItemLevel
+    local ____opt_64 = ____exports.config(nil).options
+    if ____opt_64 ~= nil then
+        ____opt_64 = ____opt_64.minimumItemLevel
     end
-    local ____opt_63_65 = ____opt_63
-    if ____opt_63_65 == nil then
-        ____opt_63_65 = 0
+    local ____opt_64_66 = ____opt_64
+    if ____opt_64_66 == nil then
+        ____opt_64_66 = 0
     end
-    local floor = __TS__Number(____opt_63_65)
+    local floor = __TS__Number(____opt_64_66)
     return (("Level " .. tostring(level)) .. "+ required · Item level floor ") .. (floor > 0 and tostring(floor) or "Off")
 end
 function ____exports.setMinimumItemLevel(self, value)
@@ -1957,15 +1964,15 @@ function ____exports.supportedRaidSizes(self)
         ____exports.config(nil).activity
     )
     local result = {}
-    local ____opt_result_68
+    local ____opt_result_69
     if raid ~= nil then
-        ____opt_result_68 = raid.sizes
+        ____opt_result_69 = raid.sizes
     end
-    local ____opt_result_68_69 = ____opt_result_68
-    if ____opt_result_68_69 == nil then
-        ____opt_result_68_69 = {}
+    local ____opt_result_69_70 = ____opt_result_69
+    if ____opt_result_69_70 == nil then
+        ____opt_result_69_70 = {}
     end
-    for ____, size in __TS__Iterator(____opt_result_68_69) do
+    for ____, size in __TS__Iterator(____opt_result_69_70) do
         result[#result + 1] = __TS__Number(size)
     end
     return result
@@ -1995,6 +2002,9 @@ end
 function ____exports.assemble(self)
     GC:Assemble()
 end
+function ____exports.teleportToInstance(self)
+    GC:TeleportToInstance()
+end
 function ____exports.requestAnchors(self)
     GC:RequestAnchors()
 end
@@ -2022,6 +2032,9 @@ end
 function ____exports.profileDescription(self, name)
     return ProfileFns.Describe(name) or ""
 end
+function ____exports.profileMeta(self, name)
+    return ProfileFns.Get(name)
+end
 function ____exports.addPin(self, name, role, required)
     GC:AddPinnedMember(name, role, required)
 end
@@ -2029,11 +2042,11 @@ function ____exports.removePin(self, index)
     GC:RemovePinnedMember(index)
 end
 function ____exports.planMembers(self)
-    local ____exports_plan_result_members_70 = ____exports.plan(nil).members
-    if ____exports_plan_result_members_70 == nil then
-        ____exports_plan_result_members_70 = {}
+    local ____exports_plan_result_members_71 = ____exports.plan(nil).members
+    if ____exports_plan_result_members_71 == nil then
+        ____exports_plan_result_members_71 = {}
     end
-    return ____exports_plan_result_members_70
+    return ____exports_plan_result_members_71
 end
 function ____exports.roleAccent(self, role)
     if role == "TANK" then
@@ -2052,13 +2065,16 @@ function ____exports.phaseLabel(self, phase)
         return "Preparing bots"
     end
     if phase == "READY" then
-        return "Ready"
+        return "Ready for review"
     end
     if phase == "ASSEMBLING" then
         return "Assembling"
     end
+    if phase == "ASSEMBLED" then
+        return "Group assembled"
+    end
     if phase == "TRAVEL" then
-        return "Entering activity"
+        return "Teleporting to instance"
     end
     if phase == "DONE" then
         return "Group ready"
@@ -2069,29 +2085,23 @@ function ____exports.phaseLabel(self, phase)
     return "Ready to configure"
 end
 function ____exports.isBusy(self)
-    local ____exports_progress_result_phase_71 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_71 == nil then
-        ____exports_progress_result_phase_71 = "IDLE"
+    local ____exports_progress_result_phase_72 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_72 == nil then
+        ____exports_progress_result_phase_72 = "IDLE"
     end
-    local phase = tostring(____exports_progress_result_phase_71)
+    local phase = tostring(____exports_progress_result_phase_72)
     return phase == "BUILDING" or phase == "PREPARING" or phase == "ASSEMBLING" or phase == "TRAVEL"
 end
-function ____exports.isTravelRetry(self)
-    local p = ____exports.progress(nil)
-    local ____temp_73 = p.phase == "READY"
-    if ____temp_73 then
-        local ____p_detail_72 = p.detail
-        if ____p_detail_72 == nil then
-            ____p_detail_72 = ""
-        end
-        ____temp_73 = (string.find(
-            tostring(____p_detail_72),
-            "Enter Activity",
-            nil,
-            true
-        ) or 0) - 1 >= 0
+function ____exports.isAssembled(self)
+    local ____exports_progress_result_phase_73 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_73 == nil then
+        ____exports_progress_result_phase_73 = ""
     end
-    return ____temp_73
+    return tostring(____exports_progress_result_phase_73) == "ASSEMBLED"
+end
+function ____exports.hasFixedActivityDestination(self)
+    local cfg = ____exports.config(nil)
+    return not (cfg.mode == "DUNGEON" and cfg.activity == "random")
 end
 return ____exports
  end,
@@ -3550,6 +3560,412 @@ function ____exports.createScrollList(self, parent, width, height)
 end
 return ____exports
  end,
+["components.ActivityBrowser"] = function(...) 
+--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+-- Lua Library inline imports
+local function __TS__Number(value)
+    local valueType = type(value)
+    if valueType == "number" then
+        return value
+    elseif valueType == "string" then
+        local numberValue = tonumber(value)
+        if numberValue then
+            return numberValue
+        end
+        if value == "Infinity" then
+            return math.huge
+        end
+        if value == "-Infinity" then
+            return -math.huge
+        end
+        local stringWithoutSpaces = string.gsub(value, "%s", "")
+        if stringWithoutSpaces == "" then
+            return 0
+        end
+        return 0 / 0
+    elseif valueType == "boolean" then
+        return value and 1 or 0
+    else
+        return 0 / 0
+    end
+end
+
+local __TS__Symbol, Symbol
+do
+    local symbolMetatable = {__tostring = function(self)
+        return ("Symbol(" .. (self.description or "")) .. ")"
+    end}
+    function __TS__Symbol(description)
+        return setmetatable({description = description}, symbolMetatable)
+    end
+    Symbol = {
+        asyncDispose = __TS__Symbol("Symbol.asyncDispose"),
+        dispose = __TS__Symbol("Symbol.dispose"),
+        iterator = __TS__Symbol("Symbol.iterator"),
+        hasInstance = __TS__Symbol("Symbol.hasInstance"),
+        species = __TS__Symbol("Symbol.species"),
+        toStringTag = __TS__Symbol("Symbol.toStringTag")
+    }
+end
+
+local __TS__Iterator
+do
+    local function iteratorGeneratorStep(self)
+        local co = self.____coroutine
+        local status, value = coroutine.resume(co)
+        if not status then
+            error(value, 0)
+        end
+        if coroutine.status(co) == "dead" then
+            return
+        end
+        return true, value
+    end
+    local function iteratorIteratorStep(self)
+        local result = self:next()
+        if result.done then
+            return
+        end
+        return true, result.value
+    end
+    local function iteratorStringStep(self, index)
+        index = index + 1
+        if index > #self then
+            return
+        end
+        return index, string.sub(self, index, index)
+    end
+    function __TS__Iterator(iterable)
+        if type(iterable) == "string" then
+            return iteratorStringStep, iterable, 0
+        elseif iterable.____coroutine ~= nil then
+            return iteratorGeneratorStep, iterable
+        elseif iterable[Symbol.iterator] then
+            local iterator = iterable[Symbol.iterator](iterable)
+            return iteratorIteratorStep, iterator
+        else
+            return ipairs(iterable)
+        end
+    end
+end
+-- End of Lua Library inline imports
+local ____exports = {}
+local Model = require("model.ComposerModel")
+local Native = require("core.Native")
+local ____Theme = require("theme.Theme")
+local theme = ____Theme.theme
+local ButtonUI = require("widgets.Button")
+local ModalUI = require("widgets.Modal")
+local ScrollUI = require("widgets.ScrollList")
+function ____exports.createActivityBrowser(self, parent)
+    local D = Model:data()
+    local modal = ModalUI:createModal(parent, 960, 650)
+    modal:setHeaderIcon("Interface\\Icons\\INV_Misc_Map_01")
+    local filterButtons = {}
+    do
+        local i = 0
+        while i < 3 do
+            local button = ButtonUI:createButton(modal.content, {
+                text = "",
+                width = 132,
+                height = 34,
+                accent = theme.colors.primary,
+                flat = true
+            })
+            button.frame:SetPoint(
+                "TOPLEFT",
+                modal.content,
+                "TOPLEFT",
+                i * 140,
+                0
+            )
+            filterButtons[#filterButtons + 1] = button
+            i = i + 1
+        end
+    end
+    local scroll = ScrollUI:createScrollList(modal.content, 884, 470)
+    scroll.frame:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        0,
+        -48
+    )
+    local cards = {}
+    local empty = Native:createText(scroll.content, "No activities match this filter.", "GameFontHighlight", theme.colors.muted)
+    empty:SetPoint(
+        "TOPLEFT",
+        scroll.content,
+        "TOPLEFT",
+        20,
+        -30
+    )
+    empty:SetWidth(820)
+    empty:SetJustifyH("CENTER")
+    empty:Hide()
+    local filter = "ALL"
+    local function mode(self)
+        return Model:config().mode == "RAID" and "RAID" or "DUNGEON"
+    end
+    local function currentEra(self)
+        local raid = D:GetRaidById(Model:config().activity)
+        local ____opt_result_2
+        if raid ~= nil then
+            ____opt_result_2 = raid.era
+        end
+        local ____opt_result_2_3 = ____opt_result_2
+        if ____opt_result_2_3 == nil then
+            ____opt_result_2_3 = "WotLK"
+        end
+        return tostring(____opt_result_2_3)
+    end
+    local function entries(self)
+        local out = {}
+        if mode(nil) == "DUNGEON" then
+            local ____D_DUNGEONS_5 = D.DUNGEONS
+            if ____D_DUNGEONS_5 == nil then
+                ____D_DUNGEONS_5 = {}
+            end
+            for ____, dungeon in __TS__Iterator(____D_DUNGEONS_5) do
+                do
+                    local __continue9
+                    repeat
+                        local ____dungeon_minLevel_4 = dungeon.minLevel
+                        if ____dungeon_minLevel_4 == nil then
+                            ____dungeon_minLevel_4 = 68
+                        end
+                        local minLevel = __TS__Number(____dungeon_minLevel_4)
+                        local endgame = dungeon.id == "random" or minLevel >= 80
+                        if filter == "LEVELING" and endgame then
+                            __continue9 = true
+                            break
+                        end
+                        if filter == "ENDGAME" and not endgame then
+                            __continue9 = true
+                            break
+                        end
+                        out[#out + 1] = {
+                            id = tostring(dungeon.id),
+                            label = tostring(dungeon.label),
+                            detail = dungeon.id == "random" and ("WotLK random · Normal Lv " .. tostring(minLevel)) .. "+ · Heroic Lv 80" or ("Normal Lv " .. tostring(minLevel)) .. "+ · Heroic Lv 80",
+                            icon = Model:activityIconFor(
+                                tostring(dungeon.id),
+                                "DUNGEON"
+                            ),
+                            minLevel = minLevel
+                        }
+                        __continue9 = true
+                    until true
+                    if not __continue9 then
+                        break
+                    end
+                end
+            end
+        else
+            local ____D_RAIDS_11 = D.RAIDS
+            if ____D_RAIDS_11 == nil then
+                ____D_RAIDS_11 = {}
+            end
+            for ____, raid in __TS__Iterator(____D_RAIDS_11) do
+                do
+                    local __continue14
+                    repeat
+                        if filter ~= "ALL" and tostring(raid.era) ~= filter then
+                            __continue14 = true
+                            break
+                        end
+                        local sizes = {}
+                        local ____raid_sizes_6 = raid.sizes
+                        if ____raid_sizes_6 == nil then
+                            ____raid_sizes_6 = {}
+                        end
+                        for ____, size in __TS__Iterator(____raid_sizes_6) do
+                            sizes[#sizes + 1] = tostring(size)
+                        end
+                        local ____tostring_result_9 = tostring(raid.id)
+                        local ____tostring_result_10 = tostring(raid.label)
+                        local ____temp_8 = table.concat(sizes, "/") .. " player · Level "
+                        local ____raid_requiredLevel_7 = raid.requiredLevel
+                        if ____raid_requiredLevel_7 == nil then
+                            ____raid_requiredLevel_7 = 80
+                        end
+                        out[#out + 1] = {
+                            id = ____tostring_result_9,
+                            label = ____tostring_result_10,
+                            detail = ((____temp_8 .. tostring(____raid_requiredLevel_7)) .. "+") .. (raid.heroic == true and " · Heroic available" or ""),
+                            icon = Model:activityIconFor(
+                                tostring(raid.id),
+                                "RAID"
+                            ),
+                            era = tostring(raid.era)
+                        }
+                        __continue14 = true
+                    until true
+                    if not __continue14 then
+                        break
+                    end
+                end
+            end
+        end
+        return out
+    end
+    local function tabLabels(self)
+        if mode(nil) == "RAID" then
+            return {{key = "WotLK", label = "WotLK"}, {key = "TBC", label = "TBC"}, {key = "Classic", label = "Classic"}}
+        end
+        return {{key = "ALL", label = "All"}, {key = "LEVELING", label = "Leveling"}, {key = "ENDGAME", label = "Level 80"}}
+    end
+    local function refresh(self)
+        local tabs = tabLabels(nil)
+        do
+            local i = 0
+            while i < #filterButtons do
+                local tab = tabs[i + 1]
+                local button = filterButtons[i + 1]
+                button:setText(tab.label)
+                button:setSelected(filter == tab.key)
+                local key = tab.key
+                button.frame:SetScript(
+                    "OnMouseDown",
+                    function()
+                        filter = key
+                        scroll:scrollToTop()
+                        refresh(nil)
+                    end
+                )
+                button.frame:Show()
+                i = i + 1
+            end
+        end
+        for ____, card in ipairs(cards) do
+            card.button.frame:Hide()
+        end
+        local items = entries(nil)
+        if #items == 0 then
+            empty:Show()
+        else
+            empty:Hide()
+        end
+        do
+            local i = 0
+            while i < #items do
+                local card = cards[i + 1]
+                if card == nil then
+                    local button = ButtonUI:createButton(scroll.content, {
+                        text = "",
+                        width = 426,
+                        height = 78,
+                        accent = theme.colors.primary,
+                        flat = true
+                    })
+                    local iconBadge = Native:createFramedIcon(button.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 42, theme.colors.borderStrong)
+                    iconBadge.frame:SetPoint(
+                        "LEFT",
+                        button.frame,
+                        "LEFT",
+                        12,
+                        0
+                    )
+                    local title = Native:createText(button.frame, "", "GameFontNormal")
+                    title:SetPoint(
+                        "TOPLEFT",
+                        button.frame,
+                        "TOPLEFT",
+                        66,
+                        -12
+                    )
+                    title:SetWidth(328)
+                    local detail = Native:createText(button.frame, "", "GameFontHighlightSmall", theme.colors.muted)
+                    detail:SetPoint(
+                        "TOPLEFT",
+                        button.frame,
+                        "TOPLEFT",
+                        66,
+                        -35
+                    )
+                    detail:SetWidth(328)
+                    local tag = Native:createText(button.frame, "", "GameFontNormalSmall", theme.colors.primary)
+                    tag:SetPoint(
+                        "TOPLEFT",
+                        button.frame,
+                        "TOPLEFT",
+                        66,
+                        -55
+                    )
+                    tag:SetWidth(328)
+                    scroll:bindWheel(button.frame)
+                    card = {
+                        button = button,
+                        iconBadge = iconBadge,
+                        title = title,
+                        detail = detail,
+                        tag = tag
+                    }
+                    cards[i + 1] = card
+                end
+                local item = items[i + 1]
+                local column = i % 2
+                local row = math.floor(i / 2)
+                card.button.frame:ClearAllPoints()
+                card.button.frame:SetPoint(
+                    "TOPLEFT",
+                    scroll.content,
+                    "TOPLEFT",
+                    column * 436,
+                    -(row * 86)
+                )
+                card.button:setSelected(tostring(Model:config().activity) == item.id)
+                card.iconBadge.icon:SetTexture(item.icon)
+                card.iconBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                card.iconBadge.outline:setColor(tostring(Model:config().activity) == item.id and theme.colors.primary or theme.colors.borderStrong)
+                card.title:SetText(item.label)
+                card.detail:SetText(item.detail)
+                card.tag:SetText(mode(nil) == "RAID" and string.upper(tostring(item.era or "")) or (item.id == "random" and "DUNGEON FINDER" or (__TS__Number(item.minLevel or 80) >= 80 and "ENDGAME" or "LEVELING")))
+                local id = item.id
+                card.button.frame:SetScript(
+                    "OnMouseDown",
+                    function()
+                        if mode(nil) == "RAID" then
+                            Model:setRaidActivity(id)
+                        else
+                            Model:setDungeonActivity(id)
+                        end
+                        modal:hide()
+                    end
+                )
+                card.button.frame:Show()
+                i = i + 1
+            end
+        end
+        scroll:setContentHeight(math.max(
+            470,
+            math.ceil(#items / 2) * 86
+        ))
+    end
+    local function open(self)
+        if mode(nil) == "RAID" then
+            filter = currentEra(nil)
+            modal:setTitle("Choose Raid")
+            modal:setSubtitle("Browse by expansion instead of hunting through one long list.")
+            modal:setHeaderIcon("Interface\\Icons\\Achievement_Boss_LichKing")
+        else
+            filter = "ALL"
+            modal:setTitle("Choose Dungeon")
+            modal:setSubtitle("Browse all Wrath dungeons, or jump straight to leveling or level-80 activities.")
+            modal:setHeaderIcon("Interface\\Icons\\Spell_Arcane_PortalDalaran")
+        end
+        scroll:scrollToTop()
+        refresh(nil)
+        modal:show()
+    end
+    return {
+        frame = modal.frame,
+        open = open,
+        hide = function() return modal:hide() end
+    }
+end
+return ____exports
+ end,
 ["widgets.TextInput"] = function(...) 
 --[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
 local ____exports = {}
@@ -3619,6 +4035,368 @@ function ____exports.createTextInput(self, parent, width, height)
             edit:SetText("")
             edit:ClearFocus()
         end
+    }
+end
+return ____exports
+ end,
+["components.TemplateBrowser"] = function(...) 
+--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+local ____exports = {}
+local Model = require("model.ComposerModel")
+local Native = require("core.Native")
+local ____Theme = require("theme.Theme")
+local theme = ____Theme.theme
+local ButtonUI = require("widgets.Button")
+local ModalUI = require("widgets.Modal")
+local ScrollUI = require("widgets.ScrollList")
+local InputUI = require("widgets.TextInput")
+function ____exports.createTemplateBrowser(self, parent)
+    local templateEra, namesForTab, refresh, D, modal, tab, tabDefs, tabs, scroll, cards, empty
+    function templateEra(self, name)
+        local profile = Model:profileMeta(name)
+        local ____temp_0
+        if profile ~= nil then
+            ____temp_0 = D:GetRaidById(profile.activity)
+        else
+            ____temp_0 = nil
+        end
+        local raid = ____temp_0
+        local ____opt_result_3
+        if raid ~= nil then
+            ____opt_result_3 = raid.era
+        end
+        local ____opt_result_3_4 = ____opt_result_3
+        if ____opt_result_3_4 == nil then
+            ____opt_result_3_4 = ""
+        end
+        return tostring(____opt_result_3_4)
+    end
+    function namesForTab(self)
+        if tab == "CUSTOM" then
+            return Model:listCustomProfiles()
+        end
+        local out = {}
+        for ____, name in ipairs(Model:listBuiltinProfiles()) do
+            if templateEra(nil, name) == tab then
+                out[#out + 1] = name
+            end
+        end
+        return out
+    end
+    function refresh(self)
+        do
+            local i = 0
+            while i < #tabs do
+                tabs[i + 1]:setSelected(tabDefs[i + 1].key == tab)
+                i = i + 1
+            end
+        end
+        for ____, card in ipairs(cards) do
+            card.panel.frame:Hide()
+        end
+        local names = namesForTab(nil)
+        if #names == 0 then
+            empty:SetText(tab == "CUSTOM" and "No custom templates yet. Configure a raid, name it above, then Save Current." or "No built-in templates are available for this expansion.")
+            empty:Show()
+        else
+            empty:Hide()
+        end
+        do
+            local i = 0
+            while i < #names do
+                local card = cards[i + 1]
+                if card == nil then
+                    local panel = Native:createPanel(scroll.content, theme.colors.surfaceRaised, theme.colors.border)
+                    panel.frame:SetSize(426, 84)
+                    local accent = Native:createSolid(panel.frame, theme.colors.primary, "ARTWORK")
+                    accent:SetWidth(3)
+                    accent:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        0,
+                        0
+                    )
+                    accent:SetPoint(
+                        "BOTTOMLEFT",
+                        panel.frame,
+                        "BOTTOMLEFT",
+                        0,
+                        0
+                    )
+                    local iconBadge = Native:createFramedIcon(panel.frame, "Interface\\Icons\\Achievement_Boss_LichKing", 40, theme.colors.primary)
+                    iconBadge.frame:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        12,
+                        -12
+                    )
+                    local name = Native:createText(panel.frame, "", "GameFontNormal")
+                    name:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        64,
+                        -10
+                    )
+                    name:SetWidth(262)
+                    local tag = Native:createText(panel.frame, "", "GameFontNormalSmall", theme.colors.primary)
+                    tag:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        64,
+                        -31
+                    )
+                    tag:SetWidth(250)
+                    local info = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
+                    info:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        64,
+                        -52
+                    )
+                    info:SetWidth(270)
+                    local load = ButtonUI:createButton(panel.frame, {text = "Load", width = 64, height = 28, accent = theme.colors.primary})
+                    local remove = ButtonUI:createButton(panel.frame, {text = "Delete", width = 62, height = 28, accent = theme.colors.error})
+                    scroll:bindWheel(panel.frame)
+                    scroll:bindWheel(load.frame)
+                    scroll:bindWheel(remove.frame)
+                    card = {
+                        panel = panel,
+                        accent = accent,
+                        iconBadge = iconBadge,
+                        name = name,
+                        tag = tag,
+                        info = info,
+                        load = load,
+                        remove = remove
+                    }
+                    cards[i + 1] = card
+                end
+                local profileName = names[i + 1]
+                local profile = Model:profileMeta(profileName)
+                local builtin = tab ~= "CUSTOM"
+                local accent = builtin and theme.colors.primary or theme.colors.warning
+                local column = i % 2
+                local row = math.floor(i / 2)
+                card.panel.frame:ClearAllPoints()
+                card.panel.frame:SetPoint(
+                    "TOPLEFT",
+                    scroll.content,
+                    "TOPLEFT",
+                    column * 436,
+                    -(row * 92)
+                )
+                Native:setTextureColor(card.accent, accent)
+                card.iconBadge.outline:setColor(accent)
+                local ____self_11 = card.iconBadge.icon
+                local ____self_11_SetTexture_12 = ____self_11.SetTexture
+                local ____Model_9 = Model
+                local ____Model_activityIconFor_10 = Model.activityIconFor
+                local ____opt_result_7
+                if profile ~= nil then
+                    ____opt_result_7 = profile.activity
+                end
+                local ____opt_result_7_8 = ____opt_result_7
+                if ____opt_result_7_8 == nil then
+                    ____opt_result_7_8 = ""
+                end
+                ____self_11_SetTexture_12(
+                    ____self_11,
+                    ____Model_activityIconFor_10(
+                        ____Model_9,
+                        tostring(____opt_result_7_8),
+                        "RAID"
+                    )
+                )
+                card.iconBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                card.name:SetText(profileName)
+                card.tag:SetText(builtin and string.upper(tostring(templateEra(nil, profileName))) .. " · BUILT-IN" or "CUSTOM")
+                card.tag:SetTextColor(accent[1], accent[2], accent[3], 1)
+                card.info:SetText(Model:profileDescription(profileName))
+                card.load.frame:ClearAllPoints()
+                card.remove.frame:ClearAllPoints()
+                if builtin then
+                    card.remove.frame:Hide()
+                    card.load.frame:SetPoint(
+                        "RIGHT",
+                        card.panel.frame,
+                        "RIGHT",
+                        -10,
+                        0
+                    )
+                else
+                    card.load.frame:SetPoint(
+                        "TOPRIGHT",
+                        card.panel.frame,
+                        "TOPRIGHT",
+                        -78,
+                        -10
+                    )
+                    card.remove.frame:SetPoint(
+                        "TOPRIGHT",
+                        card.panel.frame,
+                        "TOPRIGHT",
+                        -10,
+                        -10
+                    )
+                    card.remove.frame:SetScript(
+                        "OnMouseDown",
+                        function()
+                            Model:deleteProfile(profileName)
+                            refresh(nil)
+                        end
+                    )
+                    card.remove.frame:Show()
+                end
+                card.load.frame:SetScript(
+                    "OnMouseDown",
+                    function()
+                        Model:loadProfile(profileName)
+                        modal:hide()
+                    end
+                )
+                card.panel.frame:Show()
+                i = i + 1
+            end
+        end
+        scroll:setContentHeight(math.max(
+            420,
+            math.ceil(#names / 2) * 92
+        ))
+    end
+    D = Model:data()
+    modal = ModalUI:createModal(parent, 960, 650)
+    modal:setTitle("Raid Templates")
+    modal:setSubtitle("Browse by expansion. Unlisted slots remain Auto-filled.")
+    modal:setHeaderIcon("Interface\\Icons\\INV_Scroll_03")
+    local saveLabel = Native:createText(modal.content, "SAVE CURRENT RAID", "GameFontNormalSmall", theme.colors.muted)
+    saveLabel:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        0,
+        0
+    )
+    local nameInput = InputUI:createTextInput(modal.content, 300, 34)
+    nameInput.frame:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        0,
+        -24
+    )
+    tab = "WotLK"
+    tabDefs = {{key = "WotLK", label = "WotLK", width = 116}, {key = "TBC", label = "TBC", width = 104}, {key = "Classic", label = "Classic", width = 116}, {key = "CUSTOM", label = "My Templates", width = 150}}
+    tabs = {}
+    local x = 0
+    for ____, def in ipairs(tabDefs) do
+        local button = ButtonUI:createButton(modal.content, {
+            text = def.label,
+            width = def.width,
+            height = 34,
+            accent = def.key == "CUSTOM" and theme.colors.warning or theme.colors.primary,
+            flat = true
+        })
+        button.frame:SetPoint(
+            "TOPLEFT",
+            modal.content,
+            "TOPLEFT",
+            x,
+            -82
+        )
+        local key = def.key
+        button.frame:SetScript(
+            "OnMouseDown",
+            function()
+                tab = key
+                scroll:scrollToTop()
+                refresh(nil)
+            end
+        )
+        tabs[#tabs + 1] = button
+        x = x + (def.width + 8)
+    end
+    scroll = ScrollUI:createScrollList(modal.content, 884, 420)
+    scroll.frame:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        0,
+        -126
+    )
+    cards = {}
+    empty = Native:createText(scroll.content, "", "GameFontHighlight", theme.colors.muted)
+    empty:SetPoint(
+        "TOPLEFT",
+        scroll.content,
+        "TOPLEFT",
+        24,
+        -28
+    )
+    empty:SetWidth(800)
+    empty:SetJustifyH("CENTER")
+    empty:Hide()
+    local save = ButtonUI:createButton(
+        modal.content,
+        {
+            text = "Save Current",
+            width = 124,
+            height = 36,
+            accent = theme.colors.primary,
+            emphasis = true,
+            onClick = function()
+                if Model:config().mode ~= "RAID" then
+                    Model:fireStatus("Templates are raid-only. Configure dungeon bot slots directly.")
+                    return
+                end
+                local name = nameInput:getText()
+                if name == "" then
+                    return
+                end
+                Model:saveProfile(name)
+                nameInput:clear()
+                tab = "CUSTOM"
+                scroll:scrollToTop()
+                refresh(nil)
+            end
+        }
+    )
+    save.frame:SetPoint(
+        "LEFT",
+        nameInput.frame,
+        "RIGHT",
+        8,
+        0
+    )
+    local function open(self)
+        save:setEnabled(Model:config().mode == "RAID")
+        if Model:config().mode == "RAID" then
+            local raid = D:GetRaidById(Model:config().activity)
+            local ____opt_result_15
+            if raid ~= nil then
+                ____opt_result_15 = raid.era
+            end
+            local ____opt_result_15_16 = ____opt_result_15
+            if ____opt_result_15_16 == nil then
+                ____opt_result_15_16 = "WotLK"
+            end
+            local era = tostring(____opt_result_15_16)
+            tab = era == "TBC" and "TBC" or (era == "Classic" and "Classic" or "WotLK")
+        else
+            tab = "WotLK"
+        end
+        scroll:scrollToTop()
+        refresh(nil)
+        modal:show()
+    end
+    return {
+        frame = modal.frame,
+        open = open,
+        hide = function() return modal:hide() end
     }
 end
 return ____exports
@@ -3738,6 +4516,8 @@ end
 -- End of Lua Library inline imports
 local ____exports = {}
 local BuildSelectorUI = require("components.BuildSelector")
+local ActivityBrowserUI = require("components.ActivityBrowser")
+local TemplateBrowserUI = require("components.TemplateBrowser")
 local Native = require("core.Native")
 local Builds = require("data.WotlkBuilds")
 local Model = require("model.ComposerModel")
@@ -3760,7 +4540,7 @@ local ICON_PEOPLE = "Interface\\Icons\\Spell_Holy_PrayerOfHealing02"
 local ICON_OPTIONS = "Interface\\Icons\\INV_Gizmo_02"
 local ICON_COVERAGE = "Interface\\Icons\\INV_Misc_Map_01"
 local function colorForPhase(self, phase)
-    if phase == "READY" or phase == "DONE" then
+    if phase == "READY" or phase == "ASSEMBLED" or phase == "DONE" then
         return theme.colors.success
     end
     if phase == "ERROR" then
@@ -3915,171 +4695,18 @@ end
 local function activitySubtitle(self)
     local cfg = Model:config()
     if cfg.mode == "RAID" then
-        return ((tostring(cfg.size) .. " player  ·  ") .. (cfg.difficulty == "heroic" and "Heroic" or "Normal")) .. "  ·  Auto-enter after assembly"
+        return ((tostring(cfg.size) .. " player  ·  ") .. (cfg.difficulty == "heroic" and "Heroic" or "Normal")) .. "  ·  Teleport after assembly"
     end
     local mode = cfg.difficulty == "alpha" and "Titan Rune Alpha" or (cfg.difficulty == "beta" and "Titan Rune Beta" or (cfg.difficulty == "gamma" and "Titan Rune Gamma" or (cfg.difficulty == "heroic" and "Heroic" or "Normal")))
-    return (mode .. "  ·  5 player  ·  ") .. (cfg.activity == "random" and "Dungeon Finder chooses destination" or "Auto-enter after assembly")
+    return (mode .. "  ·  5 player  ·  ") .. (cfg.activity == "random" and "Dungeon Finder chooses destination" or "Teleport when ready")
 end
 function ____exports.createModernDashboard(self)
-    local clearDynamicRows, refreshTemplates, refreshPeople, roleOrder, templatesModal, templateSave, templateTab, templateBuiltinTab, templateCustomTab, templateScroll, templateRows, templateEmpty, humanScroll, humanRowsModal, humanEmpty, pinRole, pinRoleButtons, pinToggle, pinScroll, pinRows, pinEmpty
+    local clearDynamicRows, refreshPeople, roleOrder, humanScroll, humanRowsModal, humanEmpty, pinRole, pinRoleButtons, pinToggle, pinScroll, pinRows, pinEmpty
     function clearDynamicRows(self, rows)
         for ____, row in ipairs(rows) do
             row:Hide()
+            row:ClearAllPoints()
         end
-    end
-    function refreshTemplates(self)
-        clearDynamicRows(nil, templateRows)
-        templateSave:setEnabled(Model:config().mode == "RAID")
-        templateBuiltinTab:setSelected(templateTab == "BUILTIN")
-        templateCustomTab:setSelected(templateTab == "CUSTOM")
-        local names = templateTab == "BUILTIN" and Model:listBuiltinProfiles() or Model:listCustomProfiles()
-        if #names == 0 then
-            templateEmpty:SetText(templateTab == "BUILTIN" and "No built-in raid compositions are available." or "No custom templates yet. Configure a raid, name it above, then Save Current.")
-            templateEmpty:Show()
-        else
-            templateEmpty:Hide()
-        end
-        do
-            local i = 0
-            while i < #names do
-                local row = templateRows[i + 1]
-                if row == nil then
-                    local panel = Native:createPanel(templateScroll.content, theme.colors.surfaceRaised, theme.colors.border)
-                    panel.frame:SetSize(854, 70)
-                    local accent = Native:createSolid(panel.frame, theme.colors.primary, "ARTWORK")
-                    accent:SetWidth(3)
-                    accent:SetPoint(
-                        "TOPLEFT",
-                        panel.frame,
-                        "TOPLEFT",
-                        0,
-                        0
-                    )
-                    accent:SetPoint(
-                        "BOTTOMLEFT",
-                        panel.frame,
-                        "BOTTOMLEFT",
-                        0,
-                        0
-                    )
-                    local iconBadge = Native:createFramedIcon(panel.frame, ICON_RAID, 40, theme.colors.primary)
-                    iconBadge.frame:SetPoint(
-                        "LEFT",
-                        panel.frame,
-                        "LEFT",
-                        12,
-                        0
-                    )
-                    local name = Native:createText(panel.frame, "", "GameFontHighlight")
-                    name:SetPoint(
-                        "TOPLEFT",
-                        panel.frame,
-                        "TOPLEFT",
-                        64,
-                        -10
-                    )
-                    name:SetWidth(500)
-                    local tag = Native:createText(panel.frame, "", "GameFontNormalSmall", theme.colors.primary)
-                    tag:SetPoint(
-                        "TOPLEFT",
-                        panel.frame,
-                        "TOPLEFT",
-                        64,
-                        -33
-                    )
-                    tag:SetWidth(80)
-                    local info = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
-                    info:SetPoint(
-                        "TOPLEFT",
-                        panel.frame,
-                        "TOPLEFT",
-                        142,
-                        -33
-                    )
-                    info:SetWidth(470)
-                    local load = ButtonUI:createButton(panel.frame, {text = "Load", width = 72, height = 30, accent = theme.colors.primary})
-                    local remove = ButtonUI:createButton(panel.frame, {text = "Delete", width = 70, height = 30, accent = theme.colors.error})
-                    panel.frame._accent = accent
-                    panel.frame._iconBadge = iconBadge
-                    panel.frame._name = name
-                    panel.frame._tag = tag
-                    panel.frame._info = info
-                    panel.frame._load = load
-                    panel.frame._remove = remove
-                    templateScroll:bindWheel(panel.frame)
-                    templateScroll:bindWheel(load.frame)
-                    templateScroll:bindWheel(remove.frame)
-                    row = panel.frame
-                    templateRows[i + 1] = row
-                end
-                row:ClearAllPoints()
-                row:SetPoint(
-                    "TOPLEFT",
-                    templateScroll.content,
-                    "TOPLEFT",
-                    0,
-                    -(i * 78)
-                )
-                local profileName = names[i + 1]
-                local builtin = templateTab == "BUILTIN"
-                local rowAccent = builtin and theme.colors.primary or theme.colors.warning
-                Native:setTextureColor(row._accent, rowAccent)
-                row._iconBadge.outline:setColor(rowAccent)
-                row._iconBadge.icon:SetTexture(builtin and ICON_RAID or ICON_TEMPLATES)
-                row._iconBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-                row._name:SetText(profileName)
-                row._tag:SetText(builtin and "BUILT-IN" or "CUSTOM")
-                row._tag:SetTextColor(rowAccent[1], rowAccent[2], rowAccent[3], 1)
-                row._info:SetText(Model:profileDescription(profileName))
-                local load = row._load
-                local remove = row._remove
-                load.frame:ClearAllPoints()
-                remove.frame:ClearAllPoints()
-                if builtin then
-                    remove.frame:Hide()
-                    load.frame:SetPoint(
-                        "RIGHT",
-                        row,
-                        "RIGHT",
-                        -10,
-                        0
-                    )
-                else
-                    load.frame:SetPoint(
-                        "RIGHT",
-                        row,
-                        "RIGHT",
-                        -88,
-                        0
-                    )
-                    remove.frame:SetPoint(
-                        "RIGHT",
-                        row,
-                        "RIGHT",
-                        -10,
-                        0
-                    )
-                    remove.frame:SetScript(
-                        "OnMouseDown",
-                        function()
-                            Model:deleteProfile(profileName)
-                            refreshTemplates(nil)
-                        end
-                    )
-                    remove.frame:Show()
-                end
-                load.frame:SetScript(
-                    "OnMouseDown",
-                    function()
-                        Model:loadProfile(profileName)
-                        templatesModal:hide()
-                    end
-                )
-                row:Show()
-                i = i + 1
-            end
-        end
-        templateScroll:setContentHeight(math.max(420, #names * 78))
     end
     function refreshPeople(self)
         clearDynamicRows(nil, humanRowsModal)
@@ -4653,6 +5280,8 @@ function ____exports.createModernDashboard(self)
         -16,
         16
     )
+    local activityBrowser = ActivityBrowserUI:createActivityBrowser(frame)
+    local templatesBrowser = TemplateBrowserUI:createTemplateBrowser(frame)
     local statusNotice = ""
     local activity = Native:createPanel(center, theme.colors.surface, theme.colors.borderStrong)
     activity.frame:SetPoint(
@@ -4749,23 +5378,19 @@ function ____exports.createModernDashboard(self)
         702,
         -12
     )
-    local activitySelect = ChoiceUI:createChoiceSelect(
+    local activityBrowse = ButtonUI:createButton(
         activity.frame,
         {
+            text = "Browse Dungeons",
             width = 344,
-            maxVisible = 10,
-            getItems = function() return Model:config().mode == "RAID" and Model:raidItems() or Model:dungeonItems() end,
-            getValue = function() return Model:config().activity end,
-            onChange = function(____, value)
-                if Model:config().mode == "RAID" then
-                    Model:setRaidActivity(tostring(value))
-                else
-                    Model:setDungeonActivity(tostring(value))
-                end
-            end
+            height = 38,
+            accent = theme.colors.primary,
+            icon = ICON_COVERAGE,
+            iconSize = 22,
+            onClick = function() return activityBrowser:open() end
         }
     )
-    activitySelect.frame:SetPoint(
+    activityBrowse.frame:SetPoint(
         "TOPLEFT",
         activity.frame,
         "TOPLEFT",
@@ -6178,6 +6803,27 @@ function ____exports.createModernDashboard(self)
     )
     local function showAssembleConfirm()
     end
+    local function showTeleportConfirm()
+    end
+    local teleportButton = ButtonUI:createButton(
+        status.frame,
+        {
+            text = "Teleport to Instance",
+            width = 270,
+            height = 52,
+            accent = theme.colors.primary,
+            emphasis = true,
+            onClick = function() return showTeleportConfirm(nil) end
+        }
+    )
+    teleportButton.frame:SetPoint(
+        "BOTTOMLEFT",
+        status.frame,
+        "BOTTOMLEFT",
+        16,
+        66
+    )
+    teleportButton.frame:Hide()
     local assembleButton = ButtonUI:createButton(
         status.frame,
         {
@@ -6212,114 +6858,9 @@ function ____exports.createModernDashboard(self)
         8,
         0
     )
-    templatesModal = ModalUI:createModal(frame, 960, 650)
-    templatesModal:setTitle("Raid Templates")
-    templatesModal:setSubtitle("Start from a proven raid core or save your own. Unlisted slots remain Auto-filled.")
-    templatesModal:setHeaderIcon(ICON_TEMPLATES)
-    local templateSaveLabel = Native:createText(templatesModal.content, "SAVE CURRENT RAID", "GameFontNormalSmall", theme.colors.muted)
-    templateSaveLabel:SetPoint(
-        "TOPLEFT",
-        templatesModal.content,
-        "TOPLEFT",
-        0,
-        0
-    )
-    local templateName = InputUI:createTextInput(templatesModal.content, 300, 34)
-    templateName.frame:SetPoint(
-        "TOPLEFT",
-        templatesModal.content,
-        "TOPLEFT",
-        0,
-        -24
-    )
-    templateSave = ButtonUI:createButton(
-        templatesModal.content,
-        {
-            text = "Save Current",
-            width = 124,
-            height = 36,
-            accent = theme.colors.primary,
-            emphasis = true,
-            onClick = function()
-                if Model:config().mode ~= "RAID" then
-                    Model:fireStatus("Templates are raid-only. Configure dungeon bot slots directly.")
-                    return
-                end
-                local name = templateName:getText()
-                if name ~= "" then
-                    Model:saveProfile(name)
-                    templateName:clear()
-                    refreshTemplates(nil)
-                end
-            end
-        }
-    )
-    templateSave.frame:SetPoint(
-        "LEFT",
-        templateName.frame,
-        "RIGHT",
-        8,
-        0
-    )
-    templateTab = "BUILTIN"
-    templateBuiltinTab = ButtonUI:createButton(templatesModal.content, {text = "Built-in", width = 138, height = 34, accent = theme.colors.primary})
-    templateBuiltinTab.frame:SetPoint(
-        "TOPLEFT",
-        templatesModal.content,
-        "TOPLEFT",
-        0,
-        -82
-    )
-    templateCustomTab = ButtonUI:createButton(templatesModal.content, {text = "My Templates", width = 150, height = 34, accent = theme.colors.warning})
-    templateCustomTab.frame:SetPoint(
-        "LEFT",
-        templateBuiltinTab.frame,
-        "RIGHT",
-        8,
-        0
-    )
-    templateScroll = ScrollUI:createScrollList(templatesModal.content, 884, 420)
-    templateScroll.frame:SetPoint(
-        "TOPLEFT",
-        templatesModal.content,
-        "TOPLEFT",
-        0,
-        -126
-    )
-    templateRows = {}
-    templateEmpty = Native:createText(templateScroll.content, "", "GameFontHighlight", theme.colors.muted)
-    templateEmpty:SetPoint(
-        "TOPLEFT",
-        templateScroll.content,
-        "TOPLEFT",
-        24,
-        -28
-    )
-    templateEmpty:SetWidth(800)
-    templateEmpty:SetJustifyH("CENTER")
-    templateEmpty:SetJustifyV("TOP")
-    templateEmpty:Hide()
-    templateBuiltinTab.frame:SetScript(
-        "OnMouseDown",
-        function()
-            templateTab = "BUILTIN"
-            templateScroll:scrollToTop()
-            refreshTemplates(nil)
-        end
-    )
-    templateCustomTab.frame:SetScript(
-        "OnMouseDown",
-        function()
-            templateTab = "CUSTOM"
-            templateScroll:scrollToTop()
-            refreshTemplates(nil)
-        end
-    )
     showTemplates = function()
         ChoiceUI:closeChoicePopup()
-        templateScroll:scrollToTop()
-        refreshTemplates(nil)
-        templatesModal:show()
+        templatesBrowser:open()
     end
     local peopleModal = ModalUI:createModal(frame, 980, 620)
     peopleModal:setTitle("Humans & Pins")
@@ -6766,17 +7307,20 @@ function ____exports.createModernDashboard(self)
         112,
         0
     )
+    local function confirmAction()
+        return Model:assemble()
+    end
     local confirmGo = ButtonUI:createButton(
         confirmModal.content,
         {
             text = "Assemble",
-            width = 120,
+            width = 140,
             height = 38,
             accent = theme.colors.success,
             emphasis = true,
             onClick = function()
                 confirmModal:hide()
-                Model:assemble()
+                confirmAction(nil)
             end
         }
     )
@@ -6793,26 +7337,28 @@ function ____exports.createModernDashboard(self)
             Model:fireStatus("Build & Prepare must finish first.")
             return
         end
-        local retry = Model:isTravelRetry()
         local cfg = Model:config()
         local activity = Model:selectedActivityLabel()
+        confirmAction = function() return Model:assemble() end
         confirmModal:setHeaderIcon(Model:selectedActivityIcon())
-        if retry then
-            confirmModal:setTitle("Enter selected activity?")
-            confirmModal:setSubtitle("The reviewed roster is already assembled.")
-            confirmText:SetText(("Retry automatic entry for the complete group into " .. activity) .. ". The roster will not be rebuilt.")
-            confirmGo:setText("Enter Activity")
-        elseif cfg.mode == "DUNGEON" and cfg.activity == "random" then
-            confirmModal:setTitle("Assemble prepared party?")
-            confirmModal:setSubtitle("Composer will commit the reviewed roster.")
-            confirmText:SetText("Prepared Playerbots attach directly. Real players keep normal group semantics. Dungeon Finder chooses the destination.")
-            confirmGo:setText("Assemble")
-        else
-            confirmModal:setTitle("Assemble & enter?")
-            confirmModal:setSubtitle("Composer will commit the reviewed roster.")
-            confirmText:SetText(("After validation, the complete group will automatically enter " .. activity) .. ".")
-            confirmGo:setText("Assemble")
+        confirmModal:setTitle(cfg.mode == "RAID" and "Assemble prepared raid?" or "Assemble prepared party?")
+        confirmModal:setSubtitle("Composer will commit the reviewed roster. Travel remains a separate action.")
+        confirmText:SetText(cfg.mode == "DUNGEON" and cfg.activity == "random" and "Prepared Playerbots attach directly. Real players keep normal group semantics. Dungeon Finder chooses the destination." or ("Prepared Playerbots attach directly. After assembly, use Teleport to Instance when everyone is ready for " .. activity) .. ".")
+        confirmGo:setText("Assemble")
+        confirmModal:show()
+    end
+    showTeleportConfirm = function()
+        if not Model:isAssembled() or not Model:hasFixedActivityDestination() then
+            Model:fireStatus("Assemble the complete group before teleporting to a named instance.")
+            return
         end
+        local activity = Model:selectedActivityLabel()
+        confirmAction = function() return Model:teleportToInstance() end
+        confirmModal:setHeaderIcon(Model:selectedActivityIcon())
+        confirmModal:setTitle("Teleport to instance?")
+        confirmModal:setSubtitle("This is a separate confirmation after assembly.")
+        confirmText:SetText(("Teleport the complete assembled group into " .. activity) .. ". Composer will validate level, quest/access, lockout and instance state before moving anyone.")
+        confirmGo:setText("Teleport")
         confirmModal:show()
     end
     local function refreshActivity(self)
@@ -6823,7 +7369,7 @@ function ____exports.createModernDashboard(self)
         activityBadge.icon:SetTexture(Model:selectedActivityIcon())
         activityBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         activityFieldLabel:SetText(Model:config().mode == "RAID" and "RAID" or "DUNGEON")
-        activitySelect:refresh()
+        activityBrowse:setText(Model:config().mode == "RAID" and "Browse Raids" or "Browse Dungeons")
         difficultySelect:refresh()
         local sizes = Model:supportedRaidSizes()
         local sizeIndex = 0
@@ -6910,7 +7456,7 @@ function ____exports.createModernDashboard(self)
             local i = 0
             while i < #dungeonRows do
                 do
-                    local __continue169
+                    local __continue154
                     repeat
                         local widgets = dungeonRows[i + 1]
                         local slot = slots[i + 1]
@@ -6943,7 +7489,7 @@ function ____exports.createModernDashboard(self)
                             widgets.choose.frame:Hide()
                             widgets.auto.frame:Hide()
                             widgets.humanAnchor.frame:Show()
-                            __continue169 = true
+                            __continue154 = true
                             break
                         end
                         local exact = slot.exact
@@ -7031,9 +7577,9 @@ function ____exports.createModernDashboard(self)
                         else
                             widgets.auto.frame:Hide()
                         end
-                        __continue169 = true
+                        __continue154 = true
                     until true
-                    if not __continue169 then
+                    if not __continue154 then
                         break
                     end
                 end
@@ -7290,12 +7836,12 @@ function ____exports.createModernDashboard(self)
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue203
+                    local __continue188
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue203 = true
+                            __continue188 = true
                             break
                         end
                         local column = g % columns
@@ -7377,9 +7923,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue203 = true
+                        __continue188 = true
                     until true
-                    if not __continue203 then
+                    if not __continue188 then
                         break
                     end
                 end
@@ -7448,11 +7994,11 @@ function ____exports.createModernDashboard(self)
             Native:withAlpha(phaseColor, 0.16)
         )
         phaseCard.outline:setColor(phase == "ERROR" and theme.colors.error or theme.colors.borderStrong)
-        phaseText:SetText(Model:isTravelRetry() and "Ready to enter activity" or Model:phaseLabel(phase))
+        phaseText:SetText(Model:phaseLabel(phase))
         phaseText:SetTextColor(phaseColor[1], phaseColor[2], phaseColor[3], 1)
         if phase == "IDLE" then
             phaseDetail:SetText(Model:config().mode == "RAID" and "Add specific builds or keep Auto to prepare your raid." or "Choose exact builds or keep Auto to prepare your group.")
-        elseif Model:isTravelRetry() and statusNotice ~= "" then
+        elseif (phase == "ASSEMBLED" or phase == "TRAVEL") and statusNotice ~= "" then
             phaseDetail:SetText(statusNotice)
         else
             local ____phaseDetail_SetText_48 = phaseDetail.SetText
@@ -7559,7 +8105,7 @@ function ____exports.createModernDashboard(self)
                 1,
                 __TS__Number(____p_current_73) / __TS__Number(p.total)
             )
-        elseif phase == "READY" or phase == "DONE" then
+        elseif phase == "READY" or phase == "ASSEMBLED" or phase == "DONE" then
             ratio = 1
         elseif phase == "IDLE" and target > 0 then
             ratio = math.min(1, total / target)
@@ -7568,7 +8114,7 @@ function ____exports.createModernDashboard(self)
         Native:setTextureColor(progressFill, phaseColor)
         local ____progressText_SetText_80 = progressText.SetText
         local ____temp_79
-        if phase == "PREPARING" or phase == "ASSEMBLING" or phase == "READY" or phase == "DONE" then
+        if phase == "PREPARING" or phase == "ASSEMBLING" or phase == "READY" or phase == "ASSEMBLED" or phase == "TRAVEL" or phase == "DONE" then
             local ____p_current_74 = p.current
             if ____p_current_74 == nil then
                 ____p_current_74 = 0
@@ -7670,8 +8216,10 @@ function ____exports.createModernDashboard(self)
                     ____table_size_98 = 25
                 end
                 nextText = ("Role counts must total " .. tostring(____table_size_98)) .. " before preparing."
+            elseif phase == "ASSEMBLED" then
+                nextText = Model:hasFixedActivityDestination() and "Group assembled. Press Teleport to Instance when everyone is ready." or "Group assembled. Dungeon Finder can choose the destination."
             elseif phase == "READY" then
-                nextText = Model:isTravelRetry() and "Clear the travel blocker, then enter the activity." or "Prepared roster is ready for review. Assemble when it looks right."
+                nextText = "Prepared roster is ready for review. Assemble when it looks right."
             elseif phase == "PREPARING" then
                 nextText = "Composer is provisioning and validating the selected bots."
             else
@@ -7684,17 +8232,19 @@ function ____exports.createModernDashboard(self)
         if phase == "IDLE" and statusNotice ~= "" then
             nextText = nextText .. "\n" .. statusNotice
         end
-        local nextColor = phase == "ERROR" and theme.colors.error or (phase == "READY" and theme.colors.success or theme.colors.warning)
+        local nextColor = phase == "ERROR" and theme.colors.error or ((phase == "READY" or phase == "ASSEMBLED") and theme.colors.success or theme.colors.warning)
         nextCard.outline:setColor((phase == "ERROR" or phase == "READY") and nextColor or theme.colors.border)
         nextBadge.outline:setColor(nextColor)
-        nextBang:SetText(phase == "READY" and ">" or "!")
+        nextBang:SetText((phase == "READY" or phase == "ASSEMBLED") and ">" or "!")
         nextBang:SetTextColor(nextColor[1], nextColor[2], nextColor[3], 1)
         warningsTitle:SetText(phase == "ERROR" and "ACTION REQUIRED" or (phase == "PREPARING" and "PREPARING" or "NEXT STEP"))
         warningsTitle:SetTextColor(nextColor[1], nextColor[2], nextColor[3], 1)
         nextDetail:SetTextColor(nextColor[1], nextColor[2], nextColor[3], 1)
         nextDetail:SetText(nextText)
+        local assembled = phase == "ASSEMBLED"
+        local canTeleport = assembled and Model:hasFixedActivityDestination()
         local ____buildButton_setEnabled_103 = buildButton.setEnabled
-        local ____temp_102 = Model:humanReady() and not Model:isBusy()
+        local ____temp_102 = Model:humanReady() and not Model:isBusy() and not assembled
         if ____temp_102 then
             local ____temp_101 = Model:config().mode ~= "RAID"
             if not ____temp_101 then
@@ -7708,9 +8258,25 @@ function ____exports.createModernDashboard(self)
             ____temp_102 = ____temp_101
         end
         ____buildButton_setEnabled_103(buildButton, ____temp_102)
+        if assembled then
+            buildButton.frame:Hide()
+        else
+            buildButton.frame:Show()
+        end
+        teleportButton:setEnabled(canTeleport)
+        if canTeleport then
+            teleportButton.frame:Show()
+        else
+            teleportButton.frame:Hide()
+        end
         assembleButton:setEnabled(Model:plan().ready == true and Model:plan().valid == true and phase == "READY")
-        assembleButton:setText(Model:isTravelRetry() and "Enter Activity" or (Model:config().mode == "RAID" and "Assemble Raid" or "Assemble Party"))
+        assembleButton:setText(Model:config().mode == "RAID" and "Assemble Raid" or "Assemble Party")
         assembleButton:setSelected(Model:plan().ready == true and Model:plan().valid == true and phase == "READY")
+        if assembled then
+            assembleButton.frame:Hide()
+        else
+            assembleButton.frame:Show()
+        end
     end
     local function refresh(self)
         if not frame:IsShown() then
@@ -7807,12 +8373,7 @@ function ____exports.createModernDashboard(self)
     )
     GC:RegisterCallback(
         "PROFILES_CHANGED",
-        function()
-            if templatesModal.frame:IsShown() then
-                refreshTemplates(nil)
-            end
-            refresh(nil)
-        end
+        function() return refresh(nil) end
     )
     GC:RegisterCallback(
         "STATUS",
