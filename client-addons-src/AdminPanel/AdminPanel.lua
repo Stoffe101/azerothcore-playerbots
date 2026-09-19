@@ -262,8 +262,8 @@ local tbcNote = Text(tbcStartCard, "Stage 8 stays intact, so Kara / Gruul / Mag 
 local wrathCard = Card(character, 662, 132); wrathCard:SetPoint("TOPLEFT", tbcStartCard, "BOTTOMLEFT", 0, -10); CardLabel(wrathCard, "Wrath of the Lich King")
 local wrathCharStatus = Text(wrathCard, "LOCKED • release WotLK from the World page first", "GameFontNormal", C.warning[1], C.warning[2], C.warning[3]); wrathCharStatus:SetPoint("TOPLEFT", 14, -39)
 local starter80 = Button(wrathCard, "New chars: Raid Ready 80", 208, 28, function() Send("starter wotlkraid"); Send("status") end, "Unlocked only after WotLK release. New characters start at level 80/stage 13 in Dalaran."); starter80:SetPoint("TOPLEFT", 14, -75)
-local makeWrathReady = Button(wrathCard, "Make THIS char WotLK Raid Ready", 252, 28, function() Send("wotlkraidready"); Send("status") end, "Level 80, stage 13, Dalaran, max riding, supplies and spec-aware ilvl-200 pre-Naxx gear."); makeWrathReady:SetPoint("LEFT", starter80, "RIGHT", 10, 0)
-local wrathGearNote = Text(wrathCard, "Pre-Naxx ilvl 200 • does not mark Naxx/Ulduar/ToC/ICC complete", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); wrathGearNote:SetPoint("BOTTOMLEFT", 14, 12)
+local makeWrathReady = Button(wrathCard, "Make THIS char WotLK Raid Ready", 252, 28, function() Send("wotlkraidready"); Send("status") end, "Level 80, stage 13, Dalaran, max riding, supplies, spec-aware ilvl-200 pre-Naxx gear, and the Frozen Halls quest-access chain required by Pit of Saron / Halls of Reflection."); makeWrathReady:SetPoint("LEFT", starter80, "RIGHT", 10, 0)
+local wrathGearNote = Text(wrathCard, "Pre-Naxx ilvl 200 • Frozen Halls access repaired • raid achievements stay untouched", "GameFontHighlightSmall", C.muted[1], C.muted[2], C.muted[3]); wrathGearNote:SetPoint("BOTTOMLEFT", 14, 12)
 
 -- WORLD ---------------------------------------------------------------------
 local world = CreatePage("World")

@@ -157,12 +157,12 @@ struct Plan
     std::unordered_set<uint32> rejectedCandidates;
 
     bool assembling = false;
+    bool assembled = false;
     uint32 assembleElapsed = 0;
     uint32 assembleProgressElapsed = 0;
 
-    // Named activities enter automatically after assembly. Delay/retry the actual instance
-    // teleport for a few world ticks so group conversion, difficulty and subgroup changes have
-    // settled before PlayerCannotEnter/TeleportTo are evaluated.
+    // Instance travel is a separate explicit player-confirmed step after assembly. The actual
+    // teleport still uses a short bounded retry window so group/difficulty state can settle first.
     bool travelPending = false;
     uint32 travelElapsed = 0;
     uint8 travelAttempts = 0;

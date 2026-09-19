@@ -1,5 +1,6 @@
 #include "GroupComposerCommand.h"
 
+#include "AdventureStartControl.h"
 #include "GroupComposerPlanner.h"
 #include "GroupComposerReserve.h"
 #include "GroupComposerTypes.h"
@@ -319,6 +320,53 @@ uint32 ActivityMapId(Plan const& plan)
     if (plan.config.mode == "dungeon") return DungeonMapId(plan.config.activity);
     if (plan.config.mode == "raid") return RaidMapId(plan.config.activity);
     return 0;
+}
+
+bool FrozenHallsAccessRequirement(Config const& config, Player* player, uint32& questId, char const*& questName)
+{
+    questId = 0;
+    questName = "";
+    if (!player || config.mode != "dungeon")
+        return false;
+
+    bool const alliance = player->GetTeamId() == TEAM_ALLIANCE;
+    if (config.activity == "pit_saron")
+    {
+        questId = alliance ? 24499u : 24511u;
+        questName = "Echoes of Tortured Souls";
+        return true;
+    }
+    if (config.activity == "halls_reflection")
+    {
+        questId = alliance ? 24710u : 24712u;
+        questName = "Deliverance from the Pit";
+        return true;
+    }
+    return false;
+}
+
+void EnsureComposerInstanceAccess(Player* bot, Config const& config)
+{
+    uint32 questId = 0;
+    char const* questName = "";
+    if (!FrozenHallsAccessRequirement(config, bot, questId, questName))
+        return;
+
+    // Keep Composer-selected bots on AzerothCore's normal access path. The WotLK raid-ready
+    // bootstrap repairs only the mandatory Frozen Halls story gates; it does not award raid kills.
+    if (AdventureStartControl::EnsureRaidReadyAccess(bot, AdventureStartProfile::WotlkRaidReady))
+        bot->SaveToDB(false, false);
+}
+
+std::string SpecificInstanceAccessHint(Player* player, Config const& config)
+{
+    uint32 questId = 0;
+    char const* questName = "";
+    if (!FrozenHallsAccessRequirement(config, player, questId, questName) || player->IsQuestRewarded(questId))
+        return "";
+
+    return std::string("the required quest \"") + questName + "\" is not complete. "
+        "Complete the Frozen Halls chain normally, or use Admin Panel -> Make THIS char WotLK Raid Ready.";
 }
 
 uint8 RequiredActivityLevel(Player* master, Config const& config)
@@ -788,7 +836,9 @@ bool TeleportCompletedPlan(Player* master, Plan const& plan, std::string& detail
         Map::EnterState state = sMapMgr->PlayerCannotEnter(mapId, player);
         if (state != Map::CAN_ENTER && state != Map::CANNOT_ENTER_ALREADY_IN_MAP)
         {
-            error = "'" + member.name + "' cannot enter the selected instance because " + EnterStateReason(state) + ".";
+            std::string const accessHint = SpecificInstanceAccessHint(player, plan.config);
+            error = "'" + member.name + "' cannot enter the selected instance because " +
+                (accessHint.empty() ? std::string(EnterStateReason(state)) + "." : accessHint);
             return false;
         }
         travelers.push_back(player);
@@ -1149,6 +1199,7 @@ bool PreparePlan(Player* master, Plan& plan, std::string& error)
             if (!(member.guild && member.needsPreparation))
                 SyncManagedBot(master, bot, member.role, member.spec, plan.config.requiredLevel,
                     minimumItemLevel, targetItemLevel, fullProvision);
+            EnsureComposerInstanceAccess(bot, plan.config);
             continue;
         }
 
@@ -1280,6 +1331,7 @@ bool BeginPreparedAssembly(Player* master, Plan& plan, std::string& error)
     plan.travelPending = false;
     plan.travelElapsed = 0;
     plan.travelAttempts = 0;
+    plan.assembled = false;
     plan.assembling = true;
     plan.assembleElapsed = 0;
     plan.assembleProgressElapsed = 0;
@@ -1354,6 +1406,9 @@ public:
             {
                 SyncManagedBot(master, bot, itr->second.role, itr->second.spec, itr->second.targetLevel,
                     itr->second.minimumItemLevel, itr->second.targetItemLevel, itr->second.fullRebuild);
+                auto planItr = s_plans.find(itr->second.ownerGuid);
+                if (planItr != s_plans.end())
+                    EnsureComposerInstanceAccess(bot, planItr->second.config);
                 itr = s_pendingSync.erase(itr);
             }
             else if (itr->second.elapsed > 12000) itr = s_pendingSync.erase(itr);
@@ -1386,14 +1441,9 @@ public:
                     plan.prepared = true;
                     if (master)
                     {
-                        std::string assemblyError;
-                        if (!BeginPreparedAssembly(master, plan, assemblyError))
-                        {
-                            SendProgress(master, "ERROR", readyBots, totalBots, assemblyError);
-                            SendProtocol(master, "ERROR", assemblyError);
-                        }
-                        else
-                            SendProtocol(master, "STATUS", "Prepared roster is joining your live group.");
+                        SendProgress(master, "READY", readyBots, totalBots,
+                            "Prepared roster is ready for review. Press Assemble when you are satisfied.");
+                        SendProtocol(master, "STATUS", "Preparation complete. Review the roster, then press Assemble.");
                     }
                 }
                 else if (plan.prepareElapsed > 15000 && master)
@@ -1450,8 +1500,8 @@ public:
                 {
                     plan.travelPending = false;
                     SendProtocol(master, "STATUS", travelError);
-                    SendProgress(master, "READY", uint32(plan.members.size()), uint32(plan.members.size()),
-                        "Group is assembled. Automatic entry could not complete; clear the blocker and press Enter Activity to retry.");
+                    SendProgress(master, "ASSEMBLED", uint32(plan.members.size()), uint32(plan.members.size()),
+                        "Group is assembled. Clear the blocker, then press Teleport to Instance to retry.");
                 }
                 else
                 {
@@ -1497,33 +1547,18 @@ public:
                 plan.assembling = false;
                 if (ApplyArrangement(master, plan, arrangementError))
                 {
+                    plan.assembled = true;
                     if (ActivityMapId(plan))
                     {
-                        // Group creation/conversion and difficulty changes finish on this same world
-                        // update. Give AzerothCore a few ticks to settle the live group before entry,
-                        // then retry transient PlayerCannotEnter/instance-state races automatically.
-                        plan.travelPending = true;
-                        plan.travelElapsed = 0;
-                        plan.travelAttempts = 0;
-                        SendProgress(master, "TRAVEL", uint32(plan.members.size()), uint32(plan.members.size()),
-                            "Roster complete. Entering the selected instance...");
+                        SendProgress(master, "ASSEMBLED", uint32(plan.members.size()), uint32(plan.members.size()),
+                            "Group assembled. Press Teleport to Instance when everyone is ready.");
+                        SendProtocol(master, "STATUS", "Group assembled. Instance travel now requires explicit confirmation.");
                     }
                     else
                     {
-                        // Random Dungeon has no fixed map. Finish assembly cleanly; the client
-                        // immediately hands the full party to Dungeon Finder when auto-queue is on.
-                        std::string travelDetail, travelError;
-                        if (TeleportCompletedPlan(master, plan, travelDetail, travelError))
-                        {
-                            SendProgress(master, "DONE", uint32(plan.members.size()), uint32(plan.members.size()), travelDetail);
-                            SendProtocol(master, "DONE", travelDetail);
-                        }
-                        else
-                        {
-                            SendProtocol(master, "STATUS", travelError);
-                            SendProgress(master, "READY", uint32(plan.members.size()), uint32(plan.members.size()),
-                                "Group is assembled. Select a named activity or use Dungeon Finder.");
-                        }
+                        SendProgress(master, "ASSEMBLED", uint32(plan.members.size()), uint32(plan.members.size()),
+                            "Group assembled. Ready for Dungeon Finder.");
+                        SendProtocol(master, "STATUS", "Group assembled. Dungeon Finder can choose the destination.");
                     }
                 }
                 else
@@ -1556,6 +1591,7 @@ ChatCommandTable GroupComposerCommand::GetCommands() const
         { "arrange",     HandleArrange,           SEC_PLAYER, Console::No },
         { "move",        HandleMove,              SEC_PLAYER, Console::No },
         { "assemble",    HandleAssemble,          SEC_PLAYER, Console::No },
+        { "teleport",    HandleTeleport,          SEC_PLAYER, Console::No },
         { "queue",       HandleQueue,             SEC_PLAYER, Console::No },
         { "anchors",     HandleAnchors,           SEC_PLAYER, Console::No },
         { "diagnostics", HandleDiagnostics,       SEC_PLAYER, Console::No },
@@ -1757,17 +1793,12 @@ bool GroupComposerCommand::HandleFind(ChatHandler* handler)
     uint32 readyBots = PreparedBotCount(stored);
     if (stored.prepared)
     {
-        std::string assemblyError;
-        if (!BeginPreparedAssembly(master, stored, assemblyError))
-        {
-            SendProgress(master, "ERROR", readyBots, totalBots, assemblyError);
-            SendError(handler, assemblyError);
-        }
-        else
-            handler->SendSysMessage("[GC]|STATUS|Prepared roster is joining your live group.");
+        SendProgress(master, "READY", readyBots, totalBots,
+            "Prepared roster is ready for review. Press Assemble when you are satisfied.");
+        handler->SendSysMessage("[GC]|STATUS|Preparation complete. Review the roster, then press Assemble.");
     }
     else
-        SendProgress(master, "PREPARING", readyBots, totalBots, "Preparing selected bots for immediate group assembly...");
+        SendProgress(master, "PREPARING", readyBots, totalBots, "Preparing selected bots for review...");
     return true;
 }
 
@@ -1809,9 +1840,16 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
     Plan& plan = itr->second;
     if (plan.travelPending) { handler->SendSysMessage("[GC]|STATUS|Instance entry is already in progress."); return true; }
     if (plan.assembling) { handler->SendSysMessage("[GC]|STATUS|Assembly is already in progress."); return true; }
+    if (plan.assembled)
+    {
+        SendProgress(master, "ASSEMBLED", uint32(plan.members.size()), uint32(plan.members.size()),
+            ActivityMapId(plan) ? "Group assembled. Press Teleport to Instance when everyone is ready." : "Group assembled. Ready for Dungeon Finder.");
+        handler->SendSysMessage("[GC]|STATUS|This reviewed roster is already assembled.");
+        return true;
+    }
     if (!plan.prepared || plan.preparing || OwnerHasPendingSync(owner))
     {
-        handler->SendSysMessage("[GC]|STATUS|Roster preparation is still running. Composer will assemble it automatically when ready.");
+        handler->SendSysMessage("[GC]|STATUS|Roster preparation is still running. Wait for Ready, then press Assemble.");
         SendProgress(master, "PREPARING", PreparedBotCount(plan), SelectedBotCount(plan),
             "Waiting for selected bots to finish preparation...");
         return true;
@@ -1827,6 +1865,34 @@ bool GroupComposerCommand::HandleAssemble(ChatHandler* handler)
     return true;
 }
 
+bool GroupComposerCommand::HandleTeleport(ChatHandler* handler)
+{
+    Player* master = CommandPlayer(handler);
+    if (!master) return true;
+    auto itr = s_plans.find(master->GetGUID().GetCounter());
+    if (itr == s_plans.end() || !itr->second.valid) { SendError(handler, "Build and assemble a valid roster before teleporting."); return true; }
+
+    Plan& plan = itr->second;
+    if (plan.config.mode == "dungeon" && plan.config.activity == "random")
+    { SendError(handler, "Random Dungeon has no fixed instance entrance. Use Dungeon Finder after assembly."); return true; }
+    if (!ActivityMapId(plan)) { SendError(handler, "The selected activity has no configured instance entrance."); return true; }
+    if (plan.travelPending) { handler->SendSysMessage("[GC]|STATUS|Instance teleport is already in progress."); return true; }
+    if (plan.assembling || !plan.assembled || !PlanMembershipComplete(master, plan))
+    { SendError(handler, "Assemble the complete reviewed group before teleporting it."); return true; }
+
+    std::string validationError;
+    if (!ValidateAssemblySnapshot(master, plan, validationError)) { SendError(handler, validationError); return true; }
+
+    ApplyGroupSettings(master, plan);
+    plan.travelPending = true;
+    plan.travelElapsed = 0;
+    plan.travelAttempts = 0;
+    SendProgress(master, "TRAVEL", uint32(plan.members.size()), uint32(plan.members.size()),
+        "Teleport confirmed. Checking access and entering the selected instance...");
+    handler->SendSysMessage("[GC]|STATUS|Teleport confirmed. Validating instance access for the full group.");
+    return true;
+}
+
 bool GroupComposerCommand::HandleQueue(ChatHandler* handler)
 {
     Player* master = CommandPlayer(handler);
@@ -1835,7 +1901,7 @@ bool GroupComposerCommand::HandleQueue(ChatHandler* handler)
     if (itr == s_plans.end() || !itr->second.valid) { SendError(handler, "Find a valid dungeon roster first."); return true; }
     Plan& plan = itr->second;
     if (plan.config.mode != "dungeon") { SendError(handler, "Dungeon Finder handoff is only available in Dungeon mode."); return true; }
-    if (plan.assembling || !PlanMembershipComplete(master, plan)) { SendError(handler, "Assemble the complete 5-player party before queueing it."); return true; }
+    if (plan.assembling || !plan.assembled || !PlanMembershipComplete(master, plan)) { SendError(handler, "Assemble the complete 5-player party before queueing it."); return true; }
 
     Group* group = master->GetGroup();
     if (!group || group->GetMembersCount() != 5) { SendError(handler, "Dungeon Finder handoff requires exactly five assembled group members."); return true; }
@@ -1941,6 +2007,9 @@ bool GroupComposerCommand::HandleStatus(ChatHandler* handler)
             SendProgress(master, "TRAVEL", uint32(plan->second.members.size()), uint32(plan->second.members.size()), "Entering the selected instance...");
         else if (plan->second.assembling)
             SendProgress(master, "ASSEMBLING", JoinedPlanMembers(master, plan->second), uint32(plan->second.members.size()), "Assembly in progress...");
+        else if (plan->second.assembled)
+            SendProgress(master, "ASSEMBLED", uint32(plan->second.members.size()), uint32(plan->second.members.size()),
+                ActivityMapId(plan->second) ? "Group assembled. Press Teleport to Instance when everyone is ready." : "Group assembled. Ready for Dungeon Finder.");
         else
             SendProgress(master, plan->second.prepared ? "READY" : plan->second.preparing ? "PREPARING" : "IDLE",
                 PreparedBotCount(plan->second), SelectedBotCount(plan->second),

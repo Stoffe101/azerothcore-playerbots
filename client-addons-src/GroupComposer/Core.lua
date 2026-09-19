@@ -301,11 +301,27 @@ end
 function GC:Assemble()
     if not GC.plan.ready or not GC.plan.valid then GC:Fire("STATUS", "Build and validate a roster before assembling it."); return false end
     if not GC.progress or GC.progress.phase ~= "READY" then
-        GC:Fire("STATUS", "Selected bots are still being prepared. Assemble unlocks automatically when they are ready.")
+        GC:Fire("STATUS", "Selected bots are still being prepared. Assemble unlocks when they are ready.")
         return false
     end
     GC:SetProgress("ASSEMBLING", 1, tonumber(GC.plan.summary.total) or #GC.plan.members, "Committing prepared roster to the live group...")
     GC:SendServer("assemble", "Assembling prepared roster...")
+    return true
+end
+
+function GC:TeleportToInstance()
+    local config = GC:GetConfig()
+    if config.mode == "DUNGEON" and config.activity == "random" then
+        GC:Fire("STATUS", "Random Dungeon has no fixed entrance. Use Dungeon Finder after assembly.")
+        return false
+    end
+    if not GC.plan.ready or not GC.plan.valid or not GC.progress or GC.progress.phase ~= "ASSEMBLED" then
+        GC:Fire("STATUS", "Assemble the reviewed group before teleporting to the instance.")
+        return false
+    end
+    GC:SetProgress("TRAVEL", tonumber(GC.plan.summary.total) or #GC.plan.members, tonumber(GC.plan.summary.total) or #GC.plan.members,
+        "Confirming instance access...")
+    GC:SendServer("teleport", "Teleporting group to instance...")
     return true
 end
 
@@ -363,11 +379,13 @@ function GC:HandleProtocolMessage(message)
         local detail = fields[5] or ""
         GC:SetProgress(phase, current, total, detail)
         if phase == "READY" and GC.pendingCommand == "find" then GC.pendingCommand = nil end
-        if phase == "READY" and GC.pendingCommand == "assemble" and string.find(detail, "Enter Activity", 1, true) then
-            -- The group is already committed; only automatic travel was blocked. Release the action
-            -- lock so the in-dashboard Enter Activity button can retry without rebuilding the roster.
+        if phase == "ASSEMBLED" and GC.pendingCommand == "assemble" then
             GC.pendingCommand = nil
+            if GC:GetConfig().mode == "DUNGEON" and GC:GetConfig().activity == "random" and GC:GetConfig().options.queueAfterAssemble then
+                GC:QueueDungeon()
+            end
         end
+        if phase == "ASSEMBLED" and GC.pendingCommand == "teleport" then GC.pendingCommand = nil end
         if phase == "ERROR" then GC.pendingCommand = nil end
     elseif kind == "STATUS" then
         GC:Fire("STATUS", fields[2] or "Server ready")
@@ -401,13 +419,10 @@ function GC:HandleProtocolMessage(message)
     elseif kind == "DONE" then
         local completed = GC.pendingCommand
         GC.pendingCommand = nil
-        if completed == "assemble" then
-            GC:SetProgress("DONE", tonumber(GC.plan.summary.total) or #GC.plan.members, tonumber(GC.plan.summary.total) or #GC.plan.members, fields[2] or "Roster ready.")
+        if completed == "teleport" then
+            GC:SetProgress("DONE", tonumber(GC.plan.summary.total) or #GC.plan.members, tonumber(GC.plan.summary.total) or #GC.plan.members, fields[2] or "Entered selected instance.")
         end
         GC:Fire("STATUS", fields[2] or "Done.")
-        if completed == "assemble" and GC:GetConfig().mode == "DUNGEON" and GC:GetConfig().activity == "random" and GC:GetConfig().options.queueAfterAssemble then
-            GC:QueueDungeon()
-        end
     elseif kind == "ERROR" then
         local failedCommand = GC.pendingCommand
         local hadValidPlan = GC.plan.ready and GC.plan.valid

@@ -597,7 +597,7 @@ private:
         }
 
         handler->PSendSysMessage(
-            "{} WotLK raid-ready applied: level 80, stage 13, Dalaran, max riding, glyph/mount/supply bootstrap and spec-aware ilvl-200 pre-Naxx gear.",
+            "{} WotLK raid-ready applied: level 80, stage 13, Dalaran, max riding, glyph/mount/supply bootstrap, spec-aware ilvl-200 pre-Naxx gear, and Frozen Halls quest access (Pit of Saron / Halls of Reflection).",
             PREFIX);
         return true;
     }
