@@ -482,7 +482,9 @@ assert 'Auto-enter after assembly' in MODERN and 'Dungeon Finder chooses destina
 send_plan = section(SERVER, "void SendPlan(", "bool RaidSupports(")
 assert "viewer && member.guid == viewer->GetGUID()" in send_plan, "Roster protocol lost the local-player marker"
 assert 'isPlayer = fields[13] == "1"' in CORE, "Client no longer parses the local-player roster marker"
-assert 'member.isPlayer ? "YOU  ·  " : ""' in MODERN, "Raid preview labels every human as YOU again"
+assert 'member.isPlayer ? "YOU  ·  " : (member.pinned ? "PIN  ·  " : "")' in MODERN, (
+    "Raid preview lost explicit local-player/pinned identity without conflating every human with YOU"
+)
 
 # Runtime-load and visual-density contracts for the typed modern dashboard.
 assert 'Group Composer WoW runtime smoke test passed' in WOW_RUNTIME_SMOKE, (
@@ -564,12 +566,21 @@ assert 'const modal = createModal(parent, 1040, 680);' in SELECTOR
 assert 'Any valid spec' in SELECTOR and 'Use this build' in SELECTOR
 assert "specSummary" in SELECTOR and 'labels.join("  ·  ")' in SELECTOR
 assert "modal.setHeaderRole(currentRole)" in SELECTOR
+assert "const classRows = Math.max(1, Math.ceil(validClasses.length / columns));" in SELECTOR
+assert "const classHeight = classRows > 1 ? 258 : 164;" in SELECTOR
+assert "const specHeight = currentClass === undefined ? 108 : 176;" in SELECTOR
+assert "modal.frame.SetHeight(classHeight + specHeight + 222);" in SELECTOR, (
+    "Build selector lost content-sensitive Tank/Healer/DPS sizing"
+)
 
 # One-border visual primitive contracts.
 assert "selectedWash" in BUTTON and "const outline = createOutline" in BUTTON
 assert "innerFrame" not in BUTTON and "innerOutline" not in BUTTON and "activeTop" not in BUTTON
 assert "topTint" not in BUTTON, "Button refactor regressed to stacked decorative layers"
-assert "createChrome(panel.frame, theme.colors.chrome, true)" in MODAL
+assert "createChrome(" not in MODAL, "Modal primitive must not stack a second chrome outline over its panel border"
+assert "createPanel(parent, theme.colors.background, theme.colors.chrome)" in MODAL, (
+    "Modal must keep one restrained premium shell border"
+)
 assert "headerDivider" in MODAL and "setHeaderIcon(path?: string)" in MODAL
 assert "createChrome(popup.frame" not in CHOICE_SELECT, "Dropdown popup must stay single-border"
 assert "track.SetWidth(2)" in SCROLL_LIST and "thumb.SetWidth(5)" in SCROLL_LIST
@@ -586,9 +597,12 @@ assert "UI-DialogBox-Gold-Corner" not in NATIVE, (
 # Specific Builds must reconcile pooled frames explicitly because WoW does not clip child frames
 # to a shrunken parent. This is the regression contract for the Protection Paladin ×2 ghost row.
 assert "rowsByKey" in MODERN and "rowKeys" in MODERN
+assert 'const rowKey = role + ":" + String(build.classId) + ":" + String(build.specId);' in MODERN, (
+    "Exact build frame identity must include role/class/spec"
+)
 assert "pooled.panel.frame.Hide()" in MODERN and "pooled.panel.frame.ClearAllPoints()" in MODERN
 assert "widgets.panel.frame.Hide()" in MODERN and "widgets.panel.frame.ClearAllPoints()" in MODERN
-assert 'widgets.count.SetText("× " + String(build.count))' in MODERN
+assert 'widgets.count.SetText("×" + String(build.count))' in MODERN
 
 # Major mockup surfaces remain icon-led and role-aware while decoration stays restrained.
 assert "ACTIVITY_ICONS" in MODEL and "selectedActivityIcon" in MODEL
@@ -607,7 +621,24 @@ assert '"Human anchor"' in MODERN and "widgets.humanAnchor.frame.Show()" in MODE
 assert "resetRoles.frame.SetPoint" in MODERN and 'resetRoles.frame.SetPoint("TOPRIGHT", raidView' in MODERN
 assert "backendGlow" in MODERN and "phaseGlow" in MODERN and "coverageGlyph" in MODERN
 assert "sidebarDivider" in MODERN, "Sidebar hierarchy lost the Compose/Tools divider"
-assert "builtinEmpty" in MODERN and "customEmpty" in MODERN, "Template browser lost explicit empty states"
+assert "coverageDefs" in MODERN and '"Interrupt"' in MODERN and '"Battle Rez"' in MODERN, (
+    "Status rail regressed from bounded utility chips to overlapping free-form coverage"
+)
+assert "classIcons" not in MODERN, "Status rail brought back the overlapping class-icon strip"
+assert "templateBuiltinTab" in MODERN and "templateCustomTab" in MODERN and "templateScroll" in MODERN, (
+    "Templates regressed to permanently split Built-in/Custom columns"
+)
+assert 'const pinPane = CreateFrame("Frame", undefined, peopleModal.content);' in MODERN
+assert 'const humanScroll = ScrollUI.createScrollList(peopleModal.content, 442, 430);' in MODERN
+assert 'const pinScroll = ScrollUI.createScrollList(pinPane, 442, 270);' in MODERN, (
+    "Humans & Pins lost the compact two-pane layout"
+)
+assert '"CANDIDATE POOL"' in MODERN and '"COMPOSITION"' in MODERN and '"ACTIVITY"' in MODERN and '"ELIGIBILITY"' in MODERN, (
+    "Options regressed from grouped compact rows to undifferentiated option cards"
+)
+assert "templateEmpty" in MODERN and 'templateTab: "BUILTIN" | "CUSTOM"' in MODERN, (
+    "Template browser lost its tabbed single-surface empty state"
+)
 assert "humanEmpty" in MODERN and "pinEmpty" in MODERN, "People browser lost explicit empty states"
 assert "BUILT-IN" in MODERN and "CUSTOM" in MODERN, "Template cards lost their visual category tags"
 assert "_roleBadge" in MODERN and "Preferred companion" in MODERN
@@ -646,8 +677,11 @@ assert "Native.setRoleIcon(widgets.roleIcon, slot.role)" in MODERN
 # Chrome is reserved for major shells and uses restrained line/corner geometry. Child controls,
 # dropdowns and buttons must not get nested ornament textures.
 assert "ornate = false" in NATIVE and "if (!ornate) return" in NATIVE
-assert "createChrome(panel.frame, theme.colors.chrome, true)" in MODAL
+assert "createChrome(" not in MODAL, "Modal chrome must remain single-boundary"
 assert "Native.createChrome(frame, theme.colors.chrome, true)" in MODERN
+assert "rootOutline" not in MODERN and "Native.createChrome(mark.frame" not in MODERN, (
+    "Main shell or GC mark regressed to duplicate nested outlines"
+)
 assert "UI-DialogBox-Gold-Corner" not in NATIVE
 
 # Status rail semantics match the target without claiming assembly.
@@ -675,12 +709,16 @@ assert 'minus.frame.SetPoint("LEFT"' in STEPPER and 'plus.frame.SetPoint("LEFT",
 assert 'text: "-"' in STEPPER and 'text: "+"' in STEPPER
 
 # Main workspace keeps useful density while Specific Builds uses content-height keyed sections.
-assert 'row.frame.SetHeight(76)' in MODERN and 'i * 82' in MODERN
-assert 'createFramedRoleIcon(row.frame, "DPS", 44' in MODERN
-assert 'panel.frame.SetSize(870, 48)' in MODERN and '58 + i * 56' in MODERN
-assert 'rows.length === 0 ? 86 : 62 + rows.length * 56' in MODERN
-assert 'phaseCard.frame.SetHeight(96)' in MODERN
+assert 'row.frame.SetHeight(64)' in MODERN and 'i * 70' in MODERN
+assert 'createFramedRoleIcon(row.frame, "DPS", 38' in MODERN
+assert 'panel.frame.SetSize(870, 52)' in MODERN and '58 + i * 58' in MODERN
+assert 'rows.length === 0 ? 88 : 66 + rows.length * 58' in MODERN
+assert 'phaseCard.frame.SetHeight(92)' in MODERN
 assert 'text: "Build & Prepare", width: 270, height: 52' in MODERN
+assert 'text: "Use Auto", width: 78, height: 34' in MODERN
+assert "if (exact !== undefined) widgets.auto.frame.Show();" in MODERN and "else widgets.auto.frame.Hide();" in MODERN, (
+    "Dungeon Auto slots must not show a disabled redundant Auto action"
+)
 
 # Raid tabs retain semantic composition accents while the common button primitive supplies the
 # quieter one-border selected/hover treatment.
