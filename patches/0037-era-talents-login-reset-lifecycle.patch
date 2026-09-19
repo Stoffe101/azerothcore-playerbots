@@ -29,9 +29,10 @@ diff --git a/modules/mod-era-talents/src/EraTalentPin.cpp b/modules/mod-era-tale
 +        // flow through the normal EraTalents::Reset path.
 +        if (p->GetSession() && p->GetSession()->PlayerLoading())
 +        {
-+            if (sEraTalentsConfig->Debug())
-+                LOG_INFO("module", "[mod-era-talents] preserved custom talents during login reset for {} (noCost={}, atLoginReset={}, inWorld={})",
-+                         p->GetName(), noCost, p->HasAtLoginFlag(AT_LOGIN_RESET_TALENTS), p->IsInWorld());
++            // Keep this one diagnostic unconditional: it only fires when the core actually attempts
++            // a login-time reset, and tells us which reset source reached the custom-tree boundary.
++            LOG_INFO("module", "[mod-era-talents] preserved custom talents during login reset for {} (noCost={}, atLoginReset={}, inWorld={})",
++                     p->GetName(), noCost, p->HasAtLoginFlag(AT_LOGIN_RESET_TALENTS), p->IsInWorld());
              return;
 +        }
  
