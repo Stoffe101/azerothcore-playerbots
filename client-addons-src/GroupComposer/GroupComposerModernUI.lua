@@ -2584,6 +2584,15 @@ function ____exports.createBuildSelector(self, parent, options)
             5,
             math.max(1, #validClasses)
         )
+        local classRows = math.max(
+            1,
+            math.ceil(#validClasses / columns)
+        )
+        local classHeight = classRows > 1 and 258 or 164
+        local specHeight = currentClass == nil and 108 or 176
+        classSection.frame:SetHeight(classHeight)
+        specSection.frame:SetHeight(specHeight)
+        modal.frame:SetHeight(classHeight + specHeight + 222)
         local tileWidth = 174
         local gap = 10
         local totalWidth = columns * tileWidth + (columns - 1) * gap
@@ -2904,17 +2913,17 @@ function ____exports.createBuildSelector(self, parent, options)
     specSection = createPanel(nil, modal.content, theme.colors.surface, theme.colors.border)
     specSection.frame:SetPoint(
         "TOPLEFT",
-        modal.content,
-        "TOPLEFT",
+        classSection.frame,
+        "BOTTOMLEFT",
         0,
-        -270
+        -12
     )
     specSection.frame:SetPoint(
         "TOPRIGHT",
-        modal.content,
-        "TOPRIGHT",
+        classSection.frame,
+        "BOTTOMRIGHT",
         0,
-        -270
+        -12
     )
     specSection.frame:SetHeight(176)
     specStep = createText(
