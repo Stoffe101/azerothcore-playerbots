@@ -1,4 +1,4 @@
-import { createChrome, createFramedIcon, createPanel, createSolid, createText, setRoleIcon } from "../core/Native";
+import { createFramedIcon, createPanel, createSolid, createText, setRoleIcon } from "../core/Native";
 import { theme } from "../theme/Theme";
 import { createButton } from "./Button";
 
@@ -22,12 +22,11 @@ export function createModal(parent: WoWFrame, width: number, height: number): Mo
     const scrimTexture = createSolid(scrim, theme.colors.scrim);
     scrimTexture.SetAllPoints(scrim);
 
-    const panel = createPanel(parent, theme.colors.background, theme.colors.borderStrong);
+    const panel = createPanel(parent, theme.colors.background, theme.colors.chrome);
     panel.frame.SetSize(width, height);
     panel.frame.SetPoint("CENTER", parent, "CENTER", 0, 0);
     panel.frame.SetFrameStrata("DIALOG");
     panel.frame.SetFrameLevel(scrim.GetFrameLevel() + 1);
-    createChrome(panel.frame, theme.colors.chrome, true);
 
     function hideModal(): void { panel.frame.Hide(); scrim.Hide(); }
     function showModal(): void { scrim.Show(); panel.frame.Show(); }
