@@ -1,7 +1,7 @@
 diff --git a/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp b/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp
 --- a/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp
 +++ b/modules/mod-playerbots/src/Bot/PlayerbotMgr.cpp
-@@ -130,7 +130,7 @@ void PlayerbotHolder::AddPlayerBot(ObjectGuid playerGuid, uint32 masterAccountId, bool groupComposerSilent)
+@@ -130,8 +130,8 @@ void PlayerbotHolder::AddPlayerBot(ObjectGuid playerGuid, uint32 masterAccountId, bool groupComposerSilent)
              if (acctId == masterAccountId)
                  ++loadingForMaster;
          }
