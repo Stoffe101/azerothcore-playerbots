@@ -4439,7 +4439,7 @@ function ____exports.createModernDashboard(self)
         frame,
         "BOTTOMLEFT",
         1,
-        34
+        16
     )
     sidebar.frame:SetWidth(184)
     local navTitle = Native:createText(sidebar.frame, "COMPOSE", "GameFontNormalSmall", theme.colors.muted)
@@ -4621,7 +4621,7 @@ function ____exports.createModernDashboard(self)
         200,
         -88
     )
-    center:SetSize(970, 768)
+    center:SetSize(970, 800)
     local status = Native:createPanel(frame, theme.colors.surface, theme.colors.borderStrong)
     status.frame:SetPoint(
         "TOPLEFT",
@@ -4635,39 +4635,9 @@ function ____exports.createModernDashboard(self)
         frame,
         "BOTTOMRIGHT",
         -16,
-        48
+        16
     )
-    local footer = Native:createPanel(frame, theme.colors.surface, theme.colors.border)
-    footer.frame:SetPoint(
-        "BOTTOMLEFT",
-        frame,
-        "BOTTOMLEFT",
-        200,
-        10
-    )
-    footer.frame:SetPoint(
-        "BOTTOMRIGHT",
-        frame,
-        "BOTTOMRIGHT",
-        -16,
-        10
-    )
-    footer.frame:SetHeight(26)
-    local footerText = Native:createText(footer.frame, "Ready.", "GameFontHighlightSmall", theme.colors.muted)
-    footerText:SetPoint(
-        "LEFT",
-        footer.frame,
-        "LEFT",
-        10,
-        0
-    )
-    footerText:SetPoint(
-        "RIGHT",
-        footer.frame,
-        "RIGHT",
-        -10,
-        0
-    )
+    local statusNotice = ""
     local activity = Native:createPanel(center, theme.colors.surface, theme.colors.borderStrong)
     activity.frame:SetPoint(
         "TOPLEFT",
@@ -5521,7 +5491,7 @@ function ____exports.createModernDashboard(self)
     quickStatusDetail:SetWidth(600)
     quickStatusDetail:SetHeight(34)
     quickStatusDetail:SetJustifyV("TOP")
-    local exactScroll = ScrollUI:createScrollList(exactView, 936, 386)
+    local exactScroll = ScrollUI:createScrollList(exactView, 936, 418)
     exactScroll.frame:SetPoint(
         "TOPLEFT",
         exactView,
@@ -7170,7 +7140,7 @@ function ____exports.createModernDashboard(self)
             end
             cursor = cursor + (sectionHeight + 12)
         end
-        exactScroll:setContentHeight(math.max(386, cursor))
+        exactScroll:setContentHeight(math.max(418, cursor))
     end
     local function refreshRoster(self)
         local cfg = Model:config()
@@ -7332,6 +7302,8 @@ function ____exports.createModernDashboard(self)
         phaseText:SetTextColor(phaseColor[1], phaseColor[2], phaseColor[3], 1)
         if phase == "IDLE" then
             phaseDetail:SetText(Model:config().mode == "RAID" and "Add specific builds or keep Auto to prepare your raid." or "Choose exact builds or keep Auto to prepare your group.")
+        elseif Model:isTravelRetry() and statusNotice ~= "" then
+            phaseDetail:SetText(statusNotice)
         else
             local ____phaseDetail_SetText_46 = phaseDetail.SetText
             local ____p_detail_45 = p.detail
@@ -7559,6 +7531,9 @@ function ____exports.createModernDashboard(self)
         if #warnings > 0 then
             nextText = nextText .. "\n" .. tostring(warnings[1])
         end
+        if phase == "IDLE" and statusNotice ~= "" then
+            nextText = nextText .. "\n" .. statusNotice
+        end
         nextDetail:SetText(nextText)
         local ____buildButton_setEnabled_101 = buildButton.setEnabled
         local ____temp_100 = Model:humanReady() and not Model:isBusy()
@@ -7649,11 +7624,15 @@ function ____exports.createModernDashboard(self)
     GC.Toggle = function() return dashboard:toggle() end
     GC:RegisterCallback(
         "CONFIG_CHANGED",
-        function() return refresh(nil) end
+        function()
+            statusNotice = ""
+            refresh(nil)
+        end
     )
     GC:RegisterCallback(
         "PLAN_CHANGED",
         function()
+            statusNotice = ""
             if Model:config().mode == "RAID" and Model:plan().ready == true and Model:plan().valid == true then
                 raidTab = "ROSTER"
             end
@@ -7680,7 +7659,7 @@ function ____exports.createModernDashboard(self)
     GC:RegisterCallback(
         "STATUS",
         function(____, text)
-            footerText:SetText(tostring(text or "Ready."))
+            statusNotice = tostring(text or "")
             refresh(nil)
         end
     )
