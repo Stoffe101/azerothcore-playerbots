@@ -5375,14 +5375,18 @@ function ____exports.createModernDashboard(self)
         local i = 0
         while i < #roleOrder do
             local role = roleOrder[i + 1]
-            local card = Native:createPanel(quickView, theme.colors.surfaceDeep, theme.colors.borderStrong)
-            card.frame:SetSize(300, 226)
-            local roleStrip = Native:createSolid(
-                card.frame,
-                Model:roleAccent(role),
-                "ARTWORK"
+            local accent = Model:roleAccent(role)
+            local card = Native:createPanel(quickView, theme.colors.surfaceDeep, theme.colors.border)
+            card.frame:SetSize(300, 214)
+            card.frame:SetPoint(
+                "TOPLEFT",
+                quickView,
+                "TOPLEFT",
+                i * 312,
+                -10
             )
-            roleStrip:SetHeight(4)
+            local roleStrip = Native:createSolid(card.frame, accent, "ARTWORK")
+            roleStrip:SetHeight(3)
             roleStrip:SetPoint(
                 "TOPLEFT",
                 card.frame,
@@ -5399,72 +5403,57 @@ function ____exports.createModernDashboard(self)
             )
             local roleTint = Native:createSolid(
                 card.frame,
-                Native:withAlpha(
-                    Model:roleAccent(role),
-                    0.055
-                ),
+                Native:withAlpha(accent, 0.045),
                 "BACKGROUND"
             )
             roleTint:SetAllPoints(card.frame)
-            card.frame:SetPoint(
-                "TOPLEFT",
-                quickView,
-                "TOPLEFT",
-                i * 312,
-                -12
-            )
-            local roleBadge = Native:createFramedRoleIcon(
-                card.frame,
-                role,
-                44,
-                Model:roleAccent(role)
-            )
+            local roleBadge = Native:createFramedRoleIcon(card.frame, role, 48, accent)
             roleBadge.frame:SetPoint(
-                "TOP",
+                "TOPLEFT",
                 card.frame,
-                "TOP",
-                -46,
-                -16
+                "TOPLEFT",
+                18,
+                -18
             )
             local label = Native:createText(
                 card.frame,
                 string.upper(Model:roleLabel(role)),
                 "GameFontNormalLarge",
-                Model:roleAccent(role)
+                accent
             )
             label:SetPoint(
-                "LEFT",
-                roleBadge.frame,
-                "RIGHT",
-                12,
-                0
-            )
-            local minus = ButtonUI:createButton(
+                "TOPLEFT",
                 card.frame,
-                {
-                    text = "-",
-                    width = 42,
-                    height = 40,
-                    accent = Model:roleAccent(role)
-                }
+                "TOPLEFT",
+                80,
+                -20
             )
+            local kicker = Native:createText(card.frame, "RAID ROLE", "GameFontNormalSmall", theme.colors.muted)
+            kicker:SetPoint(
+                "TOPLEFT",
+                card.frame,
+                "TOPLEFT",
+                80,
+                -45
+            )
+            local minus = ButtonUI:createButton(card.frame, {text = "−", width = 40, height = 38, accent = accent})
             minus.frame:SetPoint(
                 "TOPLEFT",
                 card.frame,
                 "TOPLEFT",
-                32,
-                -88
+                24,
+                -82
             )
-            local countPanel = Native:createPanel(card.frame, theme.colors.background, theme.colors.borderStrong)
+            local countPanel = Native:createPanel(card.frame, theme.colors.background, accent)
             countPanel.frame:SetPoint(
                 "TOPLEFT",
                 card.frame,
                 "TOPLEFT",
-                86,
-                -88
+                70,
+                -82
             )
-            countPanel.frame:SetSize(128, 40)
-            local count = Native:createText(countPanel.frame, "0", "GameFontNormalHuge")
+            countPanel.frame:SetSize(160, 38)
+            local count = Native:createText(countPanel.frame, "0", "GameFontNormalHuge", theme.colors.text)
             count:SetPoint(
                 "CENTER",
                 countPanel.frame,
@@ -5472,35 +5461,43 @@ function ____exports.createModernDashboard(self)
                 0,
                 0
             )
-            count:SetWidth(100)
+            count:SetWidth(148)
             count:SetJustifyH("CENTER")
-            local plus = ButtonUI:createButton(
-                card.frame,
-                {
-                    text = "+",
-                    width = 42,
-                    height = 40,
-                    accent = Model:roleAccent(role)
-                }
-            )
+            local plus = ButtonUI:createButton(card.frame, {text = "+", width = 40, height = 38, accent = accent})
             plus.frame:SetPoint(
                 "TOPRIGHT",
                 card.frame,
                 "TOPRIGHT",
-                -32,
-                -88
+                -24,
+                -82
             )
-            local botSlots = Native:createText(card.frame, "0 bot slots after humans", "GameFontHighlightSmall", theme.colors.muted)
+            local botSlots = Native:createText(card.frame, "0 bot slots after humans", "GameFontHighlightSmall", accent)
             botSlots:SetPoint(
                 "TOP",
                 card.frame,
                 "TOP",
                 0,
-                -140
+                -132
             )
             botSlots:SetWidth(260)
             botSlots:SetJustifyH("CENTER")
             botSlots:SetJustifyV("TOP")
+            local divider = Native:createSolid(card.frame, theme.colors.border, "ARTWORK")
+            divider:SetPoint(
+                "BOTTOMLEFT",
+                card.frame,
+                "BOTTOMLEFT",
+                18,
+                48
+            )
+            divider:SetPoint(
+                "BOTTOMRIGHT",
+                card.frame,
+                "BOTTOMRIGHT",
+                -18,
+                48
+            )
+            divider:SetHeight(1)
             local roleHelp = Native:createText(
                 card.frame,
                 roleDescription(nil, role),
@@ -5508,13 +5505,14 @@ function ____exports.createModernDashboard(self)
                 theme.colors.muted
             )
             roleHelp:SetPoint(
-                "BOTTOM",
+                "BOTTOMLEFT",
                 card.frame,
-                "BOTTOM",
-                0,
-                17
+                "BOTTOMLEFT",
+                20,
+                12
             )
-            roleHelp:SetWidth(250)
+            roleHelp:SetWidth(260)
+            roleHelp:SetHeight(30)
             roleHelp:SetJustifyH("CENTER")
             roleHelp:SetJustifyV("TOP")
             local roleCopy = role
@@ -5542,29 +5540,29 @@ function ____exports.createModernDashboard(self)
             i = i + 1
         end
     end
-    local quickSummary = Native:createPanel(quickView, theme.colors.background, theme.colors.borderStrong)
+    local quickSummary = Native:createPanel(quickView, theme.colors.background, theme.colors.border)
     quickSummary.frame:SetPoint(
         "TOPLEFT",
         quickView,
         "TOPLEFT",
         0,
-        -252
+        -236
     )
     quickSummary.frame:SetPoint(
         "TOPRIGHT",
         quickView,
         "TOPRIGHT",
         0,
-        -252
+        -236
     )
-    quickSummary.frame:SetHeight(92)
+    quickSummary.frame:SetHeight(88)
     local quickTotalLabel = Native:createText(quickSummary.frame, "TOTAL RAID SIZE", "GameFontNormalSmall", theme.colors.muted)
     quickTotalLabel:SetPoint(
         "TOPLEFT",
         quickSummary.frame,
         "TOPLEFT",
         18,
-        -14
+        -13
     )
     local quickTotal = Native:createText(quickSummary.frame, "25 / 25", "GameFontNormalHuge")
     quickTotal:SetPoint(
@@ -5572,25 +5570,25 @@ function ____exports.createModernDashboard(self)
         quickSummary.frame,
         "TOPLEFT",
         18,
-        -38
+        -36
     )
     local quickDivider = Native:createSolid(quickSummary.frame, theme.colors.borderStrong, "ARTWORK")
     quickDivider:SetPoint(
         "TOPLEFT",
         quickSummary.frame,
         "TOPLEFT",
-        205,
+        190,
         -12
     )
-    quickDivider:SetHeight(68)
+    quickDivider:SetHeight(64)
     quickDivider:SetWidth(1)
     local quickCheck = Native:createPanel(quickSummary.frame, theme.colors.surfaceDeep, theme.colors.success)
-    quickCheck.frame:SetSize(34, 34)
+    quickCheck.frame:SetSize(32, 32)
     quickCheck.frame:SetPoint(
         "LEFT",
         quickSummary.frame,
         "LEFT",
-        232,
+        216,
         0
     )
     local quickCheckIcon = quickCheck.frame:CreateTexture(nil, "ARTWORK")
@@ -5611,19 +5609,21 @@ function ____exports.createModernDashboard(self)
         "TOPLEFT",
         quickSummary.frame,
         "TOPLEFT",
-        280,
-        -24
+        264,
+        -20
     )
-    quickStatusTitle:SetWidth(360)
+    quickStatusTitle:SetWidth(380)
     local quickStatusDetail = Native:createText(quickSummary.frame, "This setup will create the selected raid size with your chosen role balance.", "GameFontHighlightSmall", theme.colors.muted)
     quickStatusDetail:SetPoint(
         "TOPLEFT",
         quickStatusTitle,
         "BOTTOMLEFT",
         0,
-        -6
+        -5
     )
-    quickStatusDetail:SetWidth(410)
+    quickStatusDetail:SetWidth(600)
+    quickStatusDetail:SetHeight(34)
+    quickStatusDetail:SetJustifyV("TOP")
     local exactScroll = ScrollUI:createScrollList(exactView, 936, 386)
     exactScroll.frame:SetPoint(
         "TOPLEFT",
