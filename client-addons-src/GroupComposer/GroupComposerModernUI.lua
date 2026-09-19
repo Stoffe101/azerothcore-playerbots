@@ -478,9 +478,9 @@ function ____exports.createButton(self, parent, options)
     frame:SetSize(options.width, options.height)
     frame:EnableMouse(true)
     local accent = options.accent or theme.colors.primary
-    local background = createSolid(nil, frame, options.emphasis == true and theme.colors.surfaceBlue or theme.colors.surfaceRaised)
+    local background = createSolid(nil, frame, options.emphasis == true and theme.colors.surfaceBlue or (options.flat == true and theme.colors.surface or theme.colors.surfaceRaised))
     background:SetAllPoints(frame)
-    local outline = createOutline(nil, frame, options.emphasis == true and accent or theme.colors.border)
+    local outline = createOutline(nil, frame, options.emphasis == true and accent or (options.flat == true and theme.colors.surface or theme.colors.border))
     local selectedWash = createSolid(
         nil,
         frame,
@@ -540,8 +540,8 @@ function ____exports.createButton(self, parent, options)
             selectedWash:Show()
         else
             selectedWash:Hide()
-            setTextureColor(nil, background, hovered and enabled and theme.colors.surfaceHover or (options.emphasis == true and theme.colors.surfaceBlue or theme.colors.surfaceRaised))
-            outline:setColor(options.emphasis == true and accent or (hovered and enabled and theme.colors.borderStrong or theme.colors.border))
+            setTextureColor(nil, background, hovered and enabled and theme.colors.surfaceHover or (options.emphasis == true and theme.colors.surfaceBlue or (options.flat == true and theme.colors.surface or theme.colors.surfaceRaised)))
+            outline:setColor(options.emphasis == true and accent or (hovered and enabled and theme.colors.borderStrong or (options.flat == true and theme.colors.surface or theme.colors.border)))
         end
         local color = selected and accent or theme.colors.text
         label:SetTextColor(color[1], color[2], color[3], enabled and 1 or 0.72)
