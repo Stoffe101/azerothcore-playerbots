@@ -43,6 +43,8 @@ ADVENTURE_START_CONTROL_H = (ROOT / "modules/mod-raid-roster/src/AdventureStartC
 ADVENTURE_CATALOG = (ROOT / "modules/mod-raid-roster/src/AdventureCatalog.cpp").read_text(encoding="utf-8")
 PROGRESSION_PAGE = (ROOT / "client-ui/src/components/ProgressionPage.ts").read_text(encoding="utf-8")
 RECOMMENDATIONS_PAGE = (ROOT / "client-ui/src/components/RecommendationsPage.ts").read_text(encoding="utf-8")
+MEMBER_DETAILS = (ROOT / "client-ui/src/components/MemberDetailsModal.ts").read_text(encoding="utf-8")
+GROUP_ACTIONS = (ROOT / "client-ui/src/components/GroupActionsModal.ts").read_text(encoding="utf-8")
 
 
 def section(text: str, start: str, end: str) -> str:
@@ -949,7 +951,7 @@ assert 'Sanitize(MemberSelectionReason(member, plan.config))' in SERVER
 assert 'why = fields[15] or ""' in CORE
 assert "function GC:LeaveInstance()" in CORE and "function GC:DisbandComposerGroup()" in CORE
 
-assert "Group Actions" in MODERN and "Leave Instance Together" in MODERN
-assert "Rebuild / Repair Roster" in MODERN and "Disband Composer Group" in MODERN
-assert "Why this bot?" in MODERN and "click for why" in MODERN
-assert "showMemberDetails" in MODERN and "member.why" in MODERN
+assert "Group Actions" in MODERN and "Leave Instance Together" in GROUP_ACTIONS
+assert "Rebuild / Repair Roster" in GROUP_ACTIONS and "Disband Composer Group" in GROUP_ACTIONS
+assert "Why this bot?" in MEMBER_DETAILS and "click for why" in MODERN
+assert "memberDetails.open" in MODERN and "member.why" in MEMBER_DETAILS
