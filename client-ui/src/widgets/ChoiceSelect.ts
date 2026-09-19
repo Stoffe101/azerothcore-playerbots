@@ -54,9 +54,9 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
     function wheel(this: void, _frame: WoWFrame, delta: number): void { move(Number(delta) > 0 ? -1 : 1); }
     function bindWheel(target: WoWFrame): void { target.EnableMouseWheel(true); target.SetScript("OnMouseWheel", wheel); }
 
-    const up = createButton(rail, { text: "^", width: railWidth, height: 18, accent: theme.colors.primary, onClick: () => move(-1) });
+    const up = createButton(rail, { text: "^", width: railWidth, height: 18, accent: theme.colors.primary, flat: true, onClick: () => move(-1) });
     up.frame.SetPoint("TOP", rail, "TOP", 0, 0);
-    const down = createButton(rail, { text: "v", width: railWidth, height: 18, accent: theme.colors.primary, onClick: () => move(1) });
+    const down = createButton(rail, { text: "v", width: railWidth, height: 18, accent: theme.colors.primary, flat: true, onClick: () => move(1) });
     down.frame.SetPoint("BOTTOM", rail, "BOTTOM", 0, 0);
     const track = createSolid(rail, theme.colors.borderStrong, "ARTWORK");
     track.SetPoint("TOP", up.frame, "BOTTOM", 0, -3);
@@ -100,7 +100,7 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
         for (let i = 0; i < maxVisible; i += 1) {
             let row = rows[i];
             if (row === undefined) {
-                const button = createButton(popup.frame, { text: "", width: options.width - railWidth - 6, height: rowHeight - 2, accent: theme.colors.primary });
+                const button = createButton(popup.frame, { text: "", width: options.width - railWidth - 6, height: rowHeight - 2, accent: theme.colors.primary, flat: true });
                 button.frame.SetPoint("TOPLEFT", popup.frame, "TOPLEFT", 2, -(2 + i * rowHeight));
                 const iconFrame = createFramedIcon(button.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 32, theme.colors.borderStrong);
                 iconFrame.frame.SetPoint("LEFT", button.frame, "LEFT", 8, 0);
