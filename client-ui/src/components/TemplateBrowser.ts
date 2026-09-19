@@ -29,11 +29,11 @@ export interface TemplateBrowser {
 export function createTemplateBrowser(parent: WoWFrame): TemplateBrowser {
     const D: any = Model.data();
     const modal = ModalUI.createModal(parent, 960, 650);
-    modal.setTitle("Raid Templates");
-    modal.setSubtitle("Browse by expansion. Unlisted slots remain Auto-filled.");
+    modal.setTitle("Templates");
+    modal.setSubtitle("Save reusable raid rosters or five-player dungeon parties.");
     modal.setHeaderIcon("Interface\\Icons\\INV_Scroll_03");
 
-    const saveLabel = Native.createText(modal.content, "SAVE CURRENT RAID", "GameFontNormalSmall", theme.colors.muted);
+    const saveLabel = Native.createText(modal.content, "SAVE CURRENT GROUP", "GameFontNormalSmall", theme.colors.muted);
     saveLabel.SetPoint("TOPLEFT", modal.content, "TOPLEFT", 0, 0);
     const nameInput = InputUI.createTextInput(modal.content, 300, 34);
     nameInput.frame.SetPoint("TOPLEFT", modal.content, "TOPLEFT", 0, -24);
@@ -72,14 +72,25 @@ export function createTemplateBrowser(parent: WoWFrame): TemplateBrowser {
     }
 
     function namesForTab(): string[] {
-        if (tab === "CUSTOM") return Model.listCustomProfiles();
+        const mode = Model.config().mode === "RAID" ? "RAID" : "DUNGEON";
+        if (mode === "DUNGEON") return Model.listCustomProfiles("DUNGEON");
+        if (tab === "CUSTOM") return Model.listCustomProfiles("RAID");
         const out: string[] = [];
         for (const name of Model.listBuiltinProfiles()) if (templateEra(name) === tab) out.push(name);
         return out;
     }
 
     function refresh(): void {
-        for (let i = 0; i < tabs.length; i += 1) tabs[i].setSelected(tabDefs[i].key === tab);
+        const dungeonMode = Model.config().mode === "DUNGEON";
+        for (let i = 0; i < tabs.length; i += 1) {
+            tabs[i].setSelected(tabDefs[i].key === tab);
+            if (dungeonMode && tabDefs[i].key !== "CUSTOM") tabs[i].frame.Hide();
+            else tabs[i].frame.Show();
+        }
+        if (dungeonMode) {
+            tabs[3].frame.ClearAllPoints();
+            tabs[3].frame.SetPoint("TOPLEFT", modal.content, "TOPLEFT", 0, -82);
+        }
         for (const card of cards) card.panel.frame.Hide();
         const names = namesForTab();
         if (names.length === 0) {
@@ -113,7 +124,8 @@ export function createTemplateBrowser(parent: WoWFrame): TemplateBrowser {
 
             const profileName = names[i];
             const profile = Model.profileMeta(profileName);
-            const builtin = tab !== "CUSTOM";
+            const builtin = profile?.builtin === true;
+            const profileMode: "DUNGEON" | "RAID" = profile?.mode === "DUNGEON" ? "DUNGEON" : "RAID";
             const accent = builtin ? theme.colors.primary : theme.colors.warning;
             const column = i % 2;
             const row = Math.floor(i / 2);
@@ -121,10 +133,10 @@ export function createTemplateBrowser(parent: WoWFrame): TemplateBrowser {
             card.panel.frame.SetPoint("TOPLEFT", scroll.content, "TOPLEFT", column * 436, -(row * 92));
             Native.setTextureColor(card.accent, accent);
             card.iconBadge.outline.setColor(accent);
-            card.iconBadge.icon.SetTexture(Model.activityIconFor(String(profile?.activity ?? ""), "RAID"));
+            card.iconBadge.icon.SetTexture(Model.activityIconFor(String(profile?.activity ?? ""), profileMode));
             card.iconBadge.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
             const activityId = String(profile?.activity ?? "");
-            const access = Model.activityEligibility(activityId, "RAID");
+            const access = Model.activityEligibility(activityId, profileMode);
             card.name.SetText(profileName);
             if (!access.known) {
                 card.tag.SetText("CHECKING ACCESS");
@@ -151,7 +163,7 @@ export function createTemplateBrowser(parent: WoWFrame): TemplateBrowser {
                 card.remove.frame.Show();
             }
             card.load.frame.SetScript("OnMouseDown", () => {
-                const latest = Model.activityEligibility(String(profile?.activity ?? ""), "RAID");
+                const latest = Model.activityEligibility(String(profile?.activity ?? ""), profileMode);
                 if (!latest.known || !latest.eligible) {
                     Model.fireStatus(latest.reason);
                     return;
@@ -167,7 +179,6 @@ export function createTemplateBrowser(parent: WoWFrame): TemplateBrowser {
     const save = ButtonUI.createButton(modal.content, {
         text: "Save Current", width: 124, height: 36, accent: theme.colors.primary, emphasis: true,
         onClick: () => {
-            if (Model.config().mode !== "RAID") { Model.fireStatus("Templates are raid-only. Configure dungeon bot slots directly."); return; }
             const name = nameInput.getText();
             if (name === "") return;
             Model.saveProfile(name); nameInput.clear(); tab = "CUSTOM"; scroll.scrollToTop(); refresh();
@@ -180,15 +191,23 @@ export function createTemplateBrowser(parent: WoWFrame): TemplateBrowser {
     });
 
     function open(): void {
-        // Template availability is based on progression/quest access using Normal difficulty.
-        // Heroic-only achievement requirements are rechecked after the profile is loaded.
-        Model.requestActivities("RAID", "normal", Number(Model.config().size ?? 25));
-        save.setEnabled(Model.config().mode === "RAID");
-        if (Model.config().mode === "RAID") {
+        const dungeonMode = Model.config().mode === "DUNGEON";
+        if (dungeonMode) {
+            modal.setTitle("Dungeon Party Templates");
+            modal.setSubtitle("Save your five-player role, class/spec, human and pinned-bot preferences for quick reuse.");
+            saveLabel.SetText("SAVE CURRENT PARTY");
+            tab = "CUSTOM";
+            Model.requestActivities("DUNGEON");
+        } else {
+            modal.setTitle("Raid Templates");
+            modal.setSubtitle("Browse built-in coverage templates by expansion or load your own saved raid.");
+            saveLabel.SetText("SAVE CURRENT RAID");
+            Model.requestActivities("RAID", "normal", Number(Model.config().size ?? 25));
             const raid = D.GetRaidById(Model.config().activity);
             const era = String(raid?.era ?? "WotLK");
             tab = era === "TBC" ? "TBC" : (era === "Vanilla" ? "Vanilla" : "WotLK");
-        } else tab = "WotLK";
+        }
+        save.setEnabled(true);
         scroll.scrollToTop(); refresh(); modal.show();
     }
 

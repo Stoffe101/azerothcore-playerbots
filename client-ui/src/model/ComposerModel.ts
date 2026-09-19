@@ -99,7 +99,7 @@ interface DataFunctions {
 /** @noSelf */
 interface ProfileFunctions {
     ListBuiltins(): string[];
-    ListCustom(): string[];
+    ListCustom(mode?: string): string[];
     Describe(name: string): string;
     Get(name: string): any;
 }
@@ -701,7 +701,7 @@ export function loadProfile(name: string): void {
 export function saveProfile(name: string): void { GC.SaveProfile(name); }
 export function deleteProfile(name: string): void { GC.DeleteProfile(name); }
 export function listBuiltinProfiles(): string[] { return ProfileFns.ListBuiltins() ?? []; }
-export function listCustomProfiles(): string[] { return ProfileFns.ListCustom() ?? []; }
+export function listCustomProfiles(mode?: "DUNGEON" | "RAID"): string[] { return ProfileFns.ListCustom(mode) ?? []; }
 export function profileDescription(name: string): string { return ProfileFns.Describe(name) ?? ""; }
 export function profileMeta(name: string): any { return ProfileFns.Get(name); }
 export function addPin(name: string, role: Role, required: boolean): void { GC.AddPinnedMember(name, role, required); }

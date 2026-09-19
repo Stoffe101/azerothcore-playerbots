@@ -212,12 +212,13 @@ function P.ListBuiltins()
     return out
 end
 
-function P.ListCustom()
+function P.ListCustom(mode)
     local out = {}
     local db = P.InitializeDB()
+    mode = mode == "RAID" and "RAID" or (mode == "DUNGEON" and "DUNGEON" or nil)
     for name, profile in pairs(db.profiles) do
         local normalized = P.Normalize(profile)
-        if normalized.mode == "RAID" then out[#out + 1] = name end
+        if not mode or normalized.mode == mode then out[#out + 1] = name end
     end
     table.sort(out)
     return out
@@ -278,7 +279,6 @@ function P.Save(name, profile)
     if P.GetBuiltin(name) then return false, "Built-in profiles cannot be overwritten. Use a different name." end
     local db = P.InitializeDB()
     local p = P.Normalize(profile)
-    if p.mode ~= "RAID" then return false, "Templates are raid-only. Dungeon slots are quick enough to configure directly." end
     p.name = nil
     p.builtin = nil
     db.profiles[name] = p
