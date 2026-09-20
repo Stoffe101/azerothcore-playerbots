@@ -935,7 +935,7 @@ assert "function wheel(this: void" in CHOICE_SELECT
 assert "function wheel(this: void" in SCROLL_LIST
 assert "sync-group-composer-client.sh" in UPDATE_SH
 assert "GroupComposerModernUI.lua" in SYNC_CLIENT and "Interface/AddOns/GroupComposer" in SYNC_CLIENT
-assert "0.14.0" in TOC and "0.14.0" in DATA
+assert "0.15.0" in TOC and "0.15.0" in DATA
 
 # Long activity lists use a dedicated filtered two-column browser instead of the compact ChoiceSelect.
 assert 'ActivityBrowserUI.createActivityBrowser(frame)' in MODERN
