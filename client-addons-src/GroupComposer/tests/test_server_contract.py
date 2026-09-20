@@ -146,7 +146,7 @@ for command in (
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
 assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
-assert '## Version: 0.15.2' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
+assert '## Version: 0.15.3' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
@@ -680,7 +680,7 @@ assert "uint16(lowestRealLevel) + 3" in SERVER and "AdventureCatalog::EraLevelCa
 assert "bool disposableCapacity" in PLANNER and "underLevel" in PLANNER and "belowPeerTarget" in PLANNER and "abovePeerBand" in PLANNER and "underGear" in PLANNER, (
     "Online RNDbot fallback lost elastic activity provisioning"
 )
-assert "SELECT guid, name, class, level FROM characters" in PLANNER, "Offline reserve selection lost persisted level metadata"
+assert "SELECT guid, name, class, level, race FROM characters" in PLANNER, "Offline reserve selection lost persisted level/race metadata"
 assert "std::max<uint8>(storedLevel, config.botTargetLevel)" in PLANNER and "storedLevel > config.maxBotLevel" in PLANNER, (
     "Low-level offline reserve bodies must project to the selected activity level"
 )
@@ -950,7 +950,7 @@ assert "function wheel(this: void" in CHOICE_SELECT
 assert "function wheel(this: void" in SCROLL_LIST
 assert "sync-group-composer-client.sh" in UPDATE_SH
 assert "GroupComposerModernUI.lua" in SYNC_CLIENT and "Interface/AddOns/GroupComposer" in SYNC_CLIENT
-assert "0.15.2" in TOC and "0.15.2" in DATA
+assert "0.15.3" in TOC and "0.15.3" in DATA
 
 # Long activity lists use a dedicated filtered two-column browser instead of the compact ChoiceSelect.
 assert 'ActivityBrowserUI.createActivityBrowser(frame)' in MODERN
@@ -1375,3 +1375,10 @@ assert 'std::min<uint8>(master->GetLevel(), EraPolicy::RealmLevelCap())' in RAID
 assert 'EraPolicy::IsClassAllowed(r.cls)' in RAID_ROSTER_COMMAND
 assert 'BOT_CLASSES_RACES' in ERA_AUDIT
 assert 'BOT_PROFESSIONS' in ERA_AUDIT
+
+
+# ERA-09 / ERA-10 client class visibility.
+assert 'classAllowedForRealm' in SELECTOR
+assert 'classId !== "DEATHKNIGHT" || realm().era === "WotLK"' in SELECTOR
+assert 'if (enforceEra && !classAllowedForRealm(classId)) continue;' in SELECTOR
+assert '!classAllowedForRealm(currentClass)' in SELECTOR

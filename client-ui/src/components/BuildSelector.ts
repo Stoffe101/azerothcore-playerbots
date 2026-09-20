@@ -1,6 +1,6 @@
 import { classColor, createFramedIcon, createFramedRoleIcon, createIcon, createPanel, createSolid, createText, setClassIcon, setRoleIcon } from "../core/Native";
 import { ClassDefinition, ClassId, getClass, getClassesForRole, getSpecsForRole, Role, SpecDefinition } from "../data/WotlkBuilds";
-import { ANY_SPEC_ID } from "../model/ComposerModel";
+import { ANY_SPEC_ID, realm } from "../model/ComposerModel";
 import { theme } from "../theme/Theme";
 import { createButton, UIButton } from "../widgets/Button";
 import { createModal } from "../widgets/Modal";
@@ -27,10 +27,17 @@ function classRoleSummary(classId: ClassId, role: Role): string {
     return "Melee DPS";
 }
 const SELECTOR_CLASS_ORDER: readonly ClassId[] = ["DEATHKNIGHT", "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "SHAMAN", "MAGE", "WARLOCK", "DRUID", "PRIEST"];
+function classAllowedForRealm(classId: ClassId): boolean {
+    return classId !== "DEATHKNIGHT" || realm().era === "WotLK";
+}
 function selectorClassesForRole(role: Role, compatible?: ClassDefinition[]): ClassDefinition[] {
     const valid = compatible ?? getClassesForRole(role);
+    const enforceEra = compatible !== undefined;
     const result: ClassDefinition[] = [];
-    for (const classId of SELECTOR_CLASS_ORDER) for (const classDef of valid) if (classDef.id === classId) { result.push(classDef); break; }
+    for (const classId of SELECTOR_CLASS_ORDER) {
+        if (enforceEra && !classAllowedForRealm(classId)) continue;
+        for (const classDef of valid) if (classDef.id === classId) { result.push(classDef); break; }
+    }
     return result;
 }
 function createRadioMarker(parent: WoWFrame): WoWTexture {
@@ -240,6 +247,10 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         frame: modal.frame,
         open(role: Role, initial?: Partial<BuildSelection>, showCount = true): void {
             currentRole = role; currentClass = initial?.classId; currentSpec = initial?.specId; countEnabled = options.allowCount === true && showCount;
+            if (currentClass !== undefined && !classAllowedForRealm(currentClass)) {
+                currentClass = undefined;
+                currentSpec = undefined;
+            }
             if (countEnabled) { countLabel.Show(); countStepper.frame.Show(); } else { countLabel.Hide(); countStepper.frame.Hide(); }
             countStepper.setValue(initial?.count ?? 1);
             if (currentClass !== undefined) {

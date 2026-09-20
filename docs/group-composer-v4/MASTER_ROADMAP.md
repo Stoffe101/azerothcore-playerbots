@@ -113,7 +113,7 @@ They are the dependency spine for most other approved era work. First define one
   - Trainers, recipes, bot profession behavior and crafting systems obey the policy.
 
 - [ ] **ERA-09 — Expansion-specific classes and races — PARTIAL**
-  - Central policy + Composer/RaidRoster server paths now enforce Death Knight only in WotLK.
+  - Central policy + Composer/RaidRoster server paths now enforce Death Knight only in WotLK; Group Composer 0.15.3 also hides DK in the Build Selector before WotLK.
   - Central policy + Composer/RaidRoster candidate paths now enforce Blood Elf/Draenei from TBC.
   - Enforce Vanilla Alliance Paladin / Horde Shaman rules where technically practical.
   - Server enforcement wins over merely hiding options in an addon.
@@ -127,7 +127,7 @@ They are the dependency spine for most other approved era work. First define one
   - Current era dominates the UI.
   - Older released content becomes Legacy/Leveling/Attunement.
   - Future content hidden or Journey-preview locked.
-  - Class/spec selectors obey active era.
+  - Class/spec selectors obey active era: Death Knight is hidden before WotLK; remaining race/faction-era presentation work is still TODO.
 
 - [ ] **ERA-11 — Different raid-composition brain per era — PARTIAL**
   - Vanilla: 40/20-man class-heavy planning, faction restrictions and Vanilla utility.

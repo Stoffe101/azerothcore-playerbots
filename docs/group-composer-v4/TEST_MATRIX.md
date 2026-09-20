@@ -67,7 +67,7 @@ Status vocabulary:
 - TODO: `.era audit` reports central cap drift as FAIL.
 - TODO: `.era audit` reports stored over-cap RNDbots as WARN/quarantined with examples.
 - TODO: `.era audit` reports Outland/Northrend map policy correctly for Vanilla/TBC/WotLK.
-- TODO: Composer cannot select a Death Knight before WotLK.
+- TODO: Composer Build Selector hides Death Knight before WotLK and shows it after WotLK release; backend also rejects it before release.
 - TODO: Composer/RaidRoster excludes Blood Elf/Draenei before TBC.
 - TODO: RaidRoster sync from a dirty level-80 master clamps bots to 60 in Vanilla and 70 in TBC.
 - TODO: `.era audit` FAILs on active future-era bot class/race.

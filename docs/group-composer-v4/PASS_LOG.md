@@ -2,6 +2,16 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — Group Composer era class visibility
+
+Status: **IMPLEMENTATION PUSHED; typed UI + exact-head local CI required**.
+
+Implemented:
+- Group Composer 0.15.3 Build Selector hides Death Knight unless the live realm is WotLK;
+- class tiles are still created at addon load, while live-era filtering happens during refresh so an early default realm snapshot cannot permanently remove the DK tile;
+- a stale/persisted Death Knight selection is cleared when opening the selector before WotLK;
+- server-side EraPolicy remains authoritative; this client filtering is UX rather than security.
+
 ## 2026-09-21 — ERA-01/02 identity and profession policy foundation
 
 Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
@@ -26,6 +36,7 @@ Audit expansion:
 Still TODO: server character-creation enforcement, trainers/recipes, full profession behavior, Group Composer client-side DK hiding, and broader persistent guild-bot identity handling.
 
 CI: commit uses `[local-ci]` on `stoffes-pc`.
+- First static pass on `2d9dc432` found an old reserve-query assertion that still required `guid,name,class,level`; the implementation intentionally adds `race` so era race policy can be enforced. The contract now requires persisted race metadata too.
 
 ## 2026-09-21 — ERA-02 slice 1: read-only integrity audit scaffold
 

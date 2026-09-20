@@ -69,7 +69,7 @@ Latest fully verified green checkpoint: `1e3e9d5fa32e52d9abb2b43501e222f812ee6c3
 
 Exact-head CI: client checks **SUCCESS**, backend staging **SUCCESS**, Group Composer compile **SUCCESS** on `stoffes-pc`, Integration **SUCCESS** on `stoffes-pc`. Both heavy workflows retained the Clang 18 -> GCC 15 libstdc++ workaround.
 
-This head includes the previously verified runtime-pass-3 implementation, peer-policy observability, Admin Panel authorization hardening and the Group Composer minimap launcher. Current Group Composer version is **0.15.2**.
+This head includes the previously verified runtime-pass-3 implementation, peer-policy observability, Admin Panel authorization hardening and the Group Composer minimap launcher. Current Group Composer version is **0.15.3**.
 
 ### Runtime pass 3 implementation
 
@@ -138,6 +138,8 @@ ERA-01 is **not DONE yet**. AH, global bot population/geography, professions, ve
 Status: **IN PROGRESS**.
 
 First read-only slice adds GM-only `.era audit` with PASS/WARN/FAIL sections for central cap drift, online over-cap RNDbots, preserved/quarantined stored RNDbots, Outland/Northrend map gates, and future Composer activity map leakage. It reports counts plus up to five examples where useful and never mutates realm state. The next policy slice adds class/race/profession rules and extends the scanner with active RNDbot identity/profession leak sections. AH/items/vendors/PvP and broader world enforcement remain TODO.
+
+Group Composer 0.15.3 also hides Death Knight from the Build Selector before WotLK and clears a stale preselected DK build when the selector opens on an earlier-era realm.
 
 ## Era-fidelity architecture pass
 
