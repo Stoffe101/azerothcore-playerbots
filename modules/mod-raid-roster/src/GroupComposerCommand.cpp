@@ -766,6 +766,8 @@ bool PlayerActivityEligible(Player* player, Config const& config, std::string& r
     return true;
 }
 
+bool IsBotGuid(ObjectGuid guid);
+
 bool PartyActivityEligible(Player* master, Config const& config, std::string& reason,
     std::vector<std::pair<std::string, std::string>>* humanBlockers = nullptr)
 {
