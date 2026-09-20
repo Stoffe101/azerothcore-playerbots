@@ -5931,9 +5931,10 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                 card.iconBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
                 card.title:SetText(item.label)
                 local availability = item.available and "AVAILABLE" or "LOCKED"
-                local readiness = item.available and (item.feasible and ((("GROUP READY · " .. tostring(item.guildBots)) .. " guild bot(s) selected · ") .. tostring(item.guildCandidates)) .. " guild candidate(s)" or "ROSTER NEEDS WORK") or "NEXT UNLOCK"
+                local readiness = item.available and (item.feasible and ((((("GROUP READY · " .. tostring(item.humans)) .. " human(s) · ") .. tostring(item.selectedBots)) .. " bot(s) · ") .. tostring(item.guildBots)) .. " guild bot(s)" or "ROSTER NEEDS WORK") or "NEXT UNLOCK"
                 card.meta:SetText((((item.era .. " · ") .. (item.mode == "RAID" and "Raid" or "Dungeon")) .. " · ") .. availability)
-                card.reason:SetText(item.reason)
+                local humanLine = item.humanNames ~= "" and " · Anchored: " .. item.humanNames or ""
+                card.reason:SetText(item.reason .. humanLine)
                 card.readiness:SetText(readiness .. (item.readiness ~= "" and " · " .. item.readiness or ""))
                 local accent = not item.available and theme.colors.warning or (item.feasible and theme.colors.success or theme.colors.error)
                 card.readiness:SetTextColor(accent[1], accent[2], accent[3], 1)
