@@ -41,7 +41,8 @@ Status vocabulary:
 - PASS: low-level character sees level-gated Vanilla dungeon access; user confirmed the low-level level gate behaves correctly.
 - TODO: bot level policy uses the lowest real human as reference with a +/-3 peer band, never below dungeon minimum.
 - TODO: solo high-level player in trivial legacy content may use high-level peer bots without being treated as a boost run.
-- TODO: mixed-level real-player group (for example 80 + 14) prepares/selects bots around the lowest human.
+- TODO: mixed-level real-player group at **any** levels prepares/selects bots around the lowest real human; 80 + 14 is only one example, not a special case.
+- TODO: status/review shows the computed lowest-human peer target and allowed bot level band, matching the actual selected roster.
 - TODO: eligible peer-level bots can fill normal dungeon roles.
 - TODO: already-grouped overlevel bot blocks with explicit message rather than being kicked.
 - TODO: humans remain exempt from bot-only anti-boost rule.

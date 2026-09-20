@@ -2,6 +2,25 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-20 — Runtime pass 3.1: peer-policy observability
+
+Status: **IMPLEMENTED; exact-head local CI + runtime verification required**.
+
+Clarification:
+- The mixed-level anti-boost rule has no special level-14 case.
+- The lowest real human at any level is the peer reference. Examples such as 80+14 or 80+23 are illustrative only.
+
+Work:
+- Extended the existing META snapshot with bot target/min/max levels.
+- Composer status now shows `Lowest-human target Lv X · bots Lv A-B` after a roster is built.
+- Bumped addon/runtime package to 0.15.1.
+- Added contract coverage for the peer-policy protocol and display.
+- Updated canonical runtime docs so examples cannot be mistaken for hard-coded cases.
+
+CI:
+- Parent documentation checkpoint `cf8d988c2515a15fddc28767ed1364cc56e073fe` is exact-head green on client checks, backend staging, Group Composer compile and Integration; both heavy jobs ran on `stoffes-pc` with the Clang 18/GCC 15 workaround intact.
+- This 3.1 follow-up uses `[local-ci]` and is not green until its own exact final head succeeds.
+
 ## 2026-09-20 — Runtime pass 3: RDF proposals, peer levels and player-aware UI
 
 Status: **IMPLEMENTATION DONE + EXACT-HEAD LOCAL CI VERIFIED; runtime retest required**.

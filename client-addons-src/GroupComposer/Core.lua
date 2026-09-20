@@ -593,6 +593,9 @@ function GC:HandleProtocolMessage(message)
         GC.plan.summary.size = ParseNumber(fields[5], 0); GC.plan.summary.tanks = ParseNumber(fields[6], 0)
         GC.plan.summary.healers = ParseNumber(fields[7], 0); GC.plan.summary.dps = ParseNumber(fields[8], 0)
         GC.plan.summary.requiredLevel = ParseNumber(fields[9], 0)
+        GC.plan.summary.botTargetLevel = ParseNumber(fields[10], 0)
+        GC.plan.summary.minBotLevel = ParseNumber(fields[11], 0)
+        GC.plan.summary.maxBotLevel = ParseNumber(fields[12], 0)
     elseif kind == "MEMBER" then
         GC.plan.members[#GC.plan.members + 1] = {
             subgroup = ParseNumber(fields[2], 0), name = fields[3] or "?", role = fields[4] or "DPS",

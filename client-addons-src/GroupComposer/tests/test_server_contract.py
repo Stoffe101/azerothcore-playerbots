@@ -131,7 +131,7 @@ for command in (
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
 assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
-assert '## Version: 0.15.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
+assert '## Version: 0.15.1' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
@@ -935,7 +935,7 @@ assert "function wheel(this: void" in CHOICE_SELECT
 assert "function wheel(this: void" in SCROLL_LIST
 assert "sync-group-composer-client.sh" in UPDATE_SH
 assert "GroupComposerModernUI.lua" in SYNC_CLIENT and "Interface/AddOns/GroupComposer" in SYNC_CLIENT
-assert "0.15.0" in TOC and "0.15.0" in DATA
+assert "0.15.1" in TOC and "0.15.1" in DATA
 
 # Long activity lists use a dedicated filtered two-column browser instead of the compact ChoiceSelect.
 assert 'ActivityBrowserUI.createActivityBrowser(frame)' in MODERN
@@ -1219,3 +1219,12 @@ assert "difficultyEra == AdventureEra::Vanilla" in SERVER
 assert "Titan Rune Alpha/Beta/Gamma apply only to WotLK dungeons." in SERVER
 assert "proposalPlayer->GetSession()->IsBot()" in LFG_PROPOSAL_PATCH
 assert "data.accept = LFG_ANSWER_AGREE;" in LFG_PROPOSAL_PATCH
+
+
+# Runtime pass 3.1: expose the generic lowest-human peer calculation for runtime verification.
+assert 'uint32(plan.config.botTargetLevel)' in SERVER
+assert 'uint32(plan.config.minBotLevel)' in SERVER and 'uint32(plan.config.maxBotLevel)' in SERVER
+assert 'GC.plan.summary.botTargetLevel = ParseNumber(fields[10], 0)' in CORE
+assert 'GC.plan.summary.minBotLevel = ParseNumber(fields[11], 0)' in CORE
+assert 'GC.plan.summary.maxBotLevel = ParseNumber(fields[12], 0)' in CORE
+assert '"Lowest-human target Lv "' in MODERN and '"  ·  bots Lv "' in MODERN

@@ -825,6 +825,10 @@ export function createModernDashboard(): Dashboard {
     sourceText.SetPoint("TOPLEFT", rosterCount, "BOTTOMLEFT", 0, -4);
     sourceText.SetWidth(270);
 
+    const peerText = Native.createText(status.frame, "", "GameFontHighlightSmall", theme.colors.primary);
+    peerText.SetPoint("TOPLEFT", status.frame, "TOPLEFT", 16, -181);
+    peerText.SetWidth(270);
+
     const statusRoleChips: Record<Role, any> = {} as Record<Role, any>;
     for (let i = 0; i < roleOrder.length; i += 1) {
         const role = roleOrder[i];
@@ -1820,8 +1824,15 @@ export function createModernDashboard(): Dashboard {
                 "  ·  " + String(Model.plan().summary?.guild ?? 0) + " guild  ·  " +
                 String(Model.plan().summary?.world ?? 0) + " fallback"
             );
+            peerText.SetText(
+                "Lowest-human target Lv " + String(Model.plan().summary?.botTargetLevel ?? "?") +
+                "  ·  bots Lv " + String(Model.plan().summary?.minBotLevel ?? "?") +
+                "-" + String(Model.plan().summary?.maxBotLevel ?? "?")
+            );
+            peerText.Show();
         } else {
             sourceText.SetText(String(humanCount) + " human" + (humanCount === 1 ? "" : "s") + "  ·  " + String(Math.max(0, target - humanCount)) + " bot slots");
+            peerText.Hide();
         }
 
         statusRoleChips.TANK.label.SetText(String(Model.config().tanks ?? 0) + " TANK");

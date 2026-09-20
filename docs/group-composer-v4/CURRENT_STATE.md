@@ -84,7 +84,8 @@ Implemented in addon/server version 0.15.0:
 - Unlock Requirements is layered as a child of Activity Browser instead of fighting it as a sibling dialog.
 - Human-anchor rows use a proper one-icon class position.
 - Bot level/preparation policy follows the **lowest real human** in the reviewed group with a +/-3 band, dungeon-floor clamp and live-realm-cap clamp.
-- Mixed-level example: level 80 + level 14 in a level-13 dungeon targets level 14 bots and allows roughly level 13-17.
+- The policy is generic: **whatever the lowest real-human level is** becomes the peer target. A level-80 + level-14 group was only an illustrative example; level 80 + 23 targets 23, and 47 + 44 + 31 targets 31.
+- Review/status now exposes the computed peer target and allowed bot band directly so arbitrary mixed-level cases can be verified in game.
 - Solo high-level characters may run trivial legacy content with high-level peer bots without being treated as boosting a lower human.
 
 ### Earlier low-level validation lane on a WotLK dev realm

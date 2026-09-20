@@ -389,10 +389,11 @@ void SendPlan(ChatHandler* handler, Plan const& plan)
 {
     if (!handler) return;
     handler->SendSysMessage("[GC]|RESET");
-    handler->PSendSysMessage("[GC]|META|{}|{}|{}|{}|{}|{}|{}|{}",
+    handler->PSendSysMessage("[GC]|META|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
         plan.config.mode, plan.config.activity, plan.config.difficulty,
         uint32(plan.config.size), uint32(plan.config.tanks), uint32(plan.config.healers), uint32(plan.config.dps),
-        uint32(plan.config.requiredLevel));
+        uint32(plan.config.requiredLevel), uint32(plan.config.botTargetLevel),
+        uint32(plan.config.minBotLevel), uint32(plan.config.maxBotLevel));
 
     Player* viewer = handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
     uint32 guild = 0, world = 0, humans = 0;
