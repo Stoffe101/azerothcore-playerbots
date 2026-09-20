@@ -35,17 +35,18 @@ Every meaningful development/runtime pass must update documentation **before it 
 
 Historical design docs stay in the repository, but do not force a new chat to reconstruct the present from archaeology.
 
-## Current checkpoint at the start of this documentation pass
+## Current verified implementation checkpoint
 
-Last fully verified green implementation before the current pass:
+Latest fully verified green implementation:
 
-- `3b548b3d29539a1ae0816d10db0e943546d3626c`
-- Group Composer client checks: success
-- Stage Group Composer V4 backend: success
-- Group Composer V4 compile: success on `stoffes-pc`
-- Integration build: success on `stoffes-pc`
+- `86ce6c8dc8bd6faddbe0ae1cbd98c082424e21d4`
+- Commit: `feat: add canonical handoff and low-level test starter [local-ci]`
+- Group Composer client checks: **SUCCESS**
+- Stage Group Composer V4 backend: **SUCCESS**
+- Group Composer V4 compile: **SUCCESS** on `stoffes-pc`
+- Integration build: **SUCCESS** on `stoffes-pc`
 
-The active pass stored alongside this documentation adds a one-shot per-account **Vanilla-fresh next-character override** for genuine low-level testing on the WotLK dev realm. Do not call that new pass green until its exact commit completes the required workflows.
+This checkpoint includes the canonical handoff system and the one-shot per-account **Vanilla-fresh next-character override** for genuine low-level testing on the WotLK dev realm. Runtime behavior is still tested separately from build success.
 
 ## North star
 

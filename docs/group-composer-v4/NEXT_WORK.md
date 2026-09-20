@@ -4,7 +4,7 @@ This file is priority-ordered. Do not re-add items already marked implemented in
 
 ## P0 — Finish the current validation loop
 
-1. Get the active one-shot low-level starter pass fully green on exact-head CI.
+1. **DONE:** one-shot low-level starter pass is green at `86ce6c8d`.
 2. Deploy with:
    ```bash
    git switch test/group-composer-v4

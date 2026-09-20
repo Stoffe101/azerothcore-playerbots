@@ -2,9 +2,15 @@
 
 Newest entries belong at the top of the dated section.
 
-## 2026-09-20 — Active pass: canonical handoff + low-level test lane
+## 2026-09-20 — Canonical handoff + low-level test lane
 
-Status: **implementation being committed; exact-head CI required before green**
+Final verified green implementation: `86ce6c8dc8bd6faddbe0ae1cbd98c082424e21d4`
+
+Exact-head workflows:
+- Group Composer client checks: SUCCESS
+- Stage Group Composer V4 backend: SUCCESS
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`
+- Integration build: SUCCESS on `stoffes-pc`
 
 Why:
 - New chats need one authoritative place to recover exact project state.
@@ -20,7 +26,7 @@ Work:
   - `.ap nextstarter clear`
 - Override is intentionally in-memory and does not alter the realm-wide starter profile.
 
-Next runtime test after deploy:
+Runtime test still required after deploy:
 - Arm the override on the GM/main character.
 - Create a new non-DK character.
 - First login should remain level 1.

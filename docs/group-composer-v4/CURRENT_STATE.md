@@ -63,13 +63,17 @@ User testing then exposed and we fixed:
 
 Verified green checkpoint after this pass: `3b548b3d29539a1ae0816d10db0e943546d3626c`.
 
-## Active development pass
+## Latest green development pass
+
+Implementation checkpoint: `86ce6c8dc8bd6faddbe0ae1cbd98c082424e21d4`
+
+Exact-head CI: client checks **SUCCESS**, backend staging **SUCCESS**, Group Composer compile **SUCCESS** on `stoffes-pc`, Integration **SUCCESS** on `stoffes-pc`.
 
 ### Low-level validation lane on a WotLK dev realm
 
 Problem: the dev realm's normal AdventureStart default can intentionally boost brand-new characters to TBC/WotLK starter profiles, which makes true level-1/low-level Group Composer validation impossible.
 
-Solution being implemented:
+Implemented solution:
 
 - GM-only `.ap nextstarter vanilla`.
 - Account-scoped, in-memory, one-shot override.
@@ -82,7 +86,7 @@ Solution being implemented:
 - `.ap nextstarter clear` cancels it.
 - Server restart also clears it by design.
 
-This is test tooling, not a friends-realm gameplay feature.
+This is test tooling, not a friends-realm gameplay feature. It is compiled and CI-verified; its in-game one-shot behavior is still a runtime test.
 
 ## Known current runtime state
 
