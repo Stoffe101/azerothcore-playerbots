@@ -76,6 +76,23 @@ export interface JourneyState {
     guildId: number;
 }
 
+export interface CatalogDiagnosticEntry {
+    id: string;
+    label: string;
+    era: string;
+    mode: "DUNGEON" | "RAID";
+    status: "PASS" | "WARN" | "FAIL";
+    detail: string;
+}
+
+export interface CatalogDiagnosticsState {
+    ready: boolean;
+    entries: CatalogDiagnosticEntry[];
+    pass: number;
+    warn: number;
+    fail: number;
+}
+
 export interface PlanMember {
     subgroup: number;
     name: string;
@@ -502,6 +519,17 @@ export function journey(): JourneyState {
     };
 }
 
+export function catalogDiagnostics(): CatalogDiagnosticsState {
+    const raw = GC.catalogDiagnostics ?? {};
+    return {
+        ready: raw.ready === true,
+        entries: (raw.entries ?? []) as CatalogDiagnosticEntry[],
+        pass: Number(raw.pass ?? 0),
+        warn: Number(raw.warn ?? 0),
+        fail: Number(raw.fail ?? 0),
+    };
+}
+
 export function pinnedMembers(): any[] {
     const result: any[] = [];
     for (const pin of (config().pinned ?? []) as any[]) result.push(pin);
@@ -659,6 +687,7 @@ export function requestActivities(mode?: "DUNGEON" | "RAID", difficulty?: string
 }
 
 export function requestJourney(): void { GC.RequestJourney(); }
+export function requestCatalogDiagnostics(): void { GC.RequestCatalogDiagnostics(); }
 
 export function activityEligibility(id: string, mode?: "DUNGEON" | "RAID"): ActivityEligibility {
     const selectedMode = mode ?? (config().mode === "RAID" ? "RAID" : "DUNGEON");

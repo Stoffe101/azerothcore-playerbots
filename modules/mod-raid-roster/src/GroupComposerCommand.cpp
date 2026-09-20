@@ -1014,6 +1014,87 @@ void SendJourney(ChatHandler* handler, Player* master)
     handler->SendSysMessage("[GC]|JOURNEYDONE");
 }
 
+void SendCatalogDiagnostics(ChatHandler* handler)
+{
+    if (!handler)
+        return;
+
+    handler->SendSysMessage("[GC]|CATDIAGRESET");
+    uint32 pass = 0;
+    uint32 warn = 0;
+    uint32 fail = 0;
+    std::unordered_set<std::string> ids;
+
+    for (AdventureActivity const& activity : AdventureCatalog::All())
+    {
+        uint8 severity = 0; // 0 pass, 1 warn, 2 fail
+        std::string detail;
+        auto note = [&](uint8 nextSeverity, std::string const& text)
+        {
+            severity = std::max<uint8>(severity, nextSeverity);
+            if (!detail.empty()) detail += " • ";
+            detail += text;
+        };
+
+        std::string const id = activity.composerId ? activity.composerId : "";
+        std::string const label = activity.name ? activity.name : "";
+        if (id.empty()) note(2, "Missing Composer activity ID.");
+        else if (!ids.insert(id).second) note(2, "Duplicate Composer activity ID.");
+        if (label.empty()) note(2, "Missing display name.");
+
+        MapEntry const* map = activity.instanceMap ? sMapStore.LookupEntry(activity.instanceMap) : nullptr;
+        if (!activity.instanceMap || !map)
+            note(2, "Instance map " + std::to_string(activity.instanceMap) + " is not present in Map.dbc.");
+        else if (!sObjectMgr->GetMapEntranceTrigger(activity.instanceMap))
+            note(2, "No canonical AzerothCore entrance trigger; explicit Teleport to Instance cannot be trusted.");
+
+        uint8 const eraCap = AdventureCatalog::EraLevelCap(activity.era);
+        if (!activity.minLevel || activity.minLevel > eraCap)
+            note(2, "Minimum level " + std::to_string(unsigned(activity.minLevel)) +
+                " is outside the " + AdventureCatalog::EraName(activity.era) +
+                " cap of " + std::to_string(unsigned(eraCap)) + ".");
+
+        if (!activity.preferredSize || activity.preferredSize > 40)
+            note(2, "Invalid preferred group size " + std::to_string(unsigned(activity.preferredSize)) + ".");
+
+        if (activity.kind == AdventureActivityKind::Dungeon)
+        {
+            if (activity.preferredSize != 5)
+                note(2, "Dungeon preferred size must be 5.");
+            if (map && !GetLFGDungeon(activity.instanceMap, DUNGEON_DIFFICULTY_NORMAL))
+                note(1, "No stock Normal Dungeon Finder entry; fixed-instance travel can still be used.");
+        }
+        else
+        {
+            if (!RaidSupports(id, activity.preferredSize, false))
+                note(2, "Preferred raid size is not accepted by Group Composer's raid-size contract.");
+            if (!activity.finalBossEntry)
+                note(1, "No final boss configured; clear-history completion cannot be recorded for this raid.");
+            else if (!sObjectMgr->GetCreatureTemplate(activity.finalBossEntry))
+                note(2, "Configured final boss entry " + std::to_string(activity.finalBossEntry) + " is missing from creature_template.");
+        }
+
+        if (!activity.supportNote || !*activity.supportNote)
+            note(1, "Playerbots support note is empty.");
+        if (activity.support == AdventureSupport::Playable)
+            note(1, "Catalog marks this activity Playable / experimental.");
+        else if (activity.support == AdventureSupport::NotReady)
+            note(1, "Catalog marks this activity Not Ready.");
+
+        char const* status = "PASS";
+        if (severity >= 2) { status = "FAIL"; ++fail; }
+        else if (severity == 1) { status = "WARN"; ++warn; }
+        else { ++pass; detail = "Catalog, map, entrance and clear-history metadata are structurally valid."; }
+
+        handler->PSendSysMessage("[GC]|CATDIAG|{}|{}|{}|{}|{}|{}",
+            Sanitize(id), Sanitize(label), AdventureCatalog::EraName(activity.era),
+            activity.kind == AdventureActivityKind::Raid ? "RAID" : "DUNGEON",
+            status, Sanitize(detail));
+    }
+
+    handler->PSendSysMessage("[GC]|CATDIAGDONE|{}|{}|{}", pass, warn, fail);
+}
+
 struct ComposerGearProfile
 {
     uint16 minimum = 0;
@@ -2240,6 +2321,7 @@ ChatCommandTable GroupComposerCommand::GetCommands() const
         { "queue",       HandleQueue,             SEC_PLAYER, Console::No },
         { "anchors",     HandleAnchors,           SEC_PLAYER, Console::No },
         { "diagnostics", HandleDiagnostics,       SEC_PLAYER, Console::No },
+        { "catalogdiag", HandleCatalogDiagnostics,SEC_PLAYER, Console::No },
         { "clear",       HandleClear,             SEC_PLAYER, Console::No },
         { "status",      HandleStatus,            SEC_PLAYER, Console::No },
     };
@@ -2794,6 +2876,14 @@ bool GroupComposerCommand::HandleDiagnostics(ChatHandler* handler)
         return true;
     }
     handler->PSendSysMessage("[GC]|DIAG|{}", Sanitize(Planner::Diagnostics(itr->second)));
+    return true;
+}
+
+bool GroupComposerCommand::HandleCatalogDiagnostics(ChatHandler* handler)
+{
+    if (!CommandPlayer(handler))
+        return true;
+    SendCatalogDiagnostics(handler);
     return true;
 }
 

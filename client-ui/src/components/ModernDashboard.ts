@@ -6,6 +6,7 @@ import * as ProgressionPageUI from "./ProgressionPage";
 import * as RecommendationsPageUI from "./RecommendationsPage";
 import * as MemberDetailsUI from "./MemberDetailsModal";
 import * as GroupActionsUI from "./GroupActionsModal";
+import * as ActivityDiagnosticsUI from "./ActivityDiagnosticsPage";
 import * as Native from "../core/Native";
 import type { ClassId, Role } from "../data/WotlkBuilds";
 import * as Builds from "../data/WotlkBuilds";
@@ -232,10 +233,11 @@ export function createModernDashboard(): Dashboard {
     const navTitle = Native.createText(sidebar.frame, "COMPOSE", "GameFontNormalSmall", theme.colors.muted);
     navTitle.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -20);
 
-    let activePage: "COMPOSER" | "PROGRESSION" | "RECOMMENDED" = "COMPOSER";
+    let activePage: "COMPOSER" | "PROGRESSION" | "RECOMMENDED" | "DIAGNOSTICS" = "COMPOSER";
     let showComposerWorkspace = (mode?: "DUNGEON" | "RAID") => {};
     let showProgressionPage = () => {};
     let showRecommendationsPage = () => {};
+    let showDiagnosticsPage = () => {};
 
     const navDungeon = ButtonUI.createButton(sidebar.frame, {
         text: "Dungeon", width: 152, height: 46, accent: theme.colors.primary, icon: ICON_DUNGEON, iconSize: 24, flat: true,
@@ -293,6 +295,12 @@ export function createModernDashboard(): Dashboard {
     const navOptions = ButtonUI.createButton(sidebar.frame, { text: "Options", width: 152, height: 42, icon: ICON_OPTIONS, iconSize: 22, flat: true, onClick: () => showOptions() });
     navOptions.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -442);
     navOptions.label.SetJustifyH("LEFT");
+    const navDiagnostics = ButtonUI.createButton(sidebar.frame, {
+        text: "Diagnostics", width: 152, height: 42, icon: "Interface\\Icons\\INV_Gizmo_02", iconSize: 22, flat: true,
+        onClick: () => showDiagnosticsPage(),
+    });
+    navDiagnostics.frame.SetPoint("TOPLEFT", sidebar.frame, "TOPLEFT", 14, -492);
+    navDiagnostics.label.SetJustifyH("LEFT");
 
     const sideHint = Native.createText(sidebar.frame, "Humans stay locked.\nSpecific builds reserve bot slots; everything else stays Auto.", "GameFontHighlightSmall", theme.colors.muted);
     sideHint.SetPoint("BOTTOMLEFT", sidebar.frame, "BOTTOMLEFT", 16, 42);
@@ -1892,10 +1900,12 @@ export function createModernDashboard(): Dashboard {
 
     // Full workspace pages ----------------------------------------------------
     const progressionPage = ProgressionPageUI.createProgressionPage(frame);
+    const diagnosticsPage = ActivityDiagnosticsUI.createActivityDiagnosticsPage(frame);
     const recommendationsPage = RecommendationsPageUI.createRecommendationsPage(frame, () => {
         activePage = "COMPOSER";
         progressionPage.hide();
         recommendationsPage.hide();
+        diagnosticsPage.hide();
         refresh();
         Model.requestActivities(Model.config().mode === "RAID" ? "RAID" : "DUNGEON");
     });
@@ -1904,6 +1914,7 @@ export function createModernDashboard(): Dashboard {
         activePage = "COMPOSER";
         progressionPage.hide();
         recommendationsPage.hide();
+        diagnosticsPage.hide();
         if (mode !== undefined) Model.setMode(mode);
         refresh();
         Model.requestActivities(Model.config().mode === "RAID" ? "RAID" : "DUNGEON");
@@ -1911,13 +1922,22 @@ export function createModernDashboard(): Dashboard {
     showProgressionPage = () => {
         activePage = "PROGRESSION";
         recommendationsPage.hide();
+        diagnosticsPage.hide();
         progressionPage.show();
         refresh();
     };
     showRecommendationsPage = () => {
         activePage = "RECOMMENDED";
         progressionPage.hide();
+        diagnosticsPage.hide();
         recommendationsPage.show();
+        refresh();
+    };
+    showDiagnosticsPage = () => {
+        activePage = "DIAGNOSTICS";
+        progressionPage.hide();
+        recommendationsPage.hide();
+        diagnosticsPage.show();
         refresh();
     };
 
@@ -1929,6 +1949,7 @@ export function createModernDashboard(): Dashboard {
         navRaid.setSelected(activePage === "COMPOSER" && raid);
         navProgression.setSelected(activePage === "PROGRESSION");
         navRecommended.setSelected(activePage === "RECOMMENDED");
+        navDiagnostics.setSelected(activePage === "DIAGNOSTICS");
 
         const realm = Model.realm();
         realmBadge.SetText(String(realm.era).toUpperCase() + " · CAP " + String(realm.levelCap));
@@ -1942,6 +1963,7 @@ export function createModernDashboard(): Dashboard {
 
         if (activePage !== "COMPOSER") {
             if (activePage === "PROGRESSION") progressionPage.refresh();
+            else if (activePage === "DIAGNOSTICS") diagnosticsPage.refresh();
             else recommendationsPage.refresh();
             return;
         }

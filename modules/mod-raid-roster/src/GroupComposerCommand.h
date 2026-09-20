@@ -33,6 +33,7 @@ public:
     static bool HandleQueue(ChatHandler* handler);
     static bool HandleAnchors(ChatHandler* handler);
     static bool HandleDiagnostics(ChatHandler* handler);
+    static bool HandleCatalogDiagnostics(ChatHandler* handler);
     static bool HandleClear(ChatHandler* handler);
     static bool HandleStatus(ChatHandler* handler);
 };

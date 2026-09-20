@@ -265,6 +265,23 @@ It includes:
 - TBC/WotLK destination locks;
 - Vanilla-first presentation instead of assuming TBC is the baseline.
 
+### Activity catalog diagnostics
+
+Group Composer now has a development-facing **Diagnostics** page that validates every catalog activity against the live server data.
+
+For each dungeon/raid it checks:
+
+- unique Composer ID and display name;
+- Map.dbc presence;
+- canonical AzerothCore entrance trigger used by explicit instance teleport;
+- era-appropriate minimum level;
+- group/raid size contract;
+- stock Normal Dungeon Finder entry when applicable;
+- configured final-boss creature entry for progression history;
+- Playerbots support classification and notes.
+
+Results are grouped into **PASS**, **WARN** and **FAIL**. Experimental/not-ready Playerbots support is a warning; broken structural data such as a missing map, entrance or final-boss creature is a failure.
+
 ### Post-assembly lifecycle and roster explanations
 
 The reviewed roster now remains useful after assembly/teleport instead of becoming a dead-end state.

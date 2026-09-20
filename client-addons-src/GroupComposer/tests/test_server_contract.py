@@ -47,6 +47,7 @@ PROGRESSION_PAGE = (ROOT / "client-ui/src/components/ProgressionPage.ts").read_t
 RECOMMENDATIONS_PAGE = (ROOT / "client-ui/src/components/RecommendationsPage.ts").read_text(encoding="utf-8")
 MEMBER_DETAILS = (ROOT / "client-ui/src/components/MemberDetailsModal.ts").read_text(encoding="utf-8")
 GROUP_ACTIONS = (ROOT / "client-ui/src/components/GroupActionsModal.ts").read_text(encoding="utf-8")
+ACTIVITY_DIAGNOSTICS = (ROOT / "client-ui/src/components/ActivityDiagnosticsPage.ts").read_text(encoding="utf-8")
 GENERATED_UI = (ROOT / "client-addons-src/GroupComposer/GroupComposerModernUI.lua").read_text(encoding="utf-8")
 
 
@@ -113,7 +114,7 @@ assert "GetLFGDungeon(mapId, difficulty)" in SERVER
 
 for command in (
     "begin", "pref", "humanrole", "human", "pin", "arrangepref", "find", "arrange",
-    "move", "assemble", "teleport", "leave", "disband", "activities", "journey", "queue", "anchors", "diagnostics", "clear", "status",
+    "move", "assemble", "teleport", "leave", "disband", "activities", "journey", "queue", "anchors", "diagnostics", "catalogdiag", "clear", "status",
 ):
     assert re.search(r'\{\s*"' + re.escape(command) + r'"\s*,', SERVER), (
         f"Missing server command registration: {command}"
@@ -983,3 +984,13 @@ assert "PRIMARY KEY (`player_guid`, `map_id`, `instance_id`, `creature_entry`)" 
 assert "COUNT(DISTINCT instance_id)" in SERVER
 assert "playerClearCount" in CORE and "guildClearCount" in CORE
 assert "Cleared ×" in PROGRESSION_PAGE
+
+
+# Activity catalog diagnostics validate the things that make Group Composer trustworthy.
+assert "SendCatalogDiagnostics" in SERVER and "HandleCatalogDiagnostics" in SERVER
+assert "sMapStore.LookupEntry" in SERVER and "GetMapEntranceTrigger" in SERVER
+assert "GetCreatureTemplate(activity.finalBossEntry)" in SERVER
+assert "CATDIAGDONE" in SERVER and "CATDIAGDONE" in CORE
+assert "Activity Diagnostics" in ACTIVITY_DIAGNOSTICS and "Run Validation" in ACTIVITY_DIAGNOSTICS
+assert "Problems" in ACTIVITY_DIAGNOSTICS and "Passed" in ACTIVITY_DIAGNOSTICS
+assert "ActivityDiagnosticsUI.createActivityDiagnosticsPage" in MODERN

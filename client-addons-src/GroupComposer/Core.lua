@@ -20,6 +20,7 @@ GC.activityMeta = { DUNGEON = {}, RAID = {} }
 GC.activityProgression = 0
 GC.realm = { era = "Vanilla", levelCap = 60, progression = 0 }
 GC.journey = { ready = false, raids = {}, recommendations = {}, era = "Vanilla", stage = 0, level = 1, guildId = 0 }
+GC.catalogDiagnostics = { ready = false, entries = {}, pass = 0, warn = 0, fail = 0 }
 
 local function Split(text, delim)
     local out = {}
@@ -401,6 +402,11 @@ function GC:ClearServerPlan()
 end
 function GC:RequestStatus() GC:SendServer("status") end
 function GC:RequestDiagnostics() GC:SendServer("diagnostics", "Refreshing diagnostics...") end
+function GC:RequestCatalogDiagnostics()
+    GC.catalogDiagnostics = { ready = false, entries = {}, pass = 0, warn = 0, fail = 0 }
+    GC:Fire("CATALOG_DIAGNOSTICS_CHANGED", GC.catalogDiagnostics)
+    GC:SendServer("catalogdiag", "Validating activity catalog...")
+end
 
 function GC:HandleProtocolMessage(message)
     if type(message) ~= "string" or string.sub(message, 1, 5) ~= "[GC]|" then return false end
@@ -537,6 +543,25 @@ function GC:HandleProtocolMessage(message)
         GC.plan.summary.diagnostics = fields[2] or ""
         GC.pendingCommand = nil
         GC:Fire("DIAGNOSTICS", GC.plan.summary.diagnostics)
+    elseif kind == "CATDIAGRESET" then
+        GC.catalogDiagnostics = { ready = false, entries = {}, pass = 0, warn = 0, fail = 0 }
+        GC:Fire("CATALOG_DIAGNOSTICS_CHANGED", GC.catalogDiagnostics)
+    elseif kind == "CATDIAG" then
+        GC.catalogDiagnostics.entries[#GC.catalogDiagnostics.entries + 1] = {
+            id = fields[2] or "",
+            label = fields[3] or "",
+            era = fields[4] or "Vanilla",
+            mode = fields[5] == "RAID" and "RAID" or "DUNGEON",
+            status = fields[6] or "WARN",
+            detail = fields[7] or "",
+        }
+    elseif kind == "CATDIAGDONE" then
+        GC.catalogDiagnostics.pass = ParseNumber(fields[2], 0)
+        GC.catalogDiagnostics.warn = ParseNumber(fields[3], 0)
+        GC.catalogDiagnostics.fail = ParseNumber(fields[4], 0)
+        GC.catalogDiagnostics.ready = true
+        GC.pendingCommand = nil
+        GC:Fire("CATALOG_DIAGNOSTICS_CHANGED", GC.catalogDiagnostics)
     elseif kind == "WARN" then
         GC:AddWarningOnce(fields[2] or "Unknown warning")
     elseif kind == "READY" then
