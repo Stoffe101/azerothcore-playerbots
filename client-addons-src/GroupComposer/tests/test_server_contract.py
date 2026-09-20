@@ -614,14 +614,14 @@ assert "bool ActivityEligible(Player* player, Config const& config, std::string&
 assert "AdventureStartControl::HasPassedProgression" in SERVER
 assert "Difficulty const difficulty = ActivityDifficulty(config);" in SERVER
 assert "player->Satisfy(sObjectMgr->GetAccessRequirement(mapId, difficulty), mapId, false)" in SERVER
-assert 'SendActivityEligibility' in SERVER and '"[GC]|ACTIVITY|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}"' in SERVER
+assert 'SendActivityEligibility' in SERVER and '"[GC]|ACTIVITY|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}"' in SERVER
 assert '"Selected activity is locked: " + eligibilityReason' in SERVER
 assert '"Selected dungeon is locked: " + eligibilityReason' in SERVER
 assert "ActivityEligible(player, plan.config, eligibilityReason)" in travel
 assert "EnsureComposerInstanceAccess(master, bot, planItr->second.config)" in SERVER
 assert 'function GC:RequestActivities' in CORE and 'kind == "ACTIVITY"' in CORE and 'kind == "ACTIVITYDONE"' in CORE
 assert 'activityEligibility' in MODEL and 'selectedActivityEligibility' in MODEL
-assert '"LOCKED"' in ACTIVITY_BROWSER and 'setEnabled(access.known && access.eligible)' in ACTIVITY_BROWSER
+assert '"LOCKED"' in ACTIVITY_BROWSER and 'card.button.setEnabled(true)' in ACTIVITY_BROWSER
 assert 'Model.requestActivities("RAID", "normal"' in TEMPLATE_BROWSER
 assert '"Selected activity is locked.' in MODERN
 
