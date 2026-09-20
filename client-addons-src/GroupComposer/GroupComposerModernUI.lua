@@ -1900,39 +1900,72 @@ function ____exports.journey(self)
         guildId = __TS__Number(____raw_guildId_58)
     }
 end
+function ____exports.catalogDiagnostics(self)
+    local ____GC_catalogDiagnostics_63 = GC.catalogDiagnostics
+    if ____GC_catalogDiagnostics_63 == nil then
+        ____GC_catalogDiagnostics_63 = {}
+    end
+    local raw = ____GC_catalogDiagnostics_63
+    local ____temp_68 = raw.ready == true
+    local ____raw_entries_64 = raw.entries
+    if ____raw_entries_64 == nil then
+        ____raw_entries_64 = {}
+    end
+    local ____raw_pass_65 = raw.pass
+    if ____raw_pass_65 == nil then
+        ____raw_pass_65 = 0
+    end
+    local ____TS__Number_result_69 = __TS__Number(____raw_pass_65)
+    local ____raw_warn_66 = raw.warn
+    if ____raw_warn_66 == nil then
+        ____raw_warn_66 = 0
+    end
+    local ____TS__Number_result_70 = __TS__Number(____raw_warn_66)
+    local ____raw_fail_67 = raw.fail
+    if ____raw_fail_67 == nil then
+        ____raw_fail_67 = 0
+    end
+    return {
+        ready = ____temp_68,
+        entries = ____raw_entries_64,
+        pass = ____TS__Number_result_69,
+        warn = ____TS__Number_result_70,
+        fail = __TS__Number(____raw_fail_67)
+    }
+end
 function ____exports.pinnedMembers(self)
     local result = {}
-    local ____exports_config_result_pinned_63 = ____exports.config(nil).pinned
-    if ____exports_config_result_pinned_63 == nil then
-        ____exports_config_result_pinned_63 = {}
+    local ____exports_config_result_pinned_71 = ____exports.config(nil).pinned
+    if ____exports_config_result_pinned_71 == nil then
+        ____exports_config_result_pinned_71 = {}
     end
-    for ____, pin in ipairs(____exports_config_result_pinned_63) do
+    for ____, pin in ipairs(____exports_config_result_pinned_71) do
         result[#result + 1] = pin
     end
     return result
 end
 function ____exports.planWarnings(self)
     local result = {}
-    local ____exports_plan_result_warnings_64 = ____exports.plan(nil).warnings
-    if ____exports_plan_result_warnings_64 == nil then
-        ____exports_plan_result_warnings_64 = {}
+    local ____exports_plan_result_warnings_72 = ____exports.plan(nil).warnings
+    if ____exports_plan_result_warnings_72 == nil then
+        ____exports_plan_result_warnings_72 = {}
     end
-    for ____, warning in ipairs(____exports_plan_result_warnings_64) do
+    for ____, warning in ipairs(____exports_plan_result_warnings_72) do
         result[#result + 1] = tostring(warning)
     end
     return result
 end
 function ____exports.coverageDisplay(self)
-    local ____exports_plan_result_summary_65 = ____exports.plan(nil).summary
-    if ____exports_plan_result_summary_65 == nil then
-        ____exports_plan_result_summary_65 = {}
+    local ____exports_plan_result_summary_73 = ____exports.plan(nil).summary
+    if ____exports_plan_result_summary_73 == nil then
+        ____exports_plan_result_summary_73 = {}
     end
-    local summary = ____exports_plan_result_summary_65
-    local ____summary_utility_66 = summary.utility
-    if ____summary_utility_66 == nil then
-        ____summary_utility_66 = ""
+    local summary = ____exports_plan_result_summary_73
+    local ____summary_utility_74 = summary.utility
+    if ____summary_utility_74 == nil then
+        ____summary_utility_74 = ""
     end
-    local raw = tostring(____summary_utility_66)
+    local raw = tostring(____summary_utility_74)
     local labels = {}
     if (string.find(raw, "interrupt", nil, true) or 0) - 1 >= 0 then
         labels[#labels + 1] = "Interrupts"
@@ -1969,30 +2002,30 @@ function ____exports.coverageDisplay(self)
     if utility == "" then
         utility = "No utility coverage yet"
     end
-    local ____temp_68 = (utility .. "\n") .. "Ranged DPS  "
-    local ____summary_ranged_67 = summary.ranged
-    if ____summary_ranged_67 == nil then
-        ____summary_ranged_67 = 0
+    local ____temp_76 = (utility .. "\n") .. "Ranged DPS  "
+    local ____summary_ranged_75 = summary.ranged
+    if ____summary_ranged_75 == nil then
+        ____summary_ranged_75 = 0
     end
-    local ____temp_70 = (____temp_68 .. tostring(____summary_ranged_67)) .. "     Melee DPS  "
-    local ____summary_melee_69 = summary.melee
-    if ____summary_melee_69 == nil then
-        ____summary_melee_69 = 0
+    local ____temp_78 = (____temp_76 .. tostring(____summary_ranged_75)) .. "     Melee DPS  "
+    local ____summary_melee_77 = summary.melee
+    if ____summary_melee_77 == nil then
+        ____summary_melee_77 = 0
     end
-    return ____temp_70 .. tostring(____summary_melee_69)
+    return ____temp_78 .. tostring(____summary_melee_77)
 end
 function ____exports.dungeonItems(self)
     local result = {}
-    local ____D_DUNGEONS_72 = D.DUNGEONS
-    if ____D_DUNGEONS_72 == nil then
-        ____D_DUNGEONS_72 = {}
+    local ____D_DUNGEONS_80 = D.DUNGEONS
+    if ____D_DUNGEONS_80 == nil then
+        ____D_DUNGEONS_80 = {}
     end
-    for ____, dungeon in __TS__Iterator(____D_DUNGEONS_72) do
-        local ____dungeon_minLevel_71 = dungeon.minLevel
-        if ____dungeon_minLevel_71 == nil then
-            ____dungeon_minLevel_71 = 68
+    for ____, dungeon in __TS__Iterator(____D_DUNGEONS_80) do
+        local ____dungeon_minLevel_79 = dungeon.minLevel
+        if ____dungeon_minLevel_79 == nil then
+            ____dungeon_minLevel_79 = 68
         end
-        local min = __TS__Number(____dungeon_minLevel_71)
+        local min = __TS__Number(____dungeon_minLevel_79)
         result[#result + 1] = {
             value = dungeon.id,
             label = dungeon.label,
@@ -2018,35 +2051,35 @@ function ____exports.difficultyItems(self)
 end
 function ____exports.raidItems(self)
     local result = {}
-    local ____D_RAIDS_78 = D.RAIDS
-    if ____D_RAIDS_78 == nil then
-        ____D_RAIDS_78 = {}
+    local ____D_RAIDS_86 = D.RAIDS
+    if ____D_RAIDS_86 == nil then
+        ____D_RAIDS_86 = {}
     end
-    for ____, raid in __TS__Iterator(____D_RAIDS_78) do
+    for ____, raid in __TS__Iterator(____D_RAIDS_86) do
         local sizes = ""
         local firstSize = true
-        local ____raid_sizes_73 = raid.sizes
-        if ____raid_sizes_73 == nil then
-            ____raid_sizes_73 = {}
+        local ____raid_sizes_81 = raid.sizes
+        if ____raid_sizes_81 == nil then
+            ____raid_sizes_81 = {}
         end
-        for ____, size in __TS__Iterator(____raid_sizes_73) do
+        for ____, size in __TS__Iterator(____raid_sizes_81) do
             if not firstSize then
                 sizes = sizes .. "/"
             end
             sizes = sizes .. tostring(size)
             firstSize = false
         end
-        local ____raid_id_76 = raid.id
-        local ____temp_77 = (tostring(raid.era) .. "  ·  ") .. tostring(raid.label)
-        local ____temp_75 = sizes .. " player · Level "
-        local ____raid_requiredLevel_74 = raid.requiredLevel
-        if ____raid_requiredLevel_74 == nil then
-            ____raid_requiredLevel_74 = 80
+        local ____raid_id_84 = raid.id
+        local ____temp_85 = (tostring(raid.era) .. "  ·  ") .. tostring(raid.label)
+        local ____temp_83 = sizes .. " player · Level "
+        local ____raid_requiredLevel_82 = raid.requiredLevel
+        if ____raid_requiredLevel_82 == nil then
+            ____raid_requiredLevel_82 = 80
         end
         result[#result + 1] = {
-            value = ____raid_id_76,
-            label = ____temp_77,
-            detail = (____temp_75 .. tostring(____raid_requiredLevel_74)) .. "+",
+            value = ____raid_id_84,
+            label = ____temp_85,
+            detail = (____temp_83 .. tostring(____raid_requiredLevel_82)) .. "+",
             icon = ACTIVITY_ICONS[tostring(raid.id)] or DEFAULT_RAID_ICON
         }
     end
@@ -2058,11 +2091,11 @@ function ____exports.raidDifficultyItems(self)
         nil,
         ____exports.config(nil).activity
     )
-    local ____opt_result_81
+    local ____opt_result_89
     if raid ~= nil then
-        ____opt_result_81 = raid.heroic
+        ____opt_result_89 = raid.heroic
     end
-    if ____opt_result_81 == true then
+    if ____opt_result_89 == true then
         result[#result + 1] = {value = "heroic", label = "Heroic"}
     end
     return result
@@ -2070,14 +2103,14 @@ end
 function ____exports.selectedActivityLabel(self)
     local cfg = ____exports.config(nil)
     local mode = cfg.mode == "RAID" and "RAID" or "DUNGEON"
-    local ____exports_activityMeta_83 = ____exports.activityMeta
-    local ____cfg_activity_82 = cfg.activity
-    if ____cfg_activity_82 == nil then
-        ____cfg_activity_82 = ""
+    local ____exports_activityMeta_91 = ____exports.activityMeta
+    local ____cfg_activity_90 = cfg.activity
+    if ____cfg_activity_90 == nil then
+        ____cfg_activity_90 = ""
     end
-    local meta = ____exports_activityMeta_83(
+    local meta = ____exports_activityMeta_91(
         nil,
-        tostring(____cfg_activity_82),
+        tostring(____cfg_activity_90),
         mode
     )
     if meta ~= nil then
@@ -2085,54 +2118,54 @@ function ____exports.selectedActivityLabel(self)
     end
     if cfg.mode == "RAID" then
         local raid = raidById(nil, cfg.activity)
-        local ____opt_result_86
+        local ____opt_result_94
         if raid ~= nil then
-            ____opt_result_86 = raid.label
+            ____opt_result_94 = raid.label
         end
-        local ____opt_result_86_87 = ____opt_result_86
-        if ____opt_result_86_87 == nil then
-            ____opt_result_86_87 = "Raid"
+        local ____opt_result_94_95 = ____opt_result_94
+        if ____opt_result_94_95 == nil then
+            ____opt_result_94_95 = "Raid"
         end
-        return ____opt_result_86_87
+        return ____opt_result_94_95
     end
     local dungeon = dungeonById(nil, cfg.activity)
-    local ____opt_result_90
+    local ____opt_result_98
     if dungeon ~= nil then
-        ____opt_result_90 = dungeon.label
+        ____opt_result_98 = dungeon.label
     end
-    local ____opt_result_90_91 = ____opt_result_90
-    if ____opt_result_90_91 == nil then
-        ____opt_result_90_91 = "Dungeon"
+    local ____opt_result_98_99 = ____opt_result_98
+    if ____opt_result_98_99 == nil then
+        ____opt_result_98_99 = "Dungeon"
     end
-    return ____opt_result_90_91
+    return ____opt_result_98_99
 end
 function ____exports.activityIconFor(self, id, mode)
     return ACTIVITY_ICONS[tostring(id)] or (mode == "RAID" and DEFAULT_RAID_ICON or DEFAULT_DUNGEON_ICON)
 end
 function ____exports.selectedActivityIcon(self)
     local cfg = ____exports.config(nil)
-    local ____exports_activityIconFor_93 = ____exports.activityIconFor
-    local ____cfg_activity_92 = cfg.activity
-    if ____cfg_activity_92 == nil then
-        ____cfg_activity_92 = ""
+    local ____exports_activityIconFor_101 = ____exports.activityIconFor
+    local ____cfg_activity_100 = cfg.activity
+    if ____cfg_activity_100 == nil then
+        ____cfg_activity_100 = ""
     end
-    return ____exports_activityIconFor_93(
+    return ____exports_activityIconFor_101(
         nil,
-        tostring(____cfg_activity_92),
+        tostring(____cfg_activity_100),
         cfg.mode == "RAID" and "RAID" or "DUNGEON"
     )
 end
 function ____exports.requiredActivityLevel(self)
     local cfg = ____exports.config(nil)
     local mode = cfg.mode == "RAID" and "RAID" or "DUNGEON"
-    local ____exports_activityMeta_95 = ____exports.activityMeta
-    local ____cfg_activity_94 = cfg.activity
-    if ____cfg_activity_94 == nil then
-        ____cfg_activity_94 = ""
+    local ____exports_activityMeta_103 = ____exports.activityMeta
+    local ____cfg_activity_102 = cfg.activity
+    if ____cfg_activity_102 == nil then
+        ____cfg_activity_102 = ""
     end
-    local meta = ____exports_activityMeta_95(
+    local meta = ____exports_activityMeta_103(
         nil,
-        tostring(____cfg_activity_94),
+        tostring(____cfg_activity_102),
         mode
     )
     if meta ~= nil then
@@ -2143,38 +2176,38 @@ function ____exports.requiredActivityLevel(self)
     end
     if cfg.mode == "RAID" then
         local raid = raidById(nil, cfg.activity)
-        local ____opt_result_98
+        local ____opt_result_106
         if raid ~= nil then
-            ____opt_result_98 = raid.requiredLevel
+            ____opt_result_106 = raid.requiredLevel
         end
-        local ____opt_result_98_99 = ____opt_result_98
-        if ____opt_result_98_99 == nil then
-            ____opt_result_98_99 = ____exports.realm(nil).levelCap
+        local ____opt_result_106_107 = ____opt_result_106
+        if ____opt_result_106_107 == nil then
+            ____opt_result_106_107 = ____exports.realm(nil).levelCap
         end
-        return __TS__Number(____opt_result_98_99)
+        return __TS__Number(____opt_result_106_107)
     end
     local dungeon = dungeonById(nil, cfg.activity)
-    local ____opt_result_102
+    local ____opt_result_110
     if dungeon ~= nil then
-        ____opt_result_102 = dungeon.minLevel
+        ____opt_result_110 = dungeon.minLevel
     end
-    local ____opt_result_102_103 = ____opt_result_102
-    if ____opt_result_102_103 == nil then
-        ____opt_result_102_103 = 1
+    local ____opt_result_110_111 = ____opt_result_110
+    if ____opt_result_110_111 == nil then
+        ____opt_result_110_111 = 1
     end
-    return __TS__Number(____opt_result_102_103)
+    return __TS__Number(____opt_result_110_111)
 end
 function ____exports.activityEligibilityText(self)
     local level = ____exports.requiredActivityLevel(nil)
-    local ____opt_104 = ____exports.config(nil).options
-    if ____opt_104 ~= nil then
-        ____opt_104 = ____opt_104.minimumItemLevel
+    local ____opt_112 = ____exports.config(nil).options
+    if ____opt_112 ~= nil then
+        ____opt_112 = ____opt_112.minimumItemLevel
     end
-    local ____opt_104_106 = ____opt_104
-    if ____opt_104_106 == nil then
-        ____opt_104_106 = 0
+    local ____opt_112_114 = ____opt_112
+    if ____opt_112_114 == nil then
+        ____opt_112_114 = 0
     end
-    local floor = __TS__Number(____opt_104_106)
+    local floor = __TS__Number(____opt_112_114)
     return (("Level " .. tostring(level)) .. "+ required · Item level floor ") .. (floor > 0 and tostring(floor) or "Off")
 end
 function ____exports.setMinimumItemLevel(self, value)
@@ -2194,15 +2227,15 @@ function ____exports.supportedRaidSizes(self)
         ____exports.config(nil).activity
     )
     local result = {}
-    local ____opt_result_109
+    local ____opt_result_117
     if raid ~= nil then
-        ____opt_result_109 = raid.sizes
+        ____opt_result_117 = raid.sizes
     end
-    local ____opt_result_109_110 = ____opt_result_109
-    if ____opt_result_109_110 == nil then
-        ____opt_result_109_110 = {}
+    local ____opt_result_117_118 = ____opt_result_117
+    if ____opt_result_117_118 == nil then
+        ____opt_result_117_118 = {}
     end
-    for ____, size in __TS__Iterator(____opt_result_109_110) do
+    for ____, size in __TS__Iterator(____opt_result_117_118) do
         result[#result + 1] = __TS__Number(size)
     end
     return result
@@ -2214,48 +2247,51 @@ end
 function ____exports.requestJourney(self)
     GC:RequestJourney()
 end
+function ____exports.requestCatalogDiagnostics(self)
+    GC:RequestCatalogDiagnostics()
+end
 function ____exports.activityEligibility(self, id, mode)
     local selectedMode = mode or (____exports.config(nil).mode == "RAID" and "RAID" or "DUNGEON")
-    local ____GC_activityEligibilityReady_111 = GC.activityEligibilityReady
-    if ____GC_activityEligibilityReady_111 == nil then
-        ____GC_activityEligibilityReady_111 = {}
+    local ____GC_activityEligibilityReady_119 = GC.activityEligibilityReady
+    if ____GC_activityEligibilityReady_119 == nil then
+        ____GC_activityEligibilityReady_119 = {}
     end
-    local readyByMode = ____GC_activityEligibilityReady_111
-    local ____GC_activityEligibility_112 = GC.activityEligibility
-    if ____GC_activityEligibility_112 == nil then
-        ____GC_activityEligibility_112 = {}
+    local readyByMode = ____GC_activityEligibilityReady_119
+    local ____GC_activityEligibility_120 = GC.activityEligibility
+    if ____GC_activityEligibility_120 == nil then
+        ____GC_activityEligibility_120 = {}
     end
-    local eligibilityByMode = ____GC_activityEligibility_112
-    local ____eligibilityByMode_selectedMode_113 = eligibilityByMode[selectedMode]
-    if ____eligibilityByMode_selectedMode_113 == nil then
-        ____eligibilityByMode_selectedMode_113 = {}
+    local eligibilityByMode = ____GC_activityEligibility_120
+    local ____eligibilityByMode_selectedMode_121 = eligibilityByMode[selectedMode]
+    if ____eligibilityByMode_selectedMode_121 == nil then
+        ____eligibilityByMode_selectedMode_121 = {}
     end
-    local entries = ____eligibilityByMode_selectedMode_113
+    local entries = ____eligibilityByMode_selectedMode_121
     local entry = entries[id]
     if readyByMode[selectedMode] ~= true or entry == nil then
         return {known = false, eligible = false, reason = "Checking access..."}
     end
-    local ____temp_115 = entry.eligible == true
-    local ____entry_reason_114 = entry.reason
-    if ____entry_reason_114 == nil then
-        ____entry_reason_114 = entry.eligible == true and "Available" or "Locked"
+    local ____temp_123 = entry.eligible == true
+    local ____entry_reason_122 = entry.reason
+    if ____entry_reason_122 == nil then
+        ____entry_reason_122 = entry.eligible == true and "Available" or "Locked"
     end
     return {
         known = true,
-        eligible = ____temp_115,
-        reason = tostring(____entry_reason_114)
+        eligible = ____temp_123,
+        reason = tostring(____entry_reason_122)
     }
 end
 function ____exports.selectedActivityEligibility(self)
     local cfg = ____exports.config(nil)
-    local ____exports_activityEligibility_117 = ____exports.activityEligibility
-    local ____cfg_activity_116 = cfg.activity
-    if ____cfg_activity_116 == nil then
-        ____cfg_activity_116 = ""
+    local ____exports_activityEligibility_125 = ____exports.activityEligibility
+    local ____cfg_activity_124 = cfg.activity
+    if ____cfg_activity_124 == nil then
+        ____cfg_activity_124 = ""
     end
-    return ____exports_activityEligibility_117(
+    return ____exports_activityEligibility_125(
         nil,
-        tostring(____cfg_activity_116),
+        tostring(____cfg_activity_124),
         cfg.mode == "RAID" and "RAID" or "DUNGEON"
     )
 end
@@ -2363,11 +2399,11 @@ function ____exports.removePin(self, index)
     GC:RemovePinnedMember(index)
 end
 function ____exports.planMembers(self)
-    local ____exports_plan_result_members_118 = ____exports.plan(nil).members
-    if ____exports_plan_result_members_118 == nil then
-        ____exports_plan_result_members_118 = {}
+    local ____exports_plan_result_members_126 = ____exports.plan(nil).members
+    if ____exports_plan_result_members_126 == nil then
+        ____exports_plan_result_members_126 = {}
     end
-    return ____exports_plan_result_members_118
+    return ____exports_plan_result_members_126
 end
 function ____exports.roleAccent(self, role)
     if role == "TANK" then
@@ -2406,19 +2442,19 @@ function ____exports.phaseLabel(self, phase)
     return "Ready to configure"
 end
 function ____exports.isBusy(self)
-    local ____exports_progress_result_phase_119 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_119 == nil then
-        ____exports_progress_result_phase_119 = "IDLE"
+    local ____exports_progress_result_phase_127 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_127 == nil then
+        ____exports_progress_result_phase_127 = "IDLE"
     end
-    local phase = tostring(____exports_progress_result_phase_119)
+    local phase = tostring(____exports_progress_result_phase_127)
     return phase == "BUILDING" or phase == "PREPARING" or phase == "ASSEMBLING" or phase == "TRAVEL"
 end
 function ____exports.isAssembled(self)
-    local ____exports_progress_result_phase_120 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_120 == nil then
-        ____exports_progress_result_phase_120 = ""
+    local ____exports_progress_result_phase_128 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_128 == nil then
+        ____exports_progress_result_phase_128 = ""
     end
-    local phase = tostring(____exports_progress_result_phase_120)
+    local phase = tostring(____exports_progress_result_phase_128)
     return phase == "ASSEMBLED" or phase == "DONE"
 end
 function ____exports.hasFixedActivityDestination(self)
@@ -5829,6 +5865,351 @@ function ____exports.createGroupActionsModal(self, parent)
 end
 return ____exports
  end,
+["components.ActivityDiagnosticsPage"] = function(...) 
+--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+local ____exports = {}
+local Model = require("model.ComposerModel")
+local Native = require("core.Native")
+local ____Theme = require("theme.Theme")
+local theme = ____Theme.theme
+local ButtonUI = require("widgets.Button")
+local ScrollUI = require("widgets.ScrollList")
+local function statusAccent(self, status)
+    if status == "FAIL" then
+        return theme.colors.error
+    end
+    if status == "WARN" then
+        return theme.colors.warning
+    end
+    return theme.colors.success
+end
+function ____exports.createActivityDiagnosticsPage(self, parent)
+    local root = Native:createPanel(parent, theme.colors.background, theme.colors.borderStrong)
+    root.frame:SetPoint(
+        "TOPLEFT",
+        parent,
+        "TOPLEFT",
+        200,
+        -88
+    )
+    root.frame:SetPoint(
+        "BOTTOMRIGHT",
+        parent,
+        "BOTTOMRIGHT",
+        -16,
+        16
+    )
+    root.frame:Hide()
+    local eyebrow = Native:createText(root.frame, "DEVELOPMENT HEALTH", "GameFontNormalSmall", theme.colors.muted)
+    eyebrow:SetPoint(
+        "TOPLEFT",
+        root.frame,
+        "TOPLEFT",
+        22,
+        -18
+    )
+    local title = Native:createText(root.frame, "Activity Diagnostics", "GameFontNormalLarge")
+    title:SetPoint(
+        "TOPLEFT",
+        eyebrow,
+        "BOTTOMLEFT",
+        0,
+        -8
+    )
+    local subtitle = Native:createText(root.frame, "Validate every Group Composer dungeon and raid against the server catalog, maps, entrance triggers, raid contracts and clear-history metadata.", "GameFontHighlightSmall", theme.colors.muted)
+    subtitle:SetPoint(
+        "TOPLEFT",
+        title,
+        "BOTTOMLEFT",
+        0,
+        -6
+    )
+    subtitle:SetWidth(980)
+    local refreshButton = ButtonUI:createButton(
+        root.frame,
+        {
+            text = "Run Validation",
+            width = 160,
+            height = 36,
+            accent = theme.colors.primary,
+            emphasis = true,
+            onClick = function() return Model:requestCatalogDiagnostics() end
+        }
+    )
+    refreshButton.frame:SetPoint(
+        "TOPRIGHT",
+        root.frame,
+        "TOPRIGHT",
+        -22,
+        -28
+    )
+    local summary = Native:createPanel(root.frame, theme.colors.surface, theme.colors.border)
+    summary.frame:SetPoint(
+        "TOPLEFT",
+        root.frame,
+        "TOPLEFT",
+        22,
+        -96
+    )
+    summary.frame:SetPoint(
+        "TOPRIGHT",
+        root.frame,
+        "TOPRIGHT",
+        -22,
+        -96
+    )
+    summary.frame:SetHeight(70)
+    local passText = Native:createText(summary.frame, "PASS 0", "GameFontNormal", theme.colors.success)
+    passText:SetPoint(
+        "LEFT",
+        summary.frame,
+        "LEFT",
+        20,
+        0
+    )
+    local warnText = Native:createText(summary.frame, "WARN 0", "GameFontNormal", theme.colors.warning)
+    warnText:SetPoint(
+        "LEFT",
+        passText,
+        "RIGHT",
+        42,
+        0
+    )
+    local failText = Native:createText(summary.frame, "FAIL 0", "GameFontNormal", theme.colors.error)
+    failText:SetPoint(
+        "LEFT",
+        warnText,
+        "RIGHT",
+        42,
+        0
+    )
+    local summaryText = Native:createText(summary.frame, "Not validated yet", "GameFontHighlightSmall", theme.colors.muted)
+    summaryText:SetPoint(
+        "RIGHT",
+        summary.frame,
+        "RIGHT",
+        -20,
+        0
+    )
+    summaryText:SetWidth(620)
+    summaryText:SetJustifyH("RIGHT")
+    local filterDefs = {{key = "PROBLEMS", label = "Problems"}, {key = "ALL", label = "All"}, {key = "PASS", label = "Passed"}}
+    local filterButtons = {}
+    local filter = "PROBLEMS"
+    do
+        local i = 0
+        while i < #filterDefs do
+            local def = filterDefs[i + 1]
+            local button = ButtonUI:createButton(root.frame, {text = def.label, width = 118, height = 32, flat = true})
+            button.frame:SetPoint(
+                "TOPLEFT",
+                root.frame,
+                "TOPLEFT",
+                22 + i * 126,
+                -180
+            )
+            filterButtons[#filterButtons + 1] = button
+            i = i + 1
+        end
+    end
+    local scroll = ScrollUI:createScrollList(root.frame, 1260, 570)
+    scroll.frame:SetPoint(
+        "TOPLEFT",
+        root.frame,
+        "TOPLEFT",
+        22,
+        -222
+    )
+    local cards = {}
+    local empty = Native:createText(scroll.content, "No entries match this filter.", "GameFontHighlight", theme.colors.muted)
+    empty:SetPoint(
+        "TOPLEFT",
+        scroll.content,
+        "TOPLEFT",
+        20,
+        -28
+    )
+    empty:SetWidth(1180)
+    empty:SetJustifyH("CENTER")
+    empty:Hide()
+    local function filteredEntries(self)
+        local entries = Model:catalogDiagnostics().entries
+        local out = {}
+        for ____, entry in ipairs(entries) do
+            do
+                local __continue10
+                repeat
+                    if filter == "PASS" and entry.status ~= "PASS" then
+                        __continue10 = true
+                        break
+                    end
+                    if filter == "PROBLEMS" and entry.status == "PASS" then
+                        __continue10 = true
+                        break
+                    end
+                    out[#out + 1] = entry
+                    __continue10 = true
+                until true
+                if not __continue10 then
+                    break
+                end
+            end
+        end
+        return out
+    end
+    local function refresh(self)
+        local state = Model:catalogDiagnostics()
+        passText:SetText("PASS " .. tostring(state.pass))
+        warnText:SetText("WARN " .. tostring(state.warn))
+        failText:SetText("FAIL " .. tostring(state.fail))
+        summaryText:SetText(state.ready and (state.fail > 0 and "Structural failures found. Fix these before trusting every listed activity." or (state.warn > 0 and "No structural failures. Warnings identify experimental/partial support." or "Every catalog entry passed structural validation.")) or "Validation has not completed yet.")
+        do
+            local i = 0
+            while i < #filterButtons do
+                filterButtons[i + 1]:setSelected(filterDefs[i + 1].key == filter)
+                i = i + 1
+            end
+        end
+        for ____, card in ipairs(cards) do
+            card.panel.frame:Hide()
+        end
+        local rows = filteredEntries(nil)
+        if #rows == 0 then
+            empty:Show()
+        else
+            empty:Hide()
+        end
+        do
+            local i = 0
+            while i < #rows do
+                local card = cards[i + 1]
+                if card == nil then
+                    local panel = Native:createPanel(scroll.content, theme.colors.surfaceRaised, theme.colors.border)
+                    panel.frame:SetSize(606, 102)
+                    local iconBadge = Native:createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_Map_01", 44, theme.colors.borderStrong)
+                    iconBadge.frame:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        14,
+                        -15
+                    )
+                    local cardTitle = Native:createText(panel.frame, "", "GameFontNormal")
+                    cardTitle:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        70,
+                        -12
+                    )
+                    cardTitle:SetWidth(330)
+                    local status = Native:createText(panel.frame, "", "GameFontNormalSmall")
+                    status:SetPoint(
+                        "TOPRIGHT",
+                        panel.frame,
+                        "TOPRIGHT",
+                        -14,
+                        -14
+                    )
+                    status:SetWidth(90)
+                    status:SetJustifyH("RIGHT")
+                    local meta = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
+                    meta:SetPoint(
+                        "TOPLEFT",
+                        cardTitle,
+                        "BOTTOMLEFT",
+                        0,
+                        -4
+                    )
+                    meta:SetWidth(420)
+                    local detail = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
+                    detail:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        14,
+                        -64
+                    )
+                    detail:SetWidth(572)
+                    detail:SetHeight(30)
+                    detail:SetJustifyV("TOP")
+                    scroll:bindWheel(panel.frame)
+                    card = {
+                        panel = panel,
+                        iconBadge = iconBadge,
+                        title = cardTitle,
+                        status = status,
+                        meta = meta,
+                        detail = detail
+                    }
+                    cards[i + 1] = card
+                end
+                local entry = rows[i + 1]
+                local column = i % 2
+                local row = math.floor(i / 2)
+                local accent = statusAccent(nil, entry.status)
+                card.panel.frame:ClearAllPoints()
+                card.panel.frame:SetPoint(
+                    "TOPLEFT",
+                    scroll.content,
+                    "TOPLEFT",
+                    column * 620,
+                    -(row * 110)
+                )
+                card.iconBadge.icon:SetTexture(Model:activityIconFor(entry.id, entry.mode))
+                card.iconBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                card.iconBadge.outline:setColor(accent)
+                card.title:SetText(entry.label)
+                card.status:SetText(entry.status)
+                card.status:SetTextColor(accent[1], accent[2], accent[3], 1)
+                card.meta:SetText((((entry.era .. " · ") .. (entry.mode == "RAID" and "Raid" or "Dungeon")) .. " · ") .. entry.id)
+                card.detail:SetText(entry.detail)
+                card.panel.frame:Show()
+                i = i + 1
+            end
+        end
+        scroll:setContentHeight(math.max(
+            570,
+            math.ceil(#rows / 2) * 110
+        ))
+    end
+    do
+        local i = 0
+        while i < #filterDefs do
+            local def = filterDefs[i + 1]
+            filterButtons[i + 1].frame:SetScript(
+                "OnMouseDown",
+                function()
+                    filter = def.key
+                    scroll:scrollToTop()
+                    refresh(nil)
+                end
+            )
+            i = i + 1
+        end
+    end
+    Model:composer():RegisterCallback(
+        "CATALOG_DIAGNOSTICS_CHANGED",
+        function()
+            if root.frame:IsShown() then
+                refresh(nil)
+            end
+        end
+    )
+    return {
+        frame = root.frame,
+        show = function()
+            root.frame:Show()
+            scroll:scrollToTop()
+            refresh(nil)
+            Model:requestCatalogDiagnostics()
+        end,
+        hide = function() return root.frame:Hide() end,
+        refresh = refresh
+    }
+end
+return ____exports
+ end,
 ["widgets.Toggle"] = function(...) 
 --[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
 local ____exports = {}
@@ -5950,6 +6331,7 @@ local ProgressionPageUI = require("components.ProgressionPage")
 local RecommendationsPageUI = require("components.RecommendationsPage")
 local MemberDetailsUI = require("components.MemberDetailsModal")
 local GroupActionsUI = require("components.GroupActionsModal")
+local ActivityDiagnosticsUI = require("components.ActivityDiagnosticsPage")
 local Native = require("core.Native")
 local Builds = require("data.WotlkBuilds")
 local Model = require("model.ComposerModel")
@@ -6133,7 +6515,7 @@ local function activitySubtitle(self)
     return (mode .. "  ·  5 player  ·  ") .. (cfg.activity == "random" and "Dungeon Finder chooses destination" or "Teleport when ready")
 end
 function ____exports.createModernDashboard(self)
-    local clearDynamicRows, refreshPeople, refreshActivity, refreshHumanPanel, refreshDungeon, refreshQuickRaid, refreshExactRaid, refreshRoster, refreshRaidTabs, refreshStatus, refresh, frame, memberDetails, backendGlow, backendDot, backendText, realmBadge, activePage, navDungeon, navRaid, navProgression, navRecommended, statusNotice, activity, activityBadge, activityName, activitySub, activityEligibility, activityFieldLabel, activityBrowse, difficultySelect, raidSizeLabel, raidSizeButtons, humanBadge, humanIcon, humanName, humanSub, humanRoleButtons, compositionTitle, compositionHint, selectorContext, buildSelector, dungeonView, dungeonRows, raidView, raidTab, tabQuick, tabExact, tabRoster, quickView, exactView, rosterView, quickCards, roleOrder, quickSummary, quickTotal, quickCheck, quickCheckIcon, quickCheckBang, quickStatusTitle, quickStatusDetail, exactScroll, exactSections, groupCards, phaseCard, phaseAccent, phaseGlow, phaseDot, phaseText, phaseDetail, rosterCount, sourceText, statusRoleChips, progressFill, progressText, coverageChips, coverageDamageText, nextCard, nextBadge, nextBang, warningsTitle, nextDetail, buildButton, teleportButton, assembleButton, resetButton, groupActionsButton, humanScroll, humanRowsModal, humanEmpty, pinRole, pinRoleButtons, pinToggle, pinScroll, pinRows, pinEmpty, progressionPage, recommendationsPage
+    local clearDynamicRows, refreshPeople, refreshActivity, refreshHumanPanel, refreshDungeon, refreshQuickRaid, refreshExactRaid, refreshRoster, refreshRaidTabs, refreshStatus, refresh, frame, memberDetails, backendGlow, backendDot, backendText, realmBadge, activePage, navDungeon, navRaid, navProgression, navRecommended, navDiagnostics, statusNotice, activity, activityBadge, activityName, activitySub, activityEligibility, activityFieldLabel, activityBrowse, difficultySelect, raidSizeLabel, raidSizeButtons, humanBadge, humanIcon, humanName, humanSub, humanRoleButtons, compositionTitle, compositionHint, selectorContext, buildSelector, dungeonView, dungeonRows, raidView, raidTab, tabQuick, tabExact, tabRoster, quickView, exactView, rosterView, quickCards, roleOrder, quickSummary, quickTotal, quickCheck, quickCheckIcon, quickCheckBang, quickStatusTitle, quickStatusDetail, exactScroll, exactSections, groupCards, phaseCard, phaseAccent, phaseGlow, phaseDot, phaseText, phaseDetail, rosterCount, sourceText, statusRoleChips, progressFill, progressText, coverageChips, coverageDamageText, nextCard, nextBadge, nextBang, warningsTitle, nextDetail, buildButton, teleportButton, assembleButton, resetButton, groupActionsButton, humanScroll, humanRowsModal, humanEmpty, pinRole, pinRoleButtons, pinToggle, pinScroll, pinRows, pinEmpty, progressionPage, diagnosticsPage, recommendationsPage
     function clearDynamicRows(self, rows)
         for ____, row in ipairs(rows) do
             row:Hide()
@@ -6453,7 +6835,7 @@ function ____exports.createModernDashboard(self)
             local i = 0
             while i < #dungeonRows do
                 do
-                    local __continue160
+                    local __continue162
                     repeat
                         local widgets = dungeonRows[i + 1]
                         local slot = slots[i + 1]
@@ -6492,7 +6874,7 @@ function ____exports.createModernDashboard(self)
                             widgets.choose.frame:Hide()
                             widgets.auto.frame:Hide()
                             widgets.humanAnchor.frame:Show()
-                            __continue160 = true
+                            __continue162 = true
                             break
                         end
                         local exact = slot.exact
@@ -6586,9 +6968,9 @@ function ____exports.createModernDashboard(self)
                         else
                             widgets.auto.frame:Hide()
                         end
-                        __continue160 = true
+                        __continue162 = true
                     until true
-                    if not __continue160 then
+                    if not __continue162 then
                         break
                     end
                 end
@@ -6845,12 +7227,12 @@ function ____exports.createModernDashboard(self)
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue196
+                    local __continue198
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue196 = true
+                            __continue198 = true
                             break
                         end
                         local column = g % columns
@@ -6944,9 +7326,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue196 = true
+                        __continue198 = true
                     until true
-                    if not __continue196 then
+                    if not __continue198 then
                         break
                     end
                 end
@@ -7297,6 +7679,7 @@ function ____exports.createModernDashboard(self)
         navRaid:setSelected(activePage == "COMPOSER" and raid)
         navProgression:setSelected(activePage == "PROGRESSION")
         navRecommended:setSelected(activePage == "RECOMMENDED")
+        navDiagnostics:setSelected(activePage == "DIAGNOSTICS")
         local realm = Model:realm()
         realmBadge:SetText((string.upper(tostring(realm.era)) .. " · CAP ") .. tostring(realm.levelCap))
         local realmColor = realm.era == "Vanilla" and theme.colors.warning or (realm.era == "TBC" and theme.colors.success or theme.colors.primary)
@@ -7311,6 +7694,8 @@ function ____exports.createModernDashboard(self)
         if activePage ~= "COMPOSER" then
             if activePage == "PROGRESSION" then
                 progressionPage:refresh()
+            elseif activePage == "DIAGNOSTICS" then
+                diagnosticsPage:refresh()
             else
                 recommendationsPage:refresh()
             end
@@ -7520,6 +7905,8 @@ function ____exports.createModernDashboard(self)
     end
     local function showRecommendationsPage()
     end
+    local function showDiagnosticsPage()
+    end
     navDungeon = ButtonUI:createButton(
         sidebar.frame,
         {
@@ -7716,6 +8103,26 @@ function ____exports.createModernDashboard(self)
         -442
     )
     navOptions.label:SetJustifyH("LEFT")
+    navDiagnostics = ButtonUI:createButton(
+        sidebar.frame,
+        {
+            text = "Diagnostics",
+            width = 152,
+            height = 42,
+            icon = "Interface\\Icons\\INV_Gizmo_02",
+            iconSize = 22,
+            flat = true,
+            onClick = function() return showDiagnosticsPage(nil) end
+        }
+    )
+    navDiagnostics.frame:SetPoint(
+        "TOPLEFT",
+        sidebar.frame,
+        "TOPLEFT",
+        14,
+        -492
+    )
+    navDiagnostics.label:SetJustifyH("LEFT")
     local sideHint = Native:createText(sidebar.frame, "Humans stay locked.\nSpecific builds reserve bot slots; everything else stays Auto.", "GameFontHighlightSmall", theme.colors.muted)
     sideHint:SetPoint(
         "BOTTOMLEFT",
@@ -9894,12 +10301,14 @@ function ____exports.createModernDashboard(self)
         end
     )
     progressionPage = ProgressionPageUI:createProgressionPage(frame)
+    diagnosticsPage = ActivityDiagnosticsUI:createActivityDiagnosticsPage(frame)
     recommendationsPage = RecommendationsPageUI:createRecommendationsPage(
         frame,
         function()
             activePage = "COMPOSER"
             progressionPage:hide()
             recommendationsPage:hide()
+            diagnosticsPage:hide()
             refresh(nil)
             Model:requestActivities(Model:config().mode == "RAID" and "RAID" or "DUNGEON")
         end
@@ -9908,6 +10317,7 @@ function ____exports.createModernDashboard(self)
         activePage = "COMPOSER"
         progressionPage:hide()
         recommendationsPage:hide()
+        diagnosticsPage:hide()
         if mode ~= nil then
             Model:setMode(mode)
         end
@@ -9917,13 +10327,22 @@ function ____exports.createModernDashboard(self)
     showProgressionPage = function()
         activePage = "PROGRESSION"
         recommendationsPage:hide()
+        diagnosticsPage:hide()
         progressionPage:show()
         refresh(nil)
     end
     showRecommendationsPage = function()
         activePage = "RECOMMENDED"
         progressionPage:hide()
+        diagnosticsPage:hide()
         recommendationsPage:show()
+        refresh(nil)
+    end
+    showDiagnosticsPage = function()
+        activePage = "DIAGNOSTICS"
+        progressionPage:hide()
+        recommendationsPage:hide()
+        diagnosticsPage:show()
         refresh(nil)
     end
     local function applyScale(self)
