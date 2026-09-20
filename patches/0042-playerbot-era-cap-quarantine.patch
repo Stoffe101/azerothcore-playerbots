@@ -1,0 +1,64 @@
+diff --git a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
+--- a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
++++ b/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp
+@@ -10,6 +10,7 @@
+ #include "BattlegroundMgr.h"
+ #include "Cell.h"
+ #include "CellImpl.h"
++#include "CharacterCache.h"
+ #include "ChannelMgr.h"
+ #include "DBCStores.h"
+ #include "DBCStructure.h"
+@@ -736,6 +737,14 @@ uint32 RandomPlayerbotMgr::AddRandomBots()
+         // Lambda to handle bot login logic
+         auto tryLoginBot = [&](CharacterInfo const& charInfo) -> bool
+         {
++            ObjectGuid const guid = ObjectGuid::Create<HighGuid::Player>(charInfo.guid);
++            uint8 const storedLevel = sCharacterCache->GetCharacterLevelByGuid(guid);
++            if (storedLevel > sPlayerbotAIConfig.randomBotMaxLevel)
++            {
++                LOG_DEBUG("playerbots", "RNDbot #{} is level {}, above live runtime cap {}; leaving it stored for a later era.",
++                    charInfo.guid, storedLevel, sPlayerbotAIConfig.randomBotMaxLevel);
++                return false;
++            }
++
+             if (GetEventValue(charInfo.guid, "add") ||
+                 GetEventValue(charInfo.guid, "logout") ||
+                 GetPlayerBot(charInfo.guid) ||
+@@ -1339,6 +1348,25 @@ bool RandomPlayerbotMgr::ProcessBot(uint32 bot)
+     ObjectGuid botGUID = ObjectGuid::Create<HighGuid::Player>(bot);
+     Player* player = GetPlayerBot(botGUID);
+     PlayerbotAI* botAI = player ? GET_PLAYERBOT_AI(player) : nullptr;
++    uint8 const effectiveLevel = player ? player->GetLevel() : sCharacterCache->GetCharacterLevelByGuid(botGUID);
++
++    if (effectiveLevel > sPlayerbotAIConfig.randomBotMaxLevel)
++    {
++        // Never destroy or downlevel a future-era identity. Remove it from the active RNDbot
++        // population and leave the stored character intact so it becomes eligible naturally when
++        // the realm cap advances. A bot already grouped with players is left in place until that
++        // live group ends rather than being yanked out mid-run.
++        if (player && player->GetGroup())
++            return false;
++
++        LOG_DEBUG("playerbots", "Quarantining RNDbot #{} at level {} above live runtime cap {}.",
++            bot, effectiveLevel, sPlayerbotAIConfig.randomBotMaxLevel);
++        SetEventValue(bot, "add", 0, 0);
++        currentBots.erase(bot);
++        if (player)
++            LogoutPlayerBot(botGUID);
++        return false;
++    }
+ 
+     uint32 isValid = GetEventValue(bot, "add");
+     if (!isValid)
+@@ -2030,6 +2058,10 @@ void RandomPlayerbotMgr::RandomizeFirst(Player* bot)
+                                                       : sPlayerbotAIConfig.randombotStartingLevel;
+     }
+ 
++    // Fixed-level configurations are still subordinate to the live era cap.
++    if (level > maxLevel)
++        level = maxLevel;
++
+     SetValue(bot, "level", level);
+     PlayerbotFactory factory(bot, level);
+     factory.Randomize(false);

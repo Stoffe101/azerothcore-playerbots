@@ -60,6 +60,9 @@ Status vocabulary:
 - TODO: Playerbots runtime random-bot max reports 60/70/80 with the live era after startup and config reload.
 - TODO: Composer refuses ordinary over-cap bot candidates even if stale config/data exposes one.
 - TODO: automated RaidRoster gear prep refuses an over-cap bot without stripping gear.
+- TODO: stored RNDbot above live cap is skipped without changing its stored level.
+- TODO: ungrouped active RNDbot above live cap is logged out/quarantined and becomes eligible again after expansion cap rises.
+- TODO: a grouped over-cap RNDbot is not forcibly removed mid-run.
 - TODO: Azeroth Control refuses Shattrath before TBC and Dalaran/Argent before WotLK.
 - TODO: Azeroth Control goto/saved-location travel refuses a future-era map.
 - TODO: Group Composer cannot teleport a reviewed roster into a future-era instance map.

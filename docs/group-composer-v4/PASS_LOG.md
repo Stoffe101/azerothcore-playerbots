@@ -2,6 +2,21 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — ERA-01 slice 4b: non-destructive RNDbot quarantine
+
+Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
+
+Implemented through wrapper patch `0042-playerbot-era-cap-quarantine.patch`:
+- RNDbot login selection skips stored characters above `AiPlayerbot.RandomBotMaxLevel`, which EraPolicy now owns at runtime;
+- active ungrouped RNDbots discovered above the cap are removed from the active population event/state and logged out;
+- their character records are not downlevelled, deleted or re-geared, preserving identity/history for TBC/WotLK release;
+- a future-era bot already in a live player group is not forcibly removed mid-run; it remains an audit/runtime cleanup case until the group ends;
+- fixed-level randomization is clamped to the live runtime max so `DisableRandomLevels` cannot accidentally jump beyond the era cap.
+
+This is deliberately quarantine, not destructive normalization. Expansion release makes preserved identities eligible again naturally.
+
+CI: `[local-ci]` queues behind the earlier exact-head jobs on `stoffes-pc`.
+
 ## 2026-09-21 — ERA-01 slice 4a: Playerbots runtime cap synchronization
 
 Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.

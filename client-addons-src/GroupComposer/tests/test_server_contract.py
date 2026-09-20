@@ -39,6 +39,7 @@ SILENT_LOGIN_PATCH = (ROOT / "patches/0035-playerbot-group-composer-silent-login
 CAPACITY_BYPASS_PATCH = (ROOT / "patches/0038-playerbot-group-composer-capacity-bypass.patch").read_text(encoding="utf-8")
 QUIET_BOT_PATCH = (ROOT / "patches/0040-playerbot-quiet-routine-whispers.patch").read_text(encoding="utf-8")
 LFG_PROPOSAL_PATCH = (ROOT / "patches/0041-playerbot-lfg-proposal-autoaccept.patch").read_text(encoding="utf-8")
+RANDOM_BOT_ERA_PATCH = (ROOT / "patches/0042-playerbot-era-cap-quarantine.patch").read_text(encoding="utf-8")
 ADVENTURE_START = (ROOT / "modules/mod-raid-roster/src/AdventureStart.cpp").read_text(encoding="utf-8")
 ADVENTURE_START_CONTROL = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.cpp").read_text(encoding="utf-8")
 ADVENTURE_START_CONTROL_H = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.h").read_text(encoding="utf-8")
@@ -1327,3 +1328,13 @@ assert '_pendingEraCapSync' in RAID_ROSTER_LOADER
 assert '!EraPolicy::IsLevelAllowed(bot->GetLevel())' in PLANNER
 assert '!EraPolicy::IsLevelAllowed(storedLevel)' in PLANNER
 assert 'Refusing automated gear' in GEAR_CPP
+
+
+# ERA-01 slice 4b: stored RNDbots above the live era cap are quarantined, not rewritten.
+assert 'storedLevel > sPlayerbotAIConfig.randomBotMaxLevel' in RANDOM_BOT_ERA_PATCH
+assert 'effectiveLevel > sPlayerbotAIConfig.randomBotMaxLevel' in RANDOM_BOT_ERA_PATCH
+assert 'currentBots.erase(bot);' in RANDOM_BOT_ERA_PATCH
+assert 'LogoutPlayerBot(botGUID);' in RANDOM_BOT_ERA_PATCH
+assert 'player && player->GetGroup()' in RANDOM_BOT_ERA_PATCH
+assert 'leaving it stored for a later era' in RANDOM_BOT_ERA_PATCH
+assert 'if (level > maxLevel)' in RANDOM_BOT_ERA_PATCH
