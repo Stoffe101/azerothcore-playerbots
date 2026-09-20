@@ -28,7 +28,9 @@ Implemented:
 - lowest-real-human bot target with +/-3 peer band, dungeon-floor clamp and live-realm-cap clamp.
 
 CI:
-- `[local-ci]` is required for this pass. Do not mark it green until the exact commit completes all relevant workflows.
+- Initial implementation SHA `264c25919fff945d4f11b399966674e21d3d137a` exposed two static bookkeeping failures: Data.lua still reported 0.14.0 and one contract assertion still expected the old activity-peer wording.
+- Group Composer typed UI itself compiled/smoke-tested and published generated bundle commit `1385e4f8e3eab3f30a94cadb8965aaac5bab39c4`.
+- This follow-up fixes the two static contracts and uses `[local-ci]`; do not mark the pass green until its exact final SHA completes all relevant workflows.
 
 ## 2026-09-20 — All era + broader feature proposals approved
 

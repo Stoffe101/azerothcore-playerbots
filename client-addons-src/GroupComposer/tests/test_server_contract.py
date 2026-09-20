@@ -216,7 +216,7 @@ build_candidates = section(PLANNER, "std::vector<Candidate> BuildCandidates(", "
 assert "abovePeerBand && !alreadyGrouped" in build_candidates, (
     "Non-grouped overleveled bots must be excluded before scoring"
 )
-assert "above this activity's peer cap" in PLANNER, (
+assert "above this party's peer cap" in PLANNER, (
     "Sticky live-group overleveled bots must fail explicitly instead of being silently pruned"
 )
 assert "above the anti-boost peer cap" in SERVER, (
