@@ -1018,7 +1018,7 @@ assert "EvaluateRecommendationCapacity" in SERVER
 assert "Planner::Build(master, config, preview, error)" in SERVER
 assert "guildCandidates = preview.guildCandidates" in SERVER
 assert '"Next unlock: " + reason' in SERVER
-assert '"[GC]|RECOMMEND|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}"' in SERVER
+assert '"[GC]|RECOMMEND|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}"' in SERVER
 assert "guildCandidates = ParseNumber(fields[11], 0)" in CORE
 assert "GROUP READY" in RECOMMENDATIONS_PAGE and "ROSTER NEEDS WORK" in RECOMMENDATIONS_PAGE
 assert "NEXT UNLOCK" in RECOMMENDATIONS_PAGE
