@@ -2899,6 +2899,10 @@ bool PreparePlan(Player* master, Plan& plan, std::string& error)
                 SyncManagedBot(master, bot, member.role, member.spec, plan.config.botTargetLevel,
                     minimumItemLevel, targetItemLevel, fullProvision);
             EnsureComposerInstanceAccess(master, bot, plan.config);
+            // LFGMgr caches dungeon locks at login/level changes. Composer may just have changed
+            // this bot's level, gear, progression or access state, so refresh the cache before any
+            // later Random Dungeon handoff evaluates the prepared roster.
+            sLFGMgr->InitializeLockedDungeons(bot, bot->GetGroup());
             continue;
         }
 
@@ -3050,8 +3054,8 @@ uint8 LfgRole(uint8 role, bool leader)
 void SendAnchor(ChatHandler* handler, Player* master, ObjectGuid guid, uint8 subgroup, std::unordered_set<uint32>& sent)
 {
     if (!handler || !master || guid.IsEmpty() || !sent.insert(guid.GetCounter()).second) return;
-    if (IsBotGuid(guid)) return;
 
+    bool const isBot = IsBotGuid(guid);
     Player* live = ObjectAccessor::FindConnectedPlayer(guid);
     std::string name;
     uint8 cls = 0;
@@ -3082,8 +3086,8 @@ void SendAnchor(ChatHandler* handler, Player* master, ObjectGuid guid, uint8 sub
         }
     }
 
-    handler->PSendSysMessage("[GC]|ANCHOR|{}|{}|{}|{}|{}|{}|{}", Sanitize(name), ClassToken(cls), roleToken,
-        online ? 1 : 0, uint32(subgroup + 1), guid == master->GetGUID() ? 1 : 0, uint32(level));
+    handler->PSendSysMessage("[GC]|ANCHOR|{}|{}|{}|{}|{}|{}|{}|{}", Sanitize(name), ClassToken(cls), roleToken,
+        online ? 1 : 0, uint32(subgroup + 1), guid == master->GetGUID() ? 1 : 0, uint32(level), isBot ? 1 : 0);
 }
 
 class GroupComposerWorld : public WorldScript
@@ -3107,7 +3111,10 @@ public:
                     itr->second.minimumItemLevel, itr->second.targetItemLevel, itr->second.fullRebuild);
                 auto planItr = s_plans.find(itr->second.ownerGuid);
                 if (planItr != s_plans.end())
+                {
                     EnsureComposerInstanceAccess(master, bot, planItr->second.config);
+                    sLFGMgr->InitializeLockedDungeons(bot, bot->GetGroup());
+                }
                 itr = s_pendingSync.erase(itr);
             }
             else if (itr->second.elapsed > 12000) itr = s_pendingSync.erase(itr);
@@ -3834,11 +3841,33 @@ bool GroupComposerCommand::HandleQueue(ChatHandler* handler)
     }
 
     ApplyGroupSettings(master, plan);
+
+    // Stock RDF intersects the cached lock maps of every party member. Refresh all five here so
+    // newly prepared Playerbots and humans whose gear/access changed this session are evaluated
+    // from their current state instead of a stale login-time snapshot.
+    for (Member const& member : plan.members)
+    {
+        Player* player = ObjectAccessor::FindConnectedPlayer(member.guid);
+        if (!player)
+        {
+            SendError(handler, "Every party member must remain online while Dungeon Finder access is refreshed.");
+            return true;
+        }
+        sLFGMgr->InitializeLockedDungeons(player, group);
+    }
+
     uint8 leaderRole = lfg::PLAYER_ROLE_DAMAGE | lfg::PLAYER_ROLE_LEADER;
     for (Member const& member : plan.members)
         if (member.guid == master->GetGUID()) { leaderRole = LfgRole(member.role, true); break; }
 
+    handler->SendSysMessage("[GC]|STATUS|Queueing the assembled party through Blizzard Dungeon Finder...");
     sLFGMgr->JoinLfg(master, leaderRole, dungeons, "Group Composer");
+    if (sLFGMgr->GetState(group->GetGUID()) != lfg::LFG_STATE_ROLECHECK)
+    {
+        SendError(handler, "Dungeon Finder rejected the assembled party before role confirmation. Re-open Composer to inspect the party and activity requirements.");
+        return true;
+    }
+
     for (Member const& member : plan.members)
         sLFGMgr->UpdateRoleCheck(group->GetGUID(), member.guid, LfgRole(member.role, member.guid == master->GetGUID()));
     master->UpdateLFGChannel();

@@ -433,7 +433,7 @@ function GC:HandleProtocolMessage(message)
         GC.anchors[#GC.anchors + 1] = {
             name = fields[2] or "?", class = fields[3] or "UNKNOWN", role = fields[4] or "AUTO",
             online = fields[5] == "1", subgroup = ParseNumber(fields[6], 1), isPlayer = fields[7] == "1",
-            level = ParseNumber(fields[8], 1),
+            level = ParseNumber(fields[8], 1), isBot = fields[9] == "1",
         }
     elseif kind == "ANCHORDONE" then
         GC.anchorsReady = true
@@ -692,7 +692,7 @@ local function SystemFilter(_, _, message, ...)
     return false, message, ...
 end
 
-function GC:ScanHumans()
+function GC:ScanGroupMembers()
     if GC.anchorsReady then
         local out = {}
         local config = GC:GetConfig()
@@ -700,21 +700,29 @@ function GC:ScanHumans()
             out[#out + 1] = {
                 name = anchor.name, class = anchor.class, subgroup = anchor.subgroup,
                 isPlayer = anchor.isPlayer, online = anchor.online, level = anchor.level,
-                role = config.humanRoles[anchor.name] or anchor.role or "AUTO",
+                isBot = anchor.isBot and true or false,
+                role = anchor.isBot and (anchor.role or "AUTO") or (config.humanRoles[anchor.name] or anchor.role or "AUTO"),
             }
         end
         return out
     end
 
-    -- Short client-side fallback while the authoritative server query is in flight. The backend
-    -- replaces this immediately and is the only layer that distinguishes real humans from Playerbots.
+    -- Short client-side fallback while the authoritative server query is in flight.
     local name = UnitName("player")
     local _, classToken = UnitClass("player")
     if not name then return {} end
     return { {
         name = name, class = classToken or "UNKNOWN", subgroup = 1, isPlayer = true, online = true,
-        level = UnitLevel("player") or 1, role = GC:GetConfig().humanRoles[name] or "AUTO",
+        isBot = false, level = UnitLevel("player") or 1, role = GC:GetConfig().humanRoles[name] or "AUTO",
     } }
+end
+
+function GC:ScanHumans()
+    local out = {}
+    for _, anchor in ipairs(GC:ScanGroupMembers()) do
+        if not anchor.isBot then out[#out + 1] = anchor end
+    end
+    return out
 end
 
 local function IsStableProfileMember(config, member)
