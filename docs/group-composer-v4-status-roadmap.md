@@ -350,24 +350,24 @@ A build is not considered green until the relevant workflows for the **same exac
 
 The local Integration build has already been proven working on `stoffes-pc`, including the Clang 18 / GCC 15 libstdc++ workaround.
 
-The feature commit that added Favorites/Recents completed both the full Integration build and Group Composer compile successfully on the local runner, but its client/staging tests exposed stale test expectations from the newly added dungeon-template behavior. Those test contracts are being updated before calling the current branch fully green.
+Current verified checkpoint: `28f72c40d557b49116b4ff670b2b8f3fcac53c56` (`test: checkpoint journey diagnostics and history [github-ci]`).
+
+Because `stoffes-pc` was intentionally offline for this round, this checkpoint used GitHub-hosted CI. All four required workflows for that exact commit completed successfully:
+
+- Group Composer client checks ✅
+- Stage Group Composer V4 backend ✅
+- Integration build ✅
+- Group Composer V4 compile ✅
+
+This is therefore a fully green source/build checkpoint. It still requires real in-game validation before being treated as release-quality gameplay.
 
 ---
 
 ## 5. Immediate next steps
 
-### A. Finish the latest CI gate
+### A. Deploy this green checkpoint to the test realm
 
-Update stale tests for:
-
-- dungeon template saves;
-- new activity/history UI behavior.
-
-Then push another `[local-ci]` commit and require all four relevant workflows to pass on that exact commit.
-
-### B. Deploy and perform in-game validation
-
-After full green:
+The current realm remains the development/testing realm. When the server PC is back on, deploy:
 
 ```bash
 git switch test/group-composer-v4
@@ -375,86 +375,97 @@ git pull
 ./update.sh
 ```
 
-Then test the real client, not just static/compile contracts.
+This deployment includes the new characters-database migration for persistent adventure progression history.
 
-Minimum runtime matrix:
+### B. Run the in-game validation matrix
+
+Static tests, TypeScriptToLua checks and C++ builds are green, but the following still need real-client/server validation.
 
 #### Vanilla
-- fresh level-1 start;
-- level cap 60;
-- TBC content visibly locked;
-- Vanilla dungeon browsing;
-- Vanilla raid browsing;
-- no Heroic/Titan Rune dungeon modes;
-- progression locks/reasons;
-- Progression page;
-- Recommendations page;
-- favorites/recents;
-- dungeon party templates.
+
+- fresh level-1 character behavior;
+- level cap 60 and progression ceiling;
+- TBC activities visibly locked;
+- Vanilla dungeon and raid browsing;
+- Normal-only dungeon difficulty;
+- Random Classic Dungeon Finder handoff;
+- anti-boost bot level band;
+- exact locked-activity explanations;
+- Progression clear/lockout display;
+- Recommended Activities;
+- Favorites / Recent;
+- saved dungeon party templates;
+- Activity Diagnostics page;
+- Group Actions and Why This Bot.
 
 #### TBC
-- release TBC manually;
-- cap raises to 70;
-- Outland/TBC activities unlock;
-- Shattrath unlocks;
-- WotLK remains locked;
+
+- manually release TBC;
+- level cap becomes 70;
+- Shattrath and TBC activities unlock;
+- WotLK stays locked;
 - Normal/Heroic dungeon rules;
-- TBC raid progression and recommendations.
+- TBC raid templates/progression;
+- anti-boost behavior while leveling 60-70;
+- exact attunement/key/quest lock explanations where AzerothCore has access requirements.
 
 #### WotLK
-- release WotLK manually;
-- cap raises to 80;
-- Northrend unlocks;
+
+- manually release WotLK;
+- level cap becomes 80;
+- Northrend/Dalaran/Argent destinations unlock;
 - WotLK raids/dungeons unlock;
-- Titan Rune modes appear;
-- Dalaran/Argent teleports unlock;
-- full Progression/Recommendations behavior.
+- Titan Rune Alpha/Beta/Gamma appear only here;
+- explicit Teleport to Instance;
+- active raid lockout display and Resume active lockout recommendation;
+- persistent clear counts and first-clear dates.
 
-### C. Expand progression history
+### C. Validate the new persistent progression history
 
-The current clear model is enough for useful UI, but the long-term version should have a dedicated progression-history store.
+The new ledger is implemented and compiled, but should be exercised with real kills.
 
-Suggested future fields:
+Test:
 
-- player GUID;
-- guild ID at time of clear;
-- activity ID;
-- boss/raid completion;
-- difficulty;
-- raid size;
-- first-clear timestamp;
-- most-recent-clear timestamp;
-- number of clears;
-- first guild clear;
-- characters present.
+1. Kill a tracked raid final boss once.
+2. Confirm Progression shows the personal clear count and first-clear date.
+3. Kill it again in a new instance and confirm the clear count increments.
+4. Repeat with another real guild member and confirm guild clear history updates.
+5. Verify Playerbot kills do not create fake real-player history.
+6. Verify old test-realm bounty history still appears through the compatibility fallback.
 
-That would let the Progression page become a real guild history book rather than only a gate/status screen.
+The current ledger records player GUID, guild-at-kill, map, instance, boss, difficulty, group size, first/last timestamps and counts. Future history polish can still add explicit activity IDs, the complete participant roster for each clear, and a dedicated first-guild-clear record.
 
-### D. Smarter recommendations
+### D. Use Activity Diagnostics as a release gate
 
-Future recommendations can include:
+The new Diagnostics page should be run after deployment.
 
-- current gear/item level;
-- raid lockouts;
-- unfinished attunement/quest chains;
-- catch-up raids;
-- dungeon upgrades;
-- progression priority;
-- guild clear history;
-- number of eligible guild bots;
-- composition feasibility.
+Structural **FAIL** results should be fixed before an activity is considered trustworthy. Typical failure checks include missing maps, missing entrance triggers, invalid final-boss entries or an invalid raid-size contract.
 
-The goal is for the page to answer: **"What should we do tonight?"**
+**WARN** is intentionally softer. It includes experimental/not-ready Playerbots support and cases such as an activity having no stock RDF entry while fixed-instance travel is still valid.
 
-### E. Continue runtime validation of Playerbots support
+### E. Continue real Playerbots encounter validation
 
-The Adventure Catalog intentionally distinguishes:
+The catalog deliberately distinguishes:
 
 - Guild Ready
 - Playable / experimental
 - Not Ready
 
-Do not promote an encounter to Guild Ready just because an instance exists. Move activities upward only after real in-game validation.
+Do not promote an encounter to Guild Ready just because the instance technically loads. Validate mechanics with real composed groups first.
+
+### F. Smarter recommendations after runtime validation
+
+Raid lockout awareness is now implemented. The next recommendation upgrades worth adding are:
+
+- gear/item-level opportunities;
+- unfinished attunement/quest chains;
+- catch-up raids;
+- likely dungeon upgrades;
+- available guild-bot count;
+- whether a valid composition can actually be built;
+- stronger guild progression context.
+
+The target remains a useful answer to: **"What should we do tonight?"**
 
 ---
 
@@ -633,13 +644,14 @@ Once external multiplayer works reliably, the project can shift from "make the s
 
 High-value next areas:
 
-1. richer guild progression history and first-kill records;
-2. Group Composer recommendations based on the whole guild roster;
-3. better encounter-readiness diagnostics before assembling a raid;
-4. raid lockout awareness;
-5. more Playerbots strategy coverage for experimental raids;
-6. friend-facing onboarding through `join.skrra.dev`;
-7. clean reset/new-season tooling for another Vanilla -> TBC -> WotLK journey;
-8. continued polish of Group Composer and Azeroth Control so normal play rarely requires GM commands.
+1. extend the new progression ledger with full participant rosters, explicit activity IDs and first-guild-clear records;
+2. make Recommended Activities gear-, attunement-, guild-roster- and composition-aware;
+3. add richer encounter-readiness diagnostics before raid assembly;
+4. continue Playerbots strategy/mechanic validation for experimental Vanilla/TBC/WotLK encounters;
+5. friend-facing onboarding through `join.skrra.dev`;
+6. package a safe fresh-realm creation procedure for the eventual release realm;
+7. add release/reset tooling for future Vanilla -> TBC -> WotLK seasons without touching the permanent test realm;
+8. continue UI/runtime polish so normal play rarely requires GM commands.
 
 The north star stays the same: **a private WoW world that progresses through three eras, feels populated by persistent players/bots, and is easy enough that friends can simply join, choose an activity and play.**
+
