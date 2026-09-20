@@ -1189,36 +1189,86 @@ ActivityClearStats ClearStats(Player* player, AdventureActivity const& activity)
 
     if (uint32 guildId = player->GetGuildId())
     {
+        bool dedicatedGuildHistory = false;
         if (QueryResult result = CharacterDatabase.Query(
-            "SELECT COUNT(DISTINCT instance_id), COALESCE(DATE_FORMAT(MIN(killed_at), '%Y-%m-%d'), '') "
-            "FROM mod_adventure_progression_event "
-            "WHERE guild_id = {} AND (activity_id = '{}' OR (activity_id = '' AND map_id = {} AND creature_entry = {}))",
-            guildId, activityId, activity.instanceMap, activity.finalBossEntry))
+            "SELECT COUNT(*), COALESCE(DATE_FORMAT(MIN(killed_at), '%Y-%m-%d'), '') "
+            "FROM mod_adventure_progression_guild_clear WHERE guild_id = {} AND activity_id = '{}'",
+            guildId, activityId))
         {
             Field* fields = result->Fetch();
             stats.guildCount = fields[0].Get<uint32>();
             stats.guildFirst = fields[1].Get<std::string>();
+            dedicatedGuildHistory = stats.guildCount > 0;
+        }
+
+        // Old test-realm rows predate durable clear snapshots. Keep reconstructing them from
+        // per-player events until every useful historical clear has naturally been superseded.
+        if (!stats.guildCount)
+        {
+            if (QueryResult result = CharacterDatabase.Query(
+                "SELECT COUNT(DISTINCT instance_id), COALESCE(DATE_FORMAT(MIN(killed_at), '%Y-%m-%d'), '') "
+                "FROM mod_adventure_progression_event "
+                "WHERE guild_id = {} AND (activity_id = '{}' OR (activity_id = '' AND map_id = {} AND creature_entry = {}))",
+                guildId, activityId, activity.instanceMap, activity.finalBossEntry))
+            {
+                Field* fields = result->Fetch();
+                stats.guildCount = fields[0].Get<uint32>();
+                stats.guildFirst = fields[1].Get<std::string>();
+            }
         }
 
         if (stats.guildCount)
         {
+            uint32 firstMapId = activity.instanceMap;
             uint32 firstInstanceId = 0;
-            if (QueryResult result = CharacterDatabase.Query(
-                "SELECT instance_id FROM mod_adventure_progression_event "
-                "WHERE guild_id = {} AND (activity_id = '{}' OR (activity_id = '' AND map_id = {} AND creature_entry = {})) "
-                "GROUP BY instance_id ORDER BY MIN(killed_at) ASC LIMIT 1",
-                guildId, activityId, activity.instanceMap, activity.finalBossEntry))
-                firstInstanceId = result->Fetch()[0].Get<uint32>();
-
-            if (firstInstanceId)
+            uint32 firstCreatureEntry = activity.finalBossEntry;
+            if (dedicatedGuildHistory)
             {
                 if (QueryResult result = CharacterDatabase.Query(
-                    "SELECT COALESCE(GROUP_CONCAT(c.name ORDER BY c.name SEPARATOR ', '), '') "
-                    "FROM mod_adventure_progression_event e "
-                    "INNER JOIN characters c ON c.guid = e.player_guid "
-                    "WHERE e.guild_id = {} AND (e.activity_id = '{}' OR (e.activity_id = '' AND e.map_id = {} AND e.creature_entry = {})) AND e.instance_id = {}",
-                    guildId, activityId, activity.instanceMap, activity.finalBossEntry, firstInstanceId))
-                    stats.guildFirstRoster = result->Fetch()[0].Get<std::string>();
+                    "SELECT map_id, instance_id, creature_entry FROM mod_adventure_progression_guild_clear "
+                    "WHERE guild_id = {} AND activity_id = '{}' ORDER BY killed_at ASC, instance_id ASC LIMIT 1",
+                    guildId, activityId))
+                {
+                    Field* fields = result->Fetch();
+                    firstMapId = fields[0].Get<uint32>();
+                    firstInstanceId = fields[1].Get<uint32>();
+                    firstCreatureEntry = fields[2].Get<uint32>();
+                }
+
+                if (firstInstanceId)
+                {
+                    if (QueryResult result = CharacterDatabase.Query(
+                        "SELECT COALESCE(GROUP_CONCAT(CONCAT(member_name, IF(is_playerbot = 1, ' [Bot]', '')) "
+                        "ORDER BY is_playerbot ASC, member_name SEPARATOR ', '), '') "
+                        "FROM mod_adventure_progression_clear_member "
+                        "WHERE map_id = {} AND instance_id = {} AND creature_entry = {}",
+                        firstMapId, firstInstanceId, firstCreatureEntry))
+                        stats.guildFirstRoster = result->Fetch()[0].Get<std::string>();
+                }
+            }
+
+            if (stats.guildFirstRoster.empty())
+            {
+                if (!firstInstanceId)
+                {
+                    if (QueryResult result = CharacterDatabase.Query(
+                        "SELECT instance_id FROM mod_adventure_progression_event "
+                        "WHERE guild_id = {} AND (activity_id = '{}' OR (activity_id = '' AND map_id = {} AND creature_entry = {})) "
+                        "GROUP BY instance_id ORDER BY MIN(killed_at) ASC LIMIT 1",
+                        guildId, activityId, activity.instanceMap, activity.finalBossEntry))
+                        firstInstanceId = result->Fetch()[0].Get<uint32>();
+                }
+
+                if (firstInstanceId)
+                {
+                    if (QueryResult result = CharacterDatabase.Query(
+                        "SELECT COALESCE(GROUP_CONCAT(c.name ORDER BY c.name SEPARATOR ', '), '') "
+                        "FROM mod_adventure_progression_event e "
+                        "INNER JOIN characters c ON c.guid = e.player_guid "
+                        "WHERE e.guild_id = {} AND (e.activity_id = '{}' OR (e.activity_id = '' AND e.map_id = {} AND e.creature_entry = {})) AND e.instance_id = {}",
+                        guildId, activityId, activity.instanceMap, activity.finalBossEntry, firstInstanceId))
+                        stats.guildFirstRoster = result->Fetch()[0].Get<std::string>();
+                }
             }
         }
     }

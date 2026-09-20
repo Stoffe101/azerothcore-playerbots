@@ -172,10 +172,10 @@ Multi-human raid lockout conflicts are now handled by the co-op preflight: Compo
 Prepared raid plans now also distinguish **access/role valid** from **fully bot-ready**. Composer reads the curated Raid Leader encounter ledger and warns when specific bosses are only Playable or Not Ready, naming those encounters instead of flattening the entire raid into one broad support label. It also checks every online real human against the same Composer item-level floor/target used for bot preparation and emits a floor warning or target advisory without turning the advisory into a fabricated hard access gate.
 
 3. **Progression history v2**
-   - complete participant roster per clear;
-   - first-guild-clear record;
    - richer difficulty/size presentation;
    - potentially a guild history/timeline view.
+
+History now has durable clear snapshots. For every catalog-recognized final boss, the server records the connected group members actually present in that map/instance, including Playerbots, plus a dedicated guild-clear row for every represented real-player guild. The first-guild-clear roster therefore comes from the historical snapshot rather than current guild membership; older event-only rows still use the compatibility reconstruction path.
 
 4. **Playerbots encounter validation**
    - run real Vanilla/TBC/WotLK encounters;

@@ -7,11 +7,13 @@
 #include "Group.h"
 #include "KillRewarder.h"
 #include "Map.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
 #include "Playerbots.h"
 
 #include <algorithm>
 #include <mutex>
+#include <vector>
 
 namespace
 {
@@ -33,6 +35,64 @@ bool EventAlreadyRecorded(uint32 playerGuid, uint32 mapId, uint32 instanceId, ui
         playerGuid, mapId, instanceId, creatureEntry) != nullptr;
 }
 
+std::vector<Player*> ClearParticipants(Player* player, uint32 mapId, uint32 instanceId)
+{
+    std::vector<Player*> participants;
+    if (!player)
+        return participants;
+
+    auto add = [&](Player* member)
+    {
+        if (!member || member->GetMapId() != mapId || member->GetInstanceId() != instanceId)
+            return;
+        if (std::find(participants.begin(), participants.end(), member) == participants.end())
+            participants.push_back(member);
+    };
+
+    if (Group* group = player->GetGroup())
+        for (Group::MemberSlot const& slot : group->GetMemberSlots())
+            add(ObjectAccessor::FindConnectedPlayer(slot.guid));
+    add(player);
+    return participants;
+}
+
+void RecordClearSnapshot(std::string const& activityId, uint32 mapId, uint32 instanceId, uint32 creatureEntry,
+    uint8 difficulty, std::vector<Player*> const& participants)
+{
+    if (activityId.empty())
+        return;
+
+    uint32 const groupSize = std::min<uint32>(255u, uint32(participants.size()));
+    CharacterDatabase.DirectExecute(
+        "INSERT IGNORE INTO mod_adventure_progression_clear "
+        "(activity_id, map_id, instance_id, creature_entry, difficulty, group_size) "
+        "VALUES ('{}', {}, {}, {}, {}, {})",
+        activityId, mapId, instanceId, creatureEntry, uint32(difficulty), groupSize);
+
+    for (Player* member : participants)
+    {
+        if (!member)
+            continue;
+        CharacterDatabase.DirectExecute(
+            "INSERT IGNORE INTO mod_adventure_progression_clear_member "
+            "(map_id, instance_id, creature_entry, member_guid, member_name, guild_id, is_playerbot, class_id, level) "
+            "VALUES ({}, {}, {}, {}, '{}', {}, {}, {}, {})",
+            mapId, instanceId, creatureEntry, member->GetGUID().GetCounter(), member->GetName(),
+            member->GetGuildId(), IsRealPlayer(member) ? 0u : 1u, uint32(member->getClass()), uint32(member->GetLevel()));
+    }
+
+    for (Player* member : participants)
+    {
+        if (!member || !IsRealPlayer(member) || !member->GetGuildId())
+            continue;
+        CharacterDatabase.DirectExecute(
+            "INSERT IGNORE INTO mod_adventure_progression_guild_clear "
+            "(guild_id, activity_id, map_id, instance_id, creature_entry, difficulty, group_size) "
+            "VALUES ({}, '{}', {}, {}, {}, {}, {})",
+            member->GetGuildId(), activityId, mapId, instanceId, creatureEntry, uint32(difficulty), groupSize);
+    }
+}
+
 void RecordBossKill(Player* player, Creature* boss)
 {
     if (!player || !boss || !IsRealPlayer(player))
@@ -49,9 +109,8 @@ void RecordBossKill(Player* player, Creature* boss)
     uint32 const creatureEntry = boss->GetEntry();
     std::string const activityId = ActivityIdFor(mapId, creatureEntry);
     uint8 const difficulty = uint8(map->GetDifficulty());
-    uint8 const groupSize = player->GetGroup()
-        ? static_cast<uint8>(std::min<uint32>(255u, player->GetGroup()->GetMembersCount()))
-        : 1u;
+    std::vector<Player*> const participants = ClearParticipants(player, mapId, instanceId);
+    uint8 const groupSize = static_cast<uint8>(std::min<uint32>(255u, uint32(participants.size())));
 
     std::lock_guard<std::mutex> lock(g_historyMutex);
     if (EventAlreadyRecorded(playerGuid, mapId, instanceId, creatureEntry))
@@ -65,6 +124,8 @@ void RecordBossKill(Player* player, Creature* boss)
 
     if (!EventAlreadyRecorded(playerGuid, mapId, instanceId, creatureEntry))
         return;
+
+    RecordClearSnapshot(activityId, mapId, instanceId, creatureEntry, difficulty, participants);
 
     CharacterDatabase.DirectExecute(
         "INSERT INTO mod_adventure_progression_history "

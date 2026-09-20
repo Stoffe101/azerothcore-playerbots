@@ -45,6 +45,7 @@ ADVENTURE_CATALOG = (ROOT / "modules/mod-raid-roster/src/AdventureCatalog.cpp").
 PROGRESSION_HISTORY = (ROOT / "modules/mod-raid-roster/src/AdventureProgressionHistory.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY_SQL = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_00_mod_adventure_progression_history.sql").read_text(encoding="utf-8")
 PROGRESSION_ACTIVITY_ID_MIGRATION = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_01_mod_adventure_progression_activity_id.sql").read_text(encoding="utf-8")
+PROGRESSION_CLEAR_SNAPSHOT_SQL = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_02_mod_adventure_progression_clear_snapshots.sql").read_text(encoding="utf-8")
 PROGRESSION_PAGE = (ROOT / "client-ui/src/components/ProgressionPage.ts").read_text(encoding="utf-8")
 RECOMMENDATIONS_PAGE = (ROOT / "client-ui/src/components/RecommendationsPage.ts").read_text(encoding="utf-8")
 MEMBER_DETAILS = (ROOT / "client-ui/src/components/MemberDetailsModal.ts").read_text(encoding="utf-8")
@@ -989,6 +990,13 @@ assert "ActivityIdFor" in PROGRESSION_HISTORY and "AdventureCatalog::All()" in P
 assert "activity_id = IF(activity_id = '', VALUES(activity_id), activity_id)" in PROGRESSION_HISTORY
 assert "INFORMATION_SCHEMA" in PROGRESSION_ACTIVITY_ID_MIGRATION
 assert "idx_activity_id_time" in PROGRESSION_ACTIVITY_ID_MIGRATION and "idx_activity_id" in PROGRESSION_ACTIVITY_ID_MIGRATION
+assert "mod_adventure_progression_clear" in PROGRESSION_CLEAR_SNAPSHOT_SQL
+assert "mod_adventure_progression_clear_member" in PROGRESSION_CLEAR_SNAPSHOT_SQL
+assert "mod_adventure_progression_guild_clear" in PROGRESSION_CLEAR_SNAPSHOT_SQL
+assert "ClearParticipants" in PROGRESSION_HISTORY and "RecordClearSnapshot" in PROGRESSION_HISTORY
+assert "is_playerbot" in PROGRESSION_HISTORY and "GetInstanceId() != instanceId" in PROGRESSION_HISTORY
+assert "mod_adventure_progression_guild_clear" in SERVER and "mod_adventure_progression_clear_member" in SERVER
+assert "[Bot]" in SERVER
 assert "activity_id = '{}' OR (activity_id = ''" in SERVER
 assert "COUNT(DISTINCT instance_id)" in SERVER
 assert "playerClearCount" in CORE and "guildClearCount" in CORE
@@ -1041,6 +1049,9 @@ assert "human(s)" in GENERATED_UI and "guild bot(s)" in GENERATED_UI
 # Progression history should preserve who was present for the first recorded guild clear.
 assert "guildFirstRoster" in SERVER and "GROUP_CONCAT(c.name" in SERVER
 assert "GROUP BY instance_id ORDER BY MIN(killed_at) ASC LIMIT 1" in SERVER
+assert "dedicatedGuildHistory" in SERVER
+assert "ORDER BY killed_at ASC, instance_id ASC LIMIT 1" in SERVER
+assert "GROUP_CONCAT(CONCAT(member_name" in SERVER
 assert "guildFirstRoster = fields[19] or" in CORE
 assert "guildFirstRoster: string" in MODEL
 assert "FIRST RECORDED GUILD-CLEAR ROSTER" in RAID_HISTORY_MODAL
