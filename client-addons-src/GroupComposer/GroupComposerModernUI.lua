@@ -3018,6 +3018,7 @@ local getClassesForRole = ____WotlkBuilds.getClassesForRole
 local getSpecsForRole = ____WotlkBuilds.getSpecsForRole
 local ____ComposerModel = require("model.ComposerModel")
 local ANY_SPEC_ID = ____ComposerModel.ANY_SPEC_ID
+local realm = ____ComposerModel.realm
 local ____Theme = require("theme.Theme")
 local theme = ____Theme.theme
 local ____Button = require("widgets.Button")
@@ -3078,13 +3079,30 @@ local SELECTOR_CLASS_ORDER = {
     "DRUID",
     "PRIEST"
 }
+local function classAllowedForRealm(self, classId)
+    return classId ~= "DEATHKNIGHT" or realm(nil).era == "WotLK"
+end
 local function selectorClassesForRole(self, role, compatible)
     local valid = compatible or getClassesForRole(role)
+    local enforceEra = compatible ~= nil
     local result = {}
     for ____, classId in ipairs(SELECTOR_CLASS_ORDER) do
-        for ____, classDef in ipairs(valid) do
-            if classDef.id == classId then
-                result[#result + 1] = classDef
+        do
+            local __continue18
+            repeat
+                if enforceEra and not classAllowedForRealm(nil, classId) then
+                    __continue18 = true
+                    break
+                end
+                for ____, classDef in ipairs(valid) do
+                    if classDef.id == classId then
+                        result[#result + 1] = classDef
+                        break
+                    end
+                end
+                __continue18 = true
+            until true
+            if not __continue18 then
                 break
             end
         end
@@ -3156,7 +3174,7 @@ function ____exports.createBuildSelector(self, parent, options)
         local classIndex = 0
         for ____, tile in ipairs(classTiles) do
             do
-                local __continue41
+                local __continue43
                 repeat
                     local valid = false
                     for ____, classDef in ipairs(validClasses) do
@@ -3167,7 +3185,7 @@ function ____exports.createBuildSelector(self, parent, options)
                     end
                     if not valid then
                         tile.button.frame:Hide()
-                        __continue41 = true
+                        __continue43 = true
                         break
                     end
                     local column = classIndex % columns
@@ -3185,9 +3203,9 @@ function ____exports.createBuildSelector(self, parent, options)
                     tile.button:setSelected(tile.classDef.id == currentClass)
                     tile.button.frame:Show()
                     classIndex = classIndex + 1
-                    __continue41 = true
+                    __continue43 = true
                 until true
-                if not __continue41 then
+                if not __continue43 then
                     break
                 end
             end
@@ -3871,6 +3889,10 @@ function ____exports.createBuildSelector(self, parent, options)
             currentClass = initial and initial.classId
             currentSpec = initial and initial.specId
             countEnabled = options.allowCount == true and showCount
+            if currentClass ~= nil and not classAllowedForRealm(nil, currentClass) then
+                currentClass = nil
+                currentSpec = nil
+            end
             if countEnabled then
                 countLabel:Show()
                 countStepper.frame:Show()
