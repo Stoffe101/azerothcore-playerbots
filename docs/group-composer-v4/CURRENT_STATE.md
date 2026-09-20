@@ -129,7 +129,7 @@ Slice 3 is **IN PROGRESS**: EraPolicy derives map era from Map.dbc expansion met
 
 Slice 4a is now **IN PROGRESS** in parallel with slice-3 CI: EraPolicy synchronizes Playerbots' runtime random-bot maximum and its level-bracket snapshot to 60/70/80, reasserts the cap after config reload, and central level gates protect Composer candidates plus automated RaidRoster gearing.
 
-Slice 4b is also **IN PROGRESS**: the Playerbots runtime population path now skips stored RNDbots above the live cap, removes over-cap ungrouped bots from active population state, and preserves their characters unchanged for later expansion release. A bot already grouped with players is not forcibly yanked mid-run.
+Slice 4b is also **IN PROGRESS**: the Playerbots runtime population path now skips stored RNDbots above the live cap, removes over-cap ungrouped bots from active population state, and preserves their characters unchanged for later expansion release. A bot already grouped with players is not forcibly yanked mid-run. The wrapper patch's final malformed hunk metadata was corrected after exact-head local CI caught it before compilation.
 
 ERA-01 is **not DONE yet**. AH, global bot population/geography, professions, vendors, travel, classes/races, PvP and other systems still need migration/enforcement.
 

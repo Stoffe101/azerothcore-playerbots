@@ -2,6 +2,19 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — RNDbot quarantine patch format repair (final)
+
+Status: **FIX PUSHED; exact-head local CI required**.
+
+Exact-head compile/Integration on `186b4aa8` stopped during pinned-tree assembly because wrapper patch `0042-playerbot-era-cap-quarantine.patch` still declared the ProcessBot hunk as `+26` lines even though that hunk contains 19 insertions + 6 context lines = 25. Git therefore consumed the following hunk header as patch content and reported `corrupt patch at line 54`.
+
+Fix:
+- ProcessBot new-side hunk count corrected from 26 to 25;
+- following RandomizeFirst new-side start corrected from 2060 to 2059 to reflect cumulative insertions;
+- no RNDbot quarantine logic changed.
+
+CI: follow-up uses `[local-ci]`; exact final SHA must pass client, staging, Group Composer compile and Integration before this stack is called green.
+
 ## 2026-09-21 — ERA-06 slice 1: era-aware AH market profiles
 
 Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
