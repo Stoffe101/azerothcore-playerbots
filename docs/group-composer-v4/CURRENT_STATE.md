@@ -125,7 +125,7 @@ First implementation slice:
 
 Slice 2 is exact-head local-CI green at `1e3e9d5f`: starter/catch-up availability, player progression shortcuts, direct Composer Titan Rune access and bot progression synchronization now consume EraPolicy.
 
-Slice 3 is **IN PROGRESS**: EraPolicy derives map era from Map.dbc expansion metadata; Admin Panel teleports/goto/summon/saved locations and Group Composer instance travel are being moved onto that map gate.
+Slice 3 is **IN PROGRESS**: EraPolicy derives map era from Map.dbc expansion metadata; Admin Panel teleports/goto/summon/saved locations and Group Composer instance travel are being moved onto that map gate. The first static check failure was a too-broad contract assertion and has been corrected without changing the travel implementation.
 
 ERA-01 is **not DONE yet**. AH, global bot population/geography, professions, vendors, travel, classes/races, PvP and other systems still need migration/enforcement.
 

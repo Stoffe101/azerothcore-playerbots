@@ -17,6 +17,7 @@ Implemented:
 Scope: this is map-level containment. Portals/transports/flying mechanics and historically altered old-world content still require later ERA-14/ERA-18 work.
 
 CI: commit uses `[local-ci]`; exact final SHA must pass all required workflows.
+- First slice-3 exact-head checks exposed a **test assertion bug**, not a runtime/code regression: the contract forbade the token `requiredEra` anywhere, but the new central-policy implementation legitimately uses a local `EraPolicy::Era requiredEra` variable for an error message. The contract now specifically forbids the removed legacy field `RealmEra requiredEra;` instead.
 
 ## 2026-09-20 — ERA-01 slice 2: progression boundaries
 

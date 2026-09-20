@@ -1308,7 +1308,7 @@ assert 'bool IsMapAllowed(uint32 mapId);' in ERA_POLICY_H
 assert 'MapEntry const* map = sMapStore.LookupEntry(mapId);' in ERA_POLICY_CPP
 assert 'uint32 const expansion = map->Expansion();' in ERA_POLICY_CPP
 assert 'EraPolicy::IsMapAllowed(point->map)' in ADMIN_PANEL
-assert 'requiredEra' not in ADMIN_PANEL
+assert 'RealmEra requiredEra;' not in ADMIN_PANEL
 assert 'EraPolicy::IsMapAllowed(target->GetMapId())' in ADMIN_PANEL
 assert 'EraPolicy::IsMapAllowed(mapId)' in ADMIN_PANEL
 assert 'EraPolicy::IsMapAllowed(mapId)' in SERVER
