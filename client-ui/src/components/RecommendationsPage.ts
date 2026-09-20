@@ -65,7 +65,7 @@ export function createRecommendationsPage(parent: WoWFrame, onConfigure: () => v
             let card = cards[i];
             if (card === undefined) {
                 const panel = Native.createPanel(scroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                panel.frame.SetSize(1228, 112);
+                panel.frame.SetSize(1228, 156);
                 const iconBadge = Native.createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_Map_01", 50, theme.colors.primary);
                 iconBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 16, 0);
                 const cardTitle = Native.createText(panel.frame, "", "GameFontNormal");
@@ -77,11 +77,13 @@ export function createRecommendationsPage(parent: WoWFrame, onConfigure: () => v
                 const reason = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
                 reason.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 620, -18);
                 reason.SetWidth(410);
-                reason.SetHeight(36);
+                reason.SetHeight(48);
                 reason.SetJustifyV("TOP");
                 const readiness = Native.createText(panel.frame, "", "GameFontNormalSmall", theme.colors.primary);
-                readiness.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 620, -67);
+                readiness.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 620, -76);
                 readiness.SetWidth(410);
+                readiness.SetHeight(68);
+                readiness.SetJustifyV("TOP");
                 const use = ButtonUI.createButton(panel.frame, {
                     text: "Configure", width: 150, height: 38, accent: theme.colors.success, emphasis: true,
                 });
@@ -94,7 +96,7 @@ export function createRecommendationsPage(parent: WoWFrame, onConfigure: () => v
 
             const item = rows[i];
             card.panel.frame.ClearAllPoints();
-            card.panel.frame.SetPoint("TOPLEFT", scroll.content, "TOPLEFT", 0, -(i * 120));
+            card.panel.frame.SetPoint("TOPLEFT", scroll.content, "TOPLEFT", 0, -(i * 164));
             card.iconBadge.icon.SetTexture(Model.activityIconFor(item.id, item.mode));
             card.iconBadge.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
             card.title.SetText(item.label);
@@ -136,7 +138,7 @@ export function createRecommendationsPage(parent: WoWFrame, onConfigure: () => v
             card.panel.frame.Show();
         }
 
-        scroll.setContentHeight(Math.max(690, rows.length * 120));
+        scroll.setContentHeight(Math.max(690, rows.length * 164));
     }
 
     Model.composer().RegisterCallback("JOURNEY_CHANGED", () => {

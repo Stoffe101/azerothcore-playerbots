@@ -52,7 +52,7 @@ interface Dashboard {
 
 interface DungeonSlot {
     role: Role;
-    human?: any;
+    anchor?: Model.GroupAnchor;
     botIndex?: number;
     exact?: { classId: ClassId; specId: number };
     prepared?: any;
@@ -87,18 +87,22 @@ function humanCounts(): Record<Role, number> {
 
 function buildDungeonModel(): DungeonSlot[] {
     const sequence: Role[] = ["TANK", "HEALER", "DPS", "DPS", "DPS"];
-    const anchors = Model.humans();
-    const usedHumans: boolean[] = [];
-    const assigned: Array<any | undefined> = [];
+    const anchors = Model.groupMembers();
+    const assigned: Array<Model.GroupAnchor | undefined> = [];
+    const anchorNames: Record<string, boolean> = {};
 
-    for (let h = 0; h < anchors.length; h += 1) {
-        const human = anchors[h];
-        const role = Model.config().humanRoles?.[human.name] as Role | undefined;
-        if (role === undefined) continue;
+    for (const anchor of anchors) {
+        const key = String(anchor.name ?? "").toLowerCase();
+        if (key !== "") anchorNames[key] = true;
+
+        const role = anchor.isBot
+            ? anchor.role as Role | undefined
+            : Model.config().humanRoles?.[anchor.name] as Role | undefined;
+        if (role !== "TANK" && role !== "HEALER" && role !== "DPS") continue;
+
         for (let i = 0; i < sequence.length; i += 1) {
             if (sequence[i] === role && assigned[i] === undefined) {
-                assigned[i] = human;
-                usedHumans[h] = true;
+                assigned[i] = anchor;
                 break;
             }
         }
@@ -114,7 +118,9 @@ function buildDungeonModel(): DungeonSlot[] {
     const preparedByRole: Record<Role, any[]> = { TANK: [], HEALER: [], DPS: [] };
     if (Model.plan().ready === true) {
         for (const member of Model.planMembers()) {
-            if (member.human !== true && preparedByRole[member.role] !== undefined) preparedByRole[member.role].push(member);
+            const key = String(member.name ?? "").toLowerCase();
+            if (member.human !== true && anchorNames[key] !== true && preparedByRole[member.role] !== undefined)
+                preparedByRole[member.role].push(member);
         }
     }
 
@@ -123,9 +129,9 @@ function buildDungeonModel(): DungeonSlot[] {
 
     for (let i = 0; i < sequence.length; i += 1) {
         const role = sequence[i];
-        const human = assigned[i];
-        if (human !== undefined) {
-            result.push({ role, human });
+        const anchor = assigned[i];
+        if (anchor !== undefined) {
+            result.push({ role, anchor });
             continue;
         }
 
@@ -1420,19 +1426,29 @@ export function createModernDashboard(): Dashboard {
             Native.setRoleIcon(widgets.roleIcon, slot.role);
             widgets.roleText.SetText(Model.roleLabel(slot.role));
             widgets.roleText.SetTextColor(accent[0], accent[1], accent[2], 1);
-            widgets.slotText.SetText(slot.human !== undefined ? "Human anchor" : "Bot slot " + String(slot.botIndex ?? 1));
+            widgets.slotText.SetText(
+                slot.anchor !== undefined
+                    ? (slot.anchor.isBot ? "Current bot · locked" : "Human anchor · locked")
+                    : "Fill slot " + String(slot.botIndex ?? 1)
+            );
 
-            if (slot.human !== undefined) {
-                Native.setClassIcon(widgets.classIcon, String(slot.human.class));
+            if (slot.anchor !== undefined) {
+                Native.setClassIcon(widgets.classIcon, String(slot.anchor.class));
                 widgets.classBadge.frame.Show();
-                widgets.classBadge.outline.setColor(Native.classColor(String(slot.human.class)));
+                widgets.classBadge.outline.setColor(Native.classColor(String(slot.anchor.class)));
                 widgets.specBadge.frame.Hide();
-                widgets.name.SetText((slot.human.isPlayer ? "YOU  ·  " : "") + slot.human.name);
+                widgets.name.SetText(
+                    (slot.anchor.isPlayer ? "YOU  ·  " : "") +
+                    (slot.anchor.isBot ? "BOT  ·  " : "") +
+                    slot.anchor.name
+                );
                 widgets.sub.SetText(
-                    "Level " + String(slot.human.level ?? "?") + " " + Model.classLabel(String(slot.human.class))
+                    "Level " + String(slot.anchor.level ?? "?") + " " +
+                    Model.classLabel(String(slot.anchor.class)) + "  ·  already in your group"
                 );
                 widgets.choose.frame.Hide();
                 widgets.auto.frame.Hide();
+                widgets.humanAnchor.setText(slot.anchor.isBot ? "Current bot" : "Human anchor");
                 widgets.humanAnchor.frame.Show();
                 continue;
             }
@@ -1506,7 +1522,7 @@ export function createModernDashboard(): Dashboard {
             const target = Model.targetForRole(role);
             quickCards[role].count.SetText(String(target));
             quickCards[role].botSlots.SetText(
-                String(Model.remainingBotSlots(role)) + " bot slots after humans\n(out of " + String(target) + ")"
+                String(Model.remainingBotSlots(role)) + " fill slots remaining\n(out of " + String(target) + ")"
             );
             quickCards[role].minus.setEnabled(target > 0);
             quickCards[role].plus.setEnabled(target < size);

@@ -39,7 +39,7 @@ export function createActivityDiagnosticsPage(parent: WoWFrame): ActivityDiagnos
     const title = Native.createText(root.frame, "Activity Diagnostics", "GameFontNormalLarge");
     title.SetPoint("TOPLEFT", eyebrow, "BOTTOMLEFT", 0, -8);
     const subtitle = Native.createText(root.frame,
-        "Validate every Group Composer dungeon and raid against the server catalog, maps, entrance triggers, raid contracts and clear-history metadata.",
+        "PASS = structurally valid. WARN = structurally valid but Playerbots support is experimental/partial. FAIL = broken catalog, map or contract metadata.",
         "GameFontHighlightSmall", theme.colors.muted);
     subtitle.SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6);
     subtitle.SetWidth(980);
@@ -67,7 +67,7 @@ export function createActivityDiagnosticsPage(parent: WoWFrame): ActivityDiagnos
     summaryText.SetJustifyH("RIGHT");
 
     const filterDefs: Array<{ key: Filter; label: string }> = [
-        { key: "PROBLEMS", label: "Problems" },
+        { key: "PROBLEMS", label: "Needs Review" },
         { key: "ALL", label: "All" },
         { key: "PASS", label: "Passed" },
     ];
@@ -110,7 +110,7 @@ export function createActivityDiagnosticsPage(parent: WoWFrame): ActivityDiagnos
                 ? (state.fail > 0
                     ? "Structural failures found. Fix these before trusting every listed activity."
                     : (state.warn > 0
-                        ? "No structural failures. Warnings identify experimental/partial support."
+                        ? "Catalog structure is healthy. WARN entries are playable/experimental AI support, not broken activities."
                         : "Every catalog entry passed structural validation."))
                 : "Validation has not completed yet."
         );

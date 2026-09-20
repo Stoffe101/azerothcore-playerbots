@@ -1165,3 +1165,25 @@ assert 'kind == "COVERAGECOUNTS"' in CORE and 'kind == "RAIDBUFF"' in CORE
 assert "Utility Coverage Details" in UTILITY_COVERAGE
 assert "Major raid buff families present:" in UTILITY_COVERAGE
 assert "MISSING  " in UTILITY_COVERAGE and "PRESENT  " in UTILITY_COVERAGE
+
+
+# Runtime validation pass: live-party anchoring, RDF cache refresh and layout regressions.
+assert 'isBot ? 1 : 0' in SERVER and '"[GC]|ANCHOR|{}|{}|{}|{}|{}|{}|{}|{}"' in SERVER
+assert 'if (IsBotGuid(guid)) return;' not in SERVER, (
+    "Current Playerbots must remain visible to the Group Composer anchor snapshot"
+)
+assert 'function GC:ScanGroupMembers()' in CORE and 'isBot = fields[9] == "1"' in CORE
+assert 'if not anchor.isBot then out[#out + 1] = anchor end' in CORE
+assert 'export function groupMembers()' in MODEL and 'export function fixedRoleCounts()' in MODEL
+assert 'const anchors = Model.groupMembers();' in MODERN
+assert '"Current bot · locked"' in MODERN and '"already in your group"' in MODERN
+assert 'sLFGMgr->InitializeLockedDungeons(bot, bot->GetGroup());' in SERVER
+assert 'sLFGMgr->InitializeLockedDungeons(player, group);' in SERVER
+assert 'GetState(group->GetGUID()) != lfg::LFG_STATE_ROLECHECK' in SERVER
+assert 'Queueing the assembled party through Blizzard Dungeon Finder' in SERVER
+assert 'height: 108' in SELECTOR and 'specs.SetHeight(46)' in SELECTOR
+assert 'panel.frame.SetSize(1228, 156)' in RECOMMENDATIONS_PAGE
+assert 'rows.length * 164' in RECOMMENDATIONS_PAGE
+assert 'tabs[i].frame.ClearAllPoints();' in TEMPLATE_BROWSER
+assert 'PASS = structurally valid.' in ACTIVITY_DIAGNOSTICS
+assert 'Needs Review' in ACTIVITY_DIAGNOSTICS

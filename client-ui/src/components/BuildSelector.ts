@@ -69,7 +69,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
 
     const classTiles: ClassTile[] = [];
     for (const classDef of selectorClassesForRole("DPS")) {
-        const button = createButton(classSection.frame, { text: classDef.label, width: 174, height: 86, accent: classColor(classDef.id) });
+        const button = createButton(classSection.frame, { text: classDef.label, width: 174, height: 108, accent: classColor(classDef.id) });
         const accent = createSolid(button.frame, classColor(classDef.id), "ARTWORK");
         accent.SetHeight(3); accent.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 0, 0); accent.SetPoint("TOPRIGHT", button.frame, "TOPRIGHT", 0, 0);
         const iconFrame = createFramedIcon(button.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 42, classColor(classDef.id));
@@ -77,7 +77,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         const icon = iconFrame.icon; setClassIcon(icon, classDef.id);
         button.label.ClearAllPoints(); button.label.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 62, -15); button.label.SetPoint("RIGHT", button.frame, "RIGHT", -8, 10); button.label.SetJustifyH("LEFT");
         const sub = createText(button.frame, "", "GameFontHighlightSmall", theme.colors.muted); sub.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 62, -36); sub.SetWidth(104);
-        const specs = createText(button.frame, "", "GameFontHighlightSmall", theme.colors.muted); specs.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 62, -54); specs.SetWidth(104);
+        const specs = createText(button.frame, "", "GameFontHighlightSmall", theme.colors.muted); specs.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 62, -54); specs.SetWidth(104); specs.SetHeight(46); specs.SetJustifyV("TOP");
         button.frame.SetScript("OnMouseDown", () => { if (currentClass !== classDef.id) currentSpec = undefined; currentClass = classDef.id; refresh(); });
         classTiles.push({ classDef, button, icon, sub, specs });
     }
@@ -158,7 +158,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
         const validClasses = selectorClassesForRole(currentRole, getClassesForRole(currentRole));
         const columns = Math.min(5, Math.max(1, validClasses.length));
         const classRows = Math.max(1, Math.ceil(validClasses.length / columns));
-        const classHeight = classRows > 1 ? 258 : 164;
+        const classHeight = classRows > 1 ? 300 : 186;
         const specHeight = currentClass === undefined ? 68 : 176;
         classSection.frame.SetHeight(classHeight);
         specSection.frame.SetHeight(specHeight);
@@ -176,7 +176,7 @@ export function createBuildSelector(parent: WoWFrame, options: BuildSelectorOpti
             const column = classIndex % columns;
             const row = Math.floor(classIndex / columns);
             tile.button.frame.ClearAllPoints();
-            tile.button.frame.SetPoint("TOPLEFT", classSection.frame, "TOPLEFT", startX + column * (tileWidth + gap), -(62 + row * 94));
+            tile.button.frame.SetPoint("TOPLEFT", classSection.frame, "TOPLEFT", startX + column * (tileWidth + gap), -(62 + row * 116));
             tile.sub.SetText(classRoleSummary(tile.classDef.id, currentRole));
             tile.specs.SetText(specSummary(tile.classDef.id, currentRole));
             tile.button.setSelected(tile.classDef.id === currentClass);

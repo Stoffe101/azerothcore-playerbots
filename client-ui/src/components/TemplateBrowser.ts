@@ -82,7 +82,11 @@ export function createTemplateBrowser(parent: WoWFrame): TemplateBrowser {
 
     function refresh(): void {
         const dungeonMode = Model.config().mode === "DUNGEON";
+        let tabX = 0;
         for (let i = 0; i < tabs.length; i += 1) {
+            tabs[i].frame.ClearAllPoints();
+            tabs[i].frame.SetPoint("TOPLEFT", modal.content, "TOPLEFT", tabX, -82);
+            tabX += tabDefs[i].width + 8;
             tabs[i].setSelected(tabDefs[i].key === tab);
             if (dungeonMode && tabDefs[i].key !== "CUSTOM") tabs[i].frame.Hide();
             else tabs[i].frame.Show();

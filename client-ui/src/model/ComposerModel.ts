@@ -9,6 +9,11 @@ export interface HumanAnchor {
     isPlayer?: boolean;
     online?: boolean;
     level?: number;
+    isBot?: boolean;
+}
+
+export interface GroupAnchor extends HumanAnchor {
+    isBot: boolean;
 }
 
 export const ANY_SPEC_ID = -1;
@@ -237,6 +242,10 @@ export function humans(): HumanAnchor[] {
     return (GC.ScanHumans() ?? []) as HumanAnchor[];
 }
 
+export function groupMembers(): GroupAnchor[] {
+    return (GC.ScanGroupMembers() ?? GC.ScanHumans() ?? []) as GroupAnchor[];
+}
+
 export function humanReady(): boolean {
     const list = humans();
     if (list.length === 0) return false;
@@ -308,8 +317,35 @@ export function resetRoleTargets(): void {
     touch("Role composition reset");
 }
 
+export function fixedRoleCounts(): Record<Role, number> {
+    const result: Record<Role, number> = { TANK: 0, HEALER: 0, DPS: 0 };
+    const humanRoles = config().humanRoles ?? {};
+    const seen: Record<string, boolean> = {};
+
+    for (const member of groupMembers()) {
+        const key = String(member.name ?? "").toLowerCase();
+        const role = member.isBot
+            ? member.role as Role | undefined
+            : humanRoles[member.name] as Role | undefined;
+        if (key !== "" && role !== undefined && (role === "TANK" || role === "HEALER" || role === "DPS") && seen[key] !== true) {
+            seen[key] = true;
+            result[role] += 1;
+        }
+    }
+
+    for (const extra of config().extraHumans ?? []) {
+        const key = String(extra.name ?? "").toLowerCase();
+        const role = extra.role as Role | undefined;
+        if (key !== "" && role !== undefined && seen[key] !== true) {
+            seen[key] = true;
+            result[role] += 1;
+        }
+    }
+    return result;
+}
+
 export function remainingBotSlots(role: Role): number {
-    const counts = humanRoleCounts();
+    const counts = fixedRoleCounts();
     return Math.max(0, targetForRole(role) - counts[role]);
 }
 
