@@ -220,6 +220,19 @@ It shows:
 
 Current clear tracking uses existing adventure boss-bounty history where a final boss is defined, with progression-stage fallback for milestone raids. Guild completion is based on recorded boss clears from guild members. This is useful now, but it is also an area we can deepen later into a richer historical progression ledger.
 
+### Raid lockout awareness
+
+The journey/recommendation backend now reads AzerothCore's real player instance binds for raid activities.
+
+For an active lockout Group Composer tracks:
+
+- whether the character is currently bound;
+- instance ID;
+- number of completed encounter bits in the saved instance;
+- whether the lockout is extended.
+
+The Progression page shows active lockouts, and Recommended Activities prioritizes an unfinished raid the player is already saved to as **Resume active lockout** instead of pretending every raid recommendation is a fresh run.
+
 ### Recommended Activities page
 
 Group Composer now has a dedicated **Recommended Activities** page.

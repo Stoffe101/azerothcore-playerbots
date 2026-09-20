@@ -494,6 +494,10 @@ function GC:HandleProtocolMessage(message)
             playerFirstClear = fields[12] or "",
             guildClearCount = ParseNumber(fields[13], 0),
             guildFirstClear = fields[14] or "",
+            lockoutActive = fields[15] == "1",
+            lockoutInstanceId = ParseNumber(fields[16], 0),
+            lockoutEncounters = ParseNumber(fields[17], 0),
+            lockoutExtended = fields[18] == "1",
         }
     elseif kind == "RECOMMEND" then
         GC.journey.recommendations[#GC.journey.recommendations + 1] = {

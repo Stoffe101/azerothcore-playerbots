@@ -154,7 +154,12 @@ export function createProgressionPage(parent: WoWFrame): ProgressionPage {
                 card.status.SetTextColor(theme.colors.warning[0], theme.colors.warning[1], theme.colors.warning[2], 1);
             }
 
-            card.detail.SetText(raid.reason);
+            const lockoutText = raid.lockoutActive
+                ? " · ACTIVE LOCKOUT #" + String(raid.lockoutInstanceId) +
+                    " · " + String(raid.lockoutEncounters) + " encounter(s)" +
+                    (raid.lockoutExtended ? " · EXTENDED" : "")
+                : "";
+            card.detail.SetText(raid.reason + lockoutText);
             const playerHistory = raid.playerClearCount > 0
                 ? "You: Cleared ×" + String(raid.playerClearCount) +
                     (raid.playerFirstClear !== "" ? " · first " + raid.playerFirstClear : "")

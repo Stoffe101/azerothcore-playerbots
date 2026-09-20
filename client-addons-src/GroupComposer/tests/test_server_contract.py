@@ -994,3 +994,12 @@ assert "CATDIAGDONE" in SERVER and "CATDIAGDONE" in CORE
 assert "Activity Diagnostics" in ACTIVITY_DIAGNOSTICS and "Run Validation" in ACTIVITY_DIAGNOSTICS
 assert "Problems" in ACTIVITY_DIAGNOSTICS and "Passed" in ACTIVITY_DIAGNOSTICS
 assert "ActivityDiagnosticsUI.createActivityDiagnosticsPage" in MODERN
+
+
+# Raid journey must understand active AzerothCore instance binds.
+assert '#include "InstanceSaveMgr.h"' in SERVER
+assert "CurrentRaidLockout" in SERVER and "PlayerGetBoundInstance" in SERVER
+assert "GetCompletedEncounterMask" in SERVER
+assert "Resume your active raid lockout" in SERVER
+assert "lockoutActive" in CORE and "lockoutEncounters" in CORE
+assert "ACTIVE LOCKOUT #" in PROGRESSION_PAGE

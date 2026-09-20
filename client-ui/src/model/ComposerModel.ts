@@ -56,6 +56,10 @@ export interface JourneyRaid {
     playerFirstClear: string;
     guildClearCount: number;
     guildFirstClear: string;
+    lockoutActive: boolean;
+    lockoutInstanceId: number;
+    lockoutEncounters: number;
+    lockoutExtended: boolean;
 }
 
 export interface Recommendation {

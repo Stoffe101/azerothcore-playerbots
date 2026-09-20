@@ -15,6 +15,7 @@
 #include "EraTransition.h"
 #include "Group.h"
 #include "GroupMgr.h"
+#include "InstanceSaveMgr.h"
 #include "LFG.h"
 #include "LFGMgr.h"
 #include "Map.h"
@@ -893,6 +894,45 @@ ActivityClearStats ClearStats(Player* player, AdventureActivity const& activity)
     return stats;
 }
 
+struct RaidLockoutState
+{
+    bool bound = false;
+    bool permanent = false;
+    bool extended = false;
+    uint32 instanceId = 0;
+    uint32 completedEncounters = 0;
+};
+
+uint32 CountBits(uint32 value)
+{
+    uint32 count = 0;
+    while (value)
+    {
+        count += value & 1u;
+        value >>= 1u;
+    }
+    return count;
+}
+
+RaidLockoutState CurrentRaidLockout(Player* player, AdventureActivity const& activity, Config const& config)
+{
+    RaidLockoutState state;
+    if (!player || activity.kind != AdventureActivityKind::Raid || !activity.instanceMap)
+        return state;
+
+    InstancePlayerBind* bind = sInstanceSaveMgr->PlayerGetBoundInstance(
+        player->GetGUID(), activity.instanceMap, ActivityDifficulty(config));
+    if (!bind || !bind->save)
+        return state;
+
+    state.bound = true;
+    state.permanent = bind->perm;
+    state.extended = bind->extended;
+    state.instanceId = bind->save->GetInstanceId();
+    state.completedEncounters = CountBits(bind->save->GetCompletedEncounterMask());
+    return state;
+}
+
 uint8 ProgressionCompletionStage(std::string const& id)
 {
     if (id == "molten_core") return 1;
@@ -954,18 +994,28 @@ void SendJourney(ChatHandler* handler, Player* master)
         std::string reason;
         bool const available = ActivityEligible(master, config, reason);
         ActivityClearStats const clears = ClearStats(master, activity);
+        RaidLockoutState const lockout = CurrentRaidLockout(master, activity, config);
         bool const personalComplete = PlayerRaidComplete(master, activity);
         bool const guildComplete = clears.guildCount > 0;
 
-        handler->PSendSysMessage("[GC]|JOURNEYRAID|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+        handler->PSendSysMessage("[GC]|JOURNEYRAID|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             activity.composerId, Sanitize(activity.name), AdventureCatalog::EraName(activity.era),
             uint32(RequiredProgressionFor(config)), available ? 1 : 0, personalComplete ? 1 : 0,
             guildComplete ? 1 : 0, Sanitize(AdventureCatalog::SupportLabel(activity.support)),
             Sanitize(available ? activity.supportNote : reason),
-            clears.personalCount, Sanitize(clears.personalFirst), clears.guildCount, Sanitize(clears.guildFirst));
+            clears.personalCount, Sanitize(clears.personalFirst), clears.guildCount, Sanitize(clears.guildFirst),
+            lockout.bound ? 1 : 0, lockout.instanceId, lockout.completedEncounters, lockout.extended ? 1 : 0);
 
         if (activity.era == liveEra && activity.support == AdventureSupport::Ready && available && !personalComplete)
-            recommendations.push_back({ &activity, 100 + int(activity.minProgression), "Available progression raid you have not completed yet." });
+        {
+            if (lockout.bound)
+                recommendations.push_back({ &activity, 160 + int(activity.minProgression),
+                    "Resume your active raid lockout; " + std::to_string(lockout.completedEncounters) +
+                    " encounter(s) are already recorded in this instance." });
+            else
+                recommendations.push_back({ &activity, 100 + int(activity.minProgression),
+                    "Available progression raid you have not completed yet." });
+        }
     }
 
     for (AdventureActivity const& activity : AdventureCatalog::All())
