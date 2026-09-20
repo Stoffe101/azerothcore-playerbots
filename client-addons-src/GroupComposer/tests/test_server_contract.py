@@ -1028,7 +1028,7 @@ assert "NEXT UNLOCK" in RECOMMENDATIONS_PAGE
 assert "GROUP READY" in GENERATED_UI
 assert "ROSTER NEEDS WORK" in GENERATED_UI
 assert "NEXT UNLOCK" in GENERATED_UI
-assert "guild candidate(s)" in GENERATED_UI
+assert "human(s)" in GENERATED_UI and "guild bot(s)" in GENERATED_UI
 
 
 # Progression history should preserve who was present for the first recorded guild clear.
