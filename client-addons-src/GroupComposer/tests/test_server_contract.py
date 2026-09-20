@@ -1056,3 +1056,10 @@ assert "UNLOCK_DETAILS_CHANGED" in CORE
 assert "Unlock Requirements" in UNLOCK_REQUIREMENTS
 assert "Exact unlock path" in UNLOCK_REQUIREMENTS
 assert "unlockModal.open" in ACTIVITY_BROWSER
+
+
+# Generated addon bundle must include the structured unlock guide.
+assert "Unlock Requirements" in GENERATED_UI
+assert "UNLOCK_DETAILS_CHANGED" in CORE
+assert "Exact unlock path" in GENERATED_UI
+assert "QUEST · " in GENERATED_UI or "QUEST" in GENERATED_UI

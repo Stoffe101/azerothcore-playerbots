@@ -372,6 +372,8 @@ The server's public-access support already has useful hardening:
 
 The current V4 feature set now includes the remaining original UX items and the next reliability/history layer:
 
+The latest continuation also adds a **structured exact unlock-path modal** for locked activities, backed by the server's real quest/item/achievement/access-requirement data.
+
 - exact activity lock explanations, including quest/item/achievement/progression blockers;
 - Vanilla/TBC/WotLK-aware browsing and difficulty rules;
 - era-aware Random Dungeon Finder handoff, including the stock 3.3.5a Random Classic category;
@@ -547,7 +549,7 @@ The major Group Composer product features are now implemented. The remaining wor
 ### Still worth building
 
 - gear/item-level-aware activity recommendations;
-- guided attunement/quest objectives, not only lock text;
+- richer guided attunement objectives beyond the new exact unlock-path modal, such as map/NPC breadcrumbs and recommended quest order across optional branches;
 - smarter catch-up weighting;
 - richer first-guild-clear/history presentation;
 - optional recommendation weighting by guild progression and available friends;
