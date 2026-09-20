@@ -130,6 +130,19 @@ The checkpoint also retains the larger V4 work completed immediately before this
 
 ---
 
+## Final pre-test feature completion pass
+
+The remaining Group Composer product gaps are now implemented:
+
+- Raid History exposes the recorded first-clear format/participant count and the five most recent durable guild clears, including date, raid format, actual participant count and saved instance ID.
+- Locked **NEXT UNLOCK** recommendation cards now open the exact Unlock Requirements modal instead of ending in a disabled button.
+- Detected quest prerequisite chains are ordered and mark the first missing quest as **NEXT STEP**, without inventing NPC/map breadcrumbs that are not present in the authoritative quest metadata.
+- Recommended Activities now checks the character's real WoW friend list server-side, resolves friends who are actually online, excludes friends already busy in another group / declining invites / incompatible by faction or raid lockout, validates their activity access, and gives a bounded preference to activities those friends can join.
+- Existing gear-fit weighting already supplies the catch-up behavior: content below the Composer floor is suppressed, content between floor and target is promoted, and heavily overgeared farm content is pushed down.
+- Encounter-specific bot-readiness and human gear advisories are already part of Build & Prepare. Further encounter promotion is deliberately a runtime-validation task, not another speculative feature layer.
+
+At this point the Group Composer V4 product feature set is a **feature-complete candidate for the in-game validation pass**. New functionality should now come from observed gameplay gaps rather than expanding the pre-test checklist indefinitely.
+
 ## What is code-complete but still needs in-game validation
 
 These are implemented and CI-tested, but should not yet be treated as proven gameplay behavior:

@@ -65,6 +65,7 @@ export interface JourneyRaid {
     playerFirstGroupSize: number;
     guildFirstFormat: string;
     guildFirstGroupSize: number;
+    guildRecentClears: string[];
 }
 
 export interface Recommendation {

@@ -3,6 +3,7 @@ import * as Native from "../core/Native";
 import { theme } from "../theme/Theme";
 import * as ButtonUI from "../widgets/Button";
 import * as ScrollUI from "../widgets/ScrollList";
+import * as UnlockUI from "./UnlockRequirementsModal";
 
 interface RecommendationCard {
     panel: any;
@@ -26,6 +27,7 @@ export function createRecommendationsPage(parent: WoWFrame, onConfigure: () => v
     root.frame.SetPoint("TOPLEFT", parent, "TOPLEFT", 200, -88);
     root.frame.SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -16, 16);
     root.frame.Hide();
+    const unlockModal = UnlockUI.createUnlockRequirementsModal(parent);
 
     const eyebrow = Native.createText(root.frame, "WHAT SHOULD WE DO?", "GameFontNormalSmall", theme.colors.muted);
     eyebrow.SetPoint("TOPLEFT", root.frame, "TOPLEFT", 22, -18);
@@ -117,12 +119,15 @@ export function createRecommendationsPage(parent: WoWFrame, onConfigure: () => v
                 : (!item.gearReady ? theme.colors.warning : (item.feasible ? theme.colors.success : theme.colors.error));
             card.readiness.SetTextColor(accent[0], accent[1], accent[2], 1);
             card.iconBadge.outline.setColor(accent);
-            card.use.setEnabled(item.available);
-            card.use.setText(item.available ? "Configure" : "Locked");
+            card.use.setEnabled(true);
+            card.use.setText(item.available ? "Configure" : "View Unlocks");
             const id = item.id;
             const mode = item.mode;
             card.use.frame.SetScript("OnMouseDown", () => {
-                if (!item.available) return;
+                if (!item.available) {
+                    unlockModal.open(id, item.label, mode);
+                    return;
+                }
                 Model.setMode(mode);
                 if (mode === "RAID") Model.setRaidActivity(id);
                 else Model.setDungeonActivity(id);

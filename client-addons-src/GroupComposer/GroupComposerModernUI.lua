@@ -5261,7 +5261,7 @@ local ____Theme = require("theme.Theme")
 local theme = ____Theme.theme
 local ModalUI = require("widgets.Modal")
 function ____exports.createRaidHistoryModal(self, parent)
-    local modal = ModalUI:createModal(parent, 720, 520)
+    local modal = ModalUI:createModal(parent, 720, 640)
     modal:setHeaderIcon("Interface\\Icons\\INV_Misc_Book_09")
     modal:setTitle("Raid History")
     modal:setSubtitle("Personal progress, guild history and current lockout.")
@@ -5327,13 +5327,32 @@ function ____exports.createRaidHistoryModal(self, parent)
     roster:SetWidth(630)
     roster:SetHeight(74)
     roster:SetJustifyV("TOP")
+    local recentTitle = Native:createText(modal.content, "RECENT GUILD CLEARS", "GameFontNormalSmall", theme.colors.warning)
+    recentTitle:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        8,
+        -306
+    )
+    local recent = Native:createText(modal.content, "", "GameFontHighlightSmall", theme.colors.text)
+    recent:SetPoint(
+        "TOPLEFT",
+        recentTitle,
+        "BOTTOMLEFT",
+        0,
+        -8
+    )
+    recent:SetWidth(630)
+    recent:SetHeight(96)
+    recent:SetJustifyV("TOP")
     local lockoutTitle = Native:createText(modal.content, "CURRENT LOCKOUT", "GameFontNormalSmall", theme.colors.muted)
     lockoutTitle:SetPoint(
         "TOPLEFT",
         modal.content,
         "TOPLEFT",
         8,
-        -306
+        -430
     )
     local lockout = Native:createText(modal.content, "", "GameFontHighlight", theme.colors.text)
     lockout:SetPoint(
@@ -5350,7 +5369,7 @@ function ____exports.createRaidHistoryModal(self, parent)
         modal.content,
         "TOPLEFT",
         8,
-        -374
+        -498
     )
     local access = Native:createText(modal.content, "", "GameFontHighlightSmall", theme.colors.muted)
     access:SetPoint(
@@ -5379,6 +5398,14 @@ function ____exports.createRaidHistoryModal(self, parent)
             guild:SetText("No recorded guild clear yet.")
         end
         roster:SetText(raid.guildFirstRoster ~= "" and raid.guildFirstRoster or "No first-clear roster is recorded yet. Historical bounty-only clears cannot reconstruct participants.")
+        local recentText = ""
+        for ____, entry in ipairs(raid.guildRecentClears) do
+            if recentText ~= "" then
+                recentText = recentText .. "\n"
+            end
+            recentText = recentText .. entry
+        end
+        recent:SetText(recentText ~= "" and recentText or "No snapshot-era guild-clear timeline is recorded yet.")
         if raid.lockoutActive then
             lockout:SetText((((("Instance #" .. tostring(raid.lockoutInstanceId)) .. " · ") .. tostring(raid.lockoutEncounters)) .. " completed encounter(s)") .. (raid.lockoutExtended and " · Extended" or ""))
         else
@@ -5754,6 +5781,7 @@ local ____Theme = require("theme.Theme")
 local theme = ____Theme.theme
 local ButtonUI = require("widgets.Button")
 local ScrollUI = require("widgets.ScrollList")
+local UnlockUI = require("components.UnlockRequirementsModal")
 function ____exports.createRecommendationsPage(self, parent, onConfigure)
     local root = Native:createPanel(parent, theme.colors.background, theme.colors.borderStrong)
     root.frame:SetPoint(
@@ -5771,6 +5799,7 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
         16
     )
     root.frame:Hide()
+    local unlockModal = UnlockUI:createUnlockRequirementsModal(parent)
     local eyebrow = Native:createText(root.frame, "WHAT SHOULD WE DO?", "GameFontNormalSmall", theme.colors.muted)
     eyebrow:SetPoint(
         "TOPLEFT",
@@ -5940,14 +5969,15 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                 local accent = not item.available and theme.colors.warning or (not item.gearReady and theme.colors.warning or (item.feasible and theme.colors.success or theme.colors.error))
                 card.readiness:SetTextColor(accent[1], accent[2], accent[3], 1)
                 card.iconBadge.outline:setColor(accent)
-                card.use:setEnabled(item.available)
-                card.use:setText(item.available and "Configure" or "Locked")
+                card.use:setEnabled(true)
+                card.use:setText(item.available and "Configure" or "View Unlocks")
                 local id = item.id
                 local mode = item.mode
                 card.use.frame:SetScript(
                     "OnMouseDown",
                     function()
                         if not item.available then
+                            unlockModal:open(id, item.label, mode)
                             return
                         end
                         Model:setMode(mode)

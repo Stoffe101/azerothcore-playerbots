@@ -538,7 +538,16 @@ function GC:HandleProtocolMessage(message)
             playerFirstGroupSize = ParseNumber(fields[21], 0),
             guildFirstFormat = fields[22] or "",
             guildFirstGroupSize = ParseNumber(fields[23], 0),
+            guildRecentClears = {},
         }
+    elseif kind == "JOURNEYRAIDRECENT" then
+        local activityId = fields[2] or ""
+        for _, raid in ipairs(GC.journey.raids) do
+            if raid.id == activityId then
+                raid.guildRecentClears[#raid.guildRecentClears + 1] = fields[3] or ""
+                break
+            end
+        end
     elseif kind == "RECOMMEND" then
         GC.journey.recommendations[#GC.journey.recommendations + 1] = {
             id = fields[2] or "",

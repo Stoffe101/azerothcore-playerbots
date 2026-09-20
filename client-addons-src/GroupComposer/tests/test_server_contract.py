@@ -1059,6 +1059,8 @@ assert "playerFirstFormat: string" in MODEL and "guildFirstGroupSize: number" in
 assert "RecordedRaidFormat" in SERVER and "personalFirstGroupSize" in SERVER and "guildFirstGroupSize" in SERVER
 assert "recorded participant(s)" in RAID_HISTORY_MODAL
 assert "FIRST RECORDED GUILD-CLEAR ROSTER" in RAID_HISTORY_MODAL
+assert "RECENT GUILD CLEARS" in RAID_HISTORY_MODAL and "guildRecentClears" in RAID_HISTORY_MODAL
+assert "JOURNEYRAIDRECENT" in SERVER and "JOURNEYRAIDRECENT" in CORE
 assert "click for history" in PROGRESSION_PAGE
 
 
@@ -1066,6 +1068,8 @@ assert "click for history" in PROGRESSION_PAGE
 assert "Raid History" in GENERATED_UI
 assert "FIRST RECORDED GUILD-CLEAR ROSTER" in GENERATED_UI
 assert "recorded participant(s)" in GENERATED_UI
+assert "RECENT GUILD CLEARS" in GENERATED_UI
+assert "View Unlocks" in GENERATED_UI
 assert "click for history" in GENERATED_UI
 
 
@@ -1079,6 +1083,8 @@ assert "UNLOCK_DETAILS_CHANGED" in CORE
 assert "Unlock Requirements" in UNLOCK_REQUIREMENTS
 assert "Exact unlock path" in UNLOCK_REQUIREMENTS
 assert "unlockModal.open" in ACTIVITY_BROWSER
+assert "NEXT STEP · " in SERVER and "Step " in SERVER and "detected prerequisite chain" in SERVER
+assert "View Unlocks" in RECOMMENDATIONS_PAGE and "unlockModal.open" in RECOMMENDATIONS_PAGE
 
 
 # Generated addon bundle must include the structured unlock guide.
@@ -1123,6 +1129,9 @@ assert "GEAR READY" in RECOMMENDATIONS_PAGE and "GEAR LOW" in RECOMMENDATIONS_PA
 
 # Recommendations should prefer meaningful guild progression, actionable unlocks and gear-fit content.
 assert "RecommendationGearAdjustment" in SERVER
+assert "EligibleOnlineFriends" in SERVER
+assert "character_social" in SERVER and "FindPlayerByLowGUID" in SERVER
+assert "online friend(s) are eligible and free to join" in SERVER
 assert "IsActionableUnlockReason" in SERVER
 assert "Guild progression target:" in SERVER
 assert "gear.target && ilvl < gear.target" in SERVER

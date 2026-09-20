@@ -1019,11 +1019,29 @@ void SendQuestChainDetails(ChatHandler* handler, Player* player, uint32 finalQue
     }
     std::reverse(chain.begin(), chain.end());
 
-    for (uint32 questId : chain)
+    bool nextMissingFound = false;
+    for (std::size_t i = 0; i < chain.size(); ++i)
     {
+        uint32 const questId = chain[i];
         bool const complete = player->IsQuestRewarded(questId);
-        SendUnlockRequirement(handler, "QUEST", complete, QuestTitle(questId),
-            "Quest " + std::to_string(questId) + (complete ? " completed." : " not completed yet."));
+        bool const nextStep = !complete && !nextMissingFound;
+        if (nextStep)
+            nextMissingFound = true;
+
+        std::string title = QuestTitle(questId);
+        if (nextStep)
+            title = "NEXT STEP · " + title;
+
+        std::string detail = "Step " + std::to_string(i + 1) + " of " + std::to_string(chain.size()) +
+            " · Quest " + std::to_string(questId) + ". ";
+        if (complete)
+            detail += "Completed.";
+        else if (nextStep)
+            detail += "Complete this quest next to advance the detected prerequisite chain.";
+        else
+            detail += "Complete this after the earlier missing step(s).";
+
+        SendUnlockRequirement(handler, "QUEST", complete, title, detail);
     }
 }
 
@@ -1170,6 +1188,7 @@ struct ActivityClearStats
     uint8 personalFirstGroupSize = 0;
     uint8 guildFirstDifficulty = 0;
     uint8 guildFirstGroupSize = 0;
+    std::vector<std::string> guildRecentClears;
 };
 
 std::string RecordedRaidFormat(AdventureActivity const& activity, uint8 difficulty)
@@ -1280,6 +1299,27 @@ ActivityClearStats ClearStats(Player* player, AdventureActivity const& activity)
                         "WHERE map_id = {} AND instance_id = {} AND creature_entry = {}",
                         firstMapId, firstInstanceId, firstCreatureEntry))
                         stats.guildFirstRoster = result->Fetch()[0].Get<std::string>();
+                }
+            }
+
+            if (dedicatedGuildHistory)
+            {
+                if (QueryResult result = CharacterDatabase.Query(
+                    "SELECT instance_id, difficulty, group_size, DATE_FORMAT(killed_at, '%Y-%m-%d') "
+                    "FROM mod_adventure_progression_guild_clear "
+                    "WHERE guild_id = {} AND activity_id = '{}' "
+                    "ORDER BY killed_at DESC, instance_id DESC LIMIT 5",
+                    guildId, activityId))
+                {
+                    do
+                    {
+                        Field* fields = result->Fetch();
+                        stats.guildRecentClears.push_back(
+                            fields[3].Get<std::string>() + " · " +
+                            RecordedRaidFormat(activity, fields[1].Get<uint8>()) + " · " +
+                            std::to_string(fields[2].Get<uint32>()) + " participant(s) · Instance #" +
+                            std::to_string(fields[0].Get<uint32>()));
+                    } while (result->NextRow());
                 }
             }
 
@@ -1568,6 +1608,71 @@ bool IsActionableUnlockReason(std::string const& reason)
         reason.find("Requires ") != std::string::npos;
 }
 
+struct OnlineFriendAvailability
+{
+    uint32 count = 0;
+    std::vector<std::string> names;
+};
+
+OnlineFriendAvailability EligibleOnlineFriends(Player* master, AdventureActivity const& activity)
+{
+    OnlineFriendAvailability result;
+    if (!master)
+        return result;
+
+    Config config;
+    config.mode = activity.kind == AdventureActivityKind::Raid ? "raid" : "dungeon";
+    config.activity = activity.composerId;
+    config.difficulty = "normal";
+    config.size = activity.kind == AdventureActivityKind::Raid
+        ? BrowserRaidSize(activity.composerId, activity.preferredSize)
+        : 5;
+
+    PartyRaidLockout masterLockout;
+    if (activity.kind == AdventureActivityKind::Raid)
+    {
+        std::string blocker;
+        if (!CompatibleRaidLockout(master, config, masterLockout, blocker))
+            return result;
+    }
+
+    QueryResult friends = CharacterDatabase.Query(
+        "SELECT friend FROM character_social WHERE guid = {} AND (flags & 1) <> 0 LIMIT 50",
+        master->GetGUID().GetCounter());
+    if (!friends)
+        return result;
+
+    do
+    {
+        Player* friendPlayer = ObjectAccessor::FindPlayerByLowGUID(friends->Fetch()[0].Get<uint32>());
+        if (!friendPlayer || friendPlayer == master || GET_PLAYERBOT_AI(friendPlayer) ||
+            friendPlayer->GetGroup() || !friendPlayer->IsAcceptGroupInvites())
+            continue;
+
+        if (!master->IsGameMaster() &&
+            !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP) &&
+            master->GetTeamId() != friendPlayer->GetTeamId())
+            continue;
+
+        std::string blocker;
+        if (!PlayerActivityEligible(friendPlayer, config, blocker))
+            continue;
+
+        if (activity.kind == AdventureActivityKind::Raid)
+        {
+            PartyRaidLockout expected = masterLockout;
+            if (!CompatibleRaidLockout(friendPlayer, config, expected, blocker))
+                continue;
+        }
+
+        ++result.count;
+        if (result.names.size() < 3)
+            result.names.push_back(friendPlayer->GetName());
+    } while (friends->NextRow());
+
+    return result;
+}
+
 void SendJourney(ChatHandler* handler, Player* master)
 {
     if (!handler || !master)
@@ -1618,6 +1723,9 @@ void SendJourney(ChatHandler* handler, Player* master)
             uint32(clears.personalFirstGroupSize),
             clears.guildFirstGroupSize ? Sanitize(RecordedRaidFormat(activity, clears.guildFirstDifficulty)) : "",
             uint32(clears.guildFirstGroupSize));
+
+        for (std::string const& recent : clears.guildRecentClears)
+            handler->PSendSysMessage("[GC]|JOURNEYRAIDRECENT|{}|{}", activity.composerId, Sanitize(recent));
 
         if (activity.era == liveEra && activity.support == AdventureSupport::Ready && available)
         {
@@ -1675,6 +1783,27 @@ void SendJourney(ChatHandler* handler, Player* master)
         score += RecommendationGearAdjustment(master, activity);
         recommendations.push_back({ &activity, score,
             "Available dungeon weighted by your current era, level and Composer gear profile.", true });
+    }
+
+    for (Recommendation& recommendation : recommendations)
+    {
+        if (!recommendation.available || !recommendation.activity)
+            continue;
+
+        OnlineFriendAvailability const friends = EligibleOnlineFriends(master, *recommendation.activity);
+        if (!friends.count)
+            continue;
+
+        recommendation.score += std::min<int>(24, int(friends.count) * 6);
+        recommendation.why += " " + std::to_string(friends.count) + " online friend(s) are eligible and free to join";
+        if (!friends.names.empty())
+        {
+            recommendation.why += " (" + JoinNames(friends.names);
+            if (friends.count > friends.names.size())
+                recommendation.why += ", +" + std::to_string(friends.count - friends.names.size()) + " more";
+            recommendation.why += ")";
+        }
+        recommendation.why += ".";
     }
 
     std::stable_sort(recommendations.begin(), recommendations.end(), [](Recommendation const& a, Recommendation const& b)

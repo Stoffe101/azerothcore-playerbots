@@ -8,7 +8,7 @@ export interface RaidHistoryModal {
 }
 
 export function createRaidHistoryModal(parent: WoWFrame): RaidHistoryModal {
-    const modal = ModalUI.createModal(parent, 720, 520);
+    const modal = ModalUI.createModal(parent, 720, 640);
     modal.setHeaderIcon("Interface\\Icons\\INV_Misc_Book_09");
     modal.setTitle("Raid History");
     modal.setSubtitle("Personal progress, guild history and current lockout.");
@@ -37,14 +37,22 @@ export function createRaidHistoryModal(parent: WoWFrame): RaidHistoryModal {
     roster.SetHeight(74);
     roster.SetJustifyV("TOP");
 
+    const recentTitle = Native.createText(modal.content, "RECENT GUILD CLEARS", "GameFontNormalSmall", theme.colors.warning);
+    recentTitle.SetPoint("TOPLEFT", modal.content, "TOPLEFT", 8, -306);
+    const recent = Native.createText(modal.content, "", "GameFontHighlightSmall", theme.colors.text);
+    recent.SetPoint("TOPLEFT", recentTitle, "BOTTOMLEFT", 0, -8);
+    recent.SetWidth(630);
+    recent.SetHeight(96);
+    recent.SetJustifyV("TOP");
+
     const lockoutTitle = Native.createText(modal.content, "CURRENT LOCKOUT", "GameFontNormalSmall", theme.colors.muted);
-    lockoutTitle.SetPoint("TOPLEFT", modal.content, "TOPLEFT", 8, -306);
+    lockoutTitle.SetPoint("TOPLEFT", modal.content, "TOPLEFT", 8, -430);
     const lockout = Native.createText(modal.content, "", "GameFontHighlight", theme.colors.text);
     lockout.SetPoint("TOPLEFT", lockoutTitle, "BOTTOMLEFT", 0, -8);
     lockout.SetWidth(630);
 
     const accessTitle = Native.createText(modal.content, "ACCESS / SUPPORT", "GameFontNormalSmall", theme.colors.muted);
-    accessTitle.SetPoint("TOPLEFT", modal.content, "TOPLEFT", 8, -374);
+    accessTitle.SetPoint("TOPLEFT", modal.content, "TOPLEFT", 8, -498);
     const access = Native.createText(modal.content, "", "GameFontHighlightSmall", theme.colors.muted);
     access.SetPoint("TOPLEFT", accessTitle, "BOTTOMLEFT", 0, -8);
     access.SetWidth(630);
@@ -84,6 +92,17 @@ export function createRaidHistoryModal(parent: WoWFrame): RaidHistoryModal {
                 raid.guildFirstRoster !== ""
                     ? raid.guildFirstRoster
                     : "No first-clear roster is recorded yet. Historical bounty-only clears cannot reconstruct participants."
+            );
+
+            let recentText = "";
+            for (const entry of raid.guildRecentClears) {
+                if (recentText !== "") recentText += "\n";
+                recentText += entry;
+            }
+            recent.SetText(
+                recentText !== ""
+                    ? recentText
+                    : "No snapshot-era guild-clear timeline is recorded yet."
             );
 
             if (raid.lockoutActive) {

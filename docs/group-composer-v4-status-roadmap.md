@@ -593,11 +593,22 @@ The target remains a useful answer to: **"What should we do tonight?"**
 
 ---
 
-## 6. Remaining work after the current continuation round
+## 6. Feature-complete candidate and remaining validation/release work
+
+The pre-test Group Composer product backlog is now closed. The latest pass adds:
+
+- recent durable guild-clear timeline rows in Raid History;
+- direct **View Unlocks** actions from locked recommendations;
+- ordered quest-chain guidance with an explicit **NEXT STEP**;
+- server-authoritative online-friend-aware recommendation weighting.
+
+Gear/catch-up weighting, guild progression, active lockouts, deterministic planner feasibility, human anchors, Playerbot encounter readiness and human gear advisories were already implemented before this pass.
+
+What remains is intentionally split into **runtime validation** and **release engineering**, not more speculative Group Composer feature work.
+
+### Runtime validation
 
 The major Group Composer product features are now implemented. The remaining work is increasingly validation, tuning and release engineering rather than missing core UI.
-
-### Must validate in-game
 
 - full Vanilla -> TBC -> WotLK expansion-gate flow;
 - low-level anti-boost behavior with real Playerbots;
@@ -609,18 +620,11 @@ The major Group Composer product features are now implemented. The remaining wor
 - Activity Diagnostics results for every listed activity;
 - roster-aware recommendations against the real bot population.
 
-### Still worth building
-
-- gear/item-level-aware activity recommendations;
-- richer guided attunement objectives beyond the new exact unlock-path modal, such as map/NPC breadcrumbs and recommended quest order across optional branches;
-- smarter catch-up weighting;
-- richer first-guild-clear/history presentation;
-- optional recommendation weighting by guild progression and available friends;
-- a guarded **create fresh release realm** workflow that leaves the development realm untouched;
-- friend onboarding/registration polish for `join.skrra.dev`;
-- continued Playerbots encounter-strategy validation and fixes.
-
 ### Release engineering
+
+The guarded fresh-release-realm procedure, public friend access and onboarding remain release-engineering work for after this feature-complete code is validated on the permanent development realm. They should not be used to create a production friends realm before the gameplay validation pass is complete.
+
+Continued Playerbots encounter-strategy validation/fixes are part of that gameplay validation loop: promote encounters only after real composed groups prove them.
 
 The current realm stays the dirty development/test realm. Before inviting friends for the real journey, create a separate clean realm starting at Vanilla with fresh character/guild/progression databases and the exact tested server/addon release commit.
 
