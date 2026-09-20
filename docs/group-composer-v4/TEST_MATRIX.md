@@ -15,7 +15,7 @@ Status vocabulary:
 - TODO: Favorites renders with client-safe text.
 - TODO: Utility Coverage Details shows counts + present/missing buff families.
 - TODO: Build Selector long class/spec text stays inside cards.
-- FAIL: Recommended Activities reason/readiness stays inside card. Runtime pass 3 expands and restructures the card; retest required.
+- TODO: Recommended Activities reason/readiness stays inside card after the pass-3 layout fix.
 - TODO: Raid Templates tabs do not overlap.
 - TODO: Diagnostics explains WARN as experimental/partial AI support.
 - TODO: existing bot tank appears as current locked Tank slot.
@@ -23,9 +23,9 @@ Status vocabulary:
 - TODO: existing real human appears as current locked human slot.
 - TODO: Composer fills only remaining role slots.
 - PASS: Random WotLK Heroic handoff enters Blizzard RDF role-check/search.
-- FAIL: Playerbots accept the later RDF dungeon proposal before timeout. Runtime pass 3 adds deterministic bot proposal acceptance; retest required.
-- FAIL: human-anchor class icon aligns naturally in the single-icon row. Runtime pass 3 repositions it; retest required.
-- FAIL: Unlock Requirements cleanly overlays Activity Browser. Runtime pass 3 reparents it above the browser; retest required.
+- TODO: Playerbots accept the later RDF dungeon proposal before timeout after deterministic server-side bot auto-agree.
+- TODO: human-anchor class icon aligns naturally in the single-icon row after pass-3 repositioning.
+- TODO: Unlock Requirements cleanly overlays Activity Browser after pass-3 reparenting.
 - TODO: Activity Browser opens on the character-relevant era.
 - TODO: Progression opens on the character-relevant era.
 - TODO: impossible/inapplicable Heroic/Titan choices are visibly locked and cannot be selected.

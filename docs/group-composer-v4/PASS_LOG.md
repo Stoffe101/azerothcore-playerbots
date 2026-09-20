@@ -4,7 +4,7 @@ Newest entries belong at the top of the dated section.
 
 ## 2026-09-20 — Runtime pass 3: RDF proposals, peer levels and player-aware UI
 
-Status: **IMPLEMENTATION PUSHED; exact-head local CI + runtime retest required**.
+Status: **IMPLEMENTATION DONE + EXACT-HEAD LOCAL CI VERIFIED; runtime retest required**.
 
 Observed:
 - low-level level gating works;
@@ -34,7 +34,13 @@ CI:
 - A final stale version contract still expected addon 0.14.0 after the runtime pass bumped both TOC/Data to 0.15.0; the assertion is updated to the new package version.
 - The final runtime-pass assertions also exposed a pre-existing test-variable shadow: `TYPES` was reassigned from `GroupComposerTypes.h` to the WoW TypeScript declaration file. It is renamed to `WOW_TYPES` so backend type checks inspect the intended source.
 - Exact-head local Compile/Integration on `f5a44696...` then caught a malformed hunk count in the new `0041-playerbot-lfg-proposal-autoaccept.patch` before compilation. The patch is corrected from `+446,17` to `+446,16`; staging/client checks were already green on that SHA.
-- This follow-up uses `[local-ci]`; do not mark the pass green until its exact final SHA completes all relevant workflows.
+- Exact implementation checkpoint: `91f8cff1beeb6d09875c60a1b1aee7fab662c20f`.
+- Group Composer client checks: **SUCCESS**.
+- Stage Group Composer V4 backend: **SUCCESS**.
+- Group Composer V4 compile: **SUCCESS** on `stoffes-pc`.
+- Integration build: **SUCCESS** on `stoffes-pc`.
+- The local Clang 18 -> GCC 15 libstdc++ workaround remained intact.
+- Code/CI is DONE for this pass. Runtime behavior stays TODO until deployed and observed in game.
 
 ## 2026-09-20 — All era + broader feature proposals approved
 

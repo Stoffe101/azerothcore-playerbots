@@ -21,7 +21,7 @@ Group Composer V4 is a **feature-complete candidate under real in-game validatio
 - Exact unlock modal for level/progression/quest/item/achievement/ilvl/human blockers.
 - Ordered prerequisite chains with an explicit NEXT STEP.
 - Three-era server gate, caps, progression ceilings and manual TBC/WotLK release.
-- Anti-boost bot-level rule: ordinary non-grouped bots above player+2 effective-era levels are excluded.
+- Anti-boost bot-level rule: the lowest real human in the planned group defines a +/-3 bot peer band, clamped by the selected activity's minimum level and the live realm cap; managed capacity can be prepared toward that human peer target.
 - Co-op whole-human access preflight.
 - Multi-human raid lockout conflict detection.
 - Persistent real-player raid clear history, stable activity IDs, first guild-clear roster and recent guild-clear timeline.
@@ -65,11 +65,29 @@ Verified green checkpoint after this pass: `3b548b3d29539a1ae0816d10db0e943546d3
 
 ## Latest green development pass
 
-Implementation checkpoint: `86ce6c8dc8bd6faddbe0ae1cbd98c082424e21d4`
+Implementation checkpoint: `91f8cff1beeb6d09875c60a1b1aee7fab662c20f`
 
 Exact-head CI: client checks **SUCCESS**, backend staging **SUCCESS**, Group Composer compile **SUCCESS** on `stoffes-pc`, Integration **SUCCESS** on `stoffes-pc`.
 
-### Low-level validation lane on a WotLK dev realm
+### Runtime pass 3 implementation
+
+Code/CI status: **DONE**. Runtime acceptance status: **TODO**.
+
+Implemented in addon/server version 0.15.0:
+
+- Playerbot Dungeon Finder proposals auto-agree deterministically at proposal construction; real players keep normal Accept/Decline control.
+- Activity Browser and Progression default to the highest released era relevant to the character rather than blindly opening WotLK.
+- Dungeon difficulty rows can be visible-but-locked with reasons; impossible/inapplicable Heroic and Titan Rune choices cannot be selected.
+- Changing to a dungeon incompatible with the previous difficulty resets the configuration to Normal.
+- Difficulty validity follows the **selected activity's era**, so a WotLK realm never turns a Vanilla dungeon such as Ragefire Chasm into a valid Heroic/Titan activity.
+- Recommendation cards have larger structured reason/readiness space.
+- Unlock Requirements is layered as a child of Activity Browser instead of fighting it as a sibling dialog.
+- Human-anchor rows use a proper one-icon class position.
+- Bot level/preparation policy follows the **lowest real human** in the reviewed group with a +/-3 band, dungeon-floor clamp and live-realm-cap clamp.
+- Mixed-level example: level 80 + level 14 in a level-13 dungeon targets level 14 bots and allows roughly level 13-17.
+- Solo high-level characters may run trivial legacy content with high-level peer bots without being treated as boosting a lower human.
+
+### Earlier low-level validation lane on a WotLK dev realm
 
 Problem: the dev realm's normal AdventureStart default can intentionally boost brand-new characters to TBC/WotLK starter profiles, which makes true level-1/low-level Group Composer validation impossible.
 
@@ -112,11 +130,22 @@ Immediate execution remains the already-built P0 runtime validation. Once that i
 
 ## Known current runtime state
 
-Runtime testing on 2026-09-20 confirmed the low-level activity level gate and confirmed that WotLK Random Heroic now reaches Blizzard RDF role-check and QUEUED. The next failure is later: a Playerbot can miss the dungeon proposal/accept window and the whole premade is removed.
+The pass-3 implementation is now exact-head CI green at `91f8cff1beeb6d09875c60a1b1aee7fab662c20f`.
 
-The same pass exposed UI/policy issues: Recommendation text still clips; the single human-anchor class icon is awkwardly positioned; Unlock Requirements can interleave with the Activity Browser; Activity Browser/Progression default to the realm's maximum era instead of the character's relevant era; impossible Heroic/Titan choices need a real locked state; and the old activity-era anti-boost ceiling wrongly limits a high-level player doing trivial legacy content.
+Already observed in game before this fix:
+- low-level activity level gating works;
+- WotLK Random Heroic reaches Blizzard RDF role-check and QUEUED.
 
-Runtime pass 3 addresses those findings. Its new peer rule uses the lowest real human as the bot reference, allows +/-3 levels, never goes below the dungeon floor, and clamps to the live realm cap. Runtime proof is still required after exact-head CI.
+Still requiring in-game retest after deployment:
+- Playerbots accept the later RDF dungeon proposal and the party proceeds instead of timing out;
+- Recommendation text remains inside cards;
+- human-anchor class icon placement is correct;
+- Unlock Requirements cleanly overlays Activity Browser;
+- low-level Activity Browser and Progression open on Vanilla/relevant character era;
+- impossible Heroic/Alpha/Beta/Gamma choices are visibly locked;
+- lowest-real-human +/-3 peer policy behaves correctly for solo and mixed-level human groups.
+
+Do not convert those TODOs to PASS from CI alone.
 
 ## Realm / server direction
 

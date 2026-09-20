@@ -21,13 +21,14 @@ _Accepted-roadmap structure verified at `b1d1d896c9b1b4f249532de0d6b5244e4061579
 
 **Status: IN PROGRESS**
 
-Before opening a new architecture front, deploy the current green branch and finish the P0 tests already listed in `TEST_MATRIX.md`:
+Runtime-pass-3 implementation is exact-head CI green at `91f8cff1beeb6d09875c60a1b1aee7fab662c20f`. Deploy it, then finish the P0 tests already listed in `TEST_MATRIX.md`:
 
 - existing human/bot anchors and missing-role fill;
-- Random WotLK Heroic → Blizzard RDF handoff;
-- selector/recommendation/template layout fixes;
+- Random WotLK Heroic → Blizzard RDF proposal acceptance/completion;
+- Recommendation/unlock-modal/human-icon/template layout;
+- character-relevant Activity Browser/Progression defaults and difficulty locks;
 - low-level one-shot Vanilla starter;
-- low-level anti-boost behavior.
+- lowest-real-human +/-3 anti-boost/peer behavior.
 
 **Why first:** these are already implemented and waiting for real evidence. Starting a large era-policy refactor before validating them would mix old runtime defects with new architecture and make failures harder to attribute.
 
@@ -57,6 +58,7 @@ They are the dependency spine for most other approved era work. First define one
 
 - [ ] **ERA-03 — Strict bot era rules — PARTIAL**
   - Existing foundation: Composer anti-boost and bot-to-master progression sync.
+  - Composer now derives its bot peer band from the lowest real human (+/-3), clamps it to the activity floor and live realm cap, and revalidates that band at planning/preparation/assembly boundaries.
   - Enforce realm cap 60/70/80 globally for eligible world/guild/random/Composer bots.
   - Reject future-era equipped gear, enchants, gems, glyphs, consumables, recipes and automated preparation.
 
@@ -97,6 +99,8 @@ They are the dependency spine for most other approved era work. First define one
 
 - [ ] **ERA-10 — Era-aware Group Composer — PARTIAL**
   - Existing foundation: three-era activity browser and progression gates.
+  - Activity Browser/Progression now default to the highest released era relevant to the character.
+  - Dungeon difficulty choices expose locked/inapplicable states, and backend validity follows the selected activity's era.
   - Current era dominates the UI.
   - Older released content becomes Legacy/Leveling/Attunement.
   - Future content hidden or Journey-preview locked.

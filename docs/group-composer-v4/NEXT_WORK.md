@@ -5,13 +5,14 @@ This file is priority-ordered. Do not re-add items already marked implemented in
 ## P0 — Finish the current validation loop
 
 1. **DONE:** one-shot low-level starter pass is green at `86ce6c8d`.
-2. Deploy with:
+2. **DONE:** runtime-pass-3 implementation/CI is green at `91f8cff1`.
+3. Deploy the green branch with:
    ```bash
    git switch test/group-composer-v4
    git pull
    ./update.sh
    ```
-3. Re-test runtime pass 3:
+4. Re-test runtime pass 3:
    - existing human/bot anchors remain sticky and the single class icon aligns correctly;
    - only missing roles are filled;
    - Random Heroic reaches role check, queue and successful bot proposal acceptance;
@@ -20,12 +21,12 @@ This file is priority-ordered. Do not re-add items already marked implemented in
    - low-level Activity Browser/Progression default to Vanilla;
    - impossible Heroic/Alpha/Beta/Gamma choices are visibly locked;
    - Raid Template tabs remain clean.
-4. Re-test the player-relative peer rule:
+5. Re-test the player-relative peer rule:
    - solo player: bots stay within +/-3 of that player, bounded by dungeon minimum and live realm cap;
    - multiple humans: lowest real human is the reference;
    - level 80 solo in a trivial Vanilla dungeon may use high-level peer bots;
    - level 80 + level 14 friend targets bots around level 14 (13-17 for a level-13 dungeon).
-5. Keep using the one-shot `.ap nextstarter vanilla` lane for low-level validation.
+6. Keep using the one-shot `.ap nextstarter vanilla` lane for low-level validation.
 
 ## P0.5 — First new architecture pass after runtime validation
 

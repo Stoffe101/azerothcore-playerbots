@@ -66,14 +66,16 @@ This checkpoint records all 40 user-approved roadmap items with stable IDs/statu
 
 Latest fully verified green implementation:
 
-- `86ce6c8dc8bd6faddbe0ae1cbd98c082424e21d4`
-- Commit: `feat: add canonical handoff and low-level test starter [local-ci]`
+- `91f8cff1beeb6d09875c60a1b1aee7fab662c20f`
+- Commit: `fix: repair RDF autoaccept patch format [local-ci]`
 - Group Composer client checks: **SUCCESS**
 - Stage Group Composer V4 backend: **SUCCESS**
 - Group Composer V4 compile: **SUCCESS** on `stoffes-pc`
 - Integration build: **SUCCESS** on `stoffes-pc`
 
-This checkpoint includes the canonical handoff system and the one-shot per-account **Vanilla-fresh next-character override** for genuine low-level testing on the WotLK dev realm. Runtime behavior is still tested separately from build success.
+This checkpoint contains **runtime pass 3** and addon version **0.15.0**: deterministic Playerbot RDF proposal acceptance, player-relevant era defaults, locked/inapplicable dungeon difficulties, Recommendation/modal/icon layout fixes, selected-activity-era difficulty validation, and the lowest-real-human +/-3 bot peer policy. The implementation is compile/integration green; the changed behaviors remain runtime-test TODO until observed in game.
+
+The earlier one-shot per-account **Vanilla-fresh next-character override** remains available for genuine low-level testing on the WotLK dev realm.
 
 ## North star
 

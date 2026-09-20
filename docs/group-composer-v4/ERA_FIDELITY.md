@@ -59,7 +59,7 @@ Downgrading a live friends realm is unsupported. Dev/test tooling may simulate e
 - Group Composer already has era-aware activity data, progression blockers and unlock explanations.
 - RaidRosterEra::SyncBotToMaster can synchronize a Composer/roster bot to the real player's Individual Progression era.
 - Era Talents provides Vanilla/TBC class-tree fidelity on the WotLK technical base.
-- Composer anti-boost logic rejects ordinary non-grouped bots above the player's permitted effective range.
+- Composer anti-boost logic uses the **lowest real human** in the reviewed group as its peer reference, with a +/-3 bot band clamped by the selected activity minimum and live realm cap.
 - Titan Rune is a WotLK-only feature family and should remain behind WotLK/phase gates.
 
 ### PARTIAL / must be proven or expanded
@@ -142,7 +142,9 @@ Templates should therefore be keyed by **era + activity + size + difficulty/phas
 - Vanilla/TBC: Composer owns assemble + prepare + travel/teleport. Do not depend on Wrath Random Dungeon Finder as the fantasy of these eras.
 - WotLK: Random Normal/Heroic may hand off to Blizzard RDF when appropriate; specific Composer activities can still use explicit travel/teleport.
 - Existing humans/bots remain sticky in every era.
-- Anti-boost rules remain active in every era.
+- Difficulty validity follows the **selected activity's era**, not merely the realm's maximum era. A released Vanilla dungeon therefore remains Normal-only even on a WotLK realm; Titan Rune applies only to WotLK dungeons.
+- Activity Browser/Progression should open at the highest released era relevant to the character, while older released content remains manually browsable.
+- Anti-boost rules remain active in every era. The lowest real human defines the peer target so a high-level friend cannot boost a lower-level human through Composer; a solo high-level player may still run trivial legacy content with high-level peer bots.
 
 ## Bot population fidelity
 
