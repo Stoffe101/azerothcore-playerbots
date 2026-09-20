@@ -14,7 +14,7 @@ diff --git a/src/server/game/DungeonFinding/LFGQueue.cpp b/src/server/game/Dunge
  
  namespace lfg
  {
-@@ -444,8 +446,17 @@ namespace lfg
+@@ -444,8 +446,16 @@ namespace lfg
              LfgProposalPlayer& data = proposal.players[itRoles->first];
              data.role = itRoles->second;
              data.group = proposalGroups.find(itRoles->first)->second;
