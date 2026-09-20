@@ -48,6 +48,7 @@ RECOMMENDATIONS_PAGE = (ROOT / "client-ui/src/components/RecommendationsPage.ts"
 MEMBER_DETAILS = (ROOT / "client-ui/src/components/MemberDetailsModal.ts").read_text(encoding="utf-8")
 GROUP_ACTIONS = (ROOT / "client-ui/src/components/GroupActionsModal.ts").read_text(encoding="utf-8")
 ACTIVITY_DIAGNOSTICS = (ROOT / "client-ui/src/components/ActivityDiagnosticsPage.ts").read_text(encoding="utf-8")
+RAID_HISTORY_MODAL = (ROOT / "client-ui/src/components/RaidHistoryModal.ts").read_text(encoding="utf-8")
 GENERATED_UI = (ROOT / "client-addons-src/GroupComposer/GroupComposerModernUI.lua").read_text(encoding="utf-8")
 
 
@@ -1027,3 +1028,12 @@ assert "GROUP READY" in GENERATED_UI
 assert "ROSTER NEEDS WORK" in GENERATED_UI
 assert "NEXT UNLOCK" in GENERATED_UI
 assert "guild candidate(s)" in GENERATED_UI
+
+
+# Progression history should preserve who was present for the first recorded guild clear.
+assert "guildFirstRoster" in SERVER and "GROUP_CONCAT(c.name" in SERVER
+assert "GROUP BY instance_id ORDER BY MIN(killed_at) ASC LIMIT 1" in SERVER
+assert "guildFirstRoster = fields[19] or" in CORE
+assert "guildFirstRoster: string" in MODEL
+assert "FIRST RECORDED GUILD-CLEAR ROSTER" in RAID_HISTORY_MODAL
+assert "click for history" in PROGRESSION_PAGE

@@ -4,6 +4,7 @@ import { theme } from "../theme/Theme";
 import * as ButtonUI from "../widgets/Button";
 import type { UIButton } from "../widgets/Button";
 import * as ScrollUI from "../widgets/ScrollList";
+import * as RaidHistoryUI from "./RaidHistoryModal";
 
 interface RaidCard {
     panel: any;
@@ -33,6 +34,7 @@ export function createProgressionPage(parent: WoWFrame): ProgressionPage {
     root.frame.SetPoint("TOPLEFT", parent, "TOPLEFT", 200, -88);
     root.frame.SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -16, 16);
     root.frame.Hide();
+    const raidHistory = RaidHistoryUI.createRaidHistoryModal(parent);
 
     const eyebrow = Native.createText(root.frame, "YOUR JOURNEY", "GameFontNormalSmall", theme.colors.muted);
     eyebrow.SetPoint("TOPLEFT", root.frame, "TOPLEFT", 22, -18);
@@ -128,6 +130,7 @@ export function createProgressionPage(parent: WoWFrame): ProgressionPage {
                 const guild = Native.createText(panel.frame, "", "GameFontNormalSmall", theme.colors.muted);
                 guild.SetPoint("LEFT", player, "RIGHT", 22, 0);
                 scroll.bindWheel(panel.frame);
+                panel.frame.EnableMouse(true);
                 card = { panel, iconBadge, title: cardTitle, status, detail, player, guild };
                 cards[i] = card;
             }
@@ -159,7 +162,7 @@ export function createProgressionPage(parent: WoWFrame): ProgressionPage {
                     " · " + String(raid.lockoutEncounters) + " encounter(s)" +
                     (raid.lockoutExtended ? " · EXTENDED" : "")
                 : "";
-            card.detail.SetText(raid.reason + lockoutText);
+            card.detail.SetText(raid.reason + lockoutText + " · click for history");
             const playerHistory = raid.playerClearCount > 0
                 ? "You: Cleared ×" + String(raid.playerClearCount) +
                     (raid.playerFirstClear !== "" ? " · first " + raid.playerFirstClear : "")
@@ -178,6 +181,8 @@ export function createProgressionPage(parent: WoWFrame): ProgressionPage {
                 raid.guildComplete ? theme.colors.success[0] : theme.colors.muted[0],
                 raid.guildComplete ? theme.colors.success[1] : theme.colors.muted[1],
                 raid.guildComplete ? theme.colors.success[2] : theme.colors.muted[2], 1);
+            const raidCopy = raid as Model.JourneyRaid;
+            card.panel.frame.SetScript("OnMouseDown", () => raidHistory.open(raidCopy));
             card.panel.frame.Show();
         }
 

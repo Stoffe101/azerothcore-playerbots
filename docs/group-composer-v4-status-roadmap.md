@@ -202,6 +202,20 @@ For each real player and instanced dungeon/raid boss, the server stores:
 
 The Progression page uses final-boss entries from the authoritative Adventure Catalog to show personal and guild clear counts plus first-clear dates. Existing bounty rows remain a compatibility fallback for older test-realm clears.
 
+### Raid-history detail view
+
+Raid cards on the Progression page are now clickable.
+
+The history modal shows:
+
+- personal clear count and first recorded clear date;
+- guild clear count and first recorded clear date;
+- the real-player names recorded in the guild's first tracked final-boss instance;
+- active lockout ID / completed encounter count / extended state;
+- the activity's current availability/support explanation.
+
+First-clear rosters come from the independent progression-event ledger. Very old test-realm clears that only exist in the legacy bounty table can still show completed status, but cannot reconstruct who was present.
+
 ### Progression page
 
 Group Composer now has a dedicated **Progression** page.

@@ -60,6 +60,7 @@ export interface JourneyRaid {
     lockoutInstanceId: number;
     lockoutEncounters: number;
     lockoutExtended: boolean;
+    guildFirstRoster: string;
 }
 
 export interface Recommendation {

@@ -498,6 +498,7 @@ function GC:HandleProtocolMessage(message)
             lockoutInstanceId = ParseNumber(fields[16], 0),
             lockoutEncounters = ParseNumber(fields[17], 0),
             lockoutExtended = fields[18] == "1",
+            guildFirstRoster = fields[19] or "",
         }
     elseif kind == "RECOMMEND" then
         GC.journey.recommendations[#GC.journey.recommendations + 1] = {

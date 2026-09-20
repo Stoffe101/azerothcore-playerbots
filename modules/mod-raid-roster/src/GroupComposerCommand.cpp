@@ -843,6 +843,7 @@ struct ActivityClearStats
     uint32 guildCount = 0;
     std::string personalFirst;
     std::string guildFirst;
+    std::string guildFirstRoster;
 };
 
 ActivityClearStats ClearStats(Player* player, AdventureActivity const& activity)
@@ -874,6 +875,28 @@ ActivityClearStats ClearStats(Player* player, AdventureActivity const& activity)
             Field* fields = result->Fetch();
             stats.guildCount = fields[0].Get<uint32>();
             stats.guildFirst = fields[1].Get<std::string>();
+        }
+
+        if (stats.guildCount)
+        {
+            uint32 firstInstanceId = 0;
+            if (QueryResult result = CharacterDatabase.Query(
+                "SELECT instance_id FROM mod_adventure_progression_event "
+                "WHERE guild_id = {} AND map_id = {} AND creature_entry = {} "
+                "GROUP BY instance_id ORDER BY MIN(killed_at) ASC LIMIT 1",
+                guildId, activity.instanceMap, activity.finalBossEntry))
+                firstInstanceId = result->Fetch()[0].Get<uint32>();
+
+            if (firstInstanceId)
+            {
+                if (QueryResult result = CharacterDatabase.Query(
+                    "SELECT COALESCE(GROUP_CONCAT(c.name ORDER BY c.name SEPARATOR ', '), '') "
+                    "FROM mod_adventure_progression_event e "
+                    "INNER JOIN characters c ON c.guid = e.player_guid "
+                    "WHERE e.guild_id = {} AND e.map_id = {} AND e.creature_entry = {} AND e.instance_id = {}",
+                    guildId, activity.instanceMap, activity.finalBossEntry, firstInstanceId))
+                    stats.guildFirstRoster = result->Fetch()[0].Get<std::string>();
+            }
         }
     }
 
@@ -1094,13 +1117,14 @@ void SendJourney(ChatHandler* handler, Player* master)
         bool const personalComplete = PlayerRaidComplete(master, activity);
         bool const guildComplete = clears.guildCount > 0;
 
-        handler->PSendSysMessage("[GC]|JOURNEYRAID|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+        handler->PSendSysMessage("[GC]|JOURNEYRAID|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             activity.composerId, Sanitize(activity.name), AdventureCatalog::EraName(activity.era),
             uint32(RequiredProgressionFor(config)), available ? 1 : 0, personalComplete ? 1 : 0,
             guildComplete ? 1 : 0, Sanitize(AdventureCatalog::SupportLabel(activity.support)),
             Sanitize(available ? activity.supportNote : reason),
             clears.personalCount, Sanitize(clears.personalFirst), clears.guildCount, Sanitize(clears.guildFirst),
-            lockout.bound ? 1 : 0, lockout.instanceId, lockout.completedEncounters, lockout.extended ? 1 : 0);
+            lockout.bound ? 1 : 0, lockout.instanceId, lockout.completedEncounters, lockout.extended ? 1 : 0,
+            Sanitize(clears.guildFirstRoster));
 
         if (activity.era == liveEra && activity.support == AdventureSupport::Ready && available && !personalComplete)
         {
