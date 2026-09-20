@@ -353,9 +353,9 @@ The server's public-access support already has useful hardening:
 
 ### Latest implementation checkpoint
 
-The current V4 feature set now includes the remaining original UX items:
+The current V4 feature set now includes the remaining original UX items and the next reliability/history layer:
 
-- exact activity lock explanations;
+- exact activity lock explanations, including quest/item/achievement/progression blockers;
 - Vanilla/TBC/WotLK-aware browsing and difficulty rules;
 - era-aware Random Dungeon Finder handoff, including the stock 3.3.5a Random Classic category;
 - Progression and Recommended Activities pages;
@@ -363,9 +363,16 @@ The current V4 feature set now includes the remaining original UX items:
 - saved dungeon party templates;
 - anti-boost peer-level bot selection;
 - post-assembly Group Actions;
-- clickable server-authored **Why this bot?** rationale.
+- clickable server-authored **Why this bot?** rationale;
+- persistent real-player boss-clear history;
+- personal/guild clear counts and first-clear dates;
+- clickable Raid History details with the first recorded guild-clear roster;
+- raid lockout awareness and **Resume active lockout** recommendations;
+- activity catalog diagnostics;
+- roster-aware recommendations that dry-run the real planner;
+- **GROUP READY / ROSTER NEEDS WORK / NEXT UNLOCK** recommendation states.
 
-This checkpoint also includes persistent clear history, activity catalog diagnostics, raid lockout awareness, and roster-aware recommendations with exact next-unlock guidance. The exact-commit CI rule below still applies before deployment.
+The exact-commit CI rule below still applies before deployment.
 
 ## 4. CI status and definition of green
 
@@ -380,16 +387,11 @@ A build is not considered green until the relevant workflows for the **same exac
 
 The local Integration build has already been proven working on `stoffes-pc`, including the Clang 18 / GCC 15 libstdc++ workaround.
 
-Current verified checkpoint: `28f72c40d557b49116b4ff670b2b8f3fcac53c56` (`test: checkpoint journey diagnostics and history [github-ci]`).
+The last fully verified baseline before the current continuation round is `349fd352c42179802f8d76051ec88085f7e3c073` (`docs: refresh Group Composer completion handoff [github-ci]`). All four required workflows completed successfully for that exact commit.
 
-Because `stoffes-pc` was intentionally offline for this round, this checkpoint used GitHub-hosted CI. All four required workflows for that exact commit completed successfully:
+The continuation work after that baseline adds roster-aware recommendations and first-guild-clear roster history. Because `stoffes-pc` is intentionally offline, these commits use `[github-ci]`. Treat the newest branch head as deployable only after all four exact-head workflows complete successfully.
 
-- Group Composer client checks ✅
-- Stage Group Composer V4 backend ✅
-- Integration build ✅
-- Group Composer V4 compile ✅
-
-This is therefore a fully green source/build checkpoint. It still requires real in-game validation before being treated as release-quality gameplay.
+Even a fully green source/build checkpoint still requires real in-game validation before being treated as release-quality gameplay.
 
 ---
 
@@ -509,7 +511,40 @@ The target remains a useful answer to: **"What should we do tonight?"**
 
 ---
 
-## 6. Making the server reachable through skrra.dev
+## 6. Remaining work after the current continuation round
+
+The major Group Composer product features are now implemented. The remaining work is increasingly validation, tuning and release engineering rather than missing core UI.
+
+### Must validate in-game
+
+- full Vanilla -> TBC -> WotLK expansion-gate flow;
+- low-level anti-boost behavior with real Playerbots;
+- multi-human groups with 2-5 real players;
+- exact quest/key/achievement lock explanations against real characters;
+- persistent clear count increments and first-guild-clear rosters;
+- raid lockout/resume behavior;
+- Group Actions after real instance travel;
+- Activity Diagnostics results for every listed activity;
+- roster-aware recommendations against the real bot population.
+
+### Still worth building
+
+- gear/item-level-aware activity recommendations;
+- guided attunement/quest objectives, not only lock text;
+- smarter catch-up weighting;
+- richer first-guild-clear/history presentation;
+- optional recommendation weighting by guild progression and available friends;
+- a guarded **create fresh release realm** workflow that leaves the development realm untouched;
+- friend onboarding/registration polish for `join.skrra.dev`;
+- continued Playerbots encounter-strategy validation and fixes.
+
+### Release engineering
+
+The current realm stays the dirty development/test realm. Before inviting friends for the real journey, create a separate clean realm starting at Vanilla with fresh character/guild/progression databases and the exact tested server/addon release commit.
+
+---
+
+## 7. Making the server reachable through skrra.dev
 
 The clean layout is:
 
@@ -621,7 +656,7 @@ For the cleanest "friends type one domain and connect" experience, a real public
 
 ---
 
-## 7. Realm lifecycle: test realm vs fresh release realm
+## 8. Realm lifecycle: test realm vs fresh release realm
 
 The current realm is intentionally the **development/testing realm**. It is allowed to accumulate test characters, debug progression, temporary boosts, experimental guild state and repeated expansion-gate changes.
 
@@ -656,7 +691,7 @@ Real human players are not subject to this bot-only restriction.
 
 ---
 
-## 8. Friend-ready launch checklist
+## 9. Friend-ready launch checklist
 
 Before inviting friends:
 
@@ -678,7 +713,7 @@ Before inviting friends:
 
 ---
 
-## 9. Product direction after friends can join
+## 10. Product direction after friends can join
 
 Once external multiplayer works reliably, the project can shift from "make the systems function" to "make the world feel alive."
 

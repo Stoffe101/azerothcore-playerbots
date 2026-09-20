@@ -1037,3 +1037,9 @@ assert "guildFirstRoster = fields[19] or" in CORE
 assert "guildFirstRoster: string" in MODEL
 assert "FIRST RECORDED GUILD-CLEAR ROSTER" in RAID_HISTORY_MODAL
 assert "click for history" in PROGRESSION_PAGE
+
+
+# Generated bundle must include the latest progression-history drilldown.
+assert "Raid History" in GENERATED_UI
+assert "FIRST RECORDED GUILD-CLEAR ROSTER" in GENERATED_UI
+assert "click for history" in GENERATED_UI
