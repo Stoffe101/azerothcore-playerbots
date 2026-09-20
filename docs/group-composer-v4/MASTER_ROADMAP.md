@@ -68,6 +68,7 @@ They are the dependency spine for most other approved era work. First define one
   - Adventure Catalog and AdminPanelExpansion now alias/delegate to EraPolicy; their duplicate enum/state/cap tables are removed.
   - Slice 2 migrates starter/catch-up availability, player progression shortcuts, direct Composer Titan Rune access and bot progression sync.
   - Slice 3 adds a Map.dbc-backed map policy and migrates Admin/Composer teleport boundaries to it.
+  - Slice 4a synchronizes Playerbots runtime max-level/brackets to the live era and fences Composer/RaidRoster automated prep.
   - Finish when Group Composer, bots, AH, vendors, professions, travel, starter/catch-up, Titan Rune and PvP consume one authoritative policy rather than inventing independent era logic.
 
 - [ ] **ERA-02 — Era Integrity scanner — TODO**
@@ -79,7 +80,8 @@ They are the dependency spine for most other approved era work. First define one
   - Existing foundation: Composer anti-boost and bot-to-master progression sync.
   - Bot progression sync is now bounded by the central live EraPolicy so dirty/future progression cannot be copied into earlier-era bots.
   - Composer now derives its bot peer band from the lowest real human (+/-3), clamps it to the activity floor and live realm cap, and revalidates that band at planning/preparation/assembly boundaries.
-  - Enforce realm cap 60/70/80 globally for eligible world/guild/random/Composer bots.
+  - Runtime Playerbots max-level/brackets now follow the central 60/70/80 era cap; Composer candidates and automated RaidRoster gear prep reject over-cap bots.
+  - Still TODO: non-destructive pre-login quarantine/eligibility for stored world/guild/random bots above the live cap.
   - Reject future-era equipped gear, enchants, gems, glyphs, consumables, recipes and automated preparation.
 
 - [ ] **ERA-04 — Bots progress with the world — TODO**

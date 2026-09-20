@@ -2,6 +2,9 @@
 
 #include "DBCStores.h"
 #include "IndividualProgression.h"
+#include "Log.h"
+#include "PlayerbotAIConfig.h"
+#include "RandomBotLevelMgr.h"
 
 #include <algorithm>
 #include <cctype>
@@ -40,7 +43,24 @@ void ApplyRealmEra(Era era)
 {
     // mod-individual-progression uses 0 as "no ceiling", which is the WotLK state on this realm.
     sIndividualProgression->progressionLimit = era == Era::Wotlk ? 0 : ProgressionCeiling(era);
-    sIndividualProgression->BotAccountsMaxLevel = LevelCap(era);
+    SyncRuntimeBotCaps();
+}
+
+void SyncRuntimeBotCaps()
+{
+    uint8 const cap = RealmLevelCap();
+    sIndividualProgression->BotAccountsMaxLevel = cap;
+
+    // Playerbots has its own runtime ceiling and a level-bracket manager that snapshots it.
+    // Drive both from the live era rather than leaving an 80 cap active on Vanilla/TBC.
+    sPlayerbotAIConfig.randomBotMaxLevel = cap;
+    RandomBotLevelMgr::instance().LoadConfig();
+
+    LOG_INFO(
+        "server.loading",
+        "[EraPolicy] Runtime bot caps synchronized: era={} cap={} (IP + Playerbots).",
+        Name(CurrentRealmEra()),
+        uint32(cap));
 }
 
 Era EraForLevel(uint8 level)

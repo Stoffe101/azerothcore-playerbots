@@ -55,6 +55,7 @@ ADVENTURE_CATCHUP = (ROOT / "modules/mod-raid-roster/src/AdventureCatchupCommand
 ADVENTURE_CONTROL = (ROOT / "modules/mod-raid-roster/src/AdventureControlCommand.cpp").read_text(encoding="utf-8")
 GROUP_COMPOSER_TITAN = (ROOT / "modules/mod-raid-roster/src/GroupComposerTitanRune.cpp").read_text(encoding="utf-8")
 RAID_ROSTER_ERA = (ROOT / "modules/mod-raid-roster/src/RaidRosterEra.cpp").read_text(encoding="utf-8")
+RAID_ROSTER_LOADER = (ROOT / "modules/mod-raid-roster/src/RaidRosterLoader.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY = (ROOT / "modules/mod-raid-roster/src/AdventureProgressionHistory.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY_SQL = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_00_mod_adventure_progression_history.sql").read_text(encoding="utf-8")
 PROGRESSION_ACTIVITY_ID_MIGRATION = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_01_mod_adventure_progression_activity_id.sql").read_text(encoding="utf-8")
@@ -1313,3 +1314,15 @@ assert 'EraPolicy::IsMapAllowed(target->GetMapId())' in ADMIN_PANEL
 assert 'EraPolicy::IsMapAllowed(mapId)' in ADMIN_PANEL
 assert 'EraPolicy::IsMapAllowed(mapId)' in SERVER
 assert 'Era Policy blocked the selected instance map' in SERVER
+
+
+# ERA-01 slice 4a: central runtime bot cap synchronization and prep fences.
+assert 'void SyncRuntimeBotCaps();' in ERA_POLICY_H
+assert 'sPlayerbotAIConfig.randomBotMaxLevel = cap;' in ERA_POLICY_CPP
+assert 'RandomBotLevelMgr::instance().LoadConfig();' in ERA_POLICY_CPP
+assert 'sIndividualProgression->BotAccountsMaxLevel = cap;' in ERA_POLICY_CPP
+assert 'EraPolicy::SyncRuntimeBotCaps();' in RAID_ROSTER_LOADER
+assert '_pendingEraCapSync' in RAID_ROSTER_LOADER
+assert '!EraPolicy::IsLevelAllowed(bot->GetLevel())' in PLANNER
+assert '!EraPolicy::IsLevelAllowed(storedLevel)' in PLANNER
+assert 'Refusing automated gear' in GEAR_CPP

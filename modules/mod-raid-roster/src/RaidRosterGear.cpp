@@ -1,5 +1,6 @@
 #include "PlayerbotFactory.h"
 #include "RaidRosterGear.h"
+#include "EraPolicy.h"
 #include "DBCStores.h"
 #include "ItemTemplate.h"
 #include "Log.h"
@@ -413,6 +414,18 @@ bool EquipForSpec(Player* bot, Player* master, int specTab, uint16 minimumItemLe
     {
         LOG_WARN("playerbots", "[RaidRoster] Not gearing {}: {} (level {}).", bot->GetName(),
                  !bot->IsInWorld() ? "not in world" : "below level 5", bot->GetLevel());
+        return false;
+    }
+
+    if (!EraPolicy::IsLevelAllowed(bot->GetLevel()))
+    {
+        LOG_WARN(
+            "playerbots",
+            "[RaidRoster] Refusing automated gear for {} at level {} while live era {} caps bots at {}.",
+            bot->GetName(),
+            uint32(bot->GetLevel()),
+            EraPolicy::Name(EraPolicy::CurrentRealmEra()),
+            uint32(EraPolicy::RealmLevelCap()));
         return false;
     }
 

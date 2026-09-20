@@ -1,6 +1,7 @@
 #include "GroupComposerPlanner.h"
 #include "GroupComposerReserve.h"
 
+#include "EraPolicy.h"
 #include "RaidRosterComp.h"
 #include "RaidRosterStore.h"
 
@@ -369,6 +370,12 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         if (CrossFactionBlocked(master, bot)) return;
 
         bool sameGuild = guildId && bot->GetGuildId() == guildId;
+
+        // Sticky existing-group bots stay visible so Build() can report the exact problem instead
+        // of silently pruning a member. Every ordinary candidate must obey the global live-era cap.
+        if (!alreadyGrouped && !EraPolicy::IsLevelAllowed(bot->GetLevel()))
+            return;
+
         bool addClassCapacity = sRandomPlayerbotMgr.IsAddclassBot(bot);
         bool randomCapacity =
             sPlayerbotAIConfig.IsInRandomAccountList(sCharacterCache->GetCharacterAccountIdByGuid(bot->GetGUID()));
@@ -477,7 +484,7 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
                 if (!sCharacterCache->GetCharacterNameByGuid(guid, name)) continue;
 
                 uint8 storedLevel = sCharacterCache->GetCharacterLevelByGuid(guid);
-                if (storedLevel > config.maxBotLevel) continue;
+                if (!EraPolicy::IsLevelAllowed(storedLevel) || storedLevel > config.maxBotLevel) continue;
 
                 Candidate c;
                 c.guid = guid;
@@ -537,7 +544,7 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
                     c.name = fields[1].Get<std::string>();
                     c.cls = fields[2].Get<uint8>();
                     uint8 storedLevel = fields[3].Get<uint8>();
-                    if (storedLevel > config.maxBotLevel) continue;
+                    if (!EraPolicy::IsLevelAllowed(storedLevel) || storedLevel > config.maxBotLevel) continue;
                     c.level = std::max<uint8>(storedLevel, config.botTargetLevel);
                     c.role = ROLE_DPS;
                     c.spec = ANY_SPEC;

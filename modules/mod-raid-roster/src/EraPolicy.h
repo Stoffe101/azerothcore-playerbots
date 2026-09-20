@@ -16,6 +16,7 @@ enum class Era : uint8
 
 Era CurrentRealmEra();
 void ApplyRealmEra(Era era);
+void SyncRuntimeBotCaps();
 
 Era EraForLevel(uint8 level);
 Era EraForProgression(uint8 progression);

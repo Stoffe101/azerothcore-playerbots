@@ -127,6 +127,8 @@ Slice 2 is exact-head local-CI green at `1e3e9d5f`: starter/catch-up availabilit
 
 Slice 3 is **IN PROGRESS**: EraPolicy derives map era from Map.dbc expansion metadata; Admin Panel teleports/goto/summon/saved locations and Group Composer instance travel are being moved onto that map gate. The first static check failure was a too-broad contract assertion and has been corrected without changing the travel implementation.
 
+Slice 4a is now **IN PROGRESS** in parallel with slice-3 CI: EraPolicy synchronizes Playerbots' runtime random-bot maximum and its level-bracket snapshot to 60/70/80, reasserts the cap after config reload, and central level gates protect Composer candidates plus automated RaidRoster gearing.
+
 ERA-01 is **not DONE yet**. AH, global bot population/geography, professions, vendors, travel, classes/races, PvP and other systems still need migration/enforcement.
 
 ## Era-fidelity architecture pass

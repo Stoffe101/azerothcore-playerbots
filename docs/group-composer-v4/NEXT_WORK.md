@@ -45,8 +45,9 @@ ERA-01 is now **IN PROGRESS** while P0 runtime evidence is blocked.
 1. **DONE + green:** central EraPolicy spine + Adventure Catalog/Admin expansion migration at `943d70b7`.
 2. **DONE + green:** starter/catch-up, player progression shortcuts, direct Titan Rune access and bot progression sync at `1e3e9d5f`.
 3. **Current slice:** central Map.dbc-backed map policy plus Admin/Composer travel containment.
-4. Next migrate global bot eligibility/prep and then start the read-only Era Integrity audit.
-5. Build **ERA-02 Era Integrity Scanner** once the core policy surface is stable enough to audit against.
+4. **Current parallel slice:** synchronize Playerbots runtime max-level/brackets to EraPolicy and hard-fence Composer/RaidRoster prep.
+5. Next add non-destructive pre-login quarantine for stored RNDbots above the live era cap, then start the read-only Era Integrity audit.
+6. Build **ERA-02 Era Integrity Scanner** once the core policy surface is stable enough to audit against.
 4. Add **FEATURE-19 Safe Snapshot / Rollback** before destructive release-transition work.
 5. Then follow the dependency order in `MASTER_ROADMAP.md`.
 

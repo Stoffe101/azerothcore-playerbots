@@ -2,6 +2,23 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — ERA-01 slice 4a: Playerbots runtime cap synchronization
+
+Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
+
+Implemented:
+- EraPolicy now synchronizes both Individual Progression `BotAccountsMaxLevel` and Playerbots `randomBotMaxLevel` to the live 60/70/80 era cap;
+- Playerbots `RandomBotLevelMgr` reloads its working level brackets after the central cap changes;
+- RaidRosterWorld reasserts the policy on server startup and one second after config reload, avoiding module-hook ordering drift;
+- ordinary online/offline Group Composer candidates outside the live era cap are rejected through EraPolicy;
+- automated RaidRoster gearing refuses bots above the live era cap before any equipment is stripped or replaced.
+
+Important scope boundary:
+- this does not yet quarantine already-stored over-cap RNDbot identities before login. That is the next slice and will preserve those characters for later expansion release rather than destructively downlevelling them.
+- item provenance is still separate ERA-07 work.
+
+CI: `[local-ci]` queues behind the earlier slice-3 jobs on `stoffes-pc`; exact SHA must complete all required workflows before this slice is green.
+
 ## 2026-09-20 — ERA-01 slice 3: map/travel containment
 
 Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.

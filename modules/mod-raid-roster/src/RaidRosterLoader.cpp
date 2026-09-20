@@ -7,6 +7,7 @@
 #include "AdventureGuideCommand.h"
 #include "AutoDungeonClear.h"
 #include "EncounterLifecycle.h"
+#include "EraPolicy.h"
 #include "GroupComposerCommand.h"
 #include "GroupComposerTitanRune.h"
 #include "GuildGroupDirector.h"
@@ -27,7 +28,44 @@ class RaidRosterWorld : public WorldScript
 {
 public:
     RaidRosterWorld() : WorldScript("RaidRosterWorld") { }
-    void OnAfterConfigLoad(bool /*reload*/) override { RaidRosterLoadConfig(); }
+
+    void OnAfterConfigLoad(bool reload) override
+    {
+        RaidRosterLoadConfig();
+
+        // Playerbots also reloads its config through WorldScript hooks. Reassert the central era
+        // ceiling on the next world update so script registration order cannot leave MaxLevel=80.
+        if (reload)
+        {
+            _pendingEraCapSync = true;
+            _eraCapSyncDelayMs = 1000;
+        }
+    }
+
+    void OnStartup() override
+    {
+        EraPolicy::SyncRuntimeBotCaps();
+    }
+
+    void OnUpdate(uint32 diff) override
+    {
+        if (!_pendingEraCapSync)
+            return;
+
+        if (diff < _eraCapSyncDelayMs)
+        {
+            _eraCapSyncDelayMs -= diff;
+            return;
+        }
+
+        _pendingEraCapSync = false;
+        _eraCapSyncDelayMs = 0;
+        EraPolicy::SyncRuntimeBotCaps();
+    }
+
+private:
+    bool _pendingEraCapSync = false;
+    uint32 _eraCapSyncDelayMs = 0;
 };
 
 void Addmod_raid_rosterScripts()
