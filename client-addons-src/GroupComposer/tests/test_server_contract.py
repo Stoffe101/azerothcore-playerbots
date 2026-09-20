@@ -1003,3 +1003,9 @@ assert "GetCompletedEncounterMask" in SERVER
 assert "Resume your active raid lockout" in SERVER
 assert "lockoutActive" in CORE and "lockoutEncounters" in CORE
 assert "ACTIVE LOCKOUT #" in PROGRESSION_PAGE
+
+
+# Shipping checkpoint: generated Lua must include the current journey/diagnostics surfaces.
+assert "Activity Diagnostics" in GENERATED_UI
+assert "ACTIVE LOCKOUT #" in GENERATED_UI
+assert "Cleared ×" in GENERATED_UI

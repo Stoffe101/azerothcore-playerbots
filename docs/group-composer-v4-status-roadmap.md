@@ -335,7 +335,7 @@ The current V4 feature set now includes the remaining original UX items:
 - post-assembly Group Actions;
 - clickable server-authored **Why this bot?** rationale.
 
-The current development checkpoint still follows the exact-commit CI rule below before deployment.
+This checkpoint also includes persistent clear history, activity catalog diagnostics, and raid lockout awareness. The exact-commit CI rule below still applies before deployment.
 
 ## 4. CI status and definition of green
 
