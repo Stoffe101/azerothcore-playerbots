@@ -1,6 +1,7 @@
 #include "EraAuditCommand.h"
 
 #include "AdventureCatalog.h"
+#include "Config.h"
 #include "DatabaseEnv.h"
 #include "EraPolicy.h"
 #include "Field.h"
@@ -267,6 +268,39 @@ bool EraAuditCommand::HandleAudit(ChatHandler* handler)
         "futureActivities=" + std::to_string(futureActivities) +
             ", mapLeaks=" + std::to_string(futureMapLeaks) +
             (activityExamples.empty() ? "" : ", examples=" + JoinExamples(activityExamples)));
+
+    std::string const ahGuids = sConfigMgr->GetOption<std::string>("AuctionHouseBot.GUIDs", "");
+    if (ahGuids.empty())
+    {
+        report(AuditState::Warn, "AUCTION_PROFILE", "AH seller is disabled/unconfigured");
+    }
+    else
+    {
+        std::string const profile = sConfigMgr->GetOption<std::string>("AuctionHouseBot.EraProfile", "unset");
+        uint32 const configuredCap =
+            sConfigMgr->GetOption<uint32>("AuctionHouseBot.EquipItemUseOrEquipLevelRestrict.MaxLevel", 999);
+        bool const restrictEnabled =
+            sConfigMgr->GetOption<bool>("AuctionHouseBot.EquipItemUseOrEquipLevelRestrict.Enabled", false);
+        uint32 const gemWeight =
+            sConfigMgr->GetOption<uint32>("AuctionHouseBot.ListProportion.CategoryGem.QualityUncommon", 0);
+        uint32 const glyphWeight =
+            sConfigMgr->GetOption<uint32>("AuctionHouseBot.ListProportion.CategoryGlyph.QualityNormal", 0);
+
+        std::string const expectedProfile = EraPolicy::Key(era);
+        bool const gemExpected = EraPolicy::IsEraReleased(EraPolicy::Era::Tbc);
+        bool const glyphExpected = EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk);
+        bool const profileOk = profile == expectedProfile;
+        bool const capOk = restrictEnabled && configuredCap == cap;
+        bool const categoryOk = (gemWeight > 0) == gemExpected && (glyphWeight > 0) == glyphExpected;
+
+        report(
+            profileOk && capOk && categoryOk ? AuditState::Pass : AuditState::Fail,
+            "AUCTION_PROFILE",
+            "profile=" + profile + " expected=" + expectedProfile +
+                ", equipUseCap=" + std::to_string(configuredCap) + " expected=" + std::to_string(cap) +
+                ", gems=" + (gemWeight ? "on" : "off") + " expected=" + (gemExpected ? "on" : "off") +
+                ", glyphs=" + (glyphWeight ? "on" : "off") + " expected=" + (glyphExpected ? "on" : "off"));
+    }
 
     AuditState const summary = failures ? AuditState::Fail : (warnings ? AuditState::Warn : AuditState::Pass);
     handler->PSendSysMessage(

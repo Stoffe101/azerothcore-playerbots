@@ -2,6 +2,25 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — ERA-06 slice 1: era-aware AH market profiles
+
+Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
+
+Implemented:
+- `configure-ahbot.sh <character> [vanilla|tbc|wotlk]`;
+- seller equip/use-level ceilings 60/70/80;
+- Vanilla Gems OFF + Glyphs OFF;
+- TBC Gems ON + Glyphs OFF;
+- WotLK Gems ON + Glyphs ON;
+- script-owned Wrath potion/flask/Fish Feast boost IDs are removed before every profile and only re-added for WotLK;
+- fresh installs default to Vanilla while unmarked existing installs keep backward-compatible WotLK behavior;
+- `.era audit` checks AH profile/cap/Gem/Glyph drift against the central live era;
+- AH script syntax is included in static CI.
+
+Boundary:
+- required/equip level cannot prove expansion provenance, so ERA-07 remains mandatory.
+- profile changes are non-destructive and do not purge already-listed auctions.
+
 ## 2026-09-21 — Playerbots era-quarantine patch format repair
 
 Status: **FIX PUSHED; exact-head local CI required**.

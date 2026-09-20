@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Configure mod-ah-bot-plus around a dedicated normal character and bias the market toward
-# useful WotLK consumables/crafting goods. Usage: bash configure-ahbot.sh Auctioneer
+# Configure mod-ah-bot-plus around a dedicated normal character with an era-specific market.
+# Usage: bash configure-ahbot.sh Auctioneer [vanilla|tbc|wotlk]
+# Existing installs without AHBOT_ERA_PROFILE default to wotlk for backward compatibility.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,7 +12,7 @@ AH_CONF="$AC_DIR/env/dist/etc/modules/mod_ahbot.conf"
 
 name="${1:-}"
 if [[ ! "$name" =~ ^[A-Za-z][A-Za-z]{1,11}$ ]]; then
-  echo "Usage: bash configure-ahbot.sh <character-name>" >&2
+  echo "Usage: bash configure-ahbot.sh <character-name> [vanilla|tbc|wotlk]" >&2
   echo "Use a normal throwaway character (not an rndbot), e.g. Auctioneer." >&2
   exit 2
 fi
@@ -21,6 +22,18 @@ set -a
 # shellcheck disable=SC1090
 source "$ENV_LIVE"
 set +a
+
+profile="${2:-${AHBOT_ERA_PROFILE:-wotlk}}"
+profile="$(printf '%s' "$profile" | tr '[:upper:]' '[:lower:]')"
+case "$profile" in
+  vanilla) era_cap=60 ;;
+  tbc)     era_cap=70 ;;
+  wotlk)   era_cap=80 ;;
+  *)
+    echo "Unknown AH era profile '$profile'. Use vanilla, tbc, or wotlk." >&2
+    exit 2
+    ;;
+esac
 
 if [[ -x "$ROOT/sync-module-configs.sh" ]]; then
   "$ROOT/sync-module-configs.sh" >/dev/null
@@ -83,12 +96,20 @@ persist_env() {
 }
 
 persist_env AHBOT_GUIDS "$guid"
+persist_env AHBOT_ERA_PROFILE "$profile"
 
 set_conf "AuctionHouseBot.GUIDs" "$guid" "$AH_CONF"
+set_conf "AuctionHouseBot.EraProfile" "$profile" "$AH_CONF"
+set_conf "AuctionHouseBot.EraLevelCap" "$era_cap" "$AH_CONF"
 set_conf "AuctionHouseBot.EnableSeller" "true" "$AH_CONF"
 set_conf "AuctionHouseBot.Buyer.Enabled" "true" "$AH_CONF"
 set_conf "AuctionHouseBot.Buyer.AcceptablePriceModifier" "1" "$AH_CONF"
 set_conf "AuctionHouseBot.ItemsPerCycle" "500" "$AH_CONF"
+
+# Coarse era containment for new seller listings. ERA-07 still owns true item provenance.
+set_conf "AuctionHouseBot.EquipItemUseOrEquipLevelRestrict.Enabled" "true" "$AH_CONF"
+set_conf "AuctionHouseBot.EquipItemUseOrEquipLevelRestrict.MinLevel" "0" "$AH_CONF"
+set_conf "AuctionHouseBot.EquipItemUseOrEquipLevelRestrict.MaxLevel" "$era_cap" "$AH_CONF"
 
 # Keep all three markets deep. 25k is enough variety for a solo/friends realm without turning
 # every search into the same handful of armor auctions.
@@ -101,30 +122,58 @@ done
 set_conf "AuctionHouseBot.ListProportion.CategoryConsumable.QualityNormal" "160" "$AH_CONF"
 set_conf "AuctionHouseBot.ListProportion.CategoryConsumable.QualityUncommon" "35" "$AH_CONF"
 set_conf "AuctionHouseBot.ListProportion.CategoryConsumable.QualityRare" "12" "$AH_CONF"
-set_conf "AuctionHouseBot.ListProportion.CategoryGem.QualityUncommon" "100" "$AH_CONF"
-set_conf "AuctionHouseBot.ListProportion.CategoryGem.QualityRare" "70" "$AH_CONF"
-set_conf "AuctionHouseBot.ListProportion.CategoryGem.QualityEpic" "45" "$AH_CONF"
 set_conf "AuctionHouseBot.ListProportion.CategoryTradeGood.QualityNormal" "160" "$AH_CONF"
 set_conf "AuctionHouseBot.ListProportion.CategoryTradeGood.QualityUncommon" "40" "$AH_CONF"
 set_conf "AuctionHouseBot.ListProportion.CategoryTradeGood.QualityRare" "20" "$AH_CONF"
 set_conf "AuctionHouseBot.ListProportion.CategoryReagent.QualityNormal" "30" "$AH_CONF"
-set_conf "AuctionHouseBot.ListProportion.CategoryGlyph.QualityNormal" "80" "$AH_CONF"
+# Reset expansion-only categories completely before applying the selected profile. Zero is a real
+# seller proportion in mod-ah-bot-plus, so this removes the category from new-listing selection.
+for quality in Poor Normal Uncommon Rare Epic Legendary Artifact Heirloom; do
+  set_conf "AuctionHouseBot.ListProportion.CategoryGem.Quality${quality}" "0" "$AH_CONF"
+  set_conf "AuctionHouseBot.ListProportion.CategoryGlyph.Quality${quality}" "0" "$AH_CONF"
+done
 
-# The upstream default already multiplies cloth/ore/herbs/raw gems and healing/mana potions.
-# Append the WotLK raid staples it does NOT emphasize by default: tank/caster/melee flasks,
-# combat potions and Fish Feast. Multipliers affect selection frequency, not item stats/prices.
+case "$profile" in
+  vanilla)
+    ;;
+  tbc)
+    set_conf "AuctionHouseBot.ListProportion.CategoryGem.QualityUncommon" "100" "$AH_CONF"
+    set_conf "AuctionHouseBot.ListProportion.CategoryGem.QualityRare" "70" "$AH_CONF"
+    set_conf "AuctionHouseBot.ListProportion.CategoryGem.QualityEpic" "45" "$AH_CONF"
+    ;;
+  wotlk)
+    set_conf "AuctionHouseBot.ListProportion.CategoryGem.QualityUncommon" "100" "$AH_CONF"
+    set_conf "AuctionHouseBot.ListProportion.CategoryGem.QualityRare" "70" "$AH_CONF"
+    set_conf "AuctionHouseBot.ListProportion.CategoryGem.QualityEpic" "45" "$AH_CONF"
+    set_conf "AuctionHouseBot.ListProportion.CategoryGlyph.QualityNormal" "80" "$AH_CONF"
+    ;;
+esac
+
+# Remove the WotLK-only boosts owned by this script before conditionally adding them back.
+# This makes profile application idempotent, including backwards simulation on the dirty dev realm.
 mult_key="AuctionHouseBot.ListProportion.ListMultipliedItemIDs"
 current="$(awk -F= -v k="$mult_key" '{lhs=$1; gsub(/^[ \t]+|[ \t]+$/,"",lhs); if(lhs==k){sub(/^[^=]*=/,""); gsub(/^[ \t]+|[ \t]+$/,"",$0); print; exit}}' "$AH_CONF")"
-for pair in \
-  33447:12 33448:12 \
-  40093:20 40211:20 40212:20 \
-  46376:25 46377:25 46378:18 46379:25 \
-  43015:25; do
-  id="${pair%%:*}"
-  if [[ ! ",$current," =~ ,${id}:[0-9]+, ]]; then
+wotlk_ids="33447 33448 40093 40211 40212 46376 46377 46378 46379 43015"
+current="$(awk -v raw="$current" -v banned="$wotlk_ids" '
+  BEGIN {
+    split(banned,b," "); for (i in b) blocked[b[i]]=1
+    n=split(raw,p,","); out=""
+    for (i=1;i<=n;i++) {
+      split(p[i],kv,":")
+      if (p[i] != "" && !blocked[kv[1]]) out = out (out ? "," : "") p[i]
+    }
+    print out
+  }')"
+
+if [[ "$profile" == "wotlk" ]]; then
+  for pair in \
+    33447:12 33448:12 \
+    40093:20 40211:20 40212:20 \
+    46376:25 46377:25 46378:18 46379:25 \
+    43015:25; do
     current="${current:+$current,}$pair"
-  fi
-done
+  done
+fi
 set_conf "$mult_key" "$current" "$AH_CONF"
 
 # Config is read at startup. Restart only worldserver; no rebuild/database import is needed.
@@ -137,6 +186,15 @@ echo "AH BOT READY"
 echo "  Seller/buyer: enabled"
 echo "  Stock target: 25,000 per auction house"
 echo "  Refill: 500 listings/cycle"
-echo "  Priority: WotLK gems, flasks, combat/health/mana potions, Fish Feast, glyphs and trade goods"
+echo "  Era profile: $profile (equip/use ceiling $era_cap)"
+case "$profile" in
+  vanilla) echo "  Expansion categories: gems OFF, glyphs OFF" ;;
+  tbc)     echo "  Expansion categories: gems ON, glyphs OFF" ;;
+  wotlk)   echo "  Expansion categories: gems ON, glyphs ON; Wrath raid staples boosted" ;;
+esac
+echo
+echo "IMPORTANT: this only constrains NEW seller listings by category/use level."
+echo "ERA-07 item provenance is still required for future-era items with low/no use level."
+echo "Changing profiles does not delete existing auctions."
 echo
 echo "After you log back in as your PLAYING character, run '.ahbot update' a few times to seed immediately."

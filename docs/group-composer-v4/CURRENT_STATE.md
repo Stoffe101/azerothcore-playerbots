@@ -213,3 +213,16 @@ Status: **PARTIAL / IN PROGRESS**.
 - A friends realm refuses legacy/unidentified backups by default.
 - Enriched restore reapplies the saved persistent config tree after setup regeneration and restarts auth/world services.
 - This is the safety primitive for future expansion transitions. It does not yet provide the Admin Panel/Command Center release button or automatically checkout an old Git SHA.
+
+## ERA-06 Auction House profiles
+
+Status: **PARTIAL / IN PROGRESS**.
+
+- `configure-ahbot.sh` now has explicit `vanilla`, `tbc`, and `wotlk` seller profiles.
+- New listings use an equip/use-level ceiling of 60/70/80.
+- Vanilla zeros every Gem and Glyph listing proportion; TBC enables Gems but keeps Glyphs off; WotLK enables both.
+- WotLK-specific custom boost IDs are scrubbed before every profile and re-added only by the WotLK profile.
+- Fresh installs default `AHBOT_ERA_PROFILE=vanilla`; unmarked existing installs remain WotLK-compatible until explicitly changed.
+- `.era audit` checks enabled AH profile name, seller level ceiling and Gem/Glyph gates against live EraPolicy.
+- This is containment, not ERA-07 item provenance. Later-era items with low/no use level still need an earliest-valid-era manifest.
+- Profile changes do not delete existing auctions; friends-realm progression is forward-only.

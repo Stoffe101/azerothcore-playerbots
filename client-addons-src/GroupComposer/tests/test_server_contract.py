@@ -15,6 +15,7 @@ REALM_SNAPSHOT = (ROOT / "realm-snapshot.sh").read_text(encoding="utf-8")
 BACKUP_SCRIPT = (ROOT / "backup.sh").read_text(encoding="utf-8")
 RESTORE_SCRIPT = (ROOT / "restore.sh").read_text(encoding="utf-8")
 ENV_EXAMPLE = (ROOT / ".env.example").read_text(encoding="utf-8")
+AHBOT_SCRIPT = (ROOT / "configure-ahbot.sh").read_text(encoding="utf-8")
 DATA = (ROOT / "client-addons-src/GroupComposer/Data.lua").read_text(encoding="utf-8")
 RUNTIME = (ROOT / "client-addons-src/GroupComposer/RuntimeGuards.lua").read_text(encoding="utf-8")
 TOC = (ROOT / "client-addons-src/GroupComposer/GroupComposer.toc").read_text(encoding="utf-8")
@@ -1404,3 +1405,19 @@ assert "--allow-code-mismatch" in RESTORE_SCRIPT
 assert "refusing legacy/unidentified backup on a friends realm" in RESTORE_SCRIPT
 for script in ("backup.sh", "restore.sh", "realm-snapshot.sh"):
     subprocess.run(["bash", "-n", str(ROOT / script)], check=True)
+
+
+# ERA-06 slice 1: explicit Vanilla/TBC/WotLK AH profiles and audit visibility.
+assert "AHBOT_ERA_PROFILE=vanilla" in ENV_EXAMPLE
+assert 'profile="${2:-${AHBOT_ERA_PROFILE:-wotlk}}"' in AHBOT_SCRIPT
+assert "AuctionHouseBot.EraProfile" in AHBOT_SCRIPT
+assert "AuctionHouseBot.EquipItemUseOrEquipLevelRestrict.Enabled" in AHBOT_SCRIPT
+assert "AuctionHouseBot.EquipItemUseOrEquipLevelRestrict.MaxLevel" in AHBOT_SCRIPT
+assert 'CategoryGem.Quality${quality}" "0"' in AHBOT_SCRIPT
+assert 'CategoryGlyph.Quality${quality}" "0"' in AHBOT_SCRIPT
+assert '[[ "$profile" == "wotlk" ]]' in AHBOT_SCRIPT
+assert 'wotlk_ids="33447 33448 40093 40211 40212 46376 46377 46378 46379 43015"' in AHBOT_SCRIPT
+assert '"AUCTION_PROFILE"' in ERA_AUDIT
+assert "AuctionHouseBot.EraProfile" in ERA_AUDIT
+assert "expectedProfile = EraPolicy::Key(era)" in ERA_AUDIT
+subprocess.run(["bash", "-n", str(ROOT / "configure-ahbot.sh")], check=True)

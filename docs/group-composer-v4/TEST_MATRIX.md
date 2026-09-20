@@ -76,6 +76,16 @@ Status vocabulary:
 - TODO: Azeroth Control goto/saved-location travel refuses a future-era map.
 - TODO: Group Composer cannot teleport a reviewed roster into a future-era instance map.
 
+## Auction House era profiles
+
+- STATIC/CI: `configure-ahbot.sh` parses with `bash -n`.
+- TODO: Vanilla profile persists marker `vanilla`, cap 60, Gems OFF, Glyphs OFF.
+- TODO: TBC profile uses cap 70, Gems ON, Glyphs OFF.
+- TODO: WotLK profile uses cap 80, Gems ON, Glyphs ON and Wrath boost IDs.
+- TODO: applying Vanilla/TBC after WotLK removes script-owned Wrath boost IDs.
+- TODO: `.era audit` FAILs when enabled AH profile disagrees with live era and PASSes when aligned.
+- TODO: existing auction stock is audited separately before friends-realm launch/transition.
+
 ## Snapshot / rollback safety
 
 - STATIC/CI: backup, restore and realm-snapshot shell syntax passes `bash -n`.

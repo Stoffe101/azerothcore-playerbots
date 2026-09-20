@@ -96,10 +96,10 @@ They are the dependency spine for most other approved era work. First define one
   - WotLK adds Northrend.
   - Avoid unreleased-continent bot activity and obvious player-follow teleport spam.
 
-- [ ] **ERA-06 — Era-aware Auction House profiles — TODO**
-  - Named Vanilla/TBC/WotLK market profiles.
-  - TBC adds legal stock to Vanilla; WotLK adds to both.
-  - Current WotLK-biased `configure-ahbot.sh` must not be the friends-realm Vanilla profile.
+- [ ] **ERA-06 — Era-aware Auction House profiles — PARTIAL**
+  - Named Vanilla/TBC/WotLK market profiles are implemented in `configure-ahbot.sh` with a persisted profile marker and audit drift check.
+  - Category containment is implemented: Vanilla no Gems/Glyphs; TBC Gems/no Glyphs; WotLK both; seller equip/use ceiling is 60/70/80.
+  - The old unconditional Wrath consumable boosts are now WotLK-profile-only; fresh configuration defaults to Vanilla. Full legal-stock provenance remains ERA-07.
 
 - [ ] **ERA-07 — Item expansion-provenance filtering — TODO**
   - Generate a reproducible earliest-valid-era manifest for auctionable/automated-gear items.
