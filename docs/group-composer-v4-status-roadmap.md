@@ -351,7 +351,7 @@ The current V4 feature set now includes the remaining original UX items:
 - post-assembly Group Actions;
 - clickable server-authored **Why this bot?** rationale.
 
-This checkpoint also includes persistent clear history, activity catalog diagnostics, and raid lockout awareness. The exact-commit CI rule below still applies before deployment.
+This checkpoint also includes persistent clear history, activity catalog diagnostics, raid lockout awareness, and roster-aware recommendations with exact next-unlock guidance. The exact-commit CI rule below still applies before deployment.
 
 ## 4. CI status and definition of green
 
@@ -471,15 +471,25 @@ Do not promote an encounter to Guild Ready just because the instance technically
 
 ### F. Smarter recommendations after runtime validation
 
-Raid lockout awareness is now implemented. The next recommendation upgrades worth adding are:
+Recommendation capacity-awareness is now implemented.
 
-- gear/item-level opportunities;
-- unfinished attunement/quest chains;
-- catch-up raids;
+The page now dry-runs the real deterministic Group Composer planner for each available recommendation and shows:
+
+- **GROUP READY** when the current human/bot pool can form a standard composition;
+- **ROSTER NEEDS WORK** with the real planner failure when it cannot;
+- selected bot count;
+- selected guild-bot count;
+- eligible guild-candidate count;
+- lower-priority **NEXT UNLOCK** cards using the exact activity blocker when something is not yet available.
+
+The remaining recommendation upgrades worth adding after runtime validation are:
+
+- gear/item-level upgrade opportunities;
+- more deliberate catch-up weighting;
+- unfinished attunement/quest chains as guided objectives rather than only blocker text;
 - likely dungeon upgrades;
-- available guild-bot count;
-- whether a valid composition can actually be built;
-- stronger guild progression context.
+- stronger guild progression context;
+- optional first-guild-clear/history context in recommendations.
 
 The target remains a useful answer to: **"What should we do tonight?"**
 

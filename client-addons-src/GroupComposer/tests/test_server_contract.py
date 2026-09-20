@@ -1020,3 +1020,10 @@ assert '"[GC]|RECOMMEND|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}"' in SERVER
 assert "guildCandidates = ParseNumber(fields[11], 0)" in CORE
 assert "GROUP READY" in RECOMMENDATIONS_PAGE and "ROSTER NEEDS WORK" in RECOMMENDATIONS_PAGE
 assert "NEXT UNLOCK" in RECOMMENDATIONS_PAGE
+
+
+# Generated UI must include capacity-aware recommendations before this checkpoint can ship.
+assert "GROUP READY" in GENERATED_UI
+assert "ROSTER NEEDS WORK" in GENERATED_UI
+assert "NEXT UNLOCK" in GENERATED_UI
+assert "guild candidate(s)" in GENERATED_UI
