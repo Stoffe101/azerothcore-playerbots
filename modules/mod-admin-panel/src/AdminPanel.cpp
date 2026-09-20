@@ -359,6 +359,7 @@ public:
             { "reset",           HandleResetRates,      SEC_GAMEMASTER, Console::No },
             { "preset",          HandlePreset,          SEC_GAMEMASTER, Console::No },
             { "starter",         HandleStarter,         SEC_GAMEMASTER, Console::No },
+            { "nextstarter",     HandleNextStarter,     SEC_GAMEMASTER, Console::No },
             { "tbcraidready",    HandleTbcRaidReady,    SEC_GAMEMASTER, Console::No },
             { "wotlkraidready",  HandleWotlkRaidReady,  SEC_GAMEMASTER, Console::No },
             { "progression",     HandleProgression,     SEC_GAMEMASTER, Console::No },
@@ -594,6 +595,50 @@ private:
         handler->PSendSysMessage(
             "{} New-character start set to {} and saved. Existing characters are unchanged.",
             PREFIX, AdventureStartControl::ProfileName(profile));
+        return true;
+    }
+
+    static bool HandleNextStarter(ChatHandler* handler, std::string_view rawMode)
+    {
+        if (!EnsureEnabled(handler))
+            return true;
+        if (!handler->GetSession())
+            return true;
+
+        uint32 const accountId = handler->GetSession()->GetAccountId();
+        std::string const mode = Lower(std::string(rawMode));
+
+        if (mode.empty() || mode == "status")
+        {
+            AdventureStartProfile profile;
+            if (AdventureStartControl::PeekNextProfileOverride(accountId, profile))
+                handler->PSendSysMessage(
+                    "{} One-shot next-character starter is ARMED for this account: {}. It is consumed by the next eligible non-DK character's first login and does not change the realm default.",
+                    PREFIX, AdventureStartControl::ProfileName(profile));
+            else
+                handler->PSendSysMessage("{} No one-shot next-character starter is armed for this account.", PREFIX);
+            return true;
+        }
+
+        if (mode == "clear" || mode == "off" || mode == "cancel")
+        {
+            bool const removed = AdventureStartControl::ClearNextProfileOverride(accountId);
+            handler->PSendSysMessage(
+                "{} One-shot next-character starter {}.",
+                PREFIX, removed ? "cleared" : "was not armed");
+            return true;
+        }
+
+        if (mode != "vanilla" && mode != "classic" && mode != "level1" && mode != "1")
+        {
+            handler->PSendSysMessage("{} nextstarter accepts: vanilla, status, or clear.", PREFIX);
+            return true;
+        }
+
+        AdventureStartControl::SetNextProfileOverride(accountId, AdventureStartProfile::VanillaFresh);
+        handler->PSendSysMessage(
+            "{} NEXT CHARACTER TEST OVERRIDE ARMED. The next newly-created non-DK character first logged in on this account will use the Vanilla-fresh profile and remain a clean level-1 character. The override then clears automatically. Realm era and normal starter defaults are unchanged.",
+            PREFIX);
         return true;
     }
 

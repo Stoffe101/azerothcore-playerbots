@@ -1,3 +1,5 @@
+> **Canonical live handoff moved:** read [`docs/group-composer-v4/README.md`](group-composer-v4/README.md) first. This file is retained for historical/detail context and may contain superseded checkpoint/backlog prose. When it conflicts with the canonical folder, the canonical folder wins.
+
 # Group Composer V4 — Current Checkpoint
 
 _Last updated: 2026-09-20_

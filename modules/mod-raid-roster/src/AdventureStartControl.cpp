@@ -9,9 +9,14 @@
 #include "Player.h"
 
 #include <array>
+#include <mutex>
+#include <unordered_map>
 
 namespace
 {
+std::mutex g_nextProfileMutex;
+std::unordered_map<uint32, AdventureStartProfile> g_nextProfileByAccount;
+
 struct ProfileData
 {
     uint32 level;
@@ -123,6 +128,47 @@ void SetDefaultProfile(AdventureStartProfile profile)
 {
     g_AdventureStartDefaultProfile = static_cast<uint8>(profile);
     LOG_INFO("server.loading", "[AdventureStart] Runtime default profile set to {}", ProfileName(profile));
+}
+
+void SetNextProfileOverride(uint32 accountId, AdventureStartProfile profile)
+{
+    if (!accountId)
+        return;
+    std::lock_guard<std::mutex> lock(g_nextProfileMutex);
+    g_nextProfileByAccount[accountId] = profile;
+}
+
+bool ClearNextProfileOverride(uint32 accountId)
+{
+    if (!accountId)
+        return false;
+    std::lock_guard<std::mutex> lock(g_nextProfileMutex);
+    return g_nextProfileByAccount.erase(accountId) != 0;
+}
+
+bool PeekNextProfileOverride(uint32 accountId, AdventureStartProfile& profile)
+{
+    if (!accountId)
+        return false;
+    std::lock_guard<std::mutex> lock(g_nextProfileMutex);
+    auto const itr = g_nextProfileByAccount.find(accountId);
+    if (itr == g_nextProfileByAccount.end())
+        return false;
+    profile = itr->second;
+    return true;
+}
+
+bool ConsumeNextProfileOverride(uint32 accountId, AdventureStartProfile& profile)
+{
+    if (!accountId)
+        return false;
+    std::lock_guard<std::mutex> lock(g_nextProfileMutex);
+    auto const itr = g_nextProfileByAccount.find(accountId);
+    if (itr == g_nextProfileByAccount.end())
+        return false;
+    profile = itr->second;
+    g_nextProfileByAccount.erase(itr);
+    return true;
 }
 
 char const* ProfileName(AdventureStartProfile profile)

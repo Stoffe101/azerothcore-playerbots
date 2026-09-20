@@ -41,6 +41,14 @@ AdventureStartProfile GetDefaultProfile();
 void SetDefaultProfile(AdventureStartProfile profile);
 char const* ProfileName(AdventureStartProfile profile);
 
+// Development/test-realm helper: arm a one-shot starter profile for the next eligible newly-created
+// character on one account. This is deliberately in-memory and account-scoped so it cannot silently
+// change the realm-wide starter policy or survive a server restart.
+void SetNextProfileOverride(uint32 accountId, AdventureStartProfile profile);
+bool ClearNextProfileOverride(uint32 accountId);
+bool PeekNextProfileOverride(uint32 accountId, AdventureStartProfile& profile);
+bool ConsumeNextProfileOverride(uint32 accountId, AdventureStartProfile& profile);
+
 // True when the character currently matches the level/progression marker of a starter profile.
 bool MatchesProfile(Player* player, AdventureStartProfile profile);
 

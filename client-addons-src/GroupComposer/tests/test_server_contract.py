@@ -41,6 +41,7 @@ QUIET_BOT_PATCH = (ROOT / "patches/0040-playerbot-quiet-routine-whispers.patch")
 ADVENTURE_START = (ROOT / "modules/mod-raid-roster/src/AdventureStart.cpp").read_text(encoding="utf-8")
 ADVENTURE_START_CONTROL = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.cpp").read_text(encoding="utf-8")
 ADVENTURE_START_CONTROL_H = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.h").read_text(encoding="utf-8")
+ADMIN_PANEL = (ROOT / "modules/mod-admin-panel/src/AdminPanel.cpp").read_text(encoding="utf-8")
 ADVENTURE_CATALOG = (ROOT / "modules/mod-raid-roster/src/AdventureCatalog.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY = (ROOT / "modules/mod-raid-roster/src/AdventureProgressionHistory.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY_SQL = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_00_mod_adventure_progression_history.sql").read_text(encoding="utf-8")
@@ -1187,3 +1188,15 @@ assert 'rows.length * 164' in RECOMMENDATIONS_PAGE
 assert 'tabs[i].frame.ClearAllPoints();' in TEMPLATE_BROWSER
 assert 'PASS = structurally valid.' in ACTIVITY_DIAGNOSTICS
 assert 'Needs Review' in ACTIVITY_DIAGNOSTICS
+
+
+# Dev-realm low-level validation lane. This must stay one-shot and account-scoped so the live
+# WotLK starter default cannot accidentally be changed just to test Vanilla anti-boost behavior.
+assert "SetNextProfileOverride(uint32 accountId" in ADVENTURE_START_CONTROL_H
+assert "ConsumeNextProfileOverride(uint32 accountId" in ADVENTURE_START_CONTROL_H
+assert "g_nextProfileByAccount" in ADVENTURE_START_CONTROL
+assert "ConsumeNextProfileOverride(accountId, oneShot)" in ADVENTURE_START
+assert '"nextstarter"' in ADMIN_PANEL and "HandleNextStarter" in ADMIN_PANEL
+assert "AdventureStartProfile::VanillaFresh" in ADMIN_PANEL
+assert "next eligible non-DK character" in ADMIN_PANEL
+assert "Realm era and normal starter defaults are unchanged." in ADMIN_PANEL

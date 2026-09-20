@@ -83,7 +83,21 @@ public:
             return;
         }
 
-        AdventureStartProfile const profile = AdventureStartControl::GetDefaultProfile();
+        AdventureStartProfile profile = AdventureStartControl::GetDefaultProfile();
+        if (player->GetSession())
+        {
+            AdventureStartProfile oneShot;
+            uint32 const accountId = player->GetSession()->GetAccountId();
+            if (AdventureStartControl::ConsumeNextProfileOverride(accountId, oneShot))
+            {
+                profile = oneShot;
+                LOG_INFO(
+                    "server.loading",
+                    "[AdventureStart] Consumed one-shot starter override for account {} on new character {}: profile={}",
+                    accountId, player->GetName(), AdventureStartControl::ProfileName(profile));
+            }
+        }
+
         if (AdventureStartControl::ApplyProfile(player, profile, false))
             TrackStarterGear(player);
     }
