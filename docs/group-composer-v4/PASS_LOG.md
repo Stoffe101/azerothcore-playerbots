@@ -4,7 +4,15 @@ Newest entries belong at the top of the dated section.
 
 ## 2026-09-20 — All era + broader feature proposals approved
 
-Status: **ROADMAP ACCEPTED; documentation commit entering exact-head local CI**.
+Status: **ROADMAP ACCEPTED + EXACT-HEAD LOCAL CI VERIFIED**.
+
+Verified checkpoint: `b1d1d896c9b1b4f249532de0d6b5244e40615798`.
+
+Exact-head workflows:
+- Group Composer client checks: SUCCESS
+- Stage Group Composer V4 backend: SUCCESS
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`
+- Integration build: SUCCESS on `stoffes-pc`
 
 User decision:
 - Approved all 20 era-relevance improvements.
@@ -21,7 +29,9 @@ Work:
 - Added FEATURE-19 snapshot/rollback early in the dependency chain before expansion-transition work.
 
 CI:
-- This pass is intentionally committed with `[local-ci]` and is not considered green until all exact-SHA workflows complete successfully.
+- Exact-SHA local CI completed successfully.
+- Both heavy workflows ran on `stoffes-pc`.
+- Local Ubuntu 26.04 Clang 18 → GCC 15 libstdc++ workaround remained active.
 
 
 ## 2026-09-20 — Era-relevance + feature idea-bank pass

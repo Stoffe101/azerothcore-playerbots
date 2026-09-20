@@ -2,6 +2,8 @@
 
 _Status: canonical execution board. All items below are explicitly approved for the project. This file tracks delivery; `FEATURE_IDEAS.md` and `ERA_FIDELITY.md` hold the longer design rationale._
 
+_Accepted-roadmap structure verified at `b1d1d896c9b1b4f249532de0d6b5244e40615798`: client/backend checks SUCCESS, Group Composer compile SUCCESS on `stoffes-pc`, Integration SUCCESS on `stoffes-pc`._
+
 ## Status rules
 
 - **DONE** = implemented and backed by the relevant exact-SHA CI plus runtime/acceptance evidence when runtime behavior is involved.

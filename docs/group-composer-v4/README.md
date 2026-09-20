@@ -51,16 +51,16 @@ The user has explicitly approved all 20 era-relevance items and all 20 broader f
 
 ## Latest verified planning/documentation checkpoint
 
-Era-fidelity + feature idea-bank checkpoint:
+Accepted master-roadmap checkpoint:
 
-- `402ce7c3c1acfbf8a85ef5b6f3d0d1f8282b13f8`
-- Commit: `docs: expand era fidelity and server feature backlog [local-ci]`
+- `b1d1d896c9b1b4f249532de0d6b5244e40615798`
+- Commit: `docs: promote accepted era and feature master roadmap [local-ci]`
 - Group Composer client checks: **SUCCESS**
 - Stage Group Composer V4 backend: **SUCCESS**
 - Group Composer V4 compile: **SUCCESS** on `stoffes-pc`
 - Integration build: **SUCCESS** on `stoffes-pc`
 
-This checkpoint changes documentation/planning only; it does not claim the TODO/PARTIAL era-fidelity systems are implemented.
+This checkpoint records all 40 user-approved roadmap items with stable IDs/statuses. It changes documentation/planning only; it does not claim TODO/PARTIAL systems are implemented.
 
 ## Current verified implementation checkpoint
 

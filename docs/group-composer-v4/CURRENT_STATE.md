@@ -102,7 +102,7 @@ The friends-realm rule is additive and forward-only: TBC keeps legitimate Vanill
 
 ## Planning / idea-bank state
 
-Verified planning checkpoint: `402ce7c3c1acfbf8a85ef5b6f3d0d1f8282b13f8`.
+Verified accepted-roadmap checkpoint: `b1d1d896c9b1b4f249532de0d6b5244e40615798`.
 
 Exact-head CI for that checkpoint: client checks **SUCCESS**, backend staging **SUCCESS**, Group Composer compile **SUCCESS** on `stoffes-pc`, Integration **SUCCESS** on `stoffes-pc`.
 
