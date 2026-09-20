@@ -42,6 +42,24 @@ void ApplyRealmEra(Era era)
     sIndividualProgression->BotAccountsMaxLevel = LevelCap(era);
 }
 
+Era EraForLevel(uint8 level)
+{
+    if (level > 70)
+        return Era::Wotlk;
+    if (level > 60)
+        return Era::Tbc;
+    return Era::Vanilla;
+}
+
+Era EraForProgression(uint8 progression)
+{
+    if (progression >= PROGRESSION_TBC_TIER_5)
+        return Era::Wotlk;
+    if (progression >= PROGRESSION_PRE_TBC)
+        return Era::Tbc;
+    return Era::Vanilla;
+}
+
 uint8 LevelCap(Era era)
 {
     switch (era)
@@ -56,6 +74,11 @@ uint8 LevelCap(Era era)
 uint8 RealmLevelCap()
 {
     return LevelCap(CurrentRealmEra());
+}
+
+bool IsLevelAllowed(uint8 level)
+{
+    return level <= RealmLevelCap();
 }
 
 uint8 ProgressionCeiling(Era era)
@@ -88,6 +111,11 @@ uint8 MinimumProgression(Era era)
 uint8 RealmMinimumProgression()
 {
     return MinimumProgression(CurrentRealmEra());
+}
+
+bool IsProgressionAllowed(uint8 progression)
+{
+    return progression <= RealmProgressionCeiling();
 }
 
 bool IsEraReleased(Era era)

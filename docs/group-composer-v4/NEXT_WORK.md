@@ -42,9 +42,10 @@ Do **not** start all approved features at once.
 
 ERA-01 is now **IN PROGRESS** while P0 runtime evidence is blocked.
 
-1. **Current slice:** central EraPolicy spine + Adventure Catalog/Admin expansion migration.
-2. Migrate the next server-side consumers that currently infer era/caps independently (bot/Titan Rune/travel/start/catch-up boundaries) onto EraPolicy.
-3. Build **ERA-02 Era Integrity Scanner** once the core policy surface is stable enough to audit against.
+1. **DONE + green:** central EraPolicy spine + Adventure Catalog/Admin expansion migration at `943d70b7`.
+2. **Current slice:** starter/catch-up, player progression shortcuts, direct Titan Rune access and bot progression sync.
+3. Next migrate global bot eligibility/prep and explicit travel/map boundaries.
+4. Build **ERA-02 Era Integrity Scanner** once the core policy surface is stable enough to audit against.
 4. Add **FEATURE-19 Safe Snapshot / Rollback** before destructive release-transition work.
 5. Then follow the dependency order in `MASTER_ROADMAP.md`.
 

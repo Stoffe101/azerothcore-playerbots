@@ -65,7 +65,7 @@ Verified green checkpoint after this pass: `3b548b3d29539a1ae0816d10db0e943546d3
 
 ## Latest green development pass
 
-Current branch checkpoint: `8dc94defe9e2a213250017635fc20a219006f237`
+Latest fully verified green checkpoint: `943d70b78db8215b4e6c92d69ba7afbbc1bbd67a`
 
 Exact-head CI: client checks **SUCCESS**, backend staging **SUCCESS**, Group Composer compile **SUCCESS** on `stoffes-pc`, Integration **SUCCESS** on `stoffes-pc`. Both heavy workflows retained the Clang 18 -> GCC 15 libstdc++ workaround.
 
@@ -113,6 +113,8 @@ This is test tooling, not a friends-realm gameplay feature. It is compiled and C
 
 Status: **IN PROGRESS**.
 
+Slice 1 is exact-head local-CI green at `943d70b7`.
+
 First implementation slice:
 - added `EraPolicy.h/.cpp` as the server-authoritative policy API for realm era identity, 60/70/80 caps, progression ceilings/minimums, release comparisons, display/key parsing and applying the active era to Individual Progression;
 - removed the duplicate `AdventureEra` enum by aliasing Adventure Catalog to `EraPolicy::Era`;
@@ -121,7 +123,9 @@ First implementation slice:
 - AdminPanelExpansion is now a compatibility facade over EraPolicy, preserving existing Admin Panel call sites while establishing one source of truth;
 - the active era is derived from Individual Progression's live progression ceiling, so startup cannot disagree merely because module initialization order differs.
 
-ERA-01 is **not DONE yet**. AH, global bot population/geography, professions, vendors, travel, classes/races, PvP, Titan Rune and other systems still need to migrate to/consume the central policy in later slices.
+Slice 2 now migrates starter/catch-up availability, player progression shortcuts, direct Composer Titan Rune access and bot progression synchronization onto EraPolicy.
+
+ERA-01 is **not DONE yet**. AH, global bot population/geography, professions, vendors, travel, classes/races, PvP and other systems still need migration/enforcement.
 
 ## Era-fidelity architecture pass
 

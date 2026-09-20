@@ -1,4 +1,5 @@
 #include "RaidRosterEra.h"
+#include "EraPolicy.h"
 #include "IndividualProgression.h"   // pulls Player.h etc.; see RaidRosterEra.h for why this is isolated
 
 // Set a synced bot's IP era to match the master's, so the bot shares the master's content tier,
@@ -12,15 +13,20 @@ void RaidRosterEra::SyncBotToMaster(Player* master, Player* bot)
         return;
     // Source of truth = master's live era.
     uint8 state = sIndividualProgression->GetPlayerProgressionFromQuests(master);
-    // Fallback by level band when the master reads as unset (0) — a fresh overlay character whose
-    // era has not been hand-set yet (≤60 Vanilla / 61-70 TBC / 71-80 WotLK).
+    // Fallback by level, but never infer an era the realm has not released.
     if (state == 0)
     {
-        uint8 lvl = master->GetLevel();
-        state = (lvl >= 71) ? PROGRESSION_TBC_TIER_5   // 13 = WotLK entry
-              : (lvl >= 61) ? PROGRESSION_PRE_TBC      // 8  = TBC entry
-              :               PROGRESSION_START;        // 0  = Vanilla
+        EraPolicy::Era fallbackEra = EraPolicy::EraForLevel(master->GetLevel());
+        EraPolicy::Era const realmEra = EraPolicy::CurrentRealmEra();
+        if (static_cast<uint8>(fallbackEra) > static_cast<uint8>(realmEra))
+            fallbackEra = realmEra;
+        state = EraPolicy::MinimumProgression(fallbackEra);
     }
+
+    // Dirty/dev characters may already carry future hidden progression quests. Do not copy
+    // that contamination into a bot while the realm is simulating an earlier era.
+    if (state > EraPolicy::RealmProgressionCeiling())
+        state = EraPolicy::RealmProgressionCeiling();
     if (state == 0)
     {
         // ForceUpdateProgressionState early-returns on stage 0 (landmine), so demote a

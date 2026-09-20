@@ -51,6 +51,10 @@ ERA_POLICY_H = (ROOT / "modules/mod-raid-roster/src/EraPolicy.h").read_text(enco
 ERA_POLICY_CPP = (ROOT / "modules/mod-raid-roster/src/EraPolicy.cpp").read_text(encoding="utf-8")
 ADMIN_PANEL_EXPANSION_H = (ROOT / "modules/mod-admin-panel/src/AdminPanelExpansion.h").read_text(encoding="utf-8")
 ADMIN_PANEL_EXPANSION_CPP = (ROOT / "modules/mod-admin-panel/src/AdminPanelExpansion.cpp").read_text(encoding="utf-8")
+ADVENTURE_CATCHUP = (ROOT / "modules/mod-raid-roster/src/AdventureCatchupCommand.cpp").read_text(encoding="utf-8")
+ADVENTURE_CONTROL = (ROOT / "modules/mod-raid-roster/src/AdventureControlCommand.cpp").read_text(encoding="utf-8")
+GROUP_COMPOSER_TITAN = (ROOT / "modules/mod-raid-roster/src/GroupComposerTitanRune.cpp").read_text(encoding="utf-8")
+RAID_ROSTER_ERA = (ROOT / "modules/mod-raid-roster/src/RaidRosterEra.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY = (ROOT / "modules/mod-raid-roster/src/AdventureProgressionHistory.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY_SQL = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_00_mod_adventure_progression_history.sql").read_text(encoding="utf-8")
 PROGRESSION_ACTIVITY_ID_MIGRATION = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_01_mod_adventure_progression_activity_id.sql").read_text(encoding="utf-8")
@@ -1282,3 +1286,17 @@ assert 'EraPolicy::ApplyRealmEra(era);' in ADMIN_PANEL_EXPANSION_CPP
 assert 'return EraPolicy::RealmLevelCap();' in ADMIN_PANEL_EXPANSION_CPP
 assert 'g_currentEra' not in ADMIN_PANEL_EXPANSION_CPP
 assert 'constexpr uint8 VANILLA_PROGRESSION_LIMIT' not in ADMIN_PANEL_EXPANSION_CPP
+
+
+# ERA-01 slice 2 boundary migrations.
+assert 'Era EraForLevel(uint8 level);' in ERA_POLICY_H
+assert 'Era EraForProgression(uint8 progression);' in ERA_POLICY_H
+assert 'bool IsLevelAllowed(uint8 level);' in ERA_POLICY_H
+assert 'bool IsProgressionAllowed(uint8 progression);' in ERA_POLICY_H
+assert 'EraPolicy::IsLevelAllowed(static_cast<uint8>(data.level))' in ADVENTURE_START_CONTROL
+assert 'EraPolicy::IsProgressionAllowed(data.progression)' in ADVENTURE_START_CONTROL
+assert 'EraPolicy::IsProgressionAllowed(profile.stage)' in ADVENTURE_CATCHUP
+assert 'EraPolicy::IsProgressionAllowed(target)' in ADVENTURE_CONTROL
+assert 'EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk)' in GROUP_COMPOSER_TITAN
+assert 'EraPolicy::EraForLevel(master->GetLevel())' in RAID_ROSTER_ERA
+assert 'state > EraPolicy::RealmProgressionCeiling()' in RAID_ROSTER_ERA

@@ -66,15 +66,15 @@ This checkpoint records all 40 user-approved roadmap items with stable IDs/statu
 
 Latest fully verified green branch head:
 
-- `8dc94defe9e2a213250017635fc20a219006f237`
-- Commit: `feat: secure admin panel and add Composer launcher [local-ci]`
+- `943d70b78db8215b4e6c92d69ba7afbbc1bbd67a`
+- Commit: `fix: qualify central era release check [local-ci]`
 - Group Composer client checks: **SUCCESS**
 - Stage Group Composer V4 backend: **SUCCESS**
 - Group Composer V4 compile: **SUCCESS** on `stoffes-pc`
 - Integration build: **SUCCESS** on `stoffes-pc`
 - Both local builds retained the Ubuntu 26.04 Clang 18 -> GCC 15 libstdc++ workaround.
 
-This head contains runtime pass 3, the runtime-pass-3.1 peer-policy observability follow-up and the Admin security / Group Composer launcher pass. Current Group Composer addon version is **0.15.2**.
+This head contains runtime pass 3, peer-policy observability, Admin security / Group Composer launcher work, and ERA-01 slice 1 establishing the central EraPolicy spine. Current Group Composer addon version is **0.15.2**.
 
 The peer policy is generic: the **lowest real human at any level** is the peer target. Status exposes `Lowest-human target Lv X · bots Lv A-B` so arbitrary mixed-level groups can be checked directly. Examples such as 80+14 or 80+23 are illustrative only.
 

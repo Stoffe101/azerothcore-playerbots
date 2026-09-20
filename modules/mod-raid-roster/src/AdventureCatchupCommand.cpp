@@ -2,6 +2,7 @@
 
 #include "AiFactory.h"
 #include "DatabaseEnv.h"
+#include "EraPolicy.h"
 #include "Field.h"
 #include "IndividualProgression.h"
 #include "Player.h"
@@ -183,6 +184,15 @@ bool ApplyProfile(ChatHandler* handler, Player* player, CatchupProfile const& pr
     if (player->IsInCombat())
     {
         handler->SendSysMessage("Leave combat before applying catch-up gear.");
+        return true;
+    }
+
+    if (!EraPolicy::IsProgressionAllowed(profile.stage) || !EraPolicy::IsLevelAllowed(profile.minLevel))
+    {
+        handler->PSendSysMessage(
+            "{} catch-up is locked while the live realm era is {}.",
+            profile.label,
+            EraPolicy::Name(EraPolicy::CurrentRealmEra()));
         return true;
     }
 

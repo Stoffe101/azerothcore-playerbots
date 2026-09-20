@@ -3,6 +3,7 @@
 #include "Chat.h"
 #include "CommandScript.h"
 #include "DBCStores.h"
+#include "EraPolicy.h"
 #include "Group.h"
 #include "LFG.h"
 #include "LFGMgr.h"
@@ -140,6 +141,12 @@ public:
         Player* master = handler && handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
         if (!master)
             return true;
+
+        if (!EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk))
+        {
+            SendError(handler, "Titan Rune protocols are locked until Wrath of the Lich King is released.");
+            return true;
+        }
 
         TitanRuneMode mode = TitanRuneMode::Off;
         if (!ParseMode(modeText, mode))

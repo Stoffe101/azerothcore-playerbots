@@ -2,9 +2,26 @@
 
 Newest entries belong at the top of the dated section.
 
-## 2026-09-20 — ERA-01 slice 1: central policy spine
+## 2026-09-20 — ERA-01 slice 2: progression boundaries
 
 Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
+
+Implemented:
+- EraPolicy adds canonical level/progression band helpers and allow checks;
+- AdventureStart rejects future-era starter profiles before level/gear/progression changes;
+- Adventure Catch-up rejects future-era progression/gear packages;
+- player progression shortcuts cannot jump into an unreleased expansion;
+- direct Group Composer Titan Rune queue is server-gated to WotLK;
+- bot progression sync clamps level-derived fallback and contaminated future progression to the live realm;
+- static contracts cover each migrated boundary.
+
+Still TODO: item provenance, global bot level/gear enforcement, Titan Rune phase timing, AH/vendors/professions/PvP/maps/transports.
+
+CI: commit uses `[local-ci]`; exact final SHA must pass all required workflows.
+
+## 2026-09-20 — ERA-01 slice 1: central policy spine
+
+Status: **IMPLEMENTATION DONE + EXACT-HEAD LOCAL CI VERIFIED**.
 
 Goal:
 - eliminate competing definitions of Vanilla/TBC/WotLK before migrating more world systems.
@@ -26,7 +43,7 @@ Scope note:
 CI:
 - Initial SHA `eb7118d31ced7f5193fd6069c59b3cfe32e13d4c` passed static/client staging but Clang correctly caught one ADL ambiguity: the `AdventureEra` alias associates `EraPolicy`, so an unqualified `IsEraReleased(activity.era)` inside AdventureCatalog matched both the compatibility wrapper and `EraPolicy::IsEraReleased`.
 - The call is now explicitly `EraPolicy::IsEraReleased(activity.era)`; no policy behavior changed.
-- follow-up uses `[local-ci]`; exact-head client/backend/Group Composer compile/Integration must all succeed before this slice is called green.
+- Follow-up `943d70b78db8215b4e6c92d69ba7afbbc1bbd67a` completed client checks, backend staging, Group Composer compile and Integration successfully on the local-CI route. Slice 1 is green.
 
 ## 2026-09-20 — P0.5 Admin security + Group Composer launcher
 

@@ -1,6 +1,7 @@
 #include "AdventureControlCommand.h"
 
 #include "AdventureControlStore.h"
+#include "EraPolicy.h"
 #include "IndividualProgression.h"
 #include "Player.h"
 #include "QuestDef.h"
@@ -110,6 +111,16 @@ bool SetOneRate(ChatHandler* handler, Optional<uint32> percent, char const* labe
 
 bool AdvanceProgression(ChatHandler* handler, Player* player, uint8 target, char const* requestedLabel)
 {
+    if (!EraPolicy::IsProgressionAllowed(target))
+    {
+        handler->PSendSysMessage(
+            "{} belongs to {} and is locked while the live realm era is {}.",
+            requestedLabel,
+            EraPolicy::Name(EraPolicy::EraForProgression(target)),
+            EraPolicy::Name(EraPolicy::CurrentRealmEra()));
+        return true;
+    }
+
     uint8 current = sIndividualProgression->GetPlayerProgressionFromQuests(player);
     if (target <= current)
     {

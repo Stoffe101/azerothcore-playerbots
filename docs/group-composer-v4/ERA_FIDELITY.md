@@ -39,7 +39,7 @@ The technical base remains the WotLK 3.3.5a client/server. Therefore the practic
 
 `AdventureCatalog` and `AdminPanelExpansion` must consume that API rather than carry independent era definitions. New systems should depend on EraPolicy directly or through a narrow compatibility facade, never re-create 60/70/80/progression tables locally.
 
-This is a **foundation**, not completion of ERA-01. The remaining subsystems listed below still need migration/enforcement.
+This is a **foundation**, not completion of ERA-01. Slice 2 also moves starter/catch-up availability, player progression shortcuts, direct Composer Titan Rune access and bot progression sync onto EraPolicy. Item provenance, global bot enforcement and phase-within-era timing remain separate work.
 
 
 Every subsystem should eventually consume one named policy/API instead of independently guessing from level, config or UI state.

@@ -2,6 +2,7 @@
 
 #include "AdventureProgressionStore.h"
 #include "AdventureStartKit.h"
+#include "EraPolicy.h"
 #include "RaidRosterConfig.h"
 
 #include "IndividualProgression.h"
@@ -301,12 +302,19 @@ bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStart
     ProfileData const data = DataFor(profile);
     uint32 const guid = player->GetGUID().GetCounter();
 
-    // Reject unavailable profiles before level, inventory, talents or starter state can change.
-    if (data.progression > 0 && (!sIndividualProgression->enabled ||
-        (sIndividualProgression->progressionLimit && data.progression > sIndividualProgression->progressionLimit)))
+    // Reject future-era profiles before level, inventory, talents or starter state can change.
+    if (!sIndividualProgression->enabled ||
+        !EraPolicy::IsLevelAllowed(static_cast<uint8>(data.level)) ||
+        (data.progression > 0 && !EraPolicy::IsProgressionAllowed(data.progression)))
     {
-        LOG_WARN("server.loading", "[AdventureStart] Profile {} is outside the enabled progression ceiling for {}.",
-            ProfileName(profile), player->GetName());
+        LOG_WARN(
+            "server.loading",
+            "[AdventureStart] Profile {} is outside live era {} (levelCap={}, progressionCeiling={}) for {}.",
+            ProfileName(profile),
+            EraPolicy::Name(EraPolicy::CurrentRealmEra()),
+            uint32(EraPolicy::RealmLevelCap()),
+            uint32(EraPolicy::RealmProgressionCeiling()),
+            player->GetName());
         return false;
     }
 

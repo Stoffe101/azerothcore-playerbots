@@ -52,6 +52,11 @@ Status vocabulary:
 - TODO: `.ap status` era/level cap/progression values agree with the live realm after EraPolicy migration.
 - TODO: manual Vanilla -> TBC -> WotLK release still applies the expected 60/70/80 cap and progression ceiling through EraPolicy.
 - STATIC/CI: Adventure Catalog and AdminPanelExpansion share `EraPolicy::Era` and no longer own duplicate era state/cap tables.
+- TODO: future-era AdventureStart profile is refused.
+- TODO: future-era catch-up package is refused before gear/progression changes.
+- TODO: `.playstyle raid unlock` cannot cross the live era boundary.
+- TODO: direct `.gctitan queue` is rejected before WotLK.
+- TODO: bot progression sync never promotes a bot beyond the live realm era.
 
 ## Admin security / addon launchers
 

@@ -66,6 +66,7 @@ They are the dependency spine for most other approved era work. First define one
 - [ ] **ERA-01 — Central Era Policy system — IN PROGRESS**
   - Canonical `EraPolicy.h/.cpp` now owns the era enum, current-era derivation, 60/70/80 caps, progression ceilings/minimums, release comparison and era application.
   - Adventure Catalog and AdminPanelExpansion now alias/delegate to EraPolicy; their duplicate enum/state/cap tables are removed.
+  - Slice 2 migrates starter/catch-up availability, player progression shortcuts, direct Composer Titan Rune access and bot progression sync.
   - Finish when Group Composer, bots, AH, vendors, professions, travel, starter/catch-up, Titan Rune and PvP consume one authoritative policy rather than inventing independent era logic.
 
 - [ ] **ERA-02 — Era Integrity scanner — TODO**
@@ -75,6 +76,7 @@ They are the dependency spine for most other approved era work. First define one
 
 - [ ] **ERA-03 — Strict bot era rules — PARTIAL**
   - Existing foundation: Composer anti-boost and bot-to-master progression sync.
+  - Bot progression sync is now bounded by the central live EraPolicy so dirty/future progression cannot be copied into earlier-era bots.
   - Composer now derives its bot peer band from the lowest real human (+/-3), clamps it to the activity floor and live realm cap, and revalidates that band at planning/preparation/assembly boundaries.
   - Enforce realm cap 60/70/80 globally for eligible world/guild/random/Composer bots.
   - Reject future-era equipped gear, enchants, gems, glyphs, consumables, recipes and automated preparation.
