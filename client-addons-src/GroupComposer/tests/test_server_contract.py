@@ -925,10 +925,10 @@ assert "tabUnderline" in MODERN
 
 
 # WoW 3.3.5 callback ABI regression guards.
-TYPES = (ROOT / "client-ui/src/types/wow-335a.d.ts").read_text(encoding="utf-8")
+WOW_TYPES = (ROOT / "client-ui/src/types/wow-335a.d.ts").read_text(encoding="utf-8")
 UPDATE_SH = (ROOT / "update.sh").read_text(encoding="utf-8")
 SYNC_CLIENT = (ROOT / "sync-group-composer-client.sh").read_text(encoding="utf-8")
-assert "(this: void, frame: WoWFrame" in TYPES, "SetScript callback type must not inject Lua self"
+assert "(this: void, frame: WoWFrame" in WOW_TYPES, "SetScript callback type must not inject Lua self"
 assert 'frame.SetScript("OnDragStart", () => frame.StartMoving())' in MODERN
 assert 'frame.SetScript("OnDragStop", () => frame.StopMovingOrSizing())' in MODERN
 assert "function wheel(this: void" in CHOICE_SELECT
