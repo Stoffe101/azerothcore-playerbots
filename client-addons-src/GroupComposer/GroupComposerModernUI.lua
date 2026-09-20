@@ -5326,7 +5326,8 @@ function ____exports.createProgressionPage(self, parent)
                     card.status:SetText("LOCKED")
                     card.status:SetTextColor(theme.colors.warning[1], theme.colors.warning[2], theme.colors.warning[3], 1)
                 end
-                card.detail:SetText(raid.reason)
+                local lockoutText = raid.lockoutActive and ((((" · ACTIVE LOCKOUT #" .. tostring(raid.lockoutInstanceId)) .. " · ") .. tostring(raid.lockoutEncounters)) .. " encounter(s)") .. (raid.lockoutExtended and " · EXTENDED" or "") or ""
+                card.detail:SetText(raid.reason .. lockoutText)
                 local playerHistory = raid.playerClearCount > 0 and ("You: Cleared ×" .. tostring(raid.playerClearCount)) .. (raid.playerFirstClear ~= "" and " · first " .. raid.playerFirstClear or "") or (raid.playerComplete and "You: Cleared ✓" or "You: Not cleared")
                 card.player:SetText(playerHistory)
                 card.player:SetTextColor(raid.playerComplete and theme.colors.success[1] or theme.colors.muted[1], raid.playerComplete and theme.colors.success[2] or theme.colors.muted[2], raid.playerComplete and theme.colors.success[3] or theme.colors.muted[3], 1)
