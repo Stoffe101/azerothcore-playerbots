@@ -87,6 +87,23 @@ export interface JourneyState {
     guildId: number;
 }
 
+export interface UnlockRequirement {
+    type: string;
+    status: "PASS" | "MISSING";
+    title: string;
+    detail: string;
+}
+
+export interface UnlockDetailsState {
+    ready: boolean;
+    mode: "DUNGEON" | "RAID";
+    id: string;
+    label: string;
+    available: boolean;
+    summary: string;
+    requirements: UnlockRequirement[];
+}
+
 export interface CatalogDiagnosticEntry {
     id: string;
     label: string;
@@ -530,6 +547,19 @@ export function journey(): JourneyState {
     };
 }
 
+export function unlockDetails(): UnlockDetailsState {
+    const raw = GC.unlockDetails ?? {};
+    return {
+        ready: raw.ready === true,
+        mode: raw.mode === "RAID" ? "RAID" : "DUNGEON",
+        id: String(raw.id ?? ""),
+        label: String(raw.label ?? ""),
+        available: raw.available === true,
+        summary: String(raw.summary ?? ""),
+        requirements: (raw.requirements ?? []) as UnlockRequirement[],
+    };
+}
+
 export function catalogDiagnostics(): CatalogDiagnosticsState {
     const raw = GC.catalogDiagnostics ?? {};
     return {
@@ -697,6 +727,10 @@ export function requestActivities(mode?: "DUNGEON" | "RAID", difficulty?: string
     GC.RequestActivities(selectedMode, difficulty, size);
 }
 
+export function requestUnlockDetails(id: string, mode: "DUNGEON" | "RAID"): void {
+    const cfg = config();
+    GC.RequestUnlockDetails(mode, id, cfg.difficulty, cfg.size);
+}
 export function requestJourney(): void { GC.RequestJourney(); }
 export function requestCatalogDiagnostics(): void { GC.RequestCatalogDiagnostics(); }
 

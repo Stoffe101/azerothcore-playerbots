@@ -29,6 +29,8 @@ public:
     static bool HandleLeaveInstance(ChatHandler* handler);
     static bool HandleDisband(ChatHandler* handler);
     static bool HandleActivities(ChatHandler* handler, std::string mode, std::string difficulty, uint32 size);
+    static bool HandleRequirements(ChatHandler* handler, std::string mode, std::string activity,
+        std::string difficulty, uint32 size);
     static bool HandleJourney(ChatHandler* handler);
     static bool HandleQueue(ChatHandler* handler);
     static bool HandleAnchors(ChatHandler* handler);

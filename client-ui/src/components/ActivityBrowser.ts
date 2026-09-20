@@ -5,6 +5,7 @@ import * as ButtonUI from "../widgets/Button";
 import type { UIButton } from "../widgets/Button";
 import * as ModalUI from "../widgets/Modal";
 import * as ScrollUI from "../widgets/ScrollList";
+import * as UnlockRequirementsUI from "./UnlockRequirementsModal";
 
 interface BrowserEntry {
     id: string;
@@ -35,6 +36,7 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
     const D: any = Model.data();
     const modal = ModalUI.createModal(parent, 960, 650);
     modal.setHeaderIcon("Interface\\Icons\\INV_Misc_Map_01");
+    const unlockModal = UnlockRequirementsUI.createUnlockRequirementsModal(parent);
 
     const filterButtons: UIButton[] = [];
     for (let i = 0; i < 5; i += 1) {
@@ -223,8 +225,12 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
             });
             card.button.frame.SetScript("OnMouseDown", () => {
                 const latest = Model.activityEligibility(id, mode());
-                if (!latest.known || !latest.eligible) {
+                if (!latest.known) {
                     Model.fireStatus(latest.reason);
+                    return;
+                }
+                if (!latest.eligible) {
+                    unlockModal.open(id, item.label, selectedMode);
                     return;
                 }
                 if (mode() === "RAID") Model.setRaidActivity(id); else Model.setDungeonActivity(id);
@@ -247,11 +253,11 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
         filter = currentEra();
         if (mode() === "RAID") {
             modal.setTitle("Choose Raid");
-            modal.setSubtitle("Vanilla, TBC and WotLK live in one era-aware progression browser.");
+            modal.setSubtitle("Vanilla, TBC and WotLK live in one era-aware progression browser. Click a locked raid to see its exact unlock path.");
             modal.setHeaderIcon("Interface\\Icons\\Achievement_Boss_LichKing");
         } else {
             modal.setTitle("Choose Dungeon");
-            modal.setSubtitle("Only the live era's difficulty rules apply: Vanilla Normal, TBC Normal/Heroic, WotLK Titan Rune.");
+            modal.setSubtitle("Only the live era's difficulty rules apply. Click a locked dungeon to see its exact quest/key/progression requirements.");
             modal.setHeaderIcon("Interface\\Icons\\Spell_Arcane_PortalDalaran");
         }
         scroll.scrollToTop(); refresh(); modal.show();

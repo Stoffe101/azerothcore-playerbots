@@ -837,6 +837,162 @@ void SendActivityEligibility(ChatHandler* handler, Player* master, std::string c
         modeToken, uint32(AdventureStartControl::CurrentProgression(master)));
 }
 
+void SendUnlockRequirement(ChatHandler* handler, char const* type, bool complete,
+    std::string const& title, std::string const& detail)
+{
+    if (!handler) return;
+    handler->PSendSysMessage("[GC]|UNLOCKREQ|{}|{}|{}|{}",
+        type, complete ? "PASS" : "MISSING", Sanitize(title), Sanitize(detail));
+}
+
+void SendQuestChainDetails(ChatHandler* handler, Player* player, uint32 finalQuestId)
+{
+    if (!handler || !player || !finalQuestId) return;
+
+    std::vector<uint32> chain;
+    std::unordered_set<uint32> seen;
+    uint32 cursor = finalQuestId;
+    for (uint8 depth = 0; cursor && depth < 24 && seen.insert(cursor).second; ++depth)
+    {
+        chain.push_back(cursor);
+        Quest const* quest = sObjectMgr->GetQuestTemplate(cursor);
+        if (!quest) break;
+        int32 const previous = quest->GetPrevQuestId();
+        cursor = previous < 0 ? uint32(-previous) : uint32(previous);
+    }
+    std::reverse(chain.begin(), chain.end());
+
+    for (uint32 questId : chain)
+    {
+        bool const complete = player->IsQuestRewarded(questId);
+        SendUnlockRequirement(handler, "QUEST", complete, QuestTitle(questId),
+            "Quest " + std::to_string(questId) + (complete ? " completed." : " not completed yet."));
+    }
+}
+
+void SendActivityRequirements(ChatHandler* handler, Player* player, std::string mode,
+    std::string activityId, std::string difficulty, uint32 requestedSize)
+{
+    if (!handler || !player) return;
+
+    mode = Lower(mode) == "raid" ? "raid" : "dungeon";
+    difficulty = Lower(difficulty);
+    if (mode == "raid" && difficulty != "heroic") difficulty = "normal";
+    if (mode == "dungeon" && difficulty != "heroic" && difficulty != "alpha" &&
+        difficulty != "beta" && difficulty != "gamma") difficulty = "normal";
+
+    AdventureActivity const* activity = AdventureCatalog::FindComposer(activityId);
+    if (!activity)
+    {
+        SendError(handler, "Unknown activity for unlock details.");
+        return;
+    }
+
+    Config config;
+    config.mode = mode;
+    config.activity = activityId;
+    config.difficulty = difficulty;
+    config.size = mode == "raid" ? BrowserRaidSize(activityId, requestedSize) : 5;
+
+    std::string eligibilityReason;
+    bool const available = ActivityEligible(player, config, eligibilityReason);
+
+    handler->PSendSysMessage("[GC]|UNLOCKRESET|{}|{}|{}",
+        mode == "raid" ? "RAID" : "DUNGEON", Sanitize(activityId), Sanitize(activity->name));
+    handler->PSendSysMessage("[GC]|UNLOCKSTATE|{}|{}",
+        available ? 1 : 0, Sanitize(available ? "All current access requirements are satisfied." : eligibilityReason));
+
+    bool const eraComplete = AdventureCatalog::IsEraReleased(activity->era);
+    SendUnlockRequirement(handler, "ERA", eraComplete,
+        std::string(AdventureCatalog::EraName(activity->era)) + " expansion",
+        eraComplete ? "This expansion is released on the realm." :
+            std::string(AdventureCatalog::EraName(activity->era)) + " is not released on this realm yet.");
+
+    bool const levelComplete = player->GetLevel() >= activity->minLevel;
+    SendUnlockRequirement(handler, "LEVEL", levelComplete,
+        "Level " + std::to_string(unsigned(activity->minLevel)),
+        "Your level: " + std::to_string(unsigned(player->GetLevel())) +
+        " / required: " + std::to_string(unsigned(activity->minLevel)) + ".");
+
+    uint8 const requiredProgression = RequiredProgressionFor(config);
+    uint8 const currentProgression = AdventureStartControl::CurrentProgression(player);
+    bool const progressionComplete = requiredProgression == AdventureStartControl::ProgressionStart ||
+        AdventureStartControl::HasPassedProgression(player, requiredProgression);
+    SendUnlockRequirement(handler, "PROGRESSION", progressionComplete,
+        "Progression stage " + std::to_string(unsigned(requiredProgression)),
+        ProgressionUnlockHint(requiredProgression) + " Your progression: " +
+        std::to_string(unsigned(currentProgression)) + " / required: " +
+        std::to_string(unsigned(requiredProgression)) + ".");
+
+    AdventureEra const liveEra = AdventureCatalog::CurrentRealmEra();
+    if (mode == "dungeon")
+    {
+        bool const titan = difficulty == "alpha" || difficulty == "beta" || difficulty == "gamma";
+        bool difficultyComplete = true;
+        std::string detail = "Difficulty is valid for the live era.";
+        if (liveEra == AdventureEra::Vanilla && difficulty != "normal")
+        {
+            difficultyComplete = false;
+            detail = "Vanilla dungeons are Normal-only.";
+        }
+        else if (liveEra == AdventureEra::Tbc && titan)
+        {
+            difficultyComplete = false;
+            detail = "Titan Rune Alpha/Beta/Gamma unlock only in WotLK.";
+        }
+        SendUnlockRequirement(handler, "DIFFICULTY", difficultyComplete, difficulty, detail);
+    }
+
+    Difficulty const coreDifficulty = ActivityDifficulty(config);
+    if (DungeonProgressionRequirements const* requirements =
+        sObjectMgr->GetAccessRequirement(activity->instanceMap, coreDifficulty))
+    {
+        for (ProgressionRequirement const* requirement : requirements->quests)
+        {
+            if (!RequirementApplies(player, requirement)) continue;
+            SendQuestChainDetails(handler, player, requirement->id);
+        }
+
+        for (ProgressionRequirement const* requirement : requirements->items)
+        {
+            if (!RequirementApplies(player, requirement)) continue;
+            std::string name = "Item " + std::to_string(requirement->id);
+            if (ItemTemplate const* item = sObjectMgr->GetItemTemplate(requirement->id))
+                name = item->Name1;
+            bool const complete = player->HasItemCount(requirement->id, 1);
+            SendUnlockRequirement(handler, "ITEM", complete, name,
+                complete ? "Required item is in your inventory." :
+                    "Missing required item " + std::to_string(requirement->id) + "." +
+                    (requirement->note.empty() ? "" : " " + requirement->note));
+        }
+
+        for (ProgressionRequirement const* requirement : requirements->achievements)
+        {
+            if (!RequirementApplies(player, requirement)) continue;
+            std::string name = "Achievement " + std::to_string(requirement->id);
+            if (AchievementEntry const* achievement = sAchievementStore.LookupEntry(requirement->id))
+                if (achievement->name[0] && *achievement->name[0]) name = achievement->name[0];
+            bool const complete = player->HasAchieved(requirement->id);
+            SendUnlockRequirement(handler, "ACHIEVEMENT", complete, name,
+                complete ? "Achievement requirement satisfied." :
+                    "Missing achievement " + std::to_string(requirement->id) + "." +
+                    (requirement->note.empty() ? "" : " " + requirement->note));
+        }
+
+        if (requirements->reqItemLevel)
+        {
+            uint32 const current = uint32(player->GetAverageItemLevelForDF());
+            bool const complete = current >= requirements->reqItemLevel;
+            SendUnlockRequirement(handler, "ITEM LEVEL", complete,
+                "Average item level " + std::to_string(unsigned(requirements->reqItemLevel)),
+                "Your average item level: " + std::to_string(current) + " / required: " +
+                    std::to_string(unsigned(requirements->reqItemLevel)) + ".");
+        }
+    }
+
+    handler->SendSysMessage("[GC]|UNLOCKDONE");
+}
+
 struct ActivityClearStats
 {
     uint32 personalCount = 0;
@@ -2511,6 +2667,7 @@ ChatCommandTable GroupComposerCommand::GetCommands() const
         { "leave",       HandleLeaveInstance,     SEC_PLAYER, Console::No },
         { "disband",     HandleDisband,           SEC_PLAYER, Console::No },
         { "activities",  HandleActivities,        SEC_PLAYER, Console::No },
+        { "requirements",HandleRequirements,      SEC_PLAYER, Console::No },
         { "journey",     HandleJourney,           SEC_PLAYER, Console::No },
         { "queue",       HandleQueue,             SEC_PLAYER, Console::No },
         { "anchors",     HandleAnchors,           SEC_PLAYER, Console::No },
@@ -2956,6 +3113,15 @@ bool GroupComposerCommand::HandleActivities(ChatHandler* handler, std::string mo
     Player* master = CommandPlayer(handler);
     if (!master) return true;
     SendActivityEligibility(handler, master, mode, difficulty, size);
+    return true;
+}
+
+bool GroupComposerCommand::HandleRequirements(ChatHandler* handler, std::string mode, std::string activity,
+    std::string difficulty, uint32 size)
+{
+    Player* master = CommandPlayer(handler);
+    if (!master) return true;
+    SendActivityRequirements(handler, master, mode, activity, difficulty, size);
     return true;
 }
 

@@ -21,6 +21,7 @@ GC.activityProgression = 0
 GC.realm = { era = "Vanilla", levelCap = 60, progression = 0 }
 GC.journey = { ready = false, raids = {}, recommendations = {}, era = "Vanilla", stage = 0, level = 1, guildId = 0 }
 GC.catalogDiagnostics = { ready = false, entries = {}, pass = 0, warn = 0, fail = 0 }
+GC.unlockDetails = { ready = false, mode = "DUNGEON", id = "", label = "", available = false, summary = "", requirements = {} }
 
 local function Split(text, delim)
     local out = {}
@@ -292,6 +293,16 @@ function GC:RequestActivities(mode, difficulty, size)
     SendRawServer("activities " .. string.lower(mode) .. " " .. difficulty .. " " .. tostring(math.floor(size)))
 end
 
+function GC:RequestUnlockDetails(mode, activity, difficulty, size)
+    local config = GC:GetConfig()
+    mode = mode == "RAID" and "RAID" or "DUNGEON"
+    difficulty = tostring(difficulty or config.difficulty or "normal")
+    size = tonumber(size) or (mode == "RAID" and tonumber(config.size) or 5) or 5
+    GC.unlockDetails = { ready = false, mode = mode, id = activity or "", label = "", available = false, summary = "", requirements = {} }
+    GC:Fire("UNLOCK_DETAILS_CHANGED", GC.unlockDetails)
+    SendRawServer("requirements " .. string.lower(mode) .. " " .. tostring(activity or "") .. " " .. difficulty .. " " .. tostring(math.floor(size)))
+end
+
 function GC:RequestJourney()
     GC.journey.ready = false
     GC.journey.raids = {}
@@ -466,6 +477,30 @@ function GC:HandleProtocolMessage(message)
         GC.activityProgression = ParseNumber(fields[3], GC.activityProgression or 0)
         GC.realm.progression = GC.activityProgression
         GC:Fire("ACTIVITIES_CHANGED", mode)
+    elseif kind == "UNLOCKRESET" then
+        GC.unlockDetails = {
+            ready = false,
+            mode = fields[2] == "RAID" and "RAID" or "DUNGEON",
+            id = fields[3] or "",
+            label = fields[4] or "",
+            available = false,
+            summary = "",
+            requirements = {},
+        }
+        GC:Fire("UNLOCK_DETAILS_CHANGED", GC.unlockDetails)
+    elseif kind == "UNLOCKSTATE" then
+        GC.unlockDetails.available = fields[2] == "1"
+        GC.unlockDetails.summary = fields[3] or ""
+    elseif kind == "UNLOCKREQ" then
+        GC.unlockDetails.requirements[#GC.unlockDetails.requirements + 1] = {
+            type = fields[2] or "OTHER",
+            status = fields[3] == "PASS" and "PASS" or "MISSING",
+            title = fields[4] or "",
+            detail = fields[5] or "",
+        }
+    elseif kind == "UNLOCKDONE" then
+        GC.unlockDetails.ready = true
+        GC:Fire("UNLOCK_DETAILS_CHANGED", GC.unlockDetails)
     elseif kind == "JOURNEYRESET" then
         GC.journey = {
             ready = false, raids = {}, recommendations = {},

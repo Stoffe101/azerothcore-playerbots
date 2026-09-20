@@ -17,6 +17,7 @@ CORE = (ROOT / "client-addons-src/GroupComposer/Core.lua").read_text(encoding="u
 POLICY = (ROOT / "client-addons-src/GroupComposer/ComposerPolicy.lua").read_text(encoding="utf-8")
 MODERN = (ROOT / "client-ui/src/components/ModernDashboard.ts").read_text(encoding="utf-8")
 ACTIVITY_BROWSER = (ROOT / "client-ui/src/components/ActivityBrowser.ts").read_text(encoding="utf-8")
+UNLOCK_REQUIREMENTS = (ROOT / "client-ui/src/components/UnlockRequirementsModal.ts").read_text(encoding="utf-8")
 TEMPLATE_BROWSER = (ROOT / "client-ui/src/components/TemplateBrowser.ts").read_text(encoding="utf-8")
 MODEL = (ROOT / "client-ui/src/model/ComposerModel.ts").read_text(encoding="utf-8")
 SELECTOR = (ROOT / "client-ui/src/components/BuildSelector.ts").read_text(encoding="utf-8")
@@ -115,7 +116,7 @@ assert "GetLFGDungeon(mapId, difficulty)" in SERVER
 
 for command in (
     "begin", "pref", "humanrole", "human", "pin", "arrangepref", "find", "arrange",
-    "move", "assemble", "teleport", "leave", "disband", "activities", "journey", "queue", "anchors", "diagnostics", "catalogdiag", "clear", "status",
+    "move", "assemble", "teleport", "leave", "disband", "activities", "requirements", "journey", "queue", "anchors", "diagnostics", "catalogdiag", "clear", "status",
 ):
     assert re.search(r'\{\s*"' + re.escape(command) + r'"\s*,', SERVER), (
         f"Missing server command registration: {command}"
@@ -1043,3 +1044,15 @@ assert "click for history" in PROGRESSION_PAGE
 assert "Raid History" in GENERATED_UI
 assert "FIRST RECORDED GUILD-CLEAR ROSTER" in GENERATED_UI
 assert "click for history" in GENERATED_UI
+
+
+# Locked activities expose a structured unlock guide with real server requirements.
+assert "SendActivityRequirements" in SERVER and "HandleRequirements" in SERVER
+assert "SendQuestChainDetails" in SERVER and "QuestTitle(questId)" in SERVER
+assert '"[GC]|UNLOCKREQ|{}|{}|{}|{}"' in SERVER
+assert "requirements->quests" in SERVER and "requirements->items" in SERVER and "requirements->achievements" in SERVER
+assert "UNLOCKDONE" in SERVER and "UNLOCKDONE" in CORE
+assert "UNLOCK_DETAILS_CHANGED" in CORE
+assert "Unlock Requirements" in UNLOCK_REQUIREMENTS
+assert "Exact unlock path" in UNLOCK_REQUIREMENTS
+assert "unlockModal.open" in ACTIVITY_BROWSER

@@ -152,6 +152,23 @@ The browser and server now enforce era-specific rules:
 
 Titan Rune modes cannot leak backward into Vanilla/TBC.
 
+### Exact unlock-path modal
+
+Locked activity cards are now interactive instead of dead ends.
+
+Clicking a locked dungeon or raid opens a server-backed **Unlock Requirements** modal showing:
+
+- expansion release state;
+- character level;
+- progression milestone with current/required stage;
+- every detected quest in the prerequisite chain, individually marked completed or missing;
+- required key/item entries;
+- required achievements;
+- average item-level gates;
+- era-specific difficulty restrictions.
+
+The card keeps the concise blocker, while the modal answers: **"Exactly what do I have to do to unlock this?"**
+
 ### Better locked-activity explanations
 
 Activity eligibility is now server-authoritative and much more informative.
