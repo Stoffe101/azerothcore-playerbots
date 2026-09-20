@@ -845,7 +845,7 @@ assert '"Close   X"' in MODERN
 # Human anchor presentation carries authoritative level for the premium party strip.
 assert 'uint8 level = 1;' in SERVER
 assert 'level = live->GetLevel();' in SERVER and 'level = cache->Level;' in SERVER
-assert '"[GC]|ANCHOR|{}|{}|{}|{}|{}|{}|{}"' in SERVER
+assert '"[GC]|ANCHOR|{}|{}|{}|{}|{}|{}|{}|{}"' in SERVER
 assert 'level = ParseNumber(fields[8], 1)' in CORE
 assert 'level?: number;' in MODEL
 assert '"Level " + String(primary.level ?? "?")' in MODERN
