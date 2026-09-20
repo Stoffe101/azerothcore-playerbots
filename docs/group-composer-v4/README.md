@@ -75,6 +75,14 @@ Latest fully verified green implementation:
 
 This checkpoint contains **runtime pass 3** and addon version **0.15.0**: deterministic Playerbot RDF proposal acceptance, player-relevant era defaults, locked/inapplicable dungeon difficulties, Recommendation/modal/icon layout fixes, selected-activity-era difficulty validation, and the lowest-real-human +/-3 bot peer policy. The implementation is compile/integration green; the changed behaviors remain runtime-test TODO until observed in game.
 
+### Active P0 observability follow-up
+
+Runtime-pass-3.1 source commit: `b9ed63e5b82ad360e648bebd624dc85a3000bd94`.
+
+Typed-UI generated bundle commit: `68adeb52bb1d50e3a4e7ff013f5a538895405837`.
+
+This 0.15.1 follow-up does not change the lowest-human rule; it makes the already-generic calculation visible in status as `Lowest-human target Lv X · bots Lv A-B`. A level-14, level-23, level-31 or any other lowest real human is treated identically by the same formula. Exact-head CI must be checked on the newest `[local-ci]` follow-up before deployment.
+
 The earlier one-shot per-account **Vanilla-fresh next-character override** remains available for genuine low-level testing on the WotLK dev realm.
 
 ## North star

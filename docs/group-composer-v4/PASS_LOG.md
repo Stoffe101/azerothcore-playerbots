@@ -19,7 +19,10 @@ Work:
 
 CI:
 - Parent documentation checkpoint `cf8d988c2515a15fddc28767ed1364cc56e073fe` is exact-head green on client checks, backend staging, Group Composer compile and Integration; both heavy jobs ran on `stoffes-pc` with the Clang 18/GCC 15 workaround intact.
-- This 3.1 follow-up uses `[local-ci]` and is not green until its own exact final head succeeds.
+- Source commit: `b9ed63e5b82ad360e648bebd624dc85a3000bd94`.
+- Group Composer typed UI completed successfully and published generated bundle commit `68adeb52bb1d50e3a4e7ff013f5a538895405837`.
+- GitHub Actions bot pushes do not start the required downstream workflows, so this documentation follow-up intentionally uses `[local-ci]` on top of the generated bundle.
+- Do not mark 3.1 green until the exact final follow-up head completes client checks, backend staging, Group Composer compile and Integration successfully.
 
 ## 2026-09-20 — Runtime pass 3: RDF proposals, peer levels and player-aware UI
 
