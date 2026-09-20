@@ -1200,68 +1200,68 @@ function ____exports.roleLabel(self, role)
     return "DPS"
 end
 function ____exports.activityMeta(self, id, mode)
-    local ____GC_activityMeta_33 = GC.activityMeta
-    if ____GC_activityMeta_33 == nil then
-        ____GC_activityMeta_33 = {}
+    local ____GC_activityMeta_39 = GC.activityMeta
+    if ____GC_activityMeta_39 == nil then
+        ____GC_activityMeta_39 = {}
     end
-    local byMode = ____GC_activityMeta_33
-    local ____byMode_mode_34 = byMode[mode]
-    if ____byMode_mode_34 == nil then
-        ____byMode_mode_34 = {}
+    local byMode = ____GC_activityMeta_39
+    local ____byMode_mode_40 = byMode[mode]
+    if ____byMode_mode_40 == nil then
+        ____byMode_mode_40 = {}
     end
-    local entries = ____byMode_mode_34
+    local entries = ____byMode_mode_40
     local raw = entries[id]
     if raw == nil then
         return nil
     end
-    local ____raw_id_35 = raw.id
-    if ____raw_id_35 == nil then
-        ____raw_id_35 = id
+    local ____raw_id_41 = raw.id
+    if ____raw_id_41 == nil then
+        ____raw_id_41 = id
     end
-    local ____tostring_result_43 = tostring(____raw_id_35)
-    local ____raw_label_36 = raw.label
-    if ____raw_label_36 == nil then
-        ____raw_label_36 = id
+    local ____tostring_result_49 = tostring(____raw_id_41)
+    local ____raw_label_42 = raw.label
+    if ____raw_label_42 == nil then
+        ____raw_label_42 = id
     end
-    local ____tostring_result_44 = tostring(____raw_label_36)
-    local ____raw_era_37 = raw.era
-    if ____raw_era_37 == nil then
-        ____raw_era_37 = "Vanilla"
+    local ____tostring_result_50 = tostring(____raw_label_42)
+    local ____raw_era_43 = raw.era
+    if ____raw_era_43 == nil then
+        ____raw_era_43 = "Vanilla"
     end
-    local ____tostring_result_45 = tostring(____raw_era_37)
-    local ____raw_minLevel_38 = raw.minLevel
-    if ____raw_minLevel_38 == nil then
-        ____raw_minLevel_38 = 1
+    local ____tostring_result_51 = tostring(____raw_era_43)
+    local ____raw_minLevel_44 = raw.minLevel
+    if ____raw_minLevel_44 == nil then
+        ____raw_minLevel_44 = 1
     end
-    local ____TS__Number_result_46 = __TS__Number(____raw_minLevel_38)
-    local ____raw_minProgression_39 = raw.minProgression
-    if ____raw_minProgression_39 == nil then
-        ____raw_minProgression_39 = 0
+    local ____TS__Number_result_52 = __TS__Number(____raw_minLevel_44)
+    local ____raw_minProgression_45 = raw.minProgression
+    if ____raw_minProgression_45 == nil then
+        ____raw_minProgression_45 = 0
     end
-    local ____TS__Number_result_47 = __TS__Number(____raw_minProgression_39)
-    local ____raw_size_40 = raw.size
-    if ____raw_size_40 == nil then
-        ____raw_size_40 = mode == "RAID" and 10 or 5
+    local ____TS__Number_result_53 = __TS__Number(____raw_minProgression_45)
+    local ____raw_size_46 = raw.size
+    if ____raw_size_46 == nil then
+        ____raw_size_46 = mode == "RAID" and 10 or 5
     end
-    local ____TS__Number_result_48 = __TS__Number(____raw_size_40)
-    local ____raw_support_41 = raw.support
-    if ____raw_support_41 == nil then
-        ____raw_support_41 = "Unknown"
+    local ____TS__Number_result_54 = __TS__Number(____raw_size_46)
+    local ____raw_support_47 = raw.support
+    if ____raw_support_47 == nil then
+        ____raw_support_47 = "Unknown"
     end
-    local ____tostring_result_49 = tostring(____raw_support_41)
-    local ____raw_map_42 = raw.map
-    if ____raw_map_42 == nil then
-        ____raw_map_42 = 0
+    local ____tostring_result_55 = tostring(____raw_support_47)
+    local ____raw_map_48 = raw.map
+    if ____raw_map_48 == nil then
+        ____raw_map_48 = 0
     end
     return {
-        id = ____tostring_result_43,
-        label = ____tostring_result_44,
-        era = ____tostring_result_45,
-        minLevel = ____TS__Number_result_46,
-        minProgression = ____TS__Number_result_47,
-        size = ____TS__Number_result_48,
-        support = ____tostring_result_49,
-        map = __TS__Number(____raw_map_42)
+        id = ____tostring_result_49,
+        label = ____tostring_result_50,
+        era = ____tostring_result_51,
+        minLevel = ____TS__Number_result_52,
+        minProgression = ____TS__Number_result_53,
+        size = ____TS__Number_result_54,
+        support = ____tostring_result_55,
+        map = __TS__Number(____raw_map_48)
     }
 end
 ____exports.ANY_SPEC_ID = -1
@@ -1359,16 +1359,30 @@ function ____exports.humans(self)
     end
     return ____temp_2
 end
+function ____exports.groupMembers(self)
+    if GC.ScanGroupMembers ~= nil then
+        local ____temp_3 = GC:ScanGroupMembers()
+        if ____temp_3 == nil then
+            ____temp_3 = {}
+        end
+        return ____temp_3
+    end
+    local ____temp_4 = GC:ScanHumans()
+    if ____temp_4 == nil then
+        ____temp_4 = {}
+    end
+    return ____temp_4
+end
 function ____exports.humanReady(self)
     local list = ____exports.humans(nil)
     if #list == 0 then
         return false
     end
-    local ____exports_config_result_humanRoles_3 = ____exports.config(nil).humanRoles
-    if ____exports_config_result_humanRoles_3 == nil then
-        ____exports_config_result_humanRoles_3 = {}
+    local ____exports_config_result_humanRoles_5 = ____exports.config(nil).humanRoles
+    if ____exports_config_result_humanRoles_5 == nil then
+        ____exports_config_result_humanRoles_5 = {}
     end
-    local roles = ____exports_config_result_humanRoles_3
+    local roles = ____exports_config_result_humanRoles_5
     for ____, human in ipairs(list) do
         if roles[human.name] == nil then
             return false
@@ -1378,11 +1392,11 @@ function ____exports.humanReady(self)
 end
 function ____exports.humanRoleCounts(self)
     local result = {TANK = 0, HEALER = 0, DPS = 0}
-    local ____exports_config_result_humanRoles_4 = ____exports.config(nil).humanRoles
-    if ____exports_config_result_humanRoles_4 == nil then
-        ____exports_config_result_humanRoles_4 = {}
+    local ____exports_config_result_humanRoles_6 = ____exports.config(nil).humanRoles
+    if ____exports_config_result_humanRoles_6 == nil then
+        ____exports_config_result_humanRoles_6 = {}
     end
-    local roles = ____exports_config_result_humanRoles_4
+    local roles = ____exports_config_result_humanRoles_6
     local seen = {}
     for ____, human in ipairs(____exports.humans(nil)) do
         local key = string.lower(tostring(human.name or ""))
@@ -1392,16 +1406,16 @@ function ____exports.humanRoleCounts(self)
             result[role] = result[role] + 1
         end
     end
-    local ____exports_config_result_extraHumans_6 = ____exports.config(nil).extraHumans
-    if ____exports_config_result_extraHumans_6 == nil then
-        ____exports_config_result_extraHumans_6 = {}
+    local ____exports_config_result_extraHumans_8 = ____exports.config(nil).extraHumans
+    if ____exports_config_result_extraHumans_8 == nil then
+        ____exports_config_result_extraHumans_8 = {}
     end
-    for ____, extra in __TS__Iterator(____exports_config_result_extraHumans_6) do
-        local ____extra_name_5 = extra.name
-        if ____extra_name_5 == nil then
-            ____extra_name_5 = ""
+    for ____, extra in __TS__Iterator(____exports_config_result_extraHumans_8) do
+        local ____extra_name_7 = extra.name
+        if ____extra_name_7 == nil then
+            ____extra_name_7 = ""
         end
-        local key = string.lower(tostring(____extra_name_5))
+        local key = string.lower(tostring(____extra_name_7))
         local role = extra.role
         if key ~= "" and role ~= nil and seen[key] ~= true then
             seen[key] = true
@@ -1413,53 +1427,53 @@ end
 function ____exports.targetForRole(self, role)
     local cfg = ____exports.config(nil)
     if role == "TANK" then
-        local ____cfg_tanks_7 = cfg.tanks
-        if ____cfg_tanks_7 == nil then
-            ____cfg_tanks_7 = 0
+        local ____cfg_tanks_9 = cfg.tanks
+        if ____cfg_tanks_9 == nil then
+            ____cfg_tanks_9 = 0
         end
-        return __TS__Number(____cfg_tanks_7)
+        return __TS__Number(____cfg_tanks_9)
     end
     if role == "HEALER" then
-        local ____cfg_healers_8 = cfg.healers
-        if ____cfg_healers_8 == nil then
-            ____cfg_healers_8 = 0
+        local ____cfg_healers_10 = cfg.healers
+        if ____cfg_healers_10 == nil then
+            ____cfg_healers_10 = 0
         end
-        return __TS__Number(____cfg_healers_8)
+        return __TS__Number(____cfg_healers_10)
     end
-    local ____cfg_dps_9 = cfg.dps
-    if ____cfg_dps_9 == nil then
-        ____cfg_dps_9 = 0
+    local ____cfg_dps_11 = cfg.dps
+    if ____cfg_dps_11 == nil then
+        ____cfg_dps_11 = 0
     end
-    return __TS__Number(____cfg_dps_9)
+    return __TS__Number(____cfg_dps_11)
 end
 function ____exports.roleTargetTotal(self)
     local cfg = ____exports.config(nil)
-    local ____cfg_tanks_10 = cfg.tanks
-    if ____cfg_tanks_10 == nil then
-        ____cfg_tanks_10 = 0
+    local ____cfg_tanks_12 = cfg.tanks
+    if ____cfg_tanks_12 == nil then
+        ____cfg_tanks_12 = 0
     end
-    local ____TS__Number_result_12 = __TS__Number(____cfg_tanks_10)
-    local ____cfg_healers_11 = cfg.healers
-    if ____cfg_healers_11 == nil then
-        ____cfg_healers_11 = 0
+    local ____TS__Number_result_14 = __TS__Number(____cfg_tanks_12)
+    local ____cfg_healers_13 = cfg.healers
+    if ____cfg_healers_13 == nil then
+        ____cfg_healers_13 = 0
     end
-    local ____temp_14 = ____TS__Number_result_12 + __TS__Number(____cfg_healers_11)
-    local ____cfg_dps_13 = cfg.dps
-    if ____cfg_dps_13 == nil then
-        ____cfg_dps_13 = 0
+    local ____temp_16 = ____TS__Number_result_14 + __TS__Number(____cfg_healers_13)
+    local ____cfg_dps_15 = cfg.dps
+    if ____cfg_dps_15 == nil then
+        ____cfg_dps_15 = 0
     end
-    return ____temp_14 + __TS__Number(____cfg_dps_13)
+    return ____temp_16 + __TS__Number(____cfg_dps_15)
 end
 function ____exports.setRoleTarget(self, role, value)
     local cfg = ____exports.config(nil)
-    local ____cfg_size_15 = cfg.size
-    if ____cfg_size_15 == nil then
-        ____cfg_size_15 = 40
+    local ____cfg_size_17 = cfg.size
+    if ____cfg_size_17 == nil then
+        ____cfg_size_17 = 40
     end
     local next = math.max(
         0,
         math.min(
-            __TS__Number(____cfg_size_15),
+            __TS__Number(____cfg_size_17),
             math.floor(value)
         )
     )
@@ -1474,11 +1488,11 @@ function ____exports.setRoleTarget(self, role, value)
 end
 function ____exports.resetRoleTargets(self)
     local cfg = ____exports.config(nil)
-    local ____cfg_size_16 = cfg.size
-    if ____cfg_size_16 == nil then
-        ____cfg_size_16 = 25
+    local ____cfg_size_18 = cfg.size
+    if ____cfg_size_18 == nil then
+        ____cfg_size_18 = 25
     end
-    local size = __TS__Number(____cfg_size_16)
+    local size = __TS__Number(____cfg_size_18)
     if size == 10 then
         cfg.tanks = 2
         cfg.healers = 2
@@ -1502,8 +1516,48 @@ function ____exports.resetRoleTargets(self)
     end
     ____exports.touch(nil, "Role composition reset")
 end
+function ____exports.fixedRoleCounts(self)
+    local result = {TANK = 0, HEALER = 0, DPS = 0}
+    local ____exports_config_result_humanRoles_19 = ____exports.config(nil).humanRoles
+    if ____exports_config_result_humanRoles_19 == nil then
+        ____exports_config_result_humanRoles_19 = {}
+    end
+    local humanRoles = ____exports_config_result_humanRoles_19
+    local seen = {}
+    for ____, member in ipairs(____exports.groupMembers(nil)) do
+        local key = string.lower(tostring(member.name or ""))
+        local ____member_isBot_20
+        if member.isBot then
+            ____member_isBot_20 = member.role
+        else
+            ____member_isBot_20 = humanRoles[member.name]
+        end
+        local role = ____member_isBot_20
+        if key ~= "" and role ~= nil and (role == "TANK" or role == "HEALER" or role == "DPS") and seen[key] ~= true then
+            seen[key] = true
+            result[role] = result[role] + 1
+        end
+    end
+    local ____exports_config_result_extraHumans_22 = ____exports.config(nil).extraHumans
+    if ____exports_config_result_extraHumans_22 == nil then
+        ____exports_config_result_extraHumans_22 = {}
+    end
+    for ____, extra in __TS__Iterator(____exports_config_result_extraHumans_22) do
+        local ____extra_name_21 = extra.name
+        if ____extra_name_21 == nil then
+            ____extra_name_21 = ""
+        end
+        local key = string.lower(tostring(____extra_name_21))
+        local role = extra.role
+        if key ~= "" and role ~= nil and seen[key] ~= true then
+            seen[key] = true
+            result[role] = result[role] + 1
+        end
+    end
+    return result
+end
 function ____exports.remainingBotSlots(self, role)
-    local counts = ____exports.humanRoleCounts(nil)
+    local counts = ____exports.fixedRoleCounts(nil)
     return math.max(
         0,
         ____exports.targetForRole(nil, role) - counts[role]
@@ -1511,25 +1565,25 @@ function ____exports.remainingBotSlots(self, role)
 end
 local function rawRequired(self, role)
     local result = {}
-    local ____opt_17 = ____exports.config(nil).preferences
-    if ____opt_17 ~= nil then
-        ____opt_17 = ____opt_17[role]
+    local ____opt_23 = ____exports.config(nil).preferences
+    if ____opt_23 ~= nil then
+        ____opt_23 = ____opt_23[role]
     end
-    local ____opt_17_19 = ____opt_17
-    if ____opt_17_19 == nil then
-        ____opt_17_19 = {}
+    local ____opt_23_25 = ____opt_23
+    if ____opt_23_25 == nil then
+        ____opt_23_25 = {}
     end
-    local list = ____opt_17_19
+    local list = ____opt_23_25
     for ____, pref in __TS__Iterator(list) do
         if pref.required == true and pref.class ~= nil and pref.class ~= "ANY" then
             if type(pref.spec) == "number" then
                 result[#result + 1] = pref
             else
-                local ____pref_spec_20 = pref.spec
-                if ____pref_spec_20 == nil then
-                    ____pref_spec_20 = ""
+                local ____pref_spec_26 = pref.spec
+                if ____pref_spec_26 == nil then
+                    ____pref_spec_26 = ""
                 end
-                if string.upper(tostring(____pref_spec_20)) == "ANY" then
+                if string.upper(tostring(____pref_spec_26)) == "ANY" then
                     result[#result + 1] = {class = pref.class, spec = ____exports.ANY_SPEC_ID, required = true}
                 end
             end
@@ -1582,15 +1636,15 @@ function ____exports.writeRequiredBuilds(self, role, rows, reason)
         reason = "Exact composition changed"
     end
     local cfg = ____exports.config(nil)
-    local ____opt_21 = cfg.preferences
-    if ____opt_21 ~= nil then
-        ____opt_21 = ____opt_21[role]
+    local ____opt_27 = cfg.preferences
+    if ____opt_27 ~= nil then
+        ____opt_27 = ____opt_27[role]
     end
-    local ____opt_21_23 = ____opt_21
-    if ____opt_21_23 == nil then
-        ____opt_21_23 = {}
+    local ____opt_27_29 = ____opt_27
+    if ____opt_27_29 == nil then
+        ____opt_27_29 = {}
     end
-    local existing = ____opt_21_23
+    local existing = ____opt_27_29
     local next = {}
     for ____, pref in __TS__Iterator(existing) do
         if pref.required ~= true then
@@ -1788,47 +1842,47 @@ local function raidById(self, id)
     return ____exports.activityMeta(nil, id, "RAID")
 end
 function ____exports.realm(self)
-    local ____GC_realm_26 = GC.realm
-    if ____GC_realm_26 == nil then
-        ____GC_realm_26 = {}
+    local ____GC_realm_32 = GC.realm
+    if ____GC_realm_32 == nil then
+        ____GC_realm_32 = {}
     end
-    local raw = ____GC_realm_26
-    local ____raw_era_27 = raw.era
-    if ____raw_era_27 == nil then
-        ____raw_era_27 = "Vanilla"
+    local raw = ____GC_realm_32
+    local ____raw_era_33 = raw.era
+    if ____raw_era_33 == nil then
+        ____raw_era_33 = "Vanilla"
     end
-    local ____tostring_result_31 = tostring(____raw_era_27)
-    local ____raw_levelCap_28 = raw.levelCap
-    if ____raw_levelCap_28 == nil then
-        ____raw_levelCap_28 = 60
+    local ____tostring_result_37 = tostring(____raw_era_33)
+    local ____raw_levelCap_34 = raw.levelCap
+    if ____raw_levelCap_34 == nil then
+        ____raw_levelCap_34 = 60
     end
-    local ____TS__Number_result_32 = __TS__Number(____raw_levelCap_28)
-    local ____raw_progression_29 = raw.progression
-    if ____raw_progression_29 == nil then
-        ____raw_progression_29 = GC.activityProgression
+    local ____TS__Number_result_38 = __TS__Number(____raw_levelCap_34)
+    local ____raw_progression_35 = raw.progression
+    if ____raw_progression_35 == nil then
+        ____raw_progression_35 = GC.activityProgression
     end
-    local ____raw_progression_29_30 = ____raw_progression_29
-    if ____raw_progression_29_30 == nil then
-        ____raw_progression_29_30 = 0
+    local ____raw_progression_35_36 = ____raw_progression_35
+    if ____raw_progression_35_36 == nil then
+        ____raw_progression_35_36 = 0
     end
     return {
-        era = ____tostring_result_31,
-        levelCap = ____TS__Number_result_32,
-        progression = __TS__Number(____raw_progression_29_30)
+        era = ____tostring_result_37,
+        levelCap = ____TS__Number_result_38,
+        progression = __TS__Number(____raw_progression_35_36)
     }
 end
 function ____exports.activityMetaList(self, mode)
     local result = {}
-    local ____GC_activityMeta_50 = GC.activityMeta
-    if ____GC_activityMeta_50 == nil then
-        ____GC_activityMeta_50 = {}
+    local ____GC_activityMeta_56 = GC.activityMeta
+    if ____GC_activityMeta_56 == nil then
+        ____GC_activityMeta_56 = {}
     end
-    local byMode = ____GC_activityMeta_50
-    local ____byMode_mode_51 = byMode[mode]
-    if ____byMode_mode_51 == nil then
-        ____byMode_mode_51 = {}
+    local byMode = ____GC_activityMeta_56
+    local ____byMode_mode_57 = byMode[mode]
+    if ____byMode_mode_57 == nil then
+        ____byMode_mode_57 = {}
     end
-    local entries = ____byMode_mode_51
+    local entries = ____byMode_mode_57
     for id in pairs(entries) do
         local meta = ____exports.activityMeta(
             nil,
@@ -1857,153 +1911,153 @@ function ____exports.activityMetaList(self, mode)
     return result
 end
 function ____exports.journey(self)
-    local ____GC_journey_52 = GC.journey
-    if ____GC_journey_52 == nil then
-        ____GC_journey_52 = {}
+    local ____GC_journey_58 = GC.journey
+    if ____GC_journey_58 == nil then
+        ____GC_journey_58 = {}
     end
-    local raw = ____GC_journey_52
-    local ____temp_59 = raw.ready == true
-    local ____raw_raids_53 = raw.raids
-    if ____raw_raids_53 == nil then
-        ____raw_raids_53 = {}
+    local raw = ____GC_journey_58
+    local ____temp_65 = raw.ready == true
+    local ____raw_raids_59 = raw.raids
+    if ____raw_raids_59 == nil then
+        ____raw_raids_59 = {}
     end
-    local ____raw_recommendations_54 = raw.recommendations
-    if ____raw_recommendations_54 == nil then
-        ____raw_recommendations_54 = {}
+    local ____raw_recommendations_60 = raw.recommendations
+    if ____raw_recommendations_60 == nil then
+        ____raw_recommendations_60 = {}
     end
-    local ____raw_era_55 = raw.era
-    if ____raw_era_55 == nil then
-        ____raw_era_55 = ____exports.realm(nil).era
+    local ____raw_era_61 = raw.era
+    if ____raw_era_61 == nil then
+        ____raw_era_61 = ____exports.realm(nil).era
     end
-    local ____tostring_result_60 = tostring(____raw_era_55)
-    local ____raw_stage_56 = raw.stage
-    if ____raw_stage_56 == nil then
-        ____raw_stage_56 = ____exports.realm(nil).progression
+    local ____tostring_result_66 = tostring(____raw_era_61)
+    local ____raw_stage_62 = raw.stage
+    if ____raw_stage_62 == nil then
+        ____raw_stage_62 = ____exports.realm(nil).progression
     end
-    local ____TS__Number_result_61 = __TS__Number(____raw_stage_56)
-    local ____raw_level_57 = raw.level
-    if ____raw_level_57 == nil then
-        ____raw_level_57 = 1
+    local ____TS__Number_result_67 = __TS__Number(____raw_stage_62)
+    local ____raw_level_63 = raw.level
+    if ____raw_level_63 == nil then
+        ____raw_level_63 = 1
     end
-    local ____TS__Number_result_62 = __TS__Number(____raw_level_57)
-    local ____raw_guildId_58 = raw.guildId
-    if ____raw_guildId_58 == nil then
-        ____raw_guildId_58 = 0
+    local ____TS__Number_result_68 = __TS__Number(____raw_level_63)
+    local ____raw_guildId_64 = raw.guildId
+    if ____raw_guildId_64 == nil then
+        ____raw_guildId_64 = 0
     end
     return {
-        ready = ____temp_59,
-        raids = ____raw_raids_53,
-        recommendations = ____raw_recommendations_54,
-        era = ____tostring_result_60,
-        stage = ____TS__Number_result_61,
-        level = ____TS__Number_result_62,
-        guildId = __TS__Number(____raw_guildId_58)
+        ready = ____temp_65,
+        raids = ____raw_raids_59,
+        recommendations = ____raw_recommendations_60,
+        era = ____tostring_result_66,
+        stage = ____TS__Number_result_67,
+        level = ____TS__Number_result_68,
+        guildId = __TS__Number(____raw_guildId_64)
     }
 end
 function ____exports.unlockDetails(self)
-    local ____GC_unlockDetails_63 = GC.unlockDetails
-    if ____GC_unlockDetails_63 == nil then
-        ____GC_unlockDetails_63 = {}
+    local ____GC_unlockDetails_69 = GC.unlockDetails
+    if ____GC_unlockDetails_69 == nil then
+        ____GC_unlockDetails_69 = {}
     end
-    local raw = ____GC_unlockDetails_63
-    local ____temp_68 = raw.ready == true
-    local ____temp_69 = raw.mode == "RAID" and "RAID" or "DUNGEON"
-    local ____raw_id_64 = raw.id
-    if ____raw_id_64 == nil then
-        ____raw_id_64 = ""
+    local raw = ____GC_unlockDetails_69
+    local ____temp_74 = raw.ready == true
+    local ____temp_75 = raw.mode == "RAID" and "RAID" or "DUNGEON"
+    local ____raw_id_70 = raw.id
+    if ____raw_id_70 == nil then
+        ____raw_id_70 = ""
     end
-    local ____tostring_result_70 = tostring(____raw_id_64)
-    local ____raw_label_65 = raw.label
-    if ____raw_label_65 == nil then
-        ____raw_label_65 = ""
+    local ____tostring_result_76 = tostring(____raw_id_70)
+    local ____raw_label_71 = raw.label
+    if ____raw_label_71 == nil then
+        ____raw_label_71 = ""
     end
-    local ____tostring_result_71 = tostring(____raw_label_65)
-    local ____temp_72 = raw.available == true
-    local ____raw_summary_66 = raw.summary
-    if ____raw_summary_66 == nil then
-        ____raw_summary_66 = ""
+    local ____tostring_result_77 = tostring(____raw_label_71)
+    local ____temp_78 = raw.available == true
+    local ____raw_summary_72 = raw.summary
+    if ____raw_summary_72 == nil then
+        ____raw_summary_72 = ""
     end
-    local ____tostring_result_73 = tostring(____raw_summary_66)
-    local ____raw_requirements_67 = raw.requirements
-    if ____raw_requirements_67 == nil then
-        ____raw_requirements_67 = {}
+    local ____tostring_result_79 = tostring(____raw_summary_72)
+    local ____raw_requirements_73 = raw.requirements
+    if ____raw_requirements_73 == nil then
+        ____raw_requirements_73 = {}
     end
     return {
-        ready = ____temp_68,
-        mode = ____temp_69,
-        id = ____tostring_result_70,
-        label = ____tostring_result_71,
-        available = ____temp_72,
-        summary = ____tostring_result_73,
-        requirements = ____raw_requirements_67
+        ready = ____temp_74,
+        mode = ____temp_75,
+        id = ____tostring_result_76,
+        label = ____tostring_result_77,
+        available = ____temp_78,
+        summary = ____tostring_result_79,
+        requirements = ____raw_requirements_73
     }
 end
 function ____exports.catalogDiagnostics(self)
-    local ____GC_catalogDiagnostics_74 = GC.catalogDiagnostics
-    if ____GC_catalogDiagnostics_74 == nil then
-        ____GC_catalogDiagnostics_74 = {}
+    local ____GC_catalogDiagnostics_80 = GC.catalogDiagnostics
+    if ____GC_catalogDiagnostics_80 == nil then
+        ____GC_catalogDiagnostics_80 = {}
     end
-    local raw = ____GC_catalogDiagnostics_74
-    local ____temp_79 = raw.ready == true
-    local ____raw_entries_75 = raw.entries
-    if ____raw_entries_75 == nil then
-        ____raw_entries_75 = {}
+    local raw = ____GC_catalogDiagnostics_80
+    local ____temp_85 = raw.ready == true
+    local ____raw_entries_81 = raw.entries
+    if ____raw_entries_81 == nil then
+        ____raw_entries_81 = {}
     end
-    local ____raw_pass_76 = raw.pass
-    if ____raw_pass_76 == nil then
-        ____raw_pass_76 = 0
+    local ____raw_pass_82 = raw.pass
+    if ____raw_pass_82 == nil then
+        ____raw_pass_82 = 0
     end
-    local ____TS__Number_result_80 = __TS__Number(____raw_pass_76)
-    local ____raw_warn_77 = raw.warn
-    if ____raw_warn_77 == nil then
-        ____raw_warn_77 = 0
+    local ____TS__Number_result_86 = __TS__Number(____raw_pass_82)
+    local ____raw_warn_83 = raw.warn
+    if ____raw_warn_83 == nil then
+        ____raw_warn_83 = 0
     end
-    local ____TS__Number_result_81 = __TS__Number(____raw_warn_77)
-    local ____raw_fail_78 = raw.fail
-    if ____raw_fail_78 == nil then
-        ____raw_fail_78 = 0
+    local ____TS__Number_result_87 = __TS__Number(____raw_warn_83)
+    local ____raw_fail_84 = raw.fail
+    if ____raw_fail_84 == nil then
+        ____raw_fail_84 = 0
     end
     return {
-        ready = ____temp_79,
-        entries = ____raw_entries_75,
-        pass = ____TS__Number_result_80,
-        warn = ____TS__Number_result_81,
-        fail = __TS__Number(____raw_fail_78)
+        ready = ____temp_85,
+        entries = ____raw_entries_81,
+        pass = ____TS__Number_result_86,
+        warn = ____TS__Number_result_87,
+        fail = __TS__Number(____raw_fail_84)
     }
 end
 function ____exports.pinnedMembers(self)
     local result = {}
-    local ____exports_config_result_pinned_82 = ____exports.config(nil).pinned
-    if ____exports_config_result_pinned_82 == nil then
-        ____exports_config_result_pinned_82 = {}
+    local ____exports_config_result_pinned_88 = ____exports.config(nil).pinned
+    if ____exports_config_result_pinned_88 == nil then
+        ____exports_config_result_pinned_88 = {}
     end
-    for ____, pin in ipairs(____exports_config_result_pinned_82) do
+    for ____, pin in ipairs(____exports_config_result_pinned_88) do
         result[#result + 1] = pin
     end
     return result
 end
 function ____exports.planWarnings(self)
     local result = {}
-    local ____exports_plan_result_warnings_83 = ____exports.plan(nil).warnings
-    if ____exports_plan_result_warnings_83 == nil then
-        ____exports_plan_result_warnings_83 = {}
+    local ____exports_plan_result_warnings_89 = ____exports.plan(nil).warnings
+    if ____exports_plan_result_warnings_89 == nil then
+        ____exports_plan_result_warnings_89 = {}
     end
-    for ____, warning in ipairs(____exports_plan_result_warnings_83) do
+    for ____, warning in ipairs(____exports_plan_result_warnings_89) do
         result[#result + 1] = tostring(warning)
     end
     return result
 end
 function ____exports.coverageDisplay(self)
-    local ____exports_plan_result_summary_84 = ____exports.plan(nil).summary
-    if ____exports_plan_result_summary_84 == nil then
-        ____exports_plan_result_summary_84 = {}
+    local ____exports_plan_result_summary_90 = ____exports.plan(nil).summary
+    if ____exports_plan_result_summary_90 == nil then
+        ____exports_plan_result_summary_90 = {}
     end
-    local summary = ____exports_plan_result_summary_84
-    local ____summary_utility_85 = summary.utility
-    if ____summary_utility_85 == nil then
-        ____summary_utility_85 = ""
+    local summary = ____exports_plan_result_summary_90
+    local ____summary_utility_91 = summary.utility
+    if ____summary_utility_91 == nil then
+        ____summary_utility_91 = ""
     end
-    local raw = tostring(____summary_utility_85)
+    local raw = tostring(____summary_utility_91)
     local labels = {}
     if (string.find(raw, "interrupt", nil, true) or 0) - 1 >= 0 then
         labels[#labels + 1] = "Interrupts"
@@ -2040,30 +2094,30 @@ function ____exports.coverageDisplay(self)
     if utility == "" then
         utility = "No utility coverage yet"
     end
-    local ____temp_87 = (utility .. "\n") .. "Ranged DPS  "
-    local ____summary_ranged_86 = summary.ranged
-    if ____summary_ranged_86 == nil then
-        ____summary_ranged_86 = 0
+    local ____temp_93 = (utility .. "\n") .. "Ranged DPS  "
+    local ____summary_ranged_92 = summary.ranged
+    if ____summary_ranged_92 == nil then
+        ____summary_ranged_92 = 0
     end
-    local ____temp_89 = (____temp_87 .. tostring(____summary_ranged_86)) .. "     Melee DPS  "
-    local ____summary_melee_88 = summary.melee
-    if ____summary_melee_88 == nil then
-        ____summary_melee_88 = 0
+    local ____temp_95 = (____temp_93 .. tostring(____summary_ranged_92)) .. "     Melee DPS  "
+    local ____summary_melee_94 = summary.melee
+    if ____summary_melee_94 == nil then
+        ____summary_melee_94 = 0
     end
-    return ____temp_89 .. tostring(____summary_melee_88)
+    return ____temp_95 .. tostring(____summary_melee_94)
 end
 function ____exports.dungeonItems(self)
     local result = {}
-    local ____D_DUNGEONS_91 = D.DUNGEONS
-    if ____D_DUNGEONS_91 == nil then
-        ____D_DUNGEONS_91 = {}
+    local ____D_DUNGEONS_97 = D.DUNGEONS
+    if ____D_DUNGEONS_97 == nil then
+        ____D_DUNGEONS_97 = {}
     end
-    for ____, dungeon in __TS__Iterator(____D_DUNGEONS_91) do
-        local ____dungeon_minLevel_90 = dungeon.minLevel
-        if ____dungeon_minLevel_90 == nil then
-            ____dungeon_minLevel_90 = 68
+    for ____, dungeon in __TS__Iterator(____D_DUNGEONS_97) do
+        local ____dungeon_minLevel_96 = dungeon.minLevel
+        if ____dungeon_minLevel_96 == nil then
+            ____dungeon_minLevel_96 = 68
         end
-        local min = __TS__Number(____dungeon_minLevel_90)
+        local min = __TS__Number(____dungeon_minLevel_96)
         result[#result + 1] = {
             value = dungeon.id,
             label = dungeon.label,
@@ -2089,35 +2143,35 @@ function ____exports.difficultyItems(self)
 end
 function ____exports.raidItems(self)
     local result = {}
-    local ____D_RAIDS_97 = D.RAIDS
-    if ____D_RAIDS_97 == nil then
-        ____D_RAIDS_97 = {}
+    local ____D_RAIDS_103 = D.RAIDS
+    if ____D_RAIDS_103 == nil then
+        ____D_RAIDS_103 = {}
     end
-    for ____, raid in __TS__Iterator(____D_RAIDS_97) do
+    for ____, raid in __TS__Iterator(____D_RAIDS_103) do
         local sizes = ""
         local firstSize = true
-        local ____raid_sizes_92 = raid.sizes
-        if ____raid_sizes_92 == nil then
-            ____raid_sizes_92 = {}
+        local ____raid_sizes_98 = raid.sizes
+        if ____raid_sizes_98 == nil then
+            ____raid_sizes_98 = {}
         end
-        for ____, size in __TS__Iterator(____raid_sizes_92) do
+        for ____, size in __TS__Iterator(____raid_sizes_98) do
             if not firstSize then
                 sizes = sizes .. "/"
             end
             sizes = sizes .. tostring(size)
             firstSize = false
         end
-        local ____raid_id_95 = raid.id
-        local ____temp_96 = (tostring(raid.era) .. "  ·  ") .. tostring(raid.label)
-        local ____temp_94 = sizes .. " player · Level "
-        local ____raid_requiredLevel_93 = raid.requiredLevel
-        if ____raid_requiredLevel_93 == nil then
-            ____raid_requiredLevel_93 = 80
+        local ____raid_id_101 = raid.id
+        local ____temp_102 = (tostring(raid.era) .. "  ·  ") .. tostring(raid.label)
+        local ____temp_100 = sizes .. " player · Level "
+        local ____raid_requiredLevel_99 = raid.requiredLevel
+        if ____raid_requiredLevel_99 == nil then
+            ____raid_requiredLevel_99 = 80
         end
         result[#result + 1] = {
-            value = ____raid_id_95,
-            label = ____temp_96,
-            detail = (____temp_94 .. tostring(____raid_requiredLevel_93)) .. "+",
+            value = ____raid_id_101,
+            label = ____temp_102,
+            detail = (____temp_100 .. tostring(____raid_requiredLevel_99)) .. "+",
             icon = ACTIVITY_ICONS[tostring(raid.id)] or DEFAULT_RAID_ICON
         }
     end
@@ -2129,11 +2183,11 @@ function ____exports.raidDifficultyItems(self)
         nil,
         ____exports.config(nil).activity
     )
-    local ____opt_result_100
+    local ____opt_result_106
     if raid ~= nil then
-        ____opt_result_100 = raid.heroic
+        ____opt_result_106 = raid.heroic
     end
-    if ____opt_result_100 == true then
+    if ____opt_result_106 == true then
         result[#result + 1] = {value = "heroic", label = "Heroic"}
     end
     return result
@@ -2141,14 +2195,14 @@ end
 function ____exports.selectedActivityLabel(self)
     local cfg = ____exports.config(nil)
     local mode = cfg.mode == "RAID" and "RAID" or "DUNGEON"
-    local ____exports_activityMeta_102 = ____exports.activityMeta
-    local ____cfg_activity_101 = cfg.activity
-    if ____cfg_activity_101 == nil then
-        ____cfg_activity_101 = ""
+    local ____exports_activityMeta_108 = ____exports.activityMeta
+    local ____cfg_activity_107 = cfg.activity
+    if ____cfg_activity_107 == nil then
+        ____cfg_activity_107 = ""
     end
-    local meta = ____exports_activityMeta_102(
+    local meta = ____exports_activityMeta_108(
         nil,
-        tostring(____cfg_activity_101),
+        tostring(____cfg_activity_107),
         mode
     )
     if meta ~= nil then
@@ -2156,54 +2210,54 @@ function ____exports.selectedActivityLabel(self)
     end
     if cfg.mode == "RAID" then
         local raid = raidById(nil, cfg.activity)
-        local ____opt_result_105
+        local ____opt_result_111
         if raid ~= nil then
-            ____opt_result_105 = raid.label
+            ____opt_result_111 = raid.label
         end
-        local ____opt_result_105_106 = ____opt_result_105
-        if ____opt_result_105_106 == nil then
-            ____opt_result_105_106 = "Raid"
+        local ____opt_result_111_112 = ____opt_result_111
+        if ____opt_result_111_112 == nil then
+            ____opt_result_111_112 = "Raid"
         end
-        return ____opt_result_105_106
+        return ____opt_result_111_112
     end
     local dungeon = dungeonById(nil, cfg.activity)
-    local ____opt_result_109
+    local ____opt_result_115
     if dungeon ~= nil then
-        ____opt_result_109 = dungeon.label
+        ____opt_result_115 = dungeon.label
     end
-    local ____opt_result_109_110 = ____opt_result_109
-    if ____opt_result_109_110 == nil then
-        ____opt_result_109_110 = "Dungeon"
+    local ____opt_result_115_116 = ____opt_result_115
+    if ____opt_result_115_116 == nil then
+        ____opt_result_115_116 = "Dungeon"
     end
-    return ____opt_result_109_110
+    return ____opt_result_115_116
 end
 function ____exports.activityIconFor(self, id, mode)
     return ACTIVITY_ICONS[tostring(id)] or (mode == "RAID" and DEFAULT_RAID_ICON or DEFAULT_DUNGEON_ICON)
 end
 function ____exports.selectedActivityIcon(self)
     local cfg = ____exports.config(nil)
-    local ____exports_activityIconFor_112 = ____exports.activityIconFor
-    local ____cfg_activity_111 = cfg.activity
-    if ____cfg_activity_111 == nil then
-        ____cfg_activity_111 = ""
+    local ____exports_activityIconFor_118 = ____exports.activityIconFor
+    local ____cfg_activity_117 = cfg.activity
+    if ____cfg_activity_117 == nil then
+        ____cfg_activity_117 = ""
     end
-    return ____exports_activityIconFor_112(
+    return ____exports_activityIconFor_118(
         nil,
-        tostring(____cfg_activity_111),
+        tostring(____cfg_activity_117),
         cfg.mode == "RAID" and "RAID" or "DUNGEON"
     )
 end
 function ____exports.requiredActivityLevel(self)
     local cfg = ____exports.config(nil)
     local mode = cfg.mode == "RAID" and "RAID" or "DUNGEON"
-    local ____exports_activityMeta_114 = ____exports.activityMeta
-    local ____cfg_activity_113 = cfg.activity
-    if ____cfg_activity_113 == nil then
-        ____cfg_activity_113 = ""
+    local ____exports_activityMeta_120 = ____exports.activityMeta
+    local ____cfg_activity_119 = cfg.activity
+    if ____cfg_activity_119 == nil then
+        ____cfg_activity_119 = ""
     end
-    local meta = ____exports_activityMeta_114(
+    local meta = ____exports_activityMeta_120(
         nil,
-        tostring(____cfg_activity_113),
+        tostring(____cfg_activity_119),
         mode
     )
     if meta ~= nil then
@@ -2214,38 +2268,38 @@ function ____exports.requiredActivityLevel(self)
     end
     if cfg.mode == "RAID" then
         local raid = raidById(nil, cfg.activity)
-        local ____opt_result_117
+        local ____opt_result_123
         if raid ~= nil then
-            ____opt_result_117 = raid.requiredLevel
+            ____opt_result_123 = raid.requiredLevel
         end
-        local ____opt_result_117_118 = ____opt_result_117
-        if ____opt_result_117_118 == nil then
-            ____opt_result_117_118 = ____exports.realm(nil).levelCap
+        local ____opt_result_123_124 = ____opt_result_123
+        if ____opt_result_123_124 == nil then
+            ____opt_result_123_124 = ____exports.realm(nil).levelCap
         end
-        return __TS__Number(____opt_result_117_118)
+        return __TS__Number(____opt_result_123_124)
     end
     local dungeon = dungeonById(nil, cfg.activity)
-    local ____opt_result_121
+    local ____opt_result_127
     if dungeon ~= nil then
-        ____opt_result_121 = dungeon.minLevel
+        ____opt_result_127 = dungeon.minLevel
     end
-    local ____opt_result_121_122 = ____opt_result_121
-    if ____opt_result_121_122 == nil then
-        ____opt_result_121_122 = 1
+    local ____opt_result_127_128 = ____opt_result_127
+    if ____opt_result_127_128 == nil then
+        ____opt_result_127_128 = 1
     end
-    return __TS__Number(____opt_result_121_122)
+    return __TS__Number(____opt_result_127_128)
 end
 function ____exports.activityEligibilityText(self)
     local level = ____exports.requiredActivityLevel(nil)
-    local ____opt_123 = ____exports.config(nil).options
-    if ____opt_123 ~= nil then
-        ____opt_123 = ____opt_123.minimumItemLevel
+    local ____opt_129 = ____exports.config(nil).options
+    if ____opt_129 ~= nil then
+        ____opt_129 = ____opt_129.minimumItemLevel
     end
-    local ____opt_123_125 = ____opt_123
-    if ____opt_123_125 == nil then
-        ____opt_123_125 = 0
+    local ____opt_129_131 = ____opt_129
+    if ____opt_129_131 == nil then
+        ____opt_129_131 = 0
     end
-    local floor = __TS__Number(____opt_123_125)
+    local floor = __TS__Number(____opt_129_131)
     return (("Level " .. tostring(level)) .. "+ required · Item level floor ") .. (floor > 0 and tostring(floor) or "Off")
 end
 function ____exports.setMinimumItemLevel(self, value)
@@ -2265,15 +2319,15 @@ function ____exports.supportedRaidSizes(self)
         ____exports.config(nil).activity
     )
     local result = {}
-    local ____opt_result_128
+    local ____opt_result_134
     if raid ~= nil then
-        ____opt_result_128 = raid.sizes
+        ____opt_result_134 = raid.sizes
     end
-    local ____opt_result_128_129 = ____opt_result_128
-    if ____opt_result_128_129 == nil then
-        ____opt_result_128_129 = {}
+    local ____opt_result_134_135 = ____opt_result_134
+    if ____opt_result_134_135 == nil then
+        ____opt_result_134_135 = {}
     end
-    for ____, size in __TS__Iterator(____opt_result_128_129) do
+    for ____, size in __TS__Iterator(____opt_result_134_135) do
         result[#result + 1] = __TS__Number(size)
     end
     return result
@@ -2294,46 +2348,46 @@ function ____exports.requestCatalogDiagnostics(self)
 end
 function ____exports.activityEligibility(self, id, mode)
     local selectedMode = mode or (____exports.config(nil).mode == "RAID" and "RAID" or "DUNGEON")
-    local ____GC_activityEligibilityReady_130 = GC.activityEligibilityReady
-    if ____GC_activityEligibilityReady_130 == nil then
-        ____GC_activityEligibilityReady_130 = {}
+    local ____GC_activityEligibilityReady_136 = GC.activityEligibilityReady
+    if ____GC_activityEligibilityReady_136 == nil then
+        ____GC_activityEligibilityReady_136 = {}
     end
-    local readyByMode = ____GC_activityEligibilityReady_130
-    local ____GC_activityEligibility_131 = GC.activityEligibility
-    if ____GC_activityEligibility_131 == nil then
-        ____GC_activityEligibility_131 = {}
+    local readyByMode = ____GC_activityEligibilityReady_136
+    local ____GC_activityEligibility_137 = GC.activityEligibility
+    if ____GC_activityEligibility_137 == nil then
+        ____GC_activityEligibility_137 = {}
     end
-    local eligibilityByMode = ____GC_activityEligibility_131
-    local ____eligibilityByMode_selectedMode_132 = eligibilityByMode[selectedMode]
-    if ____eligibilityByMode_selectedMode_132 == nil then
-        ____eligibilityByMode_selectedMode_132 = {}
+    local eligibilityByMode = ____GC_activityEligibility_137
+    local ____eligibilityByMode_selectedMode_138 = eligibilityByMode[selectedMode]
+    if ____eligibilityByMode_selectedMode_138 == nil then
+        ____eligibilityByMode_selectedMode_138 = {}
     end
-    local entries = ____eligibilityByMode_selectedMode_132
+    local entries = ____eligibilityByMode_selectedMode_138
     local entry = entries[id]
     if readyByMode[selectedMode] ~= true or entry == nil then
         return {known = false, eligible = false, reason = "Checking access..."}
     end
-    local ____temp_134 = entry.eligible == true
-    local ____entry_reason_133 = entry.reason
-    if ____entry_reason_133 == nil then
-        ____entry_reason_133 = entry.eligible == true and "Available" or "Locked"
+    local ____temp_140 = entry.eligible == true
+    local ____entry_reason_139 = entry.reason
+    if ____entry_reason_139 == nil then
+        ____entry_reason_139 = entry.eligible == true and "Available" or "Locked"
     end
     return {
         known = true,
-        eligible = ____temp_134,
-        reason = tostring(____entry_reason_133)
+        eligible = ____temp_140,
+        reason = tostring(____entry_reason_139)
     }
 end
 function ____exports.selectedActivityEligibility(self)
     local cfg = ____exports.config(nil)
-    local ____exports_activityEligibility_136 = ____exports.activityEligibility
-    local ____cfg_activity_135 = cfg.activity
-    if ____cfg_activity_135 == nil then
-        ____cfg_activity_135 = ""
+    local ____exports_activityEligibility_142 = ____exports.activityEligibility
+    local ____cfg_activity_141 = cfg.activity
+    if ____cfg_activity_141 == nil then
+        ____cfg_activity_141 = ""
     end
-    return ____exports_activityEligibility_136(
+    return ____exports_activityEligibility_142(
         nil,
-        tostring(____cfg_activity_135),
+        tostring(____cfg_activity_141),
         cfg.mode == "RAID" and "RAID" or "DUNGEON"
     )
 end
@@ -2441,11 +2495,11 @@ function ____exports.removePin(self, index)
     GC:RemovePinnedMember(index)
 end
 function ____exports.planMembers(self)
-    local ____exports_plan_result_members_137 = ____exports.plan(nil).members
-    if ____exports_plan_result_members_137 == nil then
-        ____exports_plan_result_members_137 = {}
+    local ____exports_plan_result_members_143 = ____exports.plan(nil).members
+    if ____exports_plan_result_members_143 == nil then
+        ____exports_plan_result_members_143 = {}
     end
-    return ____exports_plan_result_members_137
+    return ____exports_plan_result_members_143
 end
 function ____exports.roleAccent(self, role)
     if role == "TANK" then
@@ -2484,19 +2538,19 @@ function ____exports.phaseLabel(self, phase)
     return "Ready to configure"
 end
 function ____exports.isBusy(self)
-    local ____exports_progress_result_phase_138 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_138 == nil then
-        ____exports_progress_result_phase_138 = "IDLE"
+    local ____exports_progress_result_phase_144 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_144 == nil then
+        ____exports_progress_result_phase_144 = "IDLE"
     end
-    local phase = tostring(____exports_progress_result_phase_138)
+    local phase = tostring(____exports_progress_result_phase_144)
     return phase == "BUILDING" or phase == "PREPARING" or phase == "ASSEMBLING" or phase == "TRAVEL"
 end
 function ____exports.isAssembled(self)
-    local ____exports_progress_result_phase_139 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_139 == nil then
-        ____exports_progress_result_phase_139 = ""
+    local ____exports_progress_result_phase_145 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_145 == nil then
+        ____exports_progress_result_phase_145 = ""
     end
-    local phase = tostring(____exports_progress_result_phase_139)
+    local phase = tostring(____exports_progress_result_phase_145)
     return phase == "ASSEMBLED" or phase == "DONE"
 end
 function ____exports.hasFixedActivityDestination(self)
@@ -2962,7 +3016,7 @@ function ____exports.createBuildSelector(self, parent, options)
             1,
             math.ceil(#validClasses / columns)
         )
-        local classHeight = classRows > 1 and 258 or 164
+        local classHeight = classRows > 1 and 300 or 186
         local specHeight = currentClass == nil and 68 or 176
         classSection.frame:SetHeight(classHeight)
         specSection.frame:SetHeight(specHeight)
@@ -2996,7 +3050,7 @@ function ____exports.createBuildSelector(self, parent, options)
                         classSection.frame,
                         "TOPLEFT",
                         startX + column * (tileWidth + gap),
-                        -(62 + row * 94)
+                        -(62 + row * 116)
                     )
                     tile.sub:SetText(classRoleSummary(nil, tile.classDef.id, currentRole))
                     tile.specs:SetText(specSummary(nil, tile.classDef.id, currentRole))
@@ -3188,7 +3242,7 @@ function ____exports.createBuildSelector(self, parent, options)
             {
                 text = classDef.label,
                 width = 174,
-                height = 86,
+                height = 108,
                 accent = classColor(nil, classDef.id)
             }
         )
@@ -3275,6 +3329,8 @@ function ____exports.createBuildSelector(self, parent, options)
             -54
         )
         specs:SetWidth(104)
+        specs:SetHeight(46)
+        specs:SetJustifyV("TOP")
         button.frame:SetScript(
             "OnMouseDown",
             function()
@@ -4850,9 +4906,19 @@ function ____exports.createTemplateBrowser(self, parent)
     end
     function refresh(self)
         local dungeonMode = Model:config().mode == "DUNGEON"
+        local tabX = 0
         do
             local i = 0
             while i < #tabs do
+                tabs[i + 1].frame:ClearAllPoints()
+                tabs[i + 1].frame:SetPoint(
+                    "TOPLEFT",
+                    modal.content,
+                    "TOPLEFT",
+                    tabX,
+                    -82
+                )
+                tabX = tabX + (tabDefs[i + 1].width + 8)
                 tabs[i + 1]:setSelected(tabDefs[i + 1].key == tab)
                 if dungeonMode and tabDefs[i + 1].key ~= "CUSTOM" then
                     tabs[i + 1].frame:Hide()
@@ -5875,7 +5941,7 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                 local card = cards[i + 1]
                 if card == nil then
                     local panel = Native:createPanel(scroll.content, theme.colors.surfaceRaised, theme.colors.border)
-                    panel.frame:SetSize(1228, 112)
+                    panel.frame:SetSize(1228, 156)
                     local iconBadge = Native:createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_Map_01", 50, theme.colors.primary)
                     iconBadge.frame:SetPoint(
                         "LEFT",
@@ -5911,7 +5977,7 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                         -18
                     )
                     reason:SetWidth(410)
-                    reason:SetHeight(36)
+                    reason:SetHeight(48)
                     reason:SetJustifyV("TOP")
                     local readiness = Native:createText(panel.frame, "", "GameFontNormalSmall", theme.colors.primary)
                     readiness:SetPoint(
@@ -5919,9 +5985,11 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                         panel.frame,
                         "TOPLEFT",
                         620,
-                        -67
+                        -76
                     )
                     readiness:SetWidth(410)
+                    readiness:SetHeight(68)
+                    readiness:SetJustifyV("TOP")
                     local use = ButtonUI:createButton(panel.frame, {
                         text = "Configure",
                         width = 150,
@@ -5956,7 +6024,7 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                     scroll.content,
                     "TOPLEFT",
                     0,
-                    -(i * 120)
+                    -(i * 164)
                 )
                 card.iconBadge.icon:SetTexture(Model:activityIconFor(item.id, item.mode))
                 card.iconBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
@@ -5995,7 +6063,7 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                 i = i + 1
             end
         end
-        scroll:setContentHeight(math.max(690, #rows * 120))
+        scroll:setContentHeight(math.max(690, #rows * 164))
     end
     Model:composer():RegisterCallback(
         "JOURNEY_CHANGED",
@@ -6333,7 +6401,7 @@ function ____exports.createActivityDiagnosticsPage(self, parent)
         0,
         -8
     )
-    local subtitle = Native:createText(root.frame, "Validate every Group Composer dungeon and raid against the server catalog, maps, entrance triggers, raid contracts and clear-history metadata.", "GameFontHighlightSmall", theme.colors.muted)
+    local subtitle = Native:createText(root.frame, "PASS = structurally valid. WARN = structurally valid but Playerbots support is experimental/partial. FAIL = broken catalog, map or contract metadata.", "GameFontHighlightSmall", theme.colors.muted)
     subtitle:SetPoint(
         "TOPLEFT",
         title,
@@ -6410,7 +6478,7 @@ function ____exports.createActivityDiagnosticsPage(self, parent)
     )
     summaryText:SetWidth(620)
     summaryText:SetJustifyH("RIGHT")
-    local filterDefs = {{key = "PROBLEMS", label = "Problems"}, {key = "ALL", label = "All"}, {key = "PASS", label = "Passed"}}
+    local filterDefs = {{key = "PROBLEMS", label = "Needs Review"}, {key = "ALL", label = "All"}, {key = "PASS", label = "Passed"}}
     local filterButtons = {}
     local filter = "PROBLEMS"
     do
@@ -6479,7 +6547,7 @@ function ____exports.createActivityDiagnosticsPage(self, parent)
         passText:SetText("PASS " .. tostring(state.pass))
         warnText:SetText("WARN " .. tostring(state.warn))
         failText:SetText("FAIL " .. tostring(state.fail))
-        summaryText:SetText(state.ready and (state.fail > 0 and "Structural failures found. Fix these before trusting every listed activity." or (state.warn > 0 and "No structural failures. Warnings identify experimental/partial support." or "Every catalog entry passed structural validation.")) or "Validation has not completed yet.")
+        summaryText:SetText(state.ready and (state.fail > 0 and "Structural failures found. Fix these before trusting every listed activity." or (state.warn > 0 and "Catalog structure is healthy. WARN entries are playable/experimental AI support, not broken activities." or "Every catalog entry passed structural validation.")) or "Validation has not completed yet.")
         do
             local i = 0
             while i < #filterButtons do
@@ -7151,43 +7219,47 @@ local function buildDungeonModel(self)
         "DPS",
         "DPS"
     }
-    local anchors = Model:humans()
-    local usedHumans = {}
+    local anchors = Model:groupMembers()
     local assigned = {}
-    do
-        local h = 0
-        while h < #anchors do
-            do
-                local __continue16
-                repeat
-                    local human = anchors[h + 1]
+    local anchorNames = {}
+    for ____, anchor in ipairs(anchors) do
+        do
+            local __continue15
+            repeat
+                local key = string.lower(tostring(anchor.name or ""))
+                if key ~= "" then
+                    anchorNames[key] = true
+                end
+                local ____anchor_isBot_8
+                if anchor.isBot then
+                    ____anchor_isBot_8 = anchor.role
+                else
                     local ____opt_6 = Model:config().humanRoles
                     if ____opt_6 ~= nil then
-                        ____opt_6 = ____opt_6[human.name]
+                        ____opt_6 = ____opt_6[anchor.name]
                     end
-                    local role = ____opt_6
-                    if role == nil then
-                        __continue16 = true
-                        break
-                    end
-                    do
-                        local i = 0
-                        while i < #sequence do
-                            if sequence[i + 1] == role and assigned[i + 1] == nil then
-                                assigned[i + 1] = human
-                                usedHumans[h + 1] = true
-                                break
-                            end
-                            i = i + 1
-                        end
-                    end
-                    __continue16 = true
-                until true
-                if not __continue16 then
+                    ____anchor_isBot_8 = ____opt_6
+                end
+                local role = ____anchor_isBot_8
+                if role ~= "TANK" and role ~= "HEALER" and role ~= "DPS" then
+                    __continue15 = true
                     break
                 end
+                do
+                    local i = 0
+                    while i < #sequence do
+                        if sequence[i + 1] == role and assigned[i + 1] == nil then
+                            assigned[i + 1] = anchor
+                            break
+                        end
+                        i = i + 1
+                    end
+                end
+                __continue15 = true
+            until true
+            if not __continue15 then
+                break
             end
-            h = h + 1
         end
     end
     local flat = {
@@ -7199,9 +7271,10 @@ local function buildDungeonModel(self)
     local preparedByRole = {TANK = {}, HEALER = {}, DPS = {}}
     if Model:plan().ready == true then
         for ____, member in ipairs(Model:planMembers()) do
-            if member.human ~= true and preparedByRole[member.role] ~= nil then
-                local ____preparedByRole_member_role_8 = preparedByRole[member.role]
-                ____preparedByRole_member_role_8[#____preparedByRole_member_role_8 + 1] = member
+            local key = string.lower(tostring(member.name or ""))
+            if member.human ~= true and anchorNames[key] ~= true and preparedByRole[member.role] ~= nil then
+                local ____preparedByRole_member_role_9 = preparedByRole[member.role]
+                ____preparedByRole_member_role_9[#____preparedByRole_member_role_9 + 1] = member
             end
         end
     end
@@ -7211,13 +7284,13 @@ local function buildDungeonModel(self)
         local i = 0
         while i < #sequence do
             do
-                local __continue26
+                local __continue27
                 repeat
                     local role = sequence[i + 1]
-                    local human = assigned[i + 1]
-                    if human ~= nil then
-                        result[#result + 1] = {role = role, human = human}
-                        __continue26 = true
+                    local anchor = assigned[i + 1]
+                    if anchor ~= nil then
+                        result[#result + 1] = {role = role, anchor = anchor}
+                        __continue27 = true
                         break
                     end
                     counters[role] = counters[role] + 1
@@ -7226,9 +7299,9 @@ local function buildDungeonModel(self)
                     local prepared = preparedByRole[role][preparedIndex[role] + 1]
                     preparedIndex[role] = preparedIndex[role] + 1
                     result[#result + 1] = {role = role, botIndex = botIndex, exact = exact, prepared = prepared}
-                    __continue26 = true
+                    __continue27 = true
                 until true
-                if not __continue26 then
+                if not __continue27 then
                     break
                 end
             end
@@ -7361,11 +7434,11 @@ function ____exports.createModernDashboard(self)
                 row._classBadge.outline:setColor(Native:classColor(tostring(human.class)))
                 row._name:SetText((human.isPlayer and "YOU  ·  " or "") .. human.name)
                 row._identity:SetText(Model:classLabel(tostring(human.class)) .. "  ·  REAL PLAYER")
-                local ____opt_13 = Model:config().humanRoles
-                if ____opt_13 ~= nil then
-                    ____opt_13 = ____opt_13[human.name]
+                local ____opt_14 = Model:config().humanRoles
+                if ____opt_14 ~= nil then
+                    ____opt_14 = ____opt_14[human.name]
                 end
-                local selected = ____opt_13
+                local selected = ____opt_14
                 for ____, role in ipairs(roleOrder) do
                     local button = row._buttons[role]
                     local allowed = classCanRole(
@@ -7547,11 +7620,11 @@ function ____exports.createModernDashboard(self)
         humanBadge.outline:setColor(Native:classColor(tostring(primary.class)))
         humanName:SetText((primary.isPlayer and "YOU  ·  " or "") .. primary.name)
         humanSub:SetText(((("Level " .. tostring(primary.level or "?")) .. " ") .. Model:classLabel(tostring(primary.class))) .. (#list > 1 and (("  ·  +" .. tostring(#list - 1)) .. " more human anchor") .. (#list > 2 and "s" or "") or ""))
-        local ____opt_26 = Model:config().humanRoles
-        if ____opt_26 ~= nil then
-            ____opt_26 = ____opt_26[primary.name]
+        local ____opt_27 = Model:config().humanRoles
+        if ____opt_27 ~= nil then
+            ____opt_27 = ____opt_27[primary.name]
         end
-        local selected = ____opt_26
+        local selected = ____opt_27
         for ____, role in ipairs(roleOrder) do
             local allowed = classCanRole(
                 nil,
@@ -7578,7 +7651,7 @@ function ____exports.createModernDashboard(self)
             local i = 0
             while i < #dungeonRows do
                 do
-                    local __continue163
+                    local __continue164
                     repeat
                         local widgets = dungeonRows[i + 1]
                         local slot = slots[i + 1]
@@ -7594,30 +7667,22 @@ function ____exports.createModernDashboard(self)
                         Native:setRoleIcon(widgets.roleIcon, slot.role)
                         widgets.roleText:SetText(Model:roleLabel(slot.role))
                         widgets.roleText:SetTextColor(accent[1], accent[2], accent[3], 1)
-                        widgets.slotText:SetText(slot.human ~= nil and "Human anchor" or "Bot slot " .. tostring(slot.botIndex or 1))
-                        if slot.human ~= nil then
+                        widgets.slotText:SetText(slot.anchor ~= nil and (slot.anchor.isBot and "Current bot · locked" or "Human anchor · locked") or "Fill slot " .. tostring(slot.botIndex or 1))
+                        if slot.anchor ~= nil then
                             Native:setClassIcon(
                                 widgets.classIcon,
-                                tostring(slot.human.class)
+                                tostring(slot.anchor.class)
                             )
                             widgets.classBadge.frame:Show()
-                            widgets.classBadge.outline:setColor(Native:classColor(tostring(slot.human.class)))
+                            widgets.classBadge.outline:setColor(Native:classColor(tostring(slot.anchor.class)))
                             widgets.specBadge.frame:Hide()
-                            widgets.name:SetText((slot.human.isPlayer and "YOU  ·  " or "") .. tostring(slot.human.name))
-                            local ____self_29 = widgets.sub
-                            local ____self_29_SetText_30 = ____self_29.SetText
-                            local ____slot_human_level_28 = slot.human.level
-                            if ____slot_human_level_28 == nil then
-                                ____slot_human_level_28 = "?"
-                            end
-                            ____self_29_SetText_30(
-                                ____self_29,
-                                (("Level " .. tostring(____slot_human_level_28)) .. " ") .. Model:classLabel(tostring(slot.human.class))
-                            )
+                            widgets.name:SetText(((slot.anchor.isPlayer and "YOU  ·  " or "") .. (slot.anchor.isBot and "BOT  ·  " or "")) .. slot.anchor.name)
+                            widgets.sub:SetText(((("Level " .. tostring(slot.anchor.level or "?")) .. " ") .. Model:classLabel(tostring(slot.anchor.class))) .. "  ·  already in your group")
                             widgets.choose.frame:Hide()
                             widgets.auto.frame:Hide()
+                            widgets.humanAnchor:setText(slot.anchor.isBot and "Current bot" or "Human anchor")
                             widgets.humanAnchor.frame:Show()
-                            __continue163 = true
+                            __continue164 = true
                             break
                         end
                         local exact = slot.exact
@@ -7642,20 +7707,20 @@ function ____exports.createModernDashboard(self)
                                 widgets.specBadge.frame:Hide()
                             end
                             widgets.name:SetText(tostring(prepared.name))
-                            local ____self_34 = widgets.sub
-                            local ____self_34_SetText_35 = ____self_34.SetText
-                            local ____prepared_level_31 = prepared.level
-                            if ____prepared_level_31 == nil then
-                                ____prepared_level_31 = "?"
+                            local ____self_32 = widgets.sub
+                            local ____self_32_SetText_33 = ____self_32.SetText
+                            local ____prepared_level_29 = prepared.level
+                            if ____prepared_level_29 == nil then
+                                ____prepared_level_29 = "?"
                             end
-                            local ____temp_33 = ((("Lv " .. tostring(____prepared_level_31)) .. "  ·  ") .. tostring(prepared.spec or Model:classLabel(tostring(prepared.class)))) .. "  ·  "
-                            local ____prepared_source_32 = prepared.source
-                            if ____prepared_source_32 == nil then
-                                ____prepared_source_32 = "Bot"
+                            local ____temp_31 = ((("Lv " .. tostring(____prepared_level_29)) .. "  ·  ") .. tostring(prepared.spec or Model:classLabel(tostring(prepared.class)))) .. "  ·  "
+                            local ____prepared_source_30 = prepared.source
+                            if ____prepared_source_30 == nil then
+                                ____prepared_source_30 = "Bot"
                             end
-                            ____self_34_SetText_35(
-                                ____self_34,
-                                (____temp_33 .. tostring(____prepared_source_32)) .. "  ·  click for why"
+                            ____self_32_SetText_33(
+                                ____self_32,
+                                (____temp_31 .. tostring(____prepared_source_30)) .. "  ·  click for why"
                             )
                             local preparedCopy = prepared
                             widgets.row.frame:EnableMouse(true)
@@ -7686,14 +7751,14 @@ function ____exports.createModernDashboard(self)
                             "OnMouseDown",
                             function()
                                 selectorContext = {mode = "DUNGEON", role = roleCopy, index = botIndex}
-                                local ____buildSelector_open_37 = buildSelector.open
-                                local ____temp_36
+                                local ____buildSelector_open_35 = buildSelector.open
+                                local ____temp_34
                                 if exact == nil then
-                                    ____temp_36 = nil
+                                    ____temp_34 = nil
                                 else
-                                    ____temp_36 = {role = roleCopy, classId = exact.classId, specId = exact.specId, count = 1}
+                                    ____temp_34 = {role = roleCopy, classId = exact.classId, specId = exact.specId, count = 1}
                                 end
-                                ____buildSelector_open_37(buildSelector, roleCopy, ____temp_36, false)
+                                ____buildSelector_open_35(buildSelector, roleCopy, ____temp_34, false)
                             end
                         )
                         widgets.choose.frame:Show()
@@ -7711,9 +7776,9 @@ function ____exports.createModernDashboard(self)
                         else
                             widgets.auto.frame:Hide()
                         end
-                        __continue163 = true
+                        __continue164 = true
                     until true
-                    if not __continue163 then
+                    if not __continue164 then
                         break
                     end
                 end
@@ -7722,16 +7787,16 @@ function ____exports.createModernDashboard(self)
         end
     end
     function refreshQuickRaid(self)
-        local ____table_size_38 = Model:config().size
-        if ____table_size_38 == nil then
-            ____table_size_38 = 25
+        local ____table_size_36 = Model:config().size
+        if ____table_size_36 == nil then
+            ____table_size_36 = 25
         end
-        local size = __TS__Number(____table_size_38)
+        local size = __TS__Number(____table_size_36)
         local total = Model:roleTargetTotal()
         for ____, role in ipairs(roleOrder) do
             local target = Model:targetForRole(role)
             quickCards[role].count:SetText(tostring(target))
-            quickCards[role].botSlots:SetText(((tostring(Model:remainingBotSlots(role)) .. " bot slots after humans\n(out of ") .. tostring(target)) .. ")")
+            quickCards[role].botSlots:SetText(((tostring(Model:remainingBotSlots(role)) .. " fill slots remaining\n(out of ") .. tostring(target)) .. ")")
             quickCards[role].minus:setEnabled(target > 0)
             quickCards[role].plus:setEnabled(target < size)
         end
@@ -7911,8 +7976,8 @@ function ____exports.createModernDashboard(self)
                             remove = remove
                         }
                         section.rowsByKey[rowKey] = widgets
-                        local ____section_rowKeys_39 = section.rowKeys
-                        ____section_rowKeys_39[#____section_rowKeys_39 + 1] = rowKey
+                        local ____section_rowKeys_37 = section.rowKeys
+                        ____section_rowKeys_37[#____section_rowKeys_37 + 1] = rowKey
                     end
                     widgets.panel.frame:ClearAllPoints()
                     widgets.panel.frame:SetPoint(
@@ -7955,13 +8020,13 @@ function ____exports.createModernDashboard(self)
     end
     function refreshRoster(self)
         local cfg = Model:config()
-        local ____cfg_size_40 = cfg.size
-        if ____cfg_size_40 == nil then
-            ____cfg_size_40 = 5
+        local ____cfg_size_38 = cfg.size
+        if ____cfg_size_38 == nil then
+            ____cfg_size_38 = 5
         end
         local totalGroups = math.max(
             1,
-            math.ceil(__TS__Number(____cfg_size_40) / 5)
+            math.ceil(__TS__Number(____cfg_size_38) / 5)
         )
         local columns = totalGroups <= 3 and totalGroups or (totalGroups <= 5 and 3 or 4)
         local cardWidth = math.floor((934 - (columns - 1) * 10) / columns)
@@ -7970,12 +8035,12 @@ function ____exports.createModernDashboard(self)
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue199
+                    local __continue200
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue199 = true
+                            __continue200 = true
                             break
                         end
                         local column = g % columns
@@ -8037,20 +8102,20 @@ function ____exports.createModernDashboard(self)
                                     local identity = member.isPlayer and "YOU  ·  " or (member.pinned and "PINNED  ·  " or "")
                                     rowWidgets.name:SetText(identity .. tostring(member.name))
                                     rowWidgets.name:SetTextColor(theme.colors.text[1], theme.colors.text[2], theme.colors.text[3], 1)
-                                    local ____self_44 = rowWidgets.spec
-                                    local ____self_44_SetText_45 = ____self_44.SetText
-                                    local ____member_level_41 = member.level
-                                    if ____member_level_41 == nil then
-                                        ____member_level_41 = "?"
+                                    local ____self_42 = rowWidgets.spec
+                                    local ____self_42_SetText_43 = ____self_42.SetText
+                                    local ____member_level_39 = member.level
+                                    if ____member_level_39 == nil then
+                                        ____member_level_39 = "?"
                                     end
-                                    local ____temp_43 = ("Lv " .. tostring(____member_level_41)) .. "  ·  "
-                                    local ____member_spec_42 = member.spec
-                                    if ____member_spec_42 == nil then
-                                        ____member_spec_42 = Model:classLabel(tostring(member.class))
+                                    local ____temp_41 = ("Lv " .. tostring(____member_level_39)) .. "  ·  "
+                                    local ____member_spec_40 = member.spec
+                                    if ____member_spec_40 == nil then
+                                        ____member_spec_40 = Model:classLabel(tostring(member.class))
                                     end
-                                    ____self_44_SetText_45(
-                                        ____self_44,
-                                        (____temp_43 .. tostring(____member_spec_42)) .. "  ·  click for why"
+                                    ____self_42_SetText_43(
+                                        ____self_42,
+                                        (____temp_41 .. tostring(____member_spec_40)) .. "  ·  click for why"
                                     )
                                     local memberCopy = member
                                     rowWidgets.row:EnableMouse(true)
@@ -8069,9 +8134,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue199 = true
+                        __continue200 = true
                     until true
-                    if not __continue199 then
+                    if not __continue200 then
                         break
                     end
                 end
@@ -8104,11 +8169,11 @@ function ____exports.createModernDashboard(self)
     end
     function refreshStatus(self)
         local p = Model:progress()
-        local ____p_phase_46 = p.phase
-        if ____p_phase_46 == nil then
-            ____p_phase_46 = "IDLE"
+        local ____p_phase_44 = p.phase
+        if ____p_phase_44 == nil then
+            ____p_phase_44 = "IDLE"
         end
-        local phase = tostring(____p_phase_46)
+        local phase = tostring(____p_phase_44)
         local phaseColor = colorForPhase(nil, phase)
         Native:setTextureColor(phaseDot, phaseColor)
         Native:setTextureColor(phaseAccent, phaseColor)
@@ -8124,109 +8189,109 @@ function ____exports.createModernDashboard(self)
         elseif (phase == "ASSEMBLED" or phase == "TRAVEL") and statusNotice ~= "" then
             phaseDetail:SetText(statusNotice)
         else
-            local ____phaseDetail_SetText_48 = phaseDetail.SetText
-            local ____p_detail_47 = p.detail
-            if ____p_detail_47 == nil then
-                ____p_detail_47 = ""
+            local ____phaseDetail_SetText_46 = phaseDetail.SetText
+            local ____p_detail_45 = p.detail
+            if ____p_detail_45 == nil then
+                ____p_detail_45 = ""
             end
-            ____phaseDetail_SetText_48(
+            ____phaseDetail_SetText_46(
                 phaseDetail,
-                tostring(____p_detail_47)
+                tostring(____p_detail_45)
             )
         end
         local humanCount = #Model:humans()
-        local ____table_size_49 = Model:config().size
-        if ____table_size_49 == nil then
-            ____table_size_49 = 5
+        local ____table_size_47 = Model:config().size
+        if ____table_size_47 == nil then
+            ____table_size_47 = 5
         end
-        local target = __TS__Number(____table_size_49)
+        local target = __TS__Number(____table_size_47)
         local composed = Model:config().mode == "RAID" and Model:roleTargetTotal() or humanCount
-        local ____temp_53
+        local ____temp_51
         if Model:plan().ready == true then
-            local ____opt_50 = Model:plan().summary
-            if ____opt_50 ~= nil then
-                ____opt_50 = ____opt_50.total
+            local ____opt_48 = Model:plan().summary
+            if ____opt_48 ~= nil then
+                ____opt_48 = ____opt_48.total
             end
-            local ____opt_50_52 = ____opt_50
-            if ____opt_50_52 == nil then
-                ____opt_50_52 = #Model:planMembers()
+            local ____opt_48_50 = ____opt_48
+            if ____opt_48_50 == nil then
+                ____opt_48_50 = #Model:planMembers()
             end
-            ____temp_53 = __TS__Number(____opt_50_52)
+            ____temp_51 = __TS__Number(____opt_48_50)
         else
-            ____temp_53 = composed
+            ____temp_51 = composed
         end
-        local total = ____temp_53
+        local total = ____temp_51
         rosterCount:SetText((tostring(total) .. " / ") .. tostring(target))
         if Model:plan().ready == true then
-            local ____sourceText_SetText_62 = sourceText.SetText
-            local ____temp_57 = ((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  "
-            local ____opt_54 = Model:plan().summary
-            if ____opt_54 ~= nil then
-                ____opt_54 = ____opt_54.guild
+            local ____sourceText_SetText_60 = sourceText.SetText
+            local ____temp_55 = ((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  "
+            local ____opt_52 = Model:plan().summary
+            if ____opt_52 ~= nil then
+                ____opt_52 = ____opt_52.guild
             end
-            local ____opt_54_56 = ____opt_54
-            if ____opt_54_56 == nil then
-                ____opt_54_56 = 0
+            local ____opt_52_54 = ____opt_52
+            if ____opt_52_54 == nil then
+                ____opt_52_54 = 0
             end
-            local ____temp_61 = (____temp_57 .. tostring(____opt_54_56)) .. " guild  ·  "
-            local ____opt_58 = Model:plan().summary
-            if ____opt_58 ~= nil then
-                ____opt_58 = ____opt_58.world
+            local ____temp_59 = (____temp_55 .. tostring(____opt_52_54)) .. " guild  ·  "
+            local ____opt_56 = Model:plan().summary
+            if ____opt_56 ~= nil then
+                ____opt_56 = ____opt_56.world
             end
-            local ____opt_58_60 = ____opt_58
-            if ____opt_58_60 == nil then
-                ____opt_58_60 = 0
+            local ____opt_56_58 = ____opt_56
+            if ____opt_56_58 == nil then
+                ____opt_56_58 = 0
             end
-            ____sourceText_SetText_62(
+            ____sourceText_SetText_60(
                 sourceText,
-                (____temp_61 .. tostring(____opt_58_60)) .. " fallback"
+                (____temp_59 .. tostring(____opt_56_58)) .. " fallback"
             )
         else
             sourceText:SetText(((((tostring(humanCount) .. " human") .. (humanCount == 1 and "" or "s")) .. "  ·  ") .. tostring(math.max(0, target - humanCount))) .. " bot slots")
         end
-        local ____self_64 = statusRoleChips.TANK.label
-        local ____self_64_SetText_65 = ____self_64.SetText
-        local ____table_tanks_63 = Model:config().tanks
-        if ____table_tanks_63 == nil then
-            ____table_tanks_63 = 0
+        local ____self_62 = statusRoleChips.TANK.label
+        local ____self_62_SetText_63 = ____self_62.SetText
+        local ____table_tanks_61 = Model:config().tanks
+        if ____table_tanks_61 == nil then
+            ____table_tanks_61 = 0
         end
-        ____self_64_SetText_65(
-            ____self_64,
-            tostring(____table_tanks_63) .. " TANK"
+        ____self_62_SetText_63(
+            ____self_62,
+            tostring(____table_tanks_61) .. " TANK"
         )
-        local ____self_67 = statusRoleChips.HEALER.label
-        local ____self_67_SetText_68 = ____self_67.SetText
-        local ____table_healers_66 = Model:config().healers
-        if ____table_healers_66 == nil then
-            ____table_healers_66 = 0
+        local ____self_65 = statusRoleChips.HEALER.label
+        local ____self_65_SetText_66 = ____self_65.SetText
+        local ____table_healers_64 = Model:config().healers
+        if ____table_healers_64 == nil then
+            ____table_healers_64 = 0
         end
-        ____self_67_SetText_68(
-            ____self_67,
-            tostring(____table_healers_66) .. " HEALER"
+        ____self_65_SetText_66(
+            ____self_65,
+            tostring(____table_healers_64) .. " HEALER"
         )
-        local ____self_70 = statusRoleChips.DPS.label
-        local ____self_70_SetText_71 = ____self_70.SetText
-        local ____table_dps_69 = Model:config().dps
-        if ____table_dps_69 == nil then
-            ____table_dps_69 = 0
+        local ____self_68 = statusRoleChips.DPS.label
+        local ____self_68_SetText_69 = ____self_68.SetText
+        local ____table_dps_67 = Model:config().dps
+        if ____table_dps_67 == nil then
+            ____table_dps_67 = 0
         end
-        ____self_70_SetText_71(
-            ____self_70,
-            tostring(____table_dps_69) .. " DPS"
+        ____self_68_SetText_69(
+            ____self_68,
+            tostring(____table_dps_67) .. " DPS"
         )
         local ratio = 0
-        local ____p_total_72 = p.total
-        if ____p_total_72 == nil then
-            ____p_total_72 = 0
+        local ____p_total_70 = p.total
+        if ____p_total_70 == nil then
+            ____p_total_70 = 0
         end
-        if __TS__Number(____p_total_72) > 0 then
-            local ____p_current_73 = p.current
-            if ____p_current_73 == nil then
-                ____p_current_73 = 0
+        if __TS__Number(____p_total_70) > 0 then
+            local ____p_current_71 = p.current
+            if ____p_current_71 == nil then
+                ____p_current_71 = 0
             end
             ratio = math.min(
                 1,
-                __TS__Number(____p_current_73) / __TS__Number(p.total)
+                __TS__Number(____p_current_71) / __TS__Number(p.total)
             )
         elseif phase == "READY" or phase == "ASSEMBLED" or phase == "DONE" then
             ratio = 1
@@ -8235,42 +8300,42 @@ function ____exports.createModernDashboard(self)
         end
         progressFill:SetWidth(math.max(1, 266 * ratio))
         Native:setTextureColor(progressFill, phaseColor)
-        local ____progressText_SetText_80 = progressText.SetText
-        local ____temp_79
+        local ____progressText_SetText_78 = progressText.SetText
+        local ____temp_77
         if phase == "PREPARING" or phase == "ASSEMBLING" or phase == "READY" or phase == "ASSEMBLED" or phase == "TRAVEL" or phase == "DONE" then
-            local ____p_current_74 = p.current
-            if ____p_current_74 == nil then
-                ____p_current_74 = 0
+            local ____p_current_72 = p.current
+            if ____p_current_72 == nil then
+                ____p_current_72 = 0
             end
-            local ____temp_76 = tostring(____p_current_74) .. " / "
-            local ____p_total_75 = p.total
-            if ____p_total_75 == nil then
-                ____p_total_75 = 0
+            local ____temp_74 = tostring(____p_current_72) .. " / "
+            local ____p_total_73 = p.total
+            if ____p_total_73 == nil then
+                ____p_total_73 = 0
             end
-            local ____temp_78 = (____temp_76 .. tostring(____p_total_75)) .. "  ·  "
-            local ____p_detail_77 = p.detail
-            if ____p_detail_77 == nil then
-                ____p_detail_77 = ""
+            local ____temp_76 = (____temp_74 .. tostring(____p_total_73)) .. "  ·  "
+            local ____p_detail_75 = p.detail
+            if ____p_detail_75 == nil then
+                ____p_detail_75 = ""
             end
-            ____temp_79 = ____temp_78 .. tostring(____p_detail_77)
+            ____temp_77 = ____temp_76 .. tostring(____p_detail_75)
         else
-            ____temp_79 = ""
+            ____temp_77 = ""
         end
-        ____progressText_SetText_80(progressText, ____temp_79)
-        local ____opt_81 = Model:plan().summary
-        if ____opt_81 ~= nil then
-            ____opt_81 = ____opt_81.utility
+        ____progressText_SetText_78(progressText, ____temp_77)
+        local ____opt_79 = Model:plan().summary
+        if ____opt_79 ~= nil then
+            ____opt_79 = ____opt_79.utility
         end
-        local ____opt_81_83 = ____opt_81
-        if ____opt_81_83 == nil then
-            ____opt_81_83 = ""
+        local ____opt_79_81 = ____opt_79
+        if ____opt_79_81 == nil then
+            ____opt_79_81 = ""
         end
-        local utilityRaw = tostring(____opt_81_83)
-        local ____opt_84 = Model:plan().summary
-        if ____opt_84 ~= nil then
-            ____opt_84 = ____opt_84.utility
+        local utilityRaw = tostring(____opt_79_81)
+        local ____opt_82 = Model:plan().summary
+        if ____opt_82 ~= nil then
+            ____opt_82 = ____opt_82.utility
         end
-        local hasPreparedCoverage = ____opt_84 ~= nil
+        local hasPreparedCoverage = ____opt_82 ~= nil
         coverageDetailsButton:setEnabled(hasPreparedCoverage)
         do
             local i = 0
@@ -8293,31 +8358,31 @@ function ____exports.createModernDashboard(self)
                 i = i + 1
             end
         end
-        local ____coverageDamageText_SetText_94 = coverageDamageText.SetText
-        local ____hasPreparedCoverage_93
+        local ____coverageDamageText_SetText_92 = coverageDamageText.SetText
+        local ____hasPreparedCoverage_91
         if hasPreparedCoverage then
-            local ____opt_86 = Model:plan().summary
-            if ____opt_86 ~= nil then
-                ____opt_86 = ____opt_86.ranged
+            local ____opt_84 = Model:plan().summary
+            if ____opt_84 ~= nil then
+                ____opt_84 = ____opt_84.ranged
             end
-            local ____opt_86_88 = ____opt_86
-            if ____opt_86_88 == nil then
-                ____opt_86_88 = 0
+            local ____opt_84_86 = ____opt_84
+            if ____opt_84_86 == nil then
+                ____opt_84_86 = 0
             end
-            local ____temp_92 = ("Ranged DPS  " .. tostring(____opt_86_88)) .. "   ·   Melee DPS  "
-            local ____opt_89 = Model:plan().summary
-            if ____opt_89 ~= nil then
-                ____opt_89 = ____opt_89.melee
+            local ____temp_90 = ("Ranged DPS  " .. tostring(____opt_84_86)) .. "   ·   Melee DPS  "
+            local ____opt_87 = Model:plan().summary
+            if ____opt_87 ~= nil then
+                ____opt_87 = ____opt_87.melee
             end
-            local ____opt_89_91 = ____opt_89
-            if ____opt_89_91 == nil then
-                ____opt_89_91 = 0
+            local ____opt_87_89 = ____opt_87
+            if ____opt_87_89 == nil then
+                ____opt_87_89 = 0
             end
-            ____hasPreparedCoverage_93 = ____temp_92 .. tostring(____opt_89_91)
+            ____hasPreparedCoverage_91 = ____temp_90 .. tostring(____opt_87_89)
         else
-            ____hasPreparedCoverage_93 = "Prepare a roster to inspect utility."
+            ____hasPreparedCoverage_91 = "Prepare a roster to inspect utility."
         end
-        ____coverageDamageText_SetText_94(coverageDamageText, ____hasPreparedCoverage_93)
+        ____coverageDamageText_SetText_92(coverageDamageText, ____hasPreparedCoverage_91)
         local warnings = Model:planWarnings()
         local selectedAccess = Model:selectedActivityEligibility()
         local nextText = ""
@@ -8330,21 +8395,21 @@ function ____exports.createModernDashboard(self)
         elseif not Model:humanReady() then
             nextText = "Choose a legal role for every real player."
         else
-            local ____temp_97 = Model:config().mode == "RAID"
-            if ____temp_97 then
-                local ____temp_96 = Model:roleTargetTotal()
-                local ____table_size_95 = Model:config().size
-                if ____table_size_95 == nil then
-                    ____table_size_95 = 25
+            local ____temp_95 = Model:config().mode == "RAID"
+            if ____temp_95 then
+                local ____temp_94 = Model:roleTargetTotal()
+                local ____table_size_93 = Model:config().size
+                if ____table_size_93 == nil then
+                    ____table_size_93 = 25
                 end
-                ____temp_97 = ____temp_96 ~= __TS__Number(____table_size_95)
+                ____temp_95 = ____temp_94 ~= __TS__Number(____table_size_93)
             end
-            if ____temp_97 then
-                local ____table_size_98 = Model:config().size
-                if ____table_size_98 == nil then
-                    ____table_size_98 = 25
+            if ____temp_95 then
+                local ____table_size_96 = Model:config().size
+                if ____table_size_96 == nil then
+                    ____table_size_96 = 25
                 end
-                nextText = ("Role counts must total " .. tostring(____table_size_98)) .. " before preparing."
+                nextText = ("Role counts must total " .. tostring(____table_size_96)) .. " before preparing."
             elseif phase == "DONE" and Model:isAssembled() then
                 nextText = "Group is assembled and the latest lifecycle action completed. Use Group Actions to repair, leave the instance together, or disband safely."
             elseif phase == "ASSEMBLED" then
@@ -8375,21 +8440,21 @@ function ____exports.createModernDashboard(self)
         local assembled = Model:isAssembled()
         local activityAvailable = selectedAccess.known and selectedAccess.eligible
         local canTeleport = phase == "ASSEMBLED" and activityAvailable and Model:hasFixedActivityDestination()
-        local ____buildButton_setEnabled_103 = buildButton.setEnabled
-        local ____temp_102 = activityAvailable and Model:humanReady() and not Model:isBusy() and not assembled
-        if ____temp_102 then
-            local ____temp_101 = Model:config().mode ~= "RAID"
-            if not ____temp_101 then
-                local ____temp_100 = Model:roleTargetTotal()
-                local ____table_size_99 = Model:config().size
-                if ____table_size_99 == nil then
-                    ____table_size_99 = 25
+        local ____buildButton_setEnabled_101 = buildButton.setEnabled
+        local ____temp_100 = activityAvailable and Model:humanReady() and not Model:isBusy() and not assembled
+        if ____temp_100 then
+            local ____temp_99 = Model:config().mode ~= "RAID"
+            if not ____temp_99 then
+                local ____temp_98 = Model:roleTargetTotal()
+                local ____table_size_97 = Model:config().size
+                if ____table_size_97 == nil then
+                    ____table_size_97 = 25
                 end
-                ____temp_101 = ____temp_100 == __TS__Number(____table_size_99)
+                ____temp_99 = ____temp_98 == __TS__Number(____table_size_97)
             end
-            ____temp_102 = ____temp_101
+            ____temp_100 = ____temp_99
         end
-        ____buildButton_setEnabled_103(buildButton, ____temp_102)
+        ____buildButton_setEnabled_101(buildButton, ____temp_100)
         if assembled then
             buildButton.frame:Hide()
         else
@@ -8878,17 +8943,17 @@ function ____exports.createModernDashboard(self)
     )
     sideHint:SetWidth(152)
     sideHint:SetJustifyV("TOP")
-    local ____Native_11 = Native
-    local ____Native_createText_12 = Native.createText
-    local ____sidebar_frame_10 = sidebar.frame
-    local ____D_VERSION_9 = D.VERSION
-    if ____D_VERSION_9 == nil then
-        ____D_VERSION_9 = "0.10.0"
+    local ____Native_12 = Native
+    local ____Native_createText_13 = Native.createText
+    local ____sidebar_frame_11 = sidebar.frame
+    local ____D_VERSION_10 = D.VERSION
+    if ____D_VERSION_10 == nil then
+        ____D_VERSION_10 = "0.10.0"
     end
-    local versionText = ____Native_createText_12(
-        ____Native_11,
-        ____sidebar_frame_10,
-        "v" .. tostring(____D_VERSION_9),
+    local versionText = ____Native_createText_13(
+        ____Native_12,
+        ____sidebar_frame_11,
+        "v" .. tostring(____D_VERSION_10),
         "GameFontHighlightSmall",
         theme.colors.muted
     )
@@ -10806,11 +10871,11 @@ function ____exports.createModernDashboard(self)
                 row,
                 def.label,
                 function()
-                    local ____opt_15 = Model:config().options
-                    if ____opt_15 ~= nil then
-                        ____opt_15 = ____opt_15[def.key]
+                    local ____opt_16 = Model:config().options
+                    if ____opt_16 ~= nil then
+                        ____opt_16 = ____opt_16[def.key]
                     end
-                    return ____opt_15 == true
+                    return ____opt_16 == true
                 end,
                 function(____, value)
                     Model:config().options[def.key] = value
@@ -10912,22 +10977,22 @@ function ____exports.createModernDashboard(self)
         -35
     )
     gearHint:SetWidth(520)
-    local ____StepperUI_20 = StepperUI
-    local ____StepperUI_createNumberStepper_21 = StepperUI.createNumberStepper
-    local ____opt_17 = Model:config().options
-    if ____opt_17 ~= nil then
-        ____opt_17 = ____opt_17.minimumItemLevel
+    local ____StepperUI_21 = StepperUI
+    local ____StepperUI_createNumberStepper_22 = StepperUI.createNumberStepper
+    local ____opt_18 = Model:config().options
+    if ____opt_18 ~= nil then
+        ____opt_18 = ____opt_18.minimumItemLevel
     end
-    local ____opt_17_19 = ____opt_17
-    if ____opt_17_19 == nil then
-        ____opt_17_19 = 0
+    local ____opt_18_20 = ____opt_18
+    if ____opt_18_20 == nil then
+        ____opt_18_20 = 0
     end
-    local gearStepper = ____StepperUI_createNumberStepper_21(
-        ____StepperUI_20,
+    local gearStepper = ____StepperUI_createNumberStepper_22(
+        ____StepperUI_21,
         gearRow,
         0,
         300,
-        __TS__Number(____opt_17_19),
+        __TS__Number(____opt_18_20),
         function(____, value) return Model:setMinimumItemLevel(value) end
     )
     gearStepper.frame:SetPoint(
@@ -10942,18 +11007,18 @@ function ____exports.createModernDashboard(self)
         for ____, toggle in ipairs(optionToggles) do
             toggle:refresh()
         end
-        local ____gearStepper_setValue_25 = gearStepper.setValue
-        local ____opt_22 = Model:config().options
-        if ____opt_22 ~= nil then
-            ____opt_22 = ____opt_22.minimumItemLevel
+        local ____gearStepper_setValue_26 = gearStepper.setValue
+        local ____opt_23 = Model:config().options
+        if ____opt_23 ~= nil then
+            ____opt_23 = ____opt_23.minimumItemLevel
         end
-        local ____opt_22_24 = ____opt_22
-        if ____opt_22_24 == nil then
-            ____opt_22_24 = 0
+        local ____opt_23_25 = ____opt_23
+        if ____opt_23_25 == nil then
+            ____opt_23_25 = 0
         end
-        ____gearStepper_setValue_25(
+        ____gearStepper_setValue_26(
             gearStepper,
-            __TS__Number(____opt_22_24),
+            __TS__Number(____opt_23_25),
             false
         )
         optionsModal:show()
