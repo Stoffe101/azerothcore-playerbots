@@ -102,6 +102,10 @@ The friends-realm rule is additive and forward-only: TBC keeps legitimate Vanill
 
 ## Planning / idea-bank state
 
+Verified planning checkpoint: `402ce7c3c1acfbf8a85ef5b6f3d0d1f8282b13f8`.
+
+Exact-head CI for that checkpoint: client checks **SUCCESS**, backend staging **SUCCESS**, Group Composer compile **SUCCESS** on `stoffes-pc`, Integration **SUCCESS** on `stoffes-pc`.
+
 A canonical `FEATURE_IDEAS.md` now captures expansion-fidelity improvements and broader server features. These are **not implemented** merely because they are documented. Work becomes active only when promoted into `NEXT_WORK.md` and then follows normal exact-SHA CI/runtime validation.
 
 High-value future candidates include an Expansion Command Center, Era Integrity dashboard, Vanilla/TBC LFG Board, persistent bot bench, bot crafting orders, dynamic population director, wipe analyzer and guild chronicle.

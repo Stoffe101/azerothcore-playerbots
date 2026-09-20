@@ -4,7 +4,15 @@ Newest entries belong at the top of the dated section.
 
 ## 2026-09-20 — Era-relevance + feature idea-bank pass
 
-Status: **DOCUMENTED; ideas are not implementation claims**.
+Status: **DOCUMENTED + EXACT-HEAD LOCAL CI VERIFIED; ideas are not implementation claims**.
+
+Verified checkpoint: `402ce7c3c1acfbf8a85ef5b6f3d0d1f8282b13f8`.
+
+Exact-head workflows:
+- Group Composer client checks: SUCCESS
+- Stage Group Composer V4 backend: SUCCESS
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`
+- Integration build: SUCCESS on `stoffes-pc`
 
 Why:
 - The project needs a durable place for expansion-authenticity improvements and broader server ideas so future chats do not lose or repeatedly reinvent them.
@@ -18,7 +26,6 @@ Work:
 - CI routing for this follow-up pass is explicitly `[local-ci]` so compile/Integration use `stoffes-pc`.
 
 Next:
-- Complete exact-head local CI.
 - Continue the existing P0 in-game validation before promoting new feature ideas into implementation.
 
 ## 2026-09-20 — Expansion-era fidelity architecture

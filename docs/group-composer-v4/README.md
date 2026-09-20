@@ -43,6 +43,19 @@ Historical design docs stay in the repository, but do not force a new chat to re
 
 `ERA_FIDELITY.md` defines what Vanilla → TBC → WotLK means across Group Composer, bots, AH/economy, items, professions, world access and release transitions. The design is canonical; individual enforcement items remain tracked as TODO until implemented and runtime-proven.
 
+## Latest verified planning/documentation checkpoint
+
+Era-fidelity + feature idea-bank checkpoint:
+
+- `402ce7c3c1acfbf8a85ef5b6f3d0d1f8282b13f8`
+- Commit: `docs: expand era fidelity and server feature backlog [local-ci]`
+- Group Composer client checks: **SUCCESS**
+- Stage Group Composer V4 backend: **SUCCESS**
+- Group Composer V4 compile: **SUCCESS** on `stoffes-pc`
+- Integration build: **SUCCESS** on `stoffes-pc`
+
+This checkpoint changes documentation/planning only; it does not claim the TODO/PARTIAL era-fidelity systems are implemented.
+
 ## Current verified implementation checkpoint
 
 Latest fully verified green implementation:
