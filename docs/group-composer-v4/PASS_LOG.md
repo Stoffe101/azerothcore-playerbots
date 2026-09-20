@@ -2,6 +2,25 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-20 — Era-relevance + feature idea-bank pass
+
+Status: **DOCUMENTED; ideas are not implementation claims**.
+
+Why:
+- The project needs a durable place for expansion-authenticity improvements and broader server ideas so future chats do not lose or repeatedly reinvent them.
+- The user explicitly wants the server to feel materially Vanilla/TBC/WotLK appropriate while preserving private-server QoL.
+
+Work:
+- Added canonical `FEATURE_IDEAS.md`.
+- Expanded era-relevance candidates across bots, AH, professions, Composer, vendors/currencies, travel, PvP, world events, races/classes and historical-fidelity polish.
+- Added broader candidates including Expansion Command Center, Era Integrity dashboard, Vanilla/TBC LFG Board, raid planner, persistent bot bench, crafting orders, guild-bank steward, population director, attunement assistant, readiness planner, wipe analyzer, loot council, guild chronicle, opening events and safe snapshots.
+- Kept speculative ideas out of implemented/current-state claims.
+- CI routing for this follow-up pass is explicitly `[local-ci]` so compile/Integration use `stoffes-pc`.
+
+Next:
+- Complete exact-head local CI.
+- Continue the existing P0 in-game validation before promoting new feature ideas into implementation.
+
 ## 2026-09-20 — Expansion-era fidelity architecture
 
 Status: **DESIGN DONE; implementation intentionally tracked as TODO/PARTIAL**.

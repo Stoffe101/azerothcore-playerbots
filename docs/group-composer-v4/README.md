@@ -22,7 +22,8 @@
 6. Read `ERA_FIDELITY.md` before changing expansion gates, bots, economy, world availability, templates, classes or release flow.
 7. Use `DEVELOPMENT_RULES.md` before changing code or CI.
 8. Verify the actual branch head and exact-head GitHub Actions results before claiming anything is green.
-9. Treat runtime screenshots/results from the user as newer truth than assumptions in older design prose.
+9. Read `FEATURE_IDEAS.md` when planning the next major feature rather than re-inventing ideas from chat history.
+10. Treat runtime screenshots/results from the user as newer truth than assumptions in older design prose.
 
 ## Documentation rule for every future pass
 
@@ -34,6 +35,7 @@ Every meaningful development/runtime pass must update documentation **before it 
 - `TEST_MATRIX.md`: update when a new test becomes required, passes, fails, or is blocked.
 - `DEVELOPMENT_RULES.md`: update only when workflow/deployment rules change.
 - `ERA_FIDELITY.md`: update whenever expansion-stage behavior, economy/world gating, bot-era behavior or release-transition rules change.
+- `FEATURE_IDEAS.md`: curated idea bank. Keep speculative ideas here until they are intentionally promoted into `NEXT_WORK.md`.
 
 Historical design docs stay in the repository, but do not force a new chat to reconstruct the present from archaeology.
 

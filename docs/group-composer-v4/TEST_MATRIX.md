@@ -115,6 +115,19 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - TODO: Titan Rune modes obey their intended WotLK progression/phase gates.
 - TODO: Random WotLK Normal/Heroic may use Blizzard RDF handoff where appropriate.
 
+### Additional era-system checks
+
+- TODO: Vanilla does not expose arenas.
+- TODO: TBC enables arenas while WotLK-only PvP systems remain unavailable.
+- TODO: Wintergrasp remains unavailable before WotLK.
+- TODO: automated systems cannot award heirlooms before WotLK.
+- TODO: dual spec follows the chosen WotLK-era policy and cannot leak early.
+- TODO: era-invalid bot chatter/goals do not reference unreleased endgame as current content.
+- TODO: Blood Elf/Draenei release policy matches the TBC transition.
+- TODO: Vanilla faction class policy is enforced where the technical implementation supports it.
+- TODO: expansion-specific transport/portal/flying routes obey the era gate.
+- TODO: holiday/world-event automated rewards pass the future-era item audit.
+
 ### Expansion transition integrity
 
 - TODO: opening TBC is forward-only and does not wipe valid Vanilla progress/items/history.

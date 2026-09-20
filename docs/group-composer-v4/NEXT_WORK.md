@@ -91,6 +91,22 @@ For every raid tier:
 - Optional `join.skrra.dev` through HTTPS reverse proxy or Cloudflare Tunnel.
 - Normal friend accounts, no GM.
 
+## P3 — Candidate feature bank
+
+See `FEATURE_IDEAS.md` for the maintained idea list. Do not implement the entire idea bank blindly.
+
+Highest-leverage candidates after P0/P1:
+- Expansion Command Center;
+- Classic-style Vanilla/TBC LFG Board integrated with Composer;
+- persistent guild bot bench;
+- bot crafting orders + guild-bank steward;
+- dynamic world population director;
+- wipe analyzer / raid coach;
+- guild chronicle / trophy history;
+- character journey page.
+
+Promote one candidate at a time into P1/P2 only when its prerequisites are clear and the current runtime loop is stable.
+
 ## Possible polish after runtime evidence
 
 Only build these if testing shows they add real value:

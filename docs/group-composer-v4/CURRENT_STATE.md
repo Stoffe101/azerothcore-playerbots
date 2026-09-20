@@ -100,6 +100,12 @@ Current assessment:
 
 The friends-realm rule is additive and forward-only: TBC keeps legitimate Vanilla content; WotLK keeps legitimate Vanilla + TBC content. Future-era content may never leak backward.
 
+## Planning / idea-bank state
+
+A canonical `FEATURE_IDEAS.md` now captures expansion-fidelity improvements and broader server features. These are **not implemented** merely because they are documented. Work becomes active only when promoted into `NEXT_WORK.md` and then follows normal exact-SHA CI/runtime validation.
+
+High-value future candidates include an Expansion Command Center, Era Integrity dashboard, Vanilla/TBC LFG Board, persistent bot bench, bot crafting orders, dynamic population director, wipe analyzer and guild chronicle.
+
 ## Known current runtime state
 
 The newest code after `3b548b3d` still needs in-game verification for:

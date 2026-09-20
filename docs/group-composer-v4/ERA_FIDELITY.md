@@ -293,6 +293,24 @@ Suggested checks:
 
 The audit should report **PASS / WARN / FAIL** with counts and examples. It should be read-only by default.
 
+## Additional era-relevance checklist
+
+The following are strong candidates for making the realm *feel* like the active expansion, not merely obey a level cap:
+
+- **Population geography:** bot density should shift toward era-appropriate leveling/endgame hubs instead of Northrend remaining busy during Vanilla.
+- **Bot knowledge boundary:** chatter, goals and guild ambitions should not reference unreleased continents/raids as current events.
+- **PvP lifecycle:** Vanilla battlegrounds first; arenas arrive with TBC; Wintergrasp and WotLK PvP systems arrive with WotLK.
+- **System lifecycle:** dual spec, heirloom acquisition, glyphs and other WotLK systems stay unavailable until WotLK where technically practical.
+- **Travel lifecycle:** portal/transport/flying systems activate with the expansion that introduced the destination/mechanic.
+- **Race/class lifecycle:** Blood Elf/Draenei with TBC; Death Knight with WotLK; Vanilla faction class restrictions where practical.
+- **Profession lifecycle:** trainers, recipes and bot crafting behavior obey 300/375/450 and expansion-specific professions.
+- **Vendor/currency lifecycle:** badges/emblems, reputation vendors and catch-up gear cannot leak from future eras.
+- **Loot lifecycle:** audit later-reworked legacy drops so automated gearing cannot smuggle future-era power into earlier progression.
+- **Event lifecycle:** holiday/world-event rewards should be audited for later-expansion additions.
+- **Expansion opening world reaction:** announcements, NPC dialogue, population movement and Adventure Guide state should visibly change when a new era opens.
+
+The full candidate list and non-era feature ideas live in `FEATURE_IDEAS.md`.
+
 ## Implementation order
 
 1. **Central era policy + audit skeleton.**
