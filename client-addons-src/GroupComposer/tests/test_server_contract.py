@@ -1063,3 +1063,12 @@ assert "Unlock Requirements" in GENERATED_UI
 assert "UNLOCK_DETAILS_CHANGED" in CORE
 assert "Exact unlock path" in GENERATED_UI
 assert "req.type" in (ROOT / "client-ui/src/components/UnlockRequirementsModal.ts").read_text(encoding="utf-8")
+
+
+# Co-op access must be party-aware, not leader-only.
+assert "PlayerActivityEligible" in SERVER and "PartyActivityEligible" in SERVER
+assert "humanBlockers" in SERVER and '"PARTY"' in SERVER
+assert "cannot enter:" in SERVER
+assert "must be online so Group Composer can validate their activity access" in SERVER
+assert "no longer satisfies the selected activity access requirements" in SERVER
+assert "A real player in this composition is not ready for the selected activity" in SERVER

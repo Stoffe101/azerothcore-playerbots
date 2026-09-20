@@ -152,6 +152,22 @@ The browser and server now enforce era-specific rules:
 
 Titan Rune modes cannot leak backward into Vanilla/TBC.
 
+### Co-op access preflight
+
+Activity availability is now checked for the **whole real-player composition**, not only the Group Composer owner.
+
+Group Composer validates:
+
+- the owner;
+- every real player already in the live party/raid;
+- manually added real players once their draft entry exists.
+
+A friend can now make an activity visibly unavailable before assembly if they are missing the required level, progression milestone, quest chain, key/item, achievement or item-level gate.
+
+The Unlock Requirements modal includes **Player:** rows so it is clear exactly which human is ready and which human is blocking the activity. Offline humans are treated as unresolved until they log in, because Composer cannot safely verify their quest/item/achievement state.
+
+The same access rules are rechecked during Build & Prepare and again immediately before assembly, preventing a stale preview from allowing one human to strand the group at the portal.
+
 ### Exact unlock-path modal
 
 Locked activity cards are now interactive instead of dead ends.

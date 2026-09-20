@@ -664,7 +664,7 @@ std::string KnownAccessRequirement(Player* player, Config const& config)
     return "";
 }
 
-bool ActivityEligible(Player* player, Config const& config, std::string& reason)
+bool PlayerActivityEligible(Player* player, Config const& config, std::string& reason)
 {
     reason.clear();
     if (!player || !player->IsInWorld())
@@ -764,6 +764,96 @@ bool ActivityEligible(Player* player, Config const& config, std::string& reason)
         return false;
     }
     return true;
+}
+
+bool PartyActivityEligible(Player* master, Config const& config, std::string& reason,
+    std::vector<std::pair<std::string, std::string>>* humanBlockers = nullptr)
+{
+    if (!master)
+    {
+        reason = "Character must be online.";
+        return false;
+    }
+
+    std::unordered_set<uint32> checked;
+    auto check = [&](Player* player, std::string const& label) -> bool
+    {
+        if (!player || GET_PLAYERBOT_AI(player))
+            return true;
+        if (!checked.insert(player->GetGUID().GetCounter()).second)
+            return true;
+
+        std::string blocker;
+        if (!PlayerActivityEligible(player, config, blocker))
+        {
+            if (humanBlockers)
+                humanBlockers->push_back({ label, blocker });
+            if (reason.empty())
+                reason = label + " cannot enter: " + blocker;
+            return false;
+        }
+
+        if (humanBlockers)
+            humanBlockers->push_back({ label, "" });
+        return true;
+    };
+
+    bool ok = check(master, master->GetName());
+    Group* group = master->GetGroup();
+    if (group)
+    {
+        for (Group::MemberSlot const& slot : group->GetMemberSlots())
+        {
+            if (slot.guid == master->GetGUID() || IsBotGuid(slot.guid))
+                continue;
+
+            Player* live = ObjectAccessor::FindConnectedPlayer(slot.guid);
+            if (!live)
+            {
+                CharacterCacheEntry const* cache = sCharacterCache->GetCharacterCacheByGuid(slot.guid);
+                std::string name = cache ? cache->Name : "Offline player";
+                std::string blocker = "must be online so Group Composer can validate their level, progression, quest/key and achievement access.";
+                if (humanBlockers)
+                    humanBlockers->push_back({ name, blocker });
+                if (reason.empty())
+                    reason = name + " " + blocker;
+                ok = false;
+                continue;
+            }
+            if (!check(live, live->GetName()))
+                ok = false;
+        }
+    }
+
+    // Manually added humans may not be grouped yet. Validate their access during Build & Prepare
+    // so a future invite cannot strand the roster at the instance entrance.
+    for (AddedHuman const& request : config.extraHumans)
+    {
+        ObjectGuid guid = sCharacterCache->GetCharacterGuidByName(request.name);
+        if (guid.IsEmpty() || checked.count(guid.GetCounter()))
+            continue;
+
+        Player* live = ObjectAccessor::FindConnectedPlayer(guid);
+        if (!live || GET_PLAYERBOT_AI(live))
+        {
+            std::string blocker = "must be online so Group Composer can validate their activity access.";
+            if (humanBlockers)
+                humanBlockers->push_back({ request.name, blocker });
+            if (reason.empty())
+                reason = request.name + " " + blocker;
+            ok = false;
+            continue;
+        }
+        if (!check(live, live->GetName()))
+            ok = false;
+    }
+
+    return ok;
+}
+
+bool ActivityEligible(Player* player, Config const& config, std::string& reason)
+{
+    return PartyActivityEligible(player, config, reason, nullptr);
 }
 
 uint8 BrowserRaidSize(std::string const& activity, uint32 requested)
@@ -895,7 +985,8 @@ void SendActivityRequirements(ChatHandler* handler, Player* player, std::string 
     config.size = mode == "raid" ? BrowserRaidSize(activityId, requestedSize) : 5;
 
     std::string eligibilityReason;
-    bool const available = ActivityEligible(player, config, eligibilityReason);
+    std::vector<std::pair<std::string, std::string>> humanBlockers;
+    bool const available = PartyActivityEligible(player, config, eligibilityReason, &humanBlockers);
 
     handler->PSendSysMessage("[GC]|UNLOCKRESET|{}|{}|{}",
         mode == "raid" ? "RAID" : "DUNGEON", Sanitize(activityId), Sanitize(activity->name));
@@ -988,6 +1079,14 @@ void SendActivityRequirements(ChatHandler* handler, Player* player, std::string 
                 "Your average item level: " + std::to_string(current) + " / required: " +
                     std::to_string(unsigned(requirements->reqItemLevel)) + ".");
         }
+    }
+
+    for (auto const& entry : humanBlockers)
+    {
+        bool const complete = entry.second.empty();
+        SendUnlockRequirement(handler, "PARTY", complete,
+            std::string("Player: ") + entry.first,
+            complete ? "This real player currently satisfies the selected activity's access requirements." : entry.second);
     }
 
     handler->SendSysMessage("[GC]|UNLOCKDONE");
@@ -2017,6 +2116,12 @@ bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& err
                     error = "Your character fell below the selected activity's required level.";
                     return false;
                 }
+                std::string selfAccessError;
+                if (!PlayerActivityEligible(live, plan.config, selfAccessError))
+                {
+                    error = "Your character no longer satisfies the selected activity access requirements: " + selfAccessError;
+                    return false;
+                }
                 continue;
             }
 
@@ -2032,6 +2137,12 @@ bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& err
             {
                 error = "Human player '" + member.name + "' is below the selected activity's required level " +
                     std::to_string(unsigned(plan.config.requiredLevel)) + ".";
+                return false;
+            }
+            std::string humanAccessError;
+            if (!PlayerActivityEligible(live, plan.config, humanAccessError))
+            {
+                error = "Human player '" + member.name + "' no longer satisfies the selected activity access requirements: " + humanAccessError;
                 return false;
             }
             if (alreadyWithMaster) continue;
@@ -2851,6 +2962,15 @@ bool GroupComposerCommand::HandleFind(ChatHandler* handler)
     uint32 owner = master->GetGUID().GetCounter();
     auto draft = s_drafts.find(owner);
     if (draft == s_drafts.end()) { SendError(handler, "No composer request. Configure the addon and press Find Roster again."); return true; }
+
+    std::string partyEligibilityError;
+    if (!PartyActivityEligible(master, draft->second, partyEligibilityError, nullptr))
+    {
+        handler->SendSysMessage("[GC]|RESET");
+        SendError(handler, "A real player in this composition is not ready for the selected activity: " + partyEligibilityError);
+        s_plans.erase(owner);
+        return true;
+    }
 
     Plan plan;
     std::string error;
