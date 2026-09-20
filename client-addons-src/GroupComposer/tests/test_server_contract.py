@@ -661,7 +661,7 @@ assert "uint8 RequiredActivityLevel(Player* master, Config const& config)" in SE
 assert "GetLFGDungeon(mapId, difficulty)" in SERVER, "Named dungeon levels must come from Blizzard LFGDungeons.dbc data"
 assert "config.requiredLevel = RequiredActivityLevel(master, config);" in SERVER
 assert "ApplyBotLevelPolicy(master, config);" in SERVER
-assert "uint16(ownerLevelInEra) + 2" in SERVER and "AdventureCatalog::EraLevelCap(activityEra)" in SERVER
+assert "uint16(lowestRealLevel) + 3" in SERVER and "AdventureCatalog::EraLevelCap(AdventureCatalog::CurrentRealmEra())" in SERVER
 assert "bool disposableCapacity" in PLANNER and "underLevel" in PLANNER and "belowPeerTarget" in PLANNER and "abovePeerBand" in PLANNER and "underGear" in PLANNER, (
     "Online RNDbot fallback lost elastic activity provisioning"
 )
