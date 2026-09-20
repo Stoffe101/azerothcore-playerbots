@@ -1,4 +1,5 @@
 #include "AdminPanelExpansion.h"
+#include "EraPolicy.h"
 #include "AdminPanelGameplay.h"
 #include "AdventureStartControl.h"
 
@@ -55,18 +56,17 @@ struct TeleportPoint
     float y;
     float z;
     float o;
-    RealmEra requiredEra;
 };
 
 std::array<TeleportPoint, 8> const kTeleports = {{
-    { "darkportal", "Dark Portal", 0, -11894.80f, -3206.52f, -14.62f, 0.00f, RealmEra::Vanilla },
-    { "stormwind", "Stormwind", 0, -8833.38f, 628.62f, 94.00f, 0.70f, RealmEra::Vanilla },
-    { "ironforge", "Ironforge", 0, -4981.25f, -881.54f, 501.66f, 5.40f, RealmEra::Vanilla },
-    { "orgrimmar", "Orgrimmar", 1, 1629.36f, -4373.39f, 31.26f, 3.00f, RealmEra::Vanilla },
-    { "thunderbluff", "Thunder Bluff", 1, -1274.45f, 71.86f, 128.16f, 2.80f, RealmEra::Vanilla },
-    { "shattrath", "Shattrath", 530, -1838.16f, 5301.79f, -12.43f, 5.95f, RealmEra::Tbc },
-    { "dalaran", "Dalaran", 571, 5807.75f, 588.27f, 660.94f, 1.64f, RealmEra::Wotlk },
-    { "argent", "Argent Tournament", 571, 8475.70f, 891.54f, 547.29f, 0.00f, RealmEra::Wotlk },
+    { "darkportal", "Dark Portal", 0, -11894.80f, -3206.52f, -14.62f, 0.00f },
+    { "stormwind", "Stormwind", 0, -8833.38f, 628.62f, 94.00f, 0.70f },
+    { "ironforge", "Ironforge", 0, -4981.25f, -881.54f, 501.66f, 5.40f },
+    { "orgrimmar", "Orgrimmar", 1, 1629.36f, -4373.39f, 31.26f, 3.00f },
+    { "thunderbluff", "Thunder Bluff", 1, -1274.45f, 71.86f, 128.16f, 2.80f },
+    { "shattrath", "Shattrath", 530, -1838.16f, 5301.79f, -12.43f, 5.95f },
+    { "dalaran", "Dalaran", 571, 5807.75f, 588.27f, 660.94f, 1.64f },
+    { "argent", "Argent Tournament", 571, 8475.70f, 891.54f, 547.29f, 0.00f },
 }};
 
 std::string Lower(std::string value)
@@ -963,10 +963,13 @@ private:
             handler->PSendSysMessage("{} Unknown destination. Use: darkportal, shattrath, stormwind, ironforge, orgrimmar, thunderbluff, dalaran, argent.", PREFIX);
             return true;
         }
-        if (static_cast<uint8>(AdminPanelExpansion::CurrentEra()) < static_cast<uint8>(point->requiredEra))
+        if (!EraPolicy::IsMapAllowed(point->map))
         {
-            handler->PSendSysMessage("{} {} is locked until {} is released.", PREFIX, point->label,
-                point->requiredEra == RealmEra::Tbc ? "The Burning Crusade" : "Wrath of the Lich King");
+            EraPolicy::Era requiredEra;
+            if (EraPolicy::TryMapEra(point->map, requiredEra))
+                handler->PSendSysMessage("{} {} is locked until {} is released.", PREFIX, point->label, EraPolicy::Name(requiredEra));
+            else
+                handler->PSendSysMessage("{} {} uses an unknown map and is blocked by EraPolicy.", PREFIX, point->label);
             return true;
         }
         if (player && player->TeleportTo(point->map, point->x, point->y, point->z, point->o))
@@ -986,6 +989,11 @@ private:
             handler->PSendSysMessage("{} Player '{}' is not online.", PREFIX, name);
             return true;
         }
+        if (!EraPolicy::IsMapAllowed(target->GetMapId()))
+        {
+            handler->PSendSysMessage("{} Cannot goto {} because that player's map is not released in the live era.", PREFIX, target->GetName());
+            return true;
+        }
         player->TeleportTo(target->GetMapId(), target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), target->GetOrientation());
         handler->PSendSysMessage("{} Teleported to {}.", PREFIX, target->GetName());
         return true;
@@ -1001,6 +1009,11 @@ private:
         if (!player || !target)
         {
             handler->PSendSysMessage("{} Player '{}' is not online.", PREFIX, name);
+            return true;
+        }
+        if (!EraPolicy::IsMapAllowed(player->GetMapId()))
+        {
+            handler->PSendSysMessage("{} Cannot summon into a map that is not released in the live era.", PREFIX);
             return true;
         }
         target->TeleportTo(player->GetMapId(), player->GetPositionX(), player->GetPositionY(), player->GetPositionZ(), player->GetOrientation());
@@ -1051,8 +1064,14 @@ private:
             return true;
         }
         Field* fields = result->Fetch();
+        uint32 const mapId = fields[0].Get<uint16>();
+        if (!EraPolicy::IsMapAllowed(mapId))
+        {
+            handler->PSendSysMessage("{} Saved location '{}' is on a map that is not released in the live era.", PREFIX, name);
+            return true;
+        }
         player->TeleportTo(
-            fields[0].Get<uint16>(), fields[1].Get<float>(), fields[2].Get<float>(), fields[3].Get<float>(), fields[4].Get<float>());
+            mapId, fields[1].Get<float>(), fields[2].Get<float>(), fields[3].Get<float>(), fields[4].Get<float>());
         handler->PSendSysMessage("{} Teleported to saved location '{}'.", PREFIX, name);
         return true;
     }

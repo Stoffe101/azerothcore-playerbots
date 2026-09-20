@@ -1300,3 +1300,16 @@ assert 'EraPolicy::IsProgressionAllowed(target)' in ADVENTURE_CONTROL
 assert 'EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk)' in GROUP_COMPOSER_TITAN
 assert 'EraPolicy::EraForLevel(master->GetLevel())' in RAID_ROSTER_ERA
 assert 'state > EraPolicy::RealmProgressionCeiling()' in RAID_ROSTER_ERA
+
+
+# ERA-01 slice 3: map/travel policy consumes Map.dbc expansion metadata.
+assert 'bool TryMapEra(uint32 mapId, Era& era);' in ERA_POLICY_H
+assert 'bool IsMapAllowed(uint32 mapId);' in ERA_POLICY_H
+assert 'MapEntry const* map = sMapStore.LookupEntry(mapId);' in ERA_POLICY_CPP
+assert 'uint32 const expansion = map->Expansion();' in ERA_POLICY_CPP
+assert 'EraPolicy::IsMapAllowed(point->map)' in ADMIN_PANEL
+assert 'requiredEra' not in ADMIN_PANEL
+assert 'EraPolicy::IsMapAllowed(target->GetMapId())' in ADMIN_PANEL
+assert 'EraPolicy::IsMapAllowed(mapId)' in ADMIN_PANEL
+assert 'EraPolicy::IsMapAllowed(mapId)' in SERVER
+assert 'Era Policy blocked the selected instance map' in SERVER

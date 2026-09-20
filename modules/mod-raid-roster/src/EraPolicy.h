@@ -28,6 +28,8 @@ uint8 MinimumProgression(Era era);
 uint8 RealmMinimumProgression();
 bool IsProgressionAllowed(uint8 progression);
 bool IsEraReleased(Era era);
+bool TryMapEra(uint32 mapId, Era& era);
+bool IsMapAllowed(uint32 mapId);
 
 char const* Name(Era era);
 char const* Token(Era era);

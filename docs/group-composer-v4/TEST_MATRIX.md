@@ -57,6 +57,9 @@ Status vocabulary:
 - TODO: `.playstyle raid unlock` cannot cross the live era boundary.
 - TODO: direct `.gctitan queue` is rejected before WotLK.
 - TODO: bot progression sync never promotes a bot beyond the live realm era.
+- TODO: Azeroth Control refuses Shattrath before TBC and Dalaran/Argent before WotLK.
+- TODO: Azeroth Control goto/saved-location travel refuses a future-era map.
+- TODO: Group Composer cannot teleport a reviewed roster into a future-era instance map.
 
 ## Admin security / addon launchers
 

@@ -67,6 +67,7 @@ They are the dependency spine for most other approved era work. First define one
   - Canonical `EraPolicy.h/.cpp` now owns the era enum, current-era derivation, 60/70/80 caps, progression ceilings/minimums, release comparison and era application.
   - Adventure Catalog and AdminPanelExpansion now alias/delegate to EraPolicy; their duplicate enum/state/cap tables are removed.
   - Slice 2 migrates starter/catch-up availability, player progression shortcuts, direct Composer Titan Rune access and bot progression sync.
+  - Slice 3 adds a Map.dbc-backed map policy and migrates Admin/Composer teleport boundaries to it.
   - Finish when Group Composer, bots, AH, vendors, professions, travel, starter/catch-up, Titan Rune and PvP consume one authoritative policy rather than inventing independent era logic.
 
 - [ ] **ERA-02 — Era Integrity scanner — TODO**
@@ -144,7 +145,8 @@ They are the dependency spine for most other approved era work. First define one
 
 - [ ] **ERA-14 — Era-aware travel — PARTIAL**
   - Existing activity travel is progression-gated.
-  - Finish Outland/Northrend map, portal, transport and teleport gating.
+  - Central EraPolicy now derives map era from Map.dbc and gates Admin Panel / Group Composer teleport destinations.
+  - Finish world-level Outland/Northrend portal/transport entry enforcement and remaining teleport paths.
   - Flying begins with TBC; Cold Weather Flying belongs to WotLK.
 
 - [ ] **ERA-15 — Era-aware PvP — TODO**

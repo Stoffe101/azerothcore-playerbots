@@ -2,9 +2,25 @@
 
 Newest entries belong at the top of the dated section.
 
-## 2026-09-20 — ERA-01 slice 2: progression boundaries
+## 2026-09-20 — ERA-01 slice 3: map/travel containment
 
 Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
+
+Implemented:
+- EraPolicy reads Map.dbc `expansionID` through the server DBC store and exposes `TryMapEra` / `IsMapAllowed`;
+- removed Admin Panel's duplicated per-destination `requiredEra` table;
+- Admin Panel teleport, goto, summon destination and saved-location travel now respect the central map policy;
+- Group Composer performs an explicit EraPolicy map check immediately before instance travel;
+- unknown map IDs fail closed in the EraPolicy travel paths;
+- raw core GM tooling remains the deliberate dev escape hatch; Azeroth Control itself respects the live realm.
+
+Scope: this is map-level containment. Portals/transports/flying mechanics and historically altered old-world content still require later ERA-14/ERA-18 work.
+
+CI: commit uses `[local-ci]`; exact final SHA must pass all required workflows.
+
+## 2026-09-20 — ERA-01 slice 2: progression boundaries
+
+Status: **IMPLEMENTATION DONE + EXACT-HEAD LOCAL CI VERIFIED**.
 
 Implemented:
 - EraPolicy adds canonical level/progression band helpers and allow checks;
@@ -17,7 +33,7 @@ Implemented:
 
 Still TODO: item provenance, global bot level/gear enforcement, Titan Rune phase timing, AH/vendors/professions/PvP/maps/transports.
 
-CI: commit uses `[local-ci]`; exact final SHA must pass all required workflows.
+CI: exact SHA `1e3e9d5fa32e52d9abb2b43501e222f812ee6c3a` passed client checks, backend staging, Integration and Group Composer compile. Both heavy jobs ran on `stoffes-pc` with the Clang 18 -> GCC 15 workaround intact.
 
 ## 2026-09-20 — ERA-01 slice 1: central policy spine
 

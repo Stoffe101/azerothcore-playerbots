@@ -1,5 +1,6 @@
 #include "EraPolicy.h"
 
+#include "DBCStores.h"
 #include "IndividualProgression.h"
 
 #include <algorithm>
@@ -121,6 +122,23 @@ bool IsProgressionAllowed(uint8 progression)
 bool IsEraReleased(Era era)
 {
     return static_cast<uint8>(era) <= static_cast<uint8>(CurrentRealmEra());
+}
+
+bool TryMapEra(uint32 mapId, Era& era)
+{
+    MapEntry const* map = sMapStore.LookupEntry(mapId);
+    if (!map)
+        return false;
+
+    uint32 const expansion = map->Expansion();
+    era = expansion == 0 ? Era::Vanilla : (expansion == 1 ? Era::Tbc : Era::Wotlk);
+    return true;
+}
+
+bool IsMapAllowed(uint32 mapId)
+{
+    Era era;
+    return TryMapEra(mapId, era) && IsEraReleased(era);
 }
 
 char const* Name(Era era)

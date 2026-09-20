@@ -2,6 +2,7 @@
 
 #include "AdventureCatalog.h"
 #include "AdventureStartControl.h"
+#include "EraPolicy.h"
 #include "GroupComposerPlanner.h"
 #include "GroupComposerReserve.h"
 #include "GroupComposerTypes.h"
@@ -2456,6 +2457,12 @@ bool TeleportCompletedPlan(Player* master, Plan const& plan, std::string& detail
             return true;
         }
         error = "The selected activity has no configured instance map for automatic travel.";
+        return false;
+    }
+
+    if (!EraPolicy::IsMapAllowed(mapId))
+    {
+        error = "Era Policy blocked the selected instance map because its expansion is not released on this realm.";
         return false;
     }
 

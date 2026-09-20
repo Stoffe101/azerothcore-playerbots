@@ -65,7 +65,7 @@ Verified green checkpoint after this pass: `3b548b3d29539a1ae0816d10db0e943546d3
 
 ## Latest green development pass
 
-Latest fully verified green checkpoint: `943d70b78db8215b4e6c92d69ba7afbbc1bbd67a`
+Latest fully verified green checkpoint: `1e3e9d5fa32e52d9abb2b43501e222f812ee6c3a`
 
 Exact-head CI: client checks **SUCCESS**, backend staging **SUCCESS**, Group Composer compile **SUCCESS** on `stoffes-pc`, Integration **SUCCESS** on `stoffes-pc`. Both heavy workflows retained the Clang 18 -> GCC 15 libstdc++ workaround.
 
@@ -123,7 +123,9 @@ First implementation slice:
 - AdminPanelExpansion is now a compatibility facade over EraPolicy, preserving existing Admin Panel call sites while establishing one source of truth;
 - the active era is derived from Individual Progression's live progression ceiling, so startup cannot disagree merely because module initialization order differs.
 
-Slice 2 now migrates starter/catch-up availability, player progression shortcuts, direct Composer Titan Rune access and bot progression synchronization onto EraPolicy.
+Slice 2 is exact-head local-CI green at `1e3e9d5f`: starter/catch-up availability, player progression shortcuts, direct Composer Titan Rune access and bot progression synchronization now consume EraPolicy.
+
+Slice 3 is **IN PROGRESS**: EraPolicy derives map era from Map.dbc expansion metadata; Admin Panel teleports/goto/summon/saved locations and Group Composer instance travel are being moved onto that map gate.
 
 ERA-01 is **not DONE yet**. AH, global bot population/geography, professions, vendors, travel, classes/races, PvP and other systems still need migration/enforcement.
 
