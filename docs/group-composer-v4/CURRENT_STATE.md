@@ -65,9 +65,11 @@ Verified green checkpoint after this pass: `3b548b3d29539a1ae0816d10db0e943546d3
 
 ## Latest green development pass
 
-Implementation checkpoint: `91f8cff1beeb6d09875c60a1b1aee7fab662c20f`
+Current branch checkpoint: `8dc94defe9e2a213250017635fc20a219006f237`
 
-Exact-head CI: client checks **SUCCESS**, backend staging **SUCCESS**, Group Composer compile **SUCCESS** on `stoffes-pc`, Integration **SUCCESS** on `stoffes-pc`.
+Exact-head CI: client checks **SUCCESS**, backend staging **SUCCESS**, Group Composer compile **SUCCESS** on `stoffes-pc`, Integration **SUCCESS** on `stoffes-pc`. Both heavy workflows retained the Clang 18 -> GCC 15 libstdc++ workaround.
+
+This head includes the previously verified runtime-pass-3 implementation, peer-policy observability, Admin Panel authorization hardening and the Group Composer minimap launcher. Current Group Composer version is **0.15.2**.
 
 ### Runtime pass 3 implementation
 
@@ -150,7 +152,7 @@ Do not convert those TODOs to PASS from CI alone.
 
 ## P0.5 security / addon launcher pass
 
-Implementation status: **PUSHED; exact-head CI required; runtime validation pending**.
+Implementation status: **DONE + exact-head local CI verified at `8dc94defe9e2a213250017635fc20a219006f237`; runtime validation pending**.
 
 - Azeroth Control already had GM-only server command registrations for privileged actions. This pass adds a harmless server authorization probe so the addon can know whether the current session is actually GM-authorized.
 - Non-GM clients keep the Azeroth Control minimap button hidden, cannot keep the panel frame shown, and `/ap` / `/adminpanel` will not open privileged UI.

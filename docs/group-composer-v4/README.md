@@ -64,24 +64,21 @@ This checkpoint records all 40 user-approved roadmap items with stable IDs/statu
 
 ## Current verified implementation checkpoint
 
-Latest fully verified green implementation:
+Latest fully verified green branch head:
 
-- `91f8cff1beeb6d09875c60a1b1aee7fab662c20f`
-- Commit: `fix: repair RDF autoaccept patch format [local-ci]`
+- `8dc94defe9e2a213250017635fc20a219006f237`
+- Commit: `feat: secure admin panel and add Composer launcher [local-ci]`
 - Group Composer client checks: **SUCCESS**
 - Stage Group Composer V4 backend: **SUCCESS**
 - Group Composer V4 compile: **SUCCESS** on `stoffes-pc`
 - Integration build: **SUCCESS** on `stoffes-pc`
+- Both local builds retained the Ubuntu 26.04 Clang 18 -> GCC 15 libstdc++ workaround.
 
-This checkpoint contains **runtime pass 3** and addon version **0.15.0**: deterministic Playerbot RDF proposal acceptance, player-relevant era defaults, locked/inapplicable dungeon difficulties, Recommendation/modal/icon layout fixes, selected-activity-era difficulty validation, and the lowest-real-human +/-3 bot peer policy. The implementation is compile/integration green; the changed behaviors remain runtime-test TODO until observed in game.
+This head contains runtime pass 3, the runtime-pass-3.1 peer-policy observability follow-up and the Admin security / Group Composer launcher pass. Current Group Composer addon version is **0.15.2**.
 
-### Active P0 observability follow-up
+The peer policy is generic: the **lowest real human at any level** is the peer target. Status exposes `Lowest-human target Lv X · bots Lv A-B` so arbitrary mixed-level groups can be checked directly. Examples such as 80+14 or 80+23 are illustrative only.
 
-Runtime-pass-3.1 source commit: `b9ed63e5b82ad360e648bebd624dc85a3000bd94`.
-
-Typed-UI generated bundle commit: `68adeb52bb1d50e3a4e7ff013f5a538895405837`.
-
-This 0.15.1 follow-up does not change the lowest-human rule; it makes the already-generic calculation visible in status as `Lowest-human target Lv X · bots Lv A-B`. A level-14, level-23, level-31 or any other lowest real human is treated identically by the same formula. Exact-head CI must be checked on the newest `[local-ci]` follow-up before deployment.
+All changed runtime behavior still requires in-game observation before the corresponding `TEST_MATRIX.md` rows become PASS.
 
 The earlier one-shot per-account **Vanilla-fresh next-character override** remains available for genuine low-level testing on the WotLK dev realm.
 

@@ -4,7 +4,7 @@ Newest entries belong at the top of the dated section.
 
 ## 2026-09-20 — P0.5 Admin security + Group Composer launcher
 
-Status: **IMPLEMENTATION PUSHED; exact-head local CI + runtime validation required**.
+Status: **IMPLEMENTATION DONE + EXACT-HEAD LOCAL CI VERIFIED; runtime validation required**.
 
 User request:
 - normal/non-GM players must not be able to access or use Azeroth Control/Admin Panel;
@@ -26,11 +26,16 @@ Implemented:
 - added static contracts proving all privileged Admin Panel commands remain GM-only and the new launch/access guards exist.
 
 CI:
-- commit uses `[local-ci]`; do not mark green until client checks, backend staging, Group Composer compile and Integration all succeed for the exact final SHA.
+- Exact current branch checkpoint: `8dc94defe9e2a213250017635fc20a219006f237`.
+- Group Composer client checks: **SUCCESS**.
+- Stage Group Composer V4 backend: **SUCCESS**.
+- Integration build: **SUCCESS** on `stoffes-pc`.
+- Group Composer V4 compile: **SUCCESS** on `stoffes-pc`.
+- Both heavy jobs retained the Clang 18 -> GCC 15 libstdc++ workaround.
 
 ## 2026-09-20 — Runtime pass 3.1: peer-policy observability
 
-Status: **IMPLEMENTED; exact-head local CI + runtime verification required**.
+Status: **IMPLEMENTED + INCLUDED IN EXACT-HEAD LOCAL CI GREEN CHECKPOINT; runtime verification required**.
 
 Clarification:
 - The mixed-level anti-boost rule has no special level-14 case.
@@ -48,7 +53,8 @@ CI:
 - Source commit: `b9ed63e5b82ad360e648bebd624dc85a3000bd94`.
 - Group Composer typed UI completed successfully and published generated bundle commit `68adeb52bb1d50e3a4e7ff013f5a538895405837`.
 - GitHub Actions bot pushes do not start the required downstream workflows, so this documentation follow-up intentionally uses `[local-ci]` on top of the generated bundle.
-- Do not mark 3.1 green until the exact final follow-up head completes client checks, backend staging, Group Composer compile and Integration successfully.
+- The later combined branch head `8dc94defe9e2a213250017635fc20a219006f237` contains this source + generated bundle and completed all four required workflows successfully on the exact SHA.
+- Runtime acceptance remains TODO until arbitrary mixed-level groups confirm the displayed peer target/band and actual roster agree.
 
 ## 2026-09-20 — Runtime pass 3: RDF proposals, peer levels and player-aware UI
 

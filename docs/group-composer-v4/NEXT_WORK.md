@@ -5,7 +5,7 @@ This file is priority-ordered. Do not re-add items already marked implemented in
 ## P0 — Finish the current validation loop
 
 1. **DONE:** one-shot low-level starter pass is green at `86ce6c8d`.
-2. **DONE:** runtime-pass-3 implementation/CI is green at `91f8cff1`.
+2. **DONE:** current combined P0 implementation/CI is green at `8dc94def` (runtime pass 3, peer-policy observability, Admin authorization hardening and Composer launcher).
 3. Deploy the green branch with:
    ```bash
    git switch test/group-composer-v4
@@ -25,14 +25,16 @@ This file is priority-ordered. Do not re-add items already marked implemented in
    - solo player: bots stay within +/-3 of that player, bounded by dungeon minimum and live realm cap;
    - multiple humans: lowest real human is the reference;
    - level 80 solo in a trivial Vanilla dungeon may use high-level peer bots;
-   - level 80 + level 14 friend targets bots around level 14 (13-17 for a level-13 dungeon).
+   - use **any** mixed-level real-player group to verify that the lowest real human becomes the peer target; 80+14 is only an example, not a special case;
+   - confirm the status line reports the same target and allowed bot band actually used by the roster.
 6. Keep using the one-shot `.ap nextstarter vanilla` lane for low-level validation.
 
 ## P0.5 — Security / launcher polish while runtime testing is unavailable
 
-1. Admin Panel GM-only client authorization + server-authoritative command protection.
-2. Group Composer clickable minimap launcher while retaining `/gc`.
-3. Once exact-head CI is green, runtime validation remains TODO until a GM and a normal account can be tested.
+Implementation/CI is **DONE** at `8dc94def`; runtime acceptance remains TODO.
+
+1. Test Admin Panel GM-only client authorization + server-authoritative command protection with one GM and one normal account.
+2. Test the Group Composer clickable minimap launcher while retaining `/gc`.
 
 ## P0.6 — First new architecture pass after runtime validation / while P0 runtime evidence is blocked
 
