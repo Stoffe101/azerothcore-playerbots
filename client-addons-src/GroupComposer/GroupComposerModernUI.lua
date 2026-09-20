@@ -1900,72 +1900,110 @@ function ____exports.journey(self)
         guildId = __TS__Number(____raw_guildId_58)
     }
 end
-function ____exports.catalogDiagnostics(self)
-    local ____GC_catalogDiagnostics_63 = GC.catalogDiagnostics
-    if ____GC_catalogDiagnostics_63 == nil then
-        ____GC_catalogDiagnostics_63 = {}
+function ____exports.unlockDetails(self)
+    local ____GC_unlockDetails_63 = GC.unlockDetails
+    if ____GC_unlockDetails_63 == nil then
+        ____GC_unlockDetails_63 = {}
     end
-    local raw = ____GC_catalogDiagnostics_63
+    local raw = ____GC_unlockDetails_63
     local ____temp_68 = raw.ready == true
-    local ____raw_entries_64 = raw.entries
-    if ____raw_entries_64 == nil then
-        ____raw_entries_64 = {}
+    local ____temp_69 = raw.mode == "RAID" and "RAID" or "DUNGEON"
+    local ____raw_id_64 = raw.id
+    if ____raw_id_64 == nil then
+        ____raw_id_64 = ""
     end
-    local ____raw_pass_65 = raw.pass
-    if ____raw_pass_65 == nil then
-        ____raw_pass_65 = 0
+    local ____tostring_result_70 = tostring(____raw_id_64)
+    local ____raw_label_65 = raw.label
+    if ____raw_label_65 == nil then
+        ____raw_label_65 = ""
     end
-    local ____TS__Number_result_69 = __TS__Number(____raw_pass_65)
-    local ____raw_warn_66 = raw.warn
-    if ____raw_warn_66 == nil then
-        ____raw_warn_66 = 0
+    local ____tostring_result_71 = tostring(____raw_label_65)
+    local ____temp_72 = raw.available == true
+    local ____raw_summary_66 = raw.summary
+    if ____raw_summary_66 == nil then
+        ____raw_summary_66 = ""
     end
-    local ____TS__Number_result_70 = __TS__Number(____raw_warn_66)
-    local ____raw_fail_67 = raw.fail
-    if ____raw_fail_67 == nil then
-        ____raw_fail_67 = 0
+    local ____tostring_result_73 = tostring(____raw_summary_66)
+    local ____raw_requirements_67 = raw.requirements
+    if ____raw_requirements_67 == nil then
+        ____raw_requirements_67 = {}
     end
     return {
         ready = ____temp_68,
-        entries = ____raw_entries_64,
-        pass = ____TS__Number_result_69,
-        warn = ____TS__Number_result_70,
-        fail = __TS__Number(____raw_fail_67)
+        mode = ____temp_69,
+        id = ____tostring_result_70,
+        label = ____tostring_result_71,
+        available = ____temp_72,
+        summary = ____tostring_result_73,
+        requirements = ____raw_requirements_67
+    }
+end
+function ____exports.catalogDiagnostics(self)
+    local ____GC_catalogDiagnostics_74 = GC.catalogDiagnostics
+    if ____GC_catalogDiagnostics_74 == nil then
+        ____GC_catalogDiagnostics_74 = {}
+    end
+    local raw = ____GC_catalogDiagnostics_74
+    local ____temp_79 = raw.ready == true
+    local ____raw_entries_75 = raw.entries
+    if ____raw_entries_75 == nil then
+        ____raw_entries_75 = {}
+    end
+    local ____raw_pass_76 = raw.pass
+    if ____raw_pass_76 == nil then
+        ____raw_pass_76 = 0
+    end
+    local ____TS__Number_result_80 = __TS__Number(____raw_pass_76)
+    local ____raw_warn_77 = raw.warn
+    if ____raw_warn_77 == nil then
+        ____raw_warn_77 = 0
+    end
+    local ____TS__Number_result_81 = __TS__Number(____raw_warn_77)
+    local ____raw_fail_78 = raw.fail
+    if ____raw_fail_78 == nil then
+        ____raw_fail_78 = 0
+    end
+    return {
+        ready = ____temp_79,
+        entries = ____raw_entries_75,
+        pass = ____TS__Number_result_80,
+        warn = ____TS__Number_result_81,
+        fail = __TS__Number(____raw_fail_78)
     }
 end
 function ____exports.pinnedMembers(self)
     local result = {}
-    local ____exports_config_result_pinned_71 = ____exports.config(nil).pinned
-    if ____exports_config_result_pinned_71 == nil then
-        ____exports_config_result_pinned_71 = {}
+    local ____exports_config_result_pinned_82 = ____exports.config(nil).pinned
+    if ____exports_config_result_pinned_82 == nil then
+        ____exports_config_result_pinned_82 = {}
     end
-    for ____, pin in ipairs(____exports_config_result_pinned_71) do
+    for ____, pin in ipairs(____exports_config_result_pinned_82) do
         result[#result + 1] = pin
     end
     return result
 end
 function ____exports.planWarnings(self)
     local result = {}
-    local ____exports_plan_result_warnings_72 = ____exports.plan(nil).warnings
-    if ____exports_plan_result_warnings_72 == nil then
-        ____exports_plan_result_warnings_72 = {}
+    local ____exports_plan_result_warnings_83 = ____exports.plan(nil).warnings
+    if ____exports_plan_result_warnings_83 == nil then
+        ____exports_plan_result_warnings_83 = {}
     end
-    for ____, warning in ipairs(____exports_plan_result_warnings_72) do
+    for ____, warning in ipairs(____exports_plan_result_warnings_83) do
         result[#result + 1] = tostring(warning)
     end
     return result
 end
 function ____exports.coverageDisplay(self)
-    local ____exports_plan_result_summary_73 = ____exports.plan(nil).summary
-    if ____exports_plan_result_summary_73 == nil then
-        ____exports_plan_result_summary_73 = {}
+    local ____exports_plan_result_summary_84 = ____exports.plan(nil).summary
+    if ____exports_plan_result_summary_84 == nil then
+        ____exports_plan_result_summary_84 = {}
     end
-    local summary = ____exports_plan_result_summary_73
-    local ____summary_utility_74 = summary.utility
-    if ____summary_utility_74 == nil then
-        ____summary_utility_74 = ""
+    local summary = ____exports_plan_result_summary_84
+    local ____summary_utility_85 = summary.utility
+    if ____summary_utility_85 == nil then
+        ____summary_utility_85 = ""
     end
-    local raw = tostring(____summary_utility_74)
+    local raw = tostring(____summary_utility_85)
     local labels = {}
     if (string.find(raw, "interrupt", nil, true) or 0) - 1 >= 0 then
         labels[#labels + 1] = "Interrupts"
@@ -2002,30 +2040,30 @@ function ____exports.coverageDisplay(self)
     if utility == "" then
         utility = "No utility coverage yet"
     end
-    local ____temp_76 = (utility .. "\n") .. "Ranged DPS  "
-    local ____summary_ranged_75 = summary.ranged
-    if ____summary_ranged_75 == nil then
-        ____summary_ranged_75 = 0
+    local ____temp_87 = (utility .. "\n") .. "Ranged DPS  "
+    local ____summary_ranged_86 = summary.ranged
+    if ____summary_ranged_86 == nil then
+        ____summary_ranged_86 = 0
     end
-    local ____temp_78 = (____temp_76 .. tostring(____summary_ranged_75)) .. "     Melee DPS  "
-    local ____summary_melee_77 = summary.melee
-    if ____summary_melee_77 == nil then
-        ____summary_melee_77 = 0
+    local ____temp_89 = (____temp_87 .. tostring(____summary_ranged_86)) .. "     Melee DPS  "
+    local ____summary_melee_88 = summary.melee
+    if ____summary_melee_88 == nil then
+        ____summary_melee_88 = 0
     end
-    return ____temp_78 .. tostring(____summary_melee_77)
+    return ____temp_89 .. tostring(____summary_melee_88)
 end
 function ____exports.dungeonItems(self)
     local result = {}
-    local ____D_DUNGEONS_80 = D.DUNGEONS
-    if ____D_DUNGEONS_80 == nil then
-        ____D_DUNGEONS_80 = {}
+    local ____D_DUNGEONS_91 = D.DUNGEONS
+    if ____D_DUNGEONS_91 == nil then
+        ____D_DUNGEONS_91 = {}
     end
-    for ____, dungeon in __TS__Iterator(____D_DUNGEONS_80) do
-        local ____dungeon_minLevel_79 = dungeon.minLevel
-        if ____dungeon_minLevel_79 == nil then
-            ____dungeon_minLevel_79 = 68
+    for ____, dungeon in __TS__Iterator(____D_DUNGEONS_91) do
+        local ____dungeon_minLevel_90 = dungeon.minLevel
+        if ____dungeon_minLevel_90 == nil then
+            ____dungeon_minLevel_90 = 68
         end
-        local min = __TS__Number(____dungeon_minLevel_79)
+        local min = __TS__Number(____dungeon_minLevel_90)
         result[#result + 1] = {
             value = dungeon.id,
             label = dungeon.label,
@@ -2051,35 +2089,35 @@ function ____exports.difficultyItems(self)
 end
 function ____exports.raidItems(self)
     local result = {}
-    local ____D_RAIDS_86 = D.RAIDS
-    if ____D_RAIDS_86 == nil then
-        ____D_RAIDS_86 = {}
+    local ____D_RAIDS_97 = D.RAIDS
+    if ____D_RAIDS_97 == nil then
+        ____D_RAIDS_97 = {}
     end
-    for ____, raid in __TS__Iterator(____D_RAIDS_86) do
+    for ____, raid in __TS__Iterator(____D_RAIDS_97) do
         local sizes = ""
         local firstSize = true
-        local ____raid_sizes_81 = raid.sizes
-        if ____raid_sizes_81 == nil then
-            ____raid_sizes_81 = {}
+        local ____raid_sizes_92 = raid.sizes
+        if ____raid_sizes_92 == nil then
+            ____raid_sizes_92 = {}
         end
-        for ____, size in __TS__Iterator(____raid_sizes_81) do
+        for ____, size in __TS__Iterator(____raid_sizes_92) do
             if not firstSize then
                 sizes = sizes .. "/"
             end
             sizes = sizes .. tostring(size)
             firstSize = false
         end
-        local ____raid_id_84 = raid.id
-        local ____temp_85 = (tostring(raid.era) .. "  ·  ") .. tostring(raid.label)
-        local ____temp_83 = sizes .. " player · Level "
-        local ____raid_requiredLevel_82 = raid.requiredLevel
-        if ____raid_requiredLevel_82 == nil then
-            ____raid_requiredLevel_82 = 80
+        local ____raid_id_95 = raid.id
+        local ____temp_96 = (tostring(raid.era) .. "  ·  ") .. tostring(raid.label)
+        local ____temp_94 = sizes .. " player · Level "
+        local ____raid_requiredLevel_93 = raid.requiredLevel
+        if ____raid_requiredLevel_93 == nil then
+            ____raid_requiredLevel_93 = 80
         end
         result[#result + 1] = {
-            value = ____raid_id_84,
-            label = ____temp_85,
-            detail = (____temp_83 .. tostring(____raid_requiredLevel_82)) .. "+",
+            value = ____raid_id_95,
+            label = ____temp_96,
+            detail = (____temp_94 .. tostring(____raid_requiredLevel_93)) .. "+",
             icon = ACTIVITY_ICONS[tostring(raid.id)] or DEFAULT_RAID_ICON
         }
     end
@@ -2091,11 +2129,11 @@ function ____exports.raidDifficultyItems(self)
         nil,
         ____exports.config(nil).activity
     )
-    local ____opt_result_89
+    local ____opt_result_100
     if raid ~= nil then
-        ____opt_result_89 = raid.heroic
+        ____opt_result_100 = raid.heroic
     end
-    if ____opt_result_89 == true then
+    if ____opt_result_100 == true then
         result[#result + 1] = {value = "heroic", label = "Heroic"}
     end
     return result
@@ -2103,14 +2141,14 @@ end
 function ____exports.selectedActivityLabel(self)
     local cfg = ____exports.config(nil)
     local mode = cfg.mode == "RAID" and "RAID" or "DUNGEON"
-    local ____exports_activityMeta_91 = ____exports.activityMeta
-    local ____cfg_activity_90 = cfg.activity
-    if ____cfg_activity_90 == nil then
-        ____cfg_activity_90 = ""
+    local ____exports_activityMeta_102 = ____exports.activityMeta
+    local ____cfg_activity_101 = cfg.activity
+    if ____cfg_activity_101 == nil then
+        ____cfg_activity_101 = ""
     end
-    local meta = ____exports_activityMeta_91(
+    local meta = ____exports_activityMeta_102(
         nil,
-        tostring(____cfg_activity_90),
+        tostring(____cfg_activity_101),
         mode
     )
     if meta ~= nil then
@@ -2118,54 +2156,54 @@ function ____exports.selectedActivityLabel(self)
     end
     if cfg.mode == "RAID" then
         local raid = raidById(nil, cfg.activity)
-        local ____opt_result_94
+        local ____opt_result_105
         if raid ~= nil then
-            ____opt_result_94 = raid.label
+            ____opt_result_105 = raid.label
         end
-        local ____opt_result_94_95 = ____opt_result_94
-        if ____opt_result_94_95 == nil then
-            ____opt_result_94_95 = "Raid"
+        local ____opt_result_105_106 = ____opt_result_105
+        if ____opt_result_105_106 == nil then
+            ____opt_result_105_106 = "Raid"
         end
-        return ____opt_result_94_95
+        return ____opt_result_105_106
     end
     local dungeon = dungeonById(nil, cfg.activity)
-    local ____opt_result_98
+    local ____opt_result_109
     if dungeon ~= nil then
-        ____opt_result_98 = dungeon.label
+        ____opt_result_109 = dungeon.label
     end
-    local ____opt_result_98_99 = ____opt_result_98
-    if ____opt_result_98_99 == nil then
-        ____opt_result_98_99 = "Dungeon"
+    local ____opt_result_109_110 = ____opt_result_109
+    if ____opt_result_109_110 == nil then
+        ____opt_result_109_110 = "Dungeon"
     end
-    return ____opt_result_98_99
+    return ____opt_result_109_110
 end
 function ____exports.activityIconFor(self, id, mode)
     return ACTIVITY_ICONS[tostring(id)] or (mode == "RAID" and DEFAULT_RAID_ICON or DEFAULT_DUNGEON_ICON)
 end
 function ____exports.selectedActivityIcon(self)
     local cfg = ____exports.config(nil)
-    local ____exports_activityIconFor_101 = ____exports.activityIconFor
-    local ____cfg_activity_100 = cfg.activity
-    if ____cfg_activity_100 == nil then
-        ____cfg_activity_100 = ""
+    local ____exports_activityIconFor_112 = ____exports.activityIconFor
+    local ____cfg_activity_111 = cfg.activity
+    if ____cfg_activity_111 == nil then
+        ____cfg_activity_111 = ""
     end
-    return ____exports_activityIconFor_101(
+    return ____exports_activityIconFor_112(
         nil,
-        tostring(____cfg_activity_100),
+        tostring(____cfg_activity_111),
         cfg.mode == "RAID" and "RAID" or "DUNGEON"
     )
 end
 function ____exports.requiredActivityLevel(self)
     local cfg = ____exports.config(nil)
     local mode = cfg.mode == "RAID" and "RAID" or "DUNGEON"
-    local ____exports_activityMeta_103 = ____exports.activityMeta
-    local ____cfg_activity_102 = cfg.activity
-    if ____cfg_activity_102 == nil then
-        ____cfg_activity_102 = ""
+    local ____exports_activityMeta_114 = ____exports.activityMeta
+    local ____cfg_activity_113 = cfg.activity
+    if ____cfg_activity_113 == nil then
+        ____cfg_activity_113 = ""
     end
-    local meta = ____exports_activityMeta_103(
+    local meta = ____exports_activityMeta_114(
         nil,
-        tostring(____cfg_activity_102),
+        tostring(____cfg_activity_113),
         mode
     )
     if meta ~= nil then
@@ -2176,38 +2214,38 @@ function ____exports.requiredActivityLevel(self)
     end
     if cfg.mode == "RAID" then
         local raid = raidById(nil, cfg.activity)
-        local ____opt_result_106
+        local ____opt_result_117
         if raid ~= nil then
-            ____opt_result_106 = raid.requiredLevel
+            ____opt_result_117 = raid.requiredLevel
         end
-        local ____opt_result_106_107 = ____opt_result_106
-        if ____opt_result_106_107 == nil then
-            ____opt_result_106_107 = ____exports.realm(nil).levelCap
+        local ____opt_result_117_118 = ____opt_result_117
+        if ____opt_result_117_118 == nil then
+            ____opt_result_117_118 = ____exports.realm(nil).levelCap
         end
-        return __TS__Number(____opt_result_106_107)
+        return __TS__Number(____opt_result_117_118)
     end
     local dungeon = dungeonById(nil, cfg.activity)
-    local ____opt_result_110
+    local ____opt_result_121
     if dungeon ~= nil then
-        ____opt_result_110 = dungeon.minLevel
+        ____opt_result_121 = dungeon.minLevel
     end
-    local ____opt_result_110_111 = ____opt_result_110
-    if ____opt_result_110_111 == nil then
-        ____opt_result_110_111 = 1
+    local ____opt_result_121_122 = ____opt_result_121
+    if ____opt_result_121_122 == nil then
+        ____opt_result_121_122 = 1
     end
-    return __TS__Number(____opt_result_110_111)
+    return __TS__Number(____opt_result_121_122)
 end
 function ____exports.activityEligibilityText(self)
     local level = ____exports.requiredActivityLevel(nil)
-    local ____opt_112 = ____exports.config(nil).options
-    if ____opt_112 ~= nil then
-        ____opt_112 = ____opt_112.minimumItemLevel
+    local ____opt_123 = ____exports.config(nil).options
+    if ____opt_123 ~= nil then
+        ____opt_123 = ____opt_123.minimumItemLevel
     end
-    local ____opt_112_114 = ____opt_112
-    if ____opt_112_114 == nil then
-        ____opt_112_114 = 0
+    local ____opt_123_125 = ____opt_123
+    if ____opt_123_125 == nil then
+        ____opt_123_125 = 0
     end
-    local floor = __TS__Number(____opt_112_114)
+    local floor = __TS__Number(____opt_123_125)
     return (("Level " .. tostring(level)) .. "+ required · Item level floor ") .. (floor > 0 and tostring(floor) or "Off")
 end
 function ____exports.setMinimumItemLevel(self, value)
@@ -2227,15 +2265,15 @@ function ____exports.supportedRaidSizes(self)
         ____exports.config(nil).activity
     )
     local result = {}
-    local ____opt_result_117
+    local ____opt_result_128
     if raid ~= nil then
-        ____opt_result_117 = raid.sizes
+        ____opt_result_128 = raid.sizes
     end
-    local ____opt_result_117_118 = ____opt_result_117
-    if ____opt_result_117_118 == nil then
-        ____opt_result_117_118 = {}
+    local ____opt_result_128_129 = ____opt_result_128
+    if ____opt_result_128_129 == nil then
+        ____opt_result_128_129 = {}
     end
-    for ____, size in __TS__Iterator(____opt_result_117_118) do
+    for ____, size in __TS__Iterator(____opt_result_128_129) do
         result[#result + 1] = __TS__Number(size)
     end
     return result
@@ -2243,6 +2281,10 @@ end
 function ____exports.requestActivities(self, mode, difficulty, size)
     local selectedMode = mode or (____exports.config(nil).mode == "RAID" and "RAID" or "DUNGEON")
     GC:RequestActivities(selectedMode, difficulty, size)
+end
+function ____exports.requestUnlockDetails(self, id, mode)
+    local cfg = ____exports.config(nil)
+    GC:RequestUnlockDetails(mode, id, cfg.difficulty, cfg.size)
 end
 function ____exports.requestJourney(self)
     GC:RequestJourney()
@@ -2252,46 +2294,46 @@ function ____exports.requestCatalogDiagnostics(self)
 end
 function ____exports.activityEligibility(self, id, mode)
     local selectedMode = mode or (____exports.config(nil).mode == "RAID" and "RAID" or "DUNGEON")
-    local ____GC_activityEligibilityReady_119 = GC.activityEligibilityReady
-    if ____GC_activityEligibilityReady_119 == nil then
-        ____GC_activityEligibilityReady_119 = {}
+    local ____GC_activityEligibilityReady_130 = GC.activityEligibilityReady
+    if ____GC_activityEligibilityReady_130 == nil then
+        ____GC_activityEligibilityReady_130 = {}
     end
-    local readyByMode = ____GC_activityEligibilityReady_119
-    local ____GC_activityEligibility_120 = GC.activityEligibility
-    if ____GC_activityEligibility_120 == nil then
-        ____GC_activityEligibility_120 = {}
+    local readyByMode = ____GC_activityEligibilityReady_130
+    local ____GC_activityEligibility_131 = GC.activityEligibility
+    if ____GC_activityEligibility_131 == nil then
+        ____GC_activityEligibility_131 = {}
     end
-    local eligibilityByMode = ____GC_activityEligibility_120
-    local ____eligibilityByMode_selectedMode_121 = eligibilityByMode[selectedMode]
-    if ____eligibilityByMode_selectedMode_121 == nil then
-        ____eligibilityByMode_selectedMode_121 = {}
+    local eligibilityByMode = ____GC_activityEligibility_131
+    local ____eligibilityByMode_selectedMode_132 = eligibilityByMode[selectedMode]
+    if ____eligibilityByMode_selectedMode_132 == nil then
+        ____eligibilityByMode_selectedMode_132 = {}
     end
-    local entries = ____eligibilityByMode_selectedMode_121
+    local entries = ____eligibilityByMode_selectedMode_132
     local entry = entries[id]
     if readyByMode[selectedMode] ~= true or entry == nil then
         return {known = false, eligible = false, reason = "Checking access..."}
     end
-    local ____temp_123 = entry.eligible == true
-    local ____entry_reason_122 = entry.reason
-    if ____entry_reason_122 == nil then
-        ____entry_reason_122 = entry.eligible == true and "Available" or "Locked"
+    local ____temp_134 = entry.eligible == true
+    local ____entry_reason_133 = entry.reason
+    if ____entry_reason_133 == nil then
+        ____entry_reason_133 = entry.eligible == true and "Available" or "Locked"
     end
     return {
         known = true,
-        eligible = ____temp_123,
-        reason = tostring(____entry_reason_122)
+        eligible = ____temp_134,
+        reason = tostring(____entry_reason_133)
     }
 end
 function ____exports.selectedActivityEligibility(self)
     local cfg = ____exports.config(nil)
-    local ____exports_activityEligibility_125 = ____exports.activityEligibility
-    local ____cfg_activity_124 = cfg.activity
-    if ____cfg_activity_124 == nil then
-        ____cfg_activity_124 = ""
+    local ____exports_activityEligibility_136 = ____exports.activityEligibility
+    local ____cfg_activity_135 = cfg.activity
+    if ____cfg_activity_135 == nil then
+        ____cfg_activity_135 = ""
     end
-    return ____exports_activityEligibility_125(
+    return ____exports_activityEligibility_136(
         nil,
-        tostring(____cfg_activity_124),
+        tostring(____cfg_activity_135),
         cfg.mode == "RAID" and "RAID" or "DUNGEON"
     )
 end
@@ -2399,11 +2441,11 @@ function ____exports.removePin(self, index)
     GC:RemovePinnedMember(index)
 end
 function ____exports.planMembers(self)
-    local ____exports_plan_result_members_126 = ____exports.plan(nil).members
-    if ____exports_plan_result_members_126 == nil then
-        ____exports_plan_result_members_126 = {}
+    local ____exports_plan_result_members_137 = ____exports.plan(nil).members
+    if ____exports_plan_result_members_137 == nil then
+        ____exports_plan_result_members_137 = {}
     end
-    return ____exports_plan_result_members_126
+    return ____exports_plan_result_members_137
 end
 function ____exports.roleAccent(self, role)
     if role == "TANK" then
@@ -2442,19 +2484,19 @@ function ____exports.phaseLabel(self, phase)
     return "Ready to configure"
 end
 function ____exports.isBusy(self)
-    local ____exports_progress_result_phase_127 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_127 == nil then
-        ____exports_progress_result_phase_127 = "IDLE"
+    local ____exports_progress_result_phase_138 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_138 == nil then
+        ____exports_progress_result_phase_138 = "IDLE"
     end
-    local phase = tostring(____exports_progress_result_phase_127)
+    local phase = tostring(____exports_progress_result_phase_138)
     return phase == "BUILDING" or phase == "PREPARING" or phase == "ASSEMBLING" or phase == "TRAVEL"
 end
 function ____exports.isAssembled(self)
-    local ____exports_progress_result_phase_128 = ____exports.progress(nil).phase
-    if ____exports_progress_result_phase_128 == nil then
-        ____exports_progress_result_phase_128 = ""
+    local ____exports_progress_result_phase_139 = ____exports.progress(nil).phase
+    if ____exports_progress_result_phase_139 == nil then
+        ____exports_progress_result_phase_139 = ""
     end
-    local phase = tostring(____exports_progress_result_phase_128)
+    local phase = tostring(____exports_progress_result_phase_139)
     return phase == "ASSEMBLED" or phase == "DONE"
 end
 function ____exports.hasFixedActivityDestination(self)
@@ -3918,6 +3960,172 @@ function ____exports.createScrollList(self, parent, width, height)
 end
 return ____exports
  end,
+["components.UnlockRequirementsModal"] = function(...) 
+--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+local ____exports = {}
+local Model = require("model.ComposerModel")
+local Native = require("core.Native")
+local ____Theme = require("theme.Theme")
+local theme = ____Theme.theme
+local ModalUI = require("widgets.Modal")
+local ScrollUI = require("widgets.ScrollList")
+function ____exports.createUnlockRequirementsModal(self, parent)
+    local modal = ModalUI:createModal(parent, 760, 620)
+    modal:setHeaderIcon("Interface\\Icons\\INV_Misc_Key_04")
+    modal:setTitle("Unlock Requirements")
+    modal:setSubtitle("Exact server-side requirements for this activity.")
+    local stateText = Native:createText(modal.content, "Checking requirements...", "GameFontNormal", theme.colors.warning)
+    stateText:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        8,
+        -4
+    )
+    stateText:SetWidth(650)
+    local summary = Native:createText(modal.content, "", "GameFontHighlightSmall", theme.colors.muted)
+    summary:SetPoint(
+        "TOPLEFT",
+        stateText,
+        "BOTTOMLEFT",
+        0,
+        -6
+    )
+    summary:SetWidth(650)
+    summary:SetHeight(42)
+    summary:SetJustifyV("TOP")
+    local scroll = ScrollUI:createScrollList(modal.content, 684, 430)
+    scroll.frame:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        0,
+        -88
+    )
+    local rows = {}
+    local empty = Native:createText(scroll.content, "Waiting for the server...", "GameFontHighlight", theme.colors.muted)
+    empty:SetPoint(
+        "TOPLEFT",
+        scroll.content,
+        "TOPLEFT",
+        20,
+        -26
+    )
+    empty:SetWidth(640)
+    empty:SetJustifyH("CENTER")
+    local function refresh(self)
+        local details = Model:unlockDetails()
+        local color = details.available and theme.colors.success or theme.colors.warning
+        stateText:SetText(details.ready and (details.available and "UNLOCKED · All requirements satisfied" or "LOCKED · Requirements remain") or "Checking requirements...")
+        stateText:SetTextColor(color[1], color[2], color[3], 1)
+        summary:SetText(details.summary)
+        for ____, row in ipairs(rows) do
+            row.panel.frame:Hide()
+        end
+        local requirements = details.requirements
+        if #requirements == 0 then
+            empty:Show()
+        else
+            empty:Hide()
+        end
+        do
+            local i = 0
+            while i < #requirements do
+                local row = rows[i + 1]
+                if row == nil then
+                    local panel = Native:createPanel(scroll.content, theme.colors.surfaceRaised, theme.colors.border)
+                    panel.frame:SetSize(650, 82)
+                    local icon = Native:createText(panel.frame, "", "GameFontNormalLarge")
+                    icon:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        14,
+                        -13
+                    )
+                    icon:SetWidth(30)
+                    local title = Native:createText(panel.frame, "", "GameFontNormal")
+                    title:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        52,
+                        -11
+                    )
+                    title:SetWidth(390)
+                    local ____type = Native:createText(panel.frame, "", "GameFontNormalSmall", theme.colors.muted)
+                    ____type:SetPoint(
+                        "TOPRIGHT",
+                        panel.frame,
+                        "TOPRIGHT",
+                        -14,
+                        -13
+                    )
+                    ____type:SetWidth(150)
+                    ____type:SetJustifyH("RIGHT")
+                    local detail = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
+                    detail:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        52,
+                        -37
+                    )
+                    detail:SetWidth(570)
+                    detail:SetHeight(34)
+                    detail:SetJustifyV("TOP")
+                    scroll:bindWheel(panel.frame)
+                    row = {
+                        panel = panel,
+                        icon = icon,
+                        title = title,
+                        type = ____type,
+                        detail = detail
+                    }
+                    rows[i + 1] = row
+                end
+                local req = requirements[i + 1]
+                local pass = req.status == "PASS"
+                local accent = pass and theme.colors.success or theme.colors.warning
+                row.panel.frame:ClearAllPoints()
+                row.panel.frame:SetPoint(
+                    "TOPLEFT",
+                    scroll.content,
+                    "TOPLEFT",
+                    0,
+                    -(i * 90)
+                )
+                row.icon:SetText(pass and "✓" or "!")
+                row.icon:SetTextColor(accent[1], accent[2], accent[3], 1)
+                row.title:SetText(req.title)
+                row.type:SetText((req.type .. " · ") .. req.status)
+                row.type:SetTextColor(accent[1], accent[2], accent[3], 1)
+                row.detail:SetText(req.detail)
+                row.panel.frame:Show()
+                i = i + 1
+            end
+        end
+        scroll:setContentHeight(math.max(430, #requirements * 90))
+    end
+    Model:composer():RegisterCallback(
+        "UNLOCK_DETAILS_CHANGED",
+        function()
+            if modal.frame:IsShown() then
+                refresh(nil)
+            end
+        end
+    )
+    return {open = function(____, id, label, mode)
+        modal:setTitle(label)
+        modal:setSubtitle("Exact unlock path · " .. (mode == "RAID" and "Raid" or "Dungeon"))
+        scroll:scrollToTop()
+        modal:show()
+        Model:requestUnlockDetails(id, mode)
+        refresh(nil)
+    end}
+end
+return ____exports
+ end,
 ["components.ActivityBrowser"] = function(...) 
 --[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
 -- Lua Library inline imports
@@ -4027,10 +4235,12 @@ local theme = ____Theme.theme
 local ButtonUI = require("widgets.Button")
 local ModalUI = require("widgets.Modal")
 local ScrollUI = require("widgets.ScrollList")
+local UnlockRequirementsUI = require("components.UnlockRequirementsModal")
 function ____exports.createActivityBrowser(self, parent)
     local D = Model:data()
     local modal = ModalUI:createModal(parent, 960, 650)
     modal:setHeaderIcon("Interface\\Icons\\INV_Misc_Map_01")
+    local unlockModal = UnlockRequirementsUI:createUnlockRequirementsModal(parent)
     local filterButtons = {}
     do
         local i = 0
@@ -4422,8 +4632,12 @@ function ____exports.createActivityBrowser(self, parent)
                             id,
                             mode(nil)
                         )
-                        if not latest.known or not latest.eligible then
+                        if not latest.known then
                             Model:fireStatus(latest.reason)
+                            return
+                        end
+                        if not latest.eligible then
+                            unlockModal:open(id, item.label, selectedMode)
                             return
                         end
                         if mode(nil) == "RAID" then
@@ -4464,11 +4678,11 @@ function ____exports.createActivityBrowser(self, parent)
         filter = currentEra(nil)
         if mode(nil) == "RAID" then
             modal:setTitle("Choose Raid")
-            modal:setSubtitle("Vanilla, TBC and WotLK live in one era-aware progression browser.")
+            modal:setSubtitle("Vanilla, TBC and WotLK live in one era-aware progression browser. Click a locked raid to see its exact unlock path.")
             modal:setHeaderIcon("Interface\\Icons\\Achievement_Boss_LichKing")
         else
             modal:setTitle("Choose Dungeon")
-            modal:setSubtitle("Only the live era's difficulty rules apply: Vanilla Normal, TBC Normal/Heroic, WotLK Titan Rune.")
+            modal:setSubtitle("Only the live era's difficulty rules apply. Click a locked dungeon to see its exact quest/key/progression requirements.")
             modal:setHeaderIcon("Interface\\Icons\\Spell_Arcane_PortalDalaran")
         end
         scroll:scrollToTop()
