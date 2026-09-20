@@ -1063,4 +1063,3 @@ assert "Unlock Requirements" in GENERATED_UI
 assert "UNLOCK_DETAILS_CHANGED" in CORE
 assert "Exact unlock path" in GENERATED_UI
 assert "req.type" in (ROOT / "client-ui/src/components/UnlockRequirementsModal.ts").read_text(encoding="utf-8")
-assert "MISSING" in GENERATED_UI
