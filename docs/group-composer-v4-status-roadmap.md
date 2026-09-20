@@ -239,6 +239,8 @@ For each real player and instanced dungeon/raid boss, the server stores:
 
 The Progression page uses final-boss entries from the authoritative Adventure Catalog to show personal and guild clear counts plus first-clear dates. Existing bounty rows remain a compatibility fallback for older test-realm clears.
 
+New ledger rows also carry the stable Group Composer `activity_id`. History lookups prefer that ID and retain a map/final-boss fallback for pre-migration rows, so catalog-facing history no longer depends permanently on reverse-inferring the activity from physical instance metadata.
+
 ### Raid-history detail view
 
 Raid cards on the Progression page are now clickable.
@@ -799,7 +801,7 @@ Once external multiplayer works reliably, the project can shift from "make the s
 
 High-value next areas:
 
-1. extend the new progression ledger with full participant rosters, explicit activity IDs and first-guild-clear records;
+1. extend the new progression ledger with richer per-clear participant/timeline presentation and dedicated first-guild-clear records;
 2. make Recommended Activities gear-, attunement-, guild-roster- and composition-aware;
 3. add richer encounter-readiness diagnostics before raid assembly;
 4. continue Playerbots strategy/mechanic validation for experimental Vanilla/TBC/WotLK encounters;

@@ -44,6 +44,7 @@ ADVENTURE_START_CONTROL_H = (ROOT / "modules/mod-raid-roster/src/AdventureStartC
 ADVENTURE_CATALOG = (ROOT / "modules/mod-raid-roster/src/AdventureCatalog.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY = (ROOT / "modules/mod-raid-roster/src/AdventureProgressionHistory.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY_SQL = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_00_mod_adventure_progression_history.sql").read_text(encoding="utf-8")
+PROGRESSION_ACTIVITY_ID_MIGRATION = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_01_mod_adventure_progression_activity_id.sql").read_text(encoding="utf-8")
 PROGRESSION_PAGE = (ROOT / "client-ui/src/components/ProgressionPage.ts").read_text(encoding="utf-8")
 RECOMMENDATIONS_PAGE = (ROOT / "client-ui/src/components/RecommendationsPage.ts").read_text(encoding="utf-8")
 MEMBER_DETAILS = (ROOT / "client-ui/src/components/MemberDetailsModal.ts").read_text(encoding="utf-8")
@@ -983,6 +984,12 @@ assert "IsRealPlayer(player)" in PROGRESSION_HISTORY
 assert "mod_adventure_progression_event" in PROGRESSION_HISTORY
 assert "mod_adventure_progression_history" in PROGRESSION_HISTORY
 assert "PRIMARY KEY (`player_guid`, `map_id`, `instance_id`, `creature_entry`)" in PROGRESSION_HISTORY_SQL
+assert "`activity_id` VARCHAR(64)" in PROGRESSION_HISTORY_SQL
+assert "ActivityIdFor" in PROGRESSION_HISTORY and "AdventureCatalog::All()" in PROGRESSION_HISTORY
+assert "activity_id = IF(activity_id = '', VALUES(activity_id), activity_id)" in PROGRESSION_HISTORY
+assert "INFORMATION_SCHEMA" in PROGRESSION_ACTIVITY_ID_MIGRATION
+assert "idx_activity_id_time" in PROGRESSION_ACTIVITY_ID_MIGRATION and "idx_activity_id" in PROGRESSION_ACTIVITY_ID_MIGRATION
+assert "activity_id = '{}' OR (activity_id = ''" in SERVER
 assert "COUNT(DISTINCT instance_id)" in SERVER
 assert "playerClearCount" in CORE and "guildClearCount" in CORE
 assert "Cleared ×" in PROGRESSION_PAGE

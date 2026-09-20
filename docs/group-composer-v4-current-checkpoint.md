@@ -60,6 +60,8 @@ The Progression page now receives personal/guild clear counts and first-clear da
 
 Older test-realm bounty rows remain a compatibility fallback so existing historical clears do not disappear.
 
+New progression rows now also store the stable Group Composer `activity_id` when a catalog final boss is recognized. Progression queries prefer that durable key and fall back to map + boss only for older rows whose activity ID is empty. Existing installs receive the column/indexes through a guarded MySQL 8.4-compatible migration.
+
 ### Raid lockout awareness
 
 Group Composer now reads AzerothCore's actual raid instance binds.
@@ -170,7 +172,6 @@ Multi-human raid lockout conflicts are now handled by the co-op preflight: Compo
 Prepared raid plans now also distinguish **access/role valid** from **fully bot-ready**. Composer reads the curated Raid Leader encounter ledger and warns when specific bosses are only Playable or Not Ready, naming those encounters instead of flattening the entire raid into one broad support label. It also checks every online real human against the same Composer item-level floor/target used for bot preparation and emits a floor warning or target advisory without turning the advisory into a fabricated hard access gate.
 
 3. **Progression history v2**
-   - explicit Composer activity ID in history;
    - complete participant roster per clear;
    - first-guild-clear record;
    - richer difficulty/size presentation;
