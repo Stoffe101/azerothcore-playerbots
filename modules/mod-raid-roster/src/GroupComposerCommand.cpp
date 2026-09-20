@@ -1273,7 +1273,12 @@ void ApplyRecommendationRoleTargets(Config& config)
     config.dps = config.size - config.tanks - config.healers;
 }
 
-struct ComposerGearProfile;
+struct ComposerGearProfile
+{
+    uint16 minimum = 0;
+    uint16 target = 0;
+};
+
 ComposerGearProfile GearProfileFor(Config const& config);
 
 struct RecommendationCapacity
@@ -1580,12 +1585,6 @@ void SendCatalogDiagnostics(ChatHandler* handler)
 
     handler->PSendSysMessage("[GC]|CATDIAGDONE|{}|{}|{}", pass, warn, fail);
 }
-
-struct ComposerGearProfile
-{
-    uint16 minimum = 0;
-    uint16 target = 0;
-};
 
 ComposerGearProfile GearProfileFor(Config const& config)
 {
