@@ -24,7 +24,9 @@ Scope note:
 - ERA-01 remains IN PROGRESS. This is the policy spine, not a claim that AH/vendors/professions/travel/PvP/global bots are already era-safe.
 
 CI:
-- commit uses `[local-ci]`; exact-head client/backend/Group Composer compile/Integration must all succeed before this slice is called green.
+- Initial SHA `eb7118d31ced7f5193fd6069c59b3cfe32e13d4c` passed static/client staging but Clang correctly caught one ADL ambiguity: the `AdventureEra` alias associates `EraPolicy`, so an unqualified `IsEraReleased(activity.era)` inside AdventureCatalog matched both the compatibility wrapper and `EraPolicy::IsEraReleased`.
+- The call is now explicitly `EraPolicy::IsEraReleased(activity.era)`; no policy behavior changed.
+- follow-up uses `[local-ci]`; exact-head client/backend/Group Composer compile/Integration must all succeed before this slice is called green.
 
 ## 2026-09-20 — P0.5 Admin security + Group Composer launcher
 

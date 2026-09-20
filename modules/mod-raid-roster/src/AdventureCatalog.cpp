@@ -206,7 +206,7 @@ bool IsUnlocked(Player* player, AdventureActivity const& activity, std::string& 
         return false;
     }
 
-    if (!IsEraReleased(activity.era))
+    if (!EraPolicy::IsEraReleased(activity.era))
     {
         reason = std::string(EraName(activity.era)) + " is not released on this realm yet.";
         return false;
