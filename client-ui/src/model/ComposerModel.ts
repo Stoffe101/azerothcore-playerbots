@@ -61,6 +61,10 @@ export interface JourneyRaid {
     lockoutEncounters: number;
     lockoutExtended: boolean;
     guildFirstRoster: string;
+    playerFirstFormat: string;
+    playerFirstGroupSize: number;
+    guildFirstFormat: string;
+    guildFirstGroupSize: number;
 }
 
 export interface Recommendation {

@@ -547,7 +547,7 @@ Test:
 5. Verify Playerbot kills do not create fake real-player history.
 6. Verify old test-realm bounty history still appears through the compatibility fallback.
 
-The current ledger records player GUID, guild-at-kill, stable Composer activity ID, map, instance, boss, difficulty, group size, first/last timestamps and counts. It now also records a durable final-boss clear snapshot with the connected in-instance participant roster (humans and Playerbots) and separate guild-clear rows for each represented real-player guild. Historical event-only rows remain readable through compatibility fallbacks. Future polish can focus on richer difficulty/size presentation and a dedicated guild timeline/history view.
+The current ledger records player GUID, guild-at-kill, stable Composer activity ID, map, instance, boss, difficulty, group size, first/last timestamps and counts. It now also records a durable final-boss clear snapshot with the connected in-instance participant roster (humans and Playerbots) and separate guild-clear rows for each represented real-player guild. Historical event-only rows remain readable through compatibility fallbacks. The Raid History drilldown now also exposes the recorded first-clear raid format and actual in-instance participant count for both personal and guild history. Future history polish can focus on a dedicated per-clear/guild timeline view.
 
 ### D. Use Activity Diagnostics as a release gate
 

@@ -5367,14 +5367,14 @@ function ____exports.createRaidHistoryModal(self, parent)
         modal:setTitle(raid.label)
         modal:setSubtitle(raid.era .. " · Raid history")
         if raid.playerClearCount > 0 then
-            personal:SetText(("Clears: " .. tostring(raid.playerClearCount)) .. (raid.playerFirstClear ~= "" and " · First recorded clear: " .. raid.playerFirstClear or ""))
+            personal:SetText(((("Clears: " .. tostring(raid.playerClearCount)) .. (raid.playerFirstClear ~= "" and " · First recorded clear: " .. raid.playerFirstClear or "")) .. (raid.playerFirstFormat ~= "" and " · " .. raid.playerFirstFormat or "")) .. (raid.playerFirstGroupSize > 0 and (" · " .. tostring(raid.playerFirstGroupSize)) .. " recorded participant(s)" or ""))
         elseif raid.playerComplete then
             personal:SetText("Completed through progression state; no detailed kill event is recorded yet.")
         else
             personal:SetText("No recorded clear yet.")
         end
         if raid.guildClearCount > 0 then
-            guild:SetText(("Guild clears: " .. tostring(raid.guildClearCount)) .. (raid.guildFirstClear ~= "" and " · First recorded clear: " .. raid.guildFirstClear or ""))
+            guild:SetText(((("Guild clears: " .. tostring(raid.guildClearCount)) .. (raid.guildFirstClear ~= "" and " · First recorded clear: " .. raid.guildFirstClear or "")) .. (raid.guildFirstFormat ~= "" and " · " .. raid.guildFirstFormat or "")) .. (raid.guildFirstGroupSize > 0 and (" · " .. tostring(raid.guildFirstGroupSize)) .. " recorded participant(s)" or ""))
         else
             guild:SetText("No recorded guild clear yet.")
         end

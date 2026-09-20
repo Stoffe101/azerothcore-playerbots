@@ -1053,7 +1053,11 @@ assert "dedicatedGuildHistory" in SERVER
 assert "ORDER BY killed_at ASC, instance_id ASC LIMIT 1" in SERVER
 assert "GROUP_CONCAT(CONCAT(member_name" in SERVER
 assert "guildFirstRoster = fields[19] or" in CORE
+assert "playerFirstFormat = fields[20] or" in CORE and "guildFirstGroupSize = ParseNumber(fields[23], 0)" in CORE
 assert "guildFirstRoster: string" in MODEL
+assert "playerFirstFormat: string" in MODEL and "guildFirstGroupSize: number" in MODEL
+assert "RecordedRaidFormat" in SERVER and "personalFirstGroupSize" in SERVER and "guildFirstGroupSize" in SERVER
+assert "recorded participant(s)" in RAID_HISTORY_MODAL
 assert "FIRST RECORDED GUILD-CLEAR ROSTER" in RAID_HISTORY_MODAL
 assert "click for history" in PROGRESSION_PAGE
 
@@ -1061,6 +1065,7 @@ assert "click for history" in PROGRESSION_PAGE
 # Generated bundle must include the latest progression-history drilldown.
 assert "Raid History" in GENERATED_UI
 assert "FIRST RECORDED GUILD-CLEAR ROSTER" in GENERATED_UI
+assert "recorded participant(s)" in GENERATED_UI
 assert "click for history" in GENERATED_UI
 
 

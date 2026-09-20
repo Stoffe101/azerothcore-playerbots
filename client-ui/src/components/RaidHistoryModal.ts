@@ -59,7 +59,9 @@ export function createRaidHistoryModal(parent: WoWFrame): RaidHistoryModal {
             if (raid.playerClearCount > 0) {
                 personal.SetText(
                     "Clears: " + String(raid.playerClearCount) +
-                    (raid.playerFirstClear !== "" ? " · First recorded clear: " + raid.playerFirstClear : "")
+                    (raid.playerFirstClear !== "" ? " · First recorded clear: " + raid.playerFirstClear : "") +
+                    (raid.playerFirstFormat !== "" ? " · " + raid.playerFirstFormat : "") +
+                    (raid.playerFirstGroupSize > 0 ? " · " + String(raid.playerFirstGroupSize) + " recorded participant(s)" : "")
                 );
             } else if (raid.playerComplete) {
                 personal.SetText("Completed through progression state; no detailed kill event is recorded yet.");
@@ -70,7 +72,9 @@ export function createRaidHistoryModal(parent: WoWFrame): RaidHistoryModal {
             if (raid.guildClearCount > 0) {
                 guild.SetText(
                     "Guild clears: " + String(raid.guildClearCount) +
-                    (raid.guildFirstClear !== "" ? " · First recorded clear: " + raid.guildFirstClear : "")
+                    (raid.guildFirstClear !== "" ? " · First recorded clear: " + raid.guildFirstClear : "") +
+                    (raid.guildFirstFormat !== "" ? " · " + raid.guildFirstFormat : "") +
+                    (raid.guildFirstGroupSize > 0 ? " · " + String(raid.guildFirstGroupSize) + " recorded participant(s)" : "")
                 );
             } else {
                 guild.SetText("No recorded guild clear yet.");

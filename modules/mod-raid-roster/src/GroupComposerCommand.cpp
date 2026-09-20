@@ -1166,7 +1166,27 @@ struct ActivityClearStats
     std::string personalFirst;
     std::string guildFirst;
     std::string guildFirstRoster;
+    uint8 personalFirstDifficulty = 0;
+    uint8 personalFirstGroupSize = 0;
+    uint8 guildFirstDifficulty = 0;
+    uint8 guildFirstGroupSize = 0;
 };
+
+std::string RecordedRaidFormat(AdventureActivity const& activity, uint8 difficulty)
+{
+    if (activity.era == AdventureEra::Wotlk)
+    {
+        bool const twentyFive =
+            difficulty == uint8(RAID_DIFFICULTY_25MAN_NORMAL) ||
+            difficulty == uint8(RAID_DIFFICULTY_25MAN_HEROIC);
+        bool const heroic =
+            difficulty == uint8(RAID_DIFFICULTY_10MAN_HEROIC) ||
+            difficulty == uint8(RAID_DIFFICULTY_25MAN_HEROIC);
+        return std::to_string(twentyFive ? 25u : 10u) + "-player " + (heroic ? "Heroic" : "Normal");
+    }
+
+    return std::to_string(uint32(activity.preferredSize)) + "-player";
+}
 
 ActivityClearStats ClearStats(Player* player, AdventureActivity const& activity)
 {
@@ -1185,6 +1205,20 @@ ActivityClearStats ClearStats(Player* player, AdventureActivity const& activity)
         Field* fields = result->Fetch();
         stats.personalCount = fields[0].Get<uint32>();
         stats.personalFirst = fields[1].Get<std::string>();
+    }
+
+    if (stats.personalCount)
+    {
+        if (QueryResult result = CharacterDatabase.Query(
+            "SELECT difficulty, group_size FROM mod_adventure_progression_event "
+            "WHERE player_guid = {} AND (activity_id = '{}' OR (activity_id = '' AND map_id = {} AND creature_entry = {})) "
+            "ORDER BY killed_at ASC, instance_id ASC LIMIT 1",
+            playerGuid, activityId, activity.instanceMap, activity.finalBossEntry))
+        {
+            Field* fields = result->Fetch();
+            stats.personalFirstDifficulty = fields[0].Get<uint8>();
+            stats.personalFirstGroupSize = fields[1].Get<uint8>();
+        }
     }
 
     if (uint32 guildId = player->GetGuildId())
@@ -1225,7 +1259,7 @@ ActivityClearStats ClearStats(Player* player, AdventureActivity const& activity)
             if (dedicatedGuildHistory)
             {
                 if (QueryResult result = CharacterDatabase.Query(
-                    "SELECT map_id, instance_id, creature_entry FROM mod_adventure_progression_guild_clear "
+                    "SELECT map_id, instance_id, creature_entry, difficulty, group_size FROM mod_adventure_progression_guild_clear "
                     "WHERE guild_id = {} AND activity_id = '{}' ORDER BY killed_at ASC, instance_id ASC LIMIT 1",
                     guildId, activityId))
                 {
@@ -1233,6 +1267,8 @@ ActivityClearStats ClearStats(Player* player, AdventureActivity const& activity)
                     firstMapId = fields[0].Get<uint32>();
                     firstInstanceId = fields[1].Get<uint32>();
                     firstCreatureEntry = fields[2].Get<uint32>();
+                    stats.guildFirstDifficulty = fields[3].Get<uint8>();
+                    stats.guildFirstGroupSize = fields[4].Get<uint8>();
                 }
 
                 if (firstInstanceId)
@@ -1252,11 +1288,16 @@ ActivityClearStats ClearStats(Player* player, AdventureActivity const& activity)
                 if (!firstInstanceId)
                 {
                     if (QueryResult result = CharacterDatabase.Query(
-                        "SELECT instance_id FROM mod_adventure_progression_event "
+                        "SELECT instance_id, MAX(difficulty), MAX(group_size) FROM mod_adventure_progression_event "
                         "WHERE guild_id = {} AND (activity_id = '{}' OR (activity_id = '' AND map_id = {} AND creature_entry = {})) "
                         "GROUP BY instance_id ORDER BY MIN(killed_at) ASC LIMIT 1",
                         guildId, activityId, activity.instanceMap, activity.finalBossEntry))
-                        firstInstanceId = result->Fetch()[0].Get<uint32>();
+                    {
+                        Field* fields = result->Fetch();
+                        firstInstanceId = fields[0].Get<uint32>();
+                        stats.guildFirstDifficulty = fields[1].Get<uint8>();
+                        stats.guildFirstGroupSize = fields[2].Get<uint8>();
+                    }
                 }
 
                 if (firstInstanceId)
@@ -1565,14 +1606,18 @@ void SendJourney(ChatHandler* handler, Player* master)
         bool const personalComplete = PlayerRaidComplete(master, activity);
         bool const guildComplete = clears.guildCount > 0;
 
-        handler->PSendSysMessage("[GC]|JOURNEYRAID|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+        handler->PSendSysMessage("[GC]|JOURNEYRAID|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             activity.composerId, Sanitize(activity.name), AdventureCatalog::EraName(activity.era),
             uint32(RequiredProgressionFor(config)), available ? 1 : 0, personalComplete ? 1 : 0,
             guildComplete ? 1 : 0, Sanitize(AdventureCatalog::SupportLabel(activity.support)),
             Sanitize(available ? activity.supportNote : reason),
             clears.personalCount, Sanitize(clears.personalFirst), clears.guildCount, Sanitize(clears.guildFirst),
             lockout.bound ? 1 : 0, lockout.instanceId, lockout.completedEncounters, lockout.extended ? 1 : 0,
-            Sanitize(clears.guildFirstRoster));
+            Sanitize(clears.guildFirstRoster),
+            clears.personalFirstGroupSize ? Sanitize(RecordedRaidFormat(activity, clears.personalFirstDifficulty)) : "",
+            uint32(clears.personalFirstGroupSize),
+            clears.guildFirstGroupSize ? Sanitize(RecordedRaidFormat(activity, clears.guildFirstDifficulty)) : "",
+            uint32(clears.guildFirstGroupSize));
 
         if (activity.era == liveEra && activity.support == AdventureSupport::Ready && available)
         {
