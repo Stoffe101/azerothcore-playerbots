@@ -280,6 +280,19 @@ For an active lockout Group Composer tracks:
 
 The Progression page shows active lockouts, and Recommended Activities prioritizes an unfinished raid the player is already saved to as **Resume active lockout** instead of pretending every raid recommendation is a fresh run.
 
+### Smarter recommendation weighting
+
+The recommendation order now uses more than simple era/level proximity.
+
+It also prefers:
+
+- an unfinished active raid lockout;
+- a current-era raid where the guild has **no recorded clear yet**;
+- content where the player's gear meets Composer's floor but is still below the activity's target, making it a sensible upgrade opportunity;
+- actionable locked content with a concrete quest/key/achievement requirement.
+
+Very overgeared farm content is still available, but is gently pushed down so it does not drown out progression and useful upgrades.
+
 ### Gear-aware recommendations
 
 Recommended Activities now reuse the **same Composer gear profile** that prepares bots for an activity.

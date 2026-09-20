@@ -1088,3 +1088,11 @@ assert "Composer's recommended floor" in SERVER
 assert "playerItemLevel = ParseNumber(fields[14], 0)" in CORE
 assert "recommendedFloor = ParseNumber(fields[15], 0)" in CORE
 assert "GEAR READY" in RECOMMENDATIONS_PAGE and "GEAR LOW" in RECOMMENDATIONS_PAGE
+
+
+# Recommendations should prefer meaningful guild progression, actionable unlocks and gear-fit content.
+assert "RecommendationGearAdjustment" in SERVER
+assert "IsActionableUnlockReason" in SERVER
+assert "Guild progression target:" in SERVER
+assert "gear.target && ilvl < gear.target" in SERVER
+assert "score += RecommendationGearAdjustment(master, activity)" in SERVER

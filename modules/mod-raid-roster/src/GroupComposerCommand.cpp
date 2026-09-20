@@ -1370,6 +1370,45 @@ RecommendationCapacity EvaluateRecommendationCapacity(Player* master, AdventureA
     return result;
 }
 
+int RecommendationGearAdjustment(Player* master, AdventureActivity const& activity)
+{
+    if (!master)
+        return 0;
+
+    Config config;
+    config.mode = activity.kind == AdventureActivityKind::Raid ? "raid" : "dungeon";
+    config.activity = activity.composerId;
+    config.difficulty = "normal";
+    config.size = activity.kind == AdventureActivityKind::Raid
+        ? BrowserRaidSize(activity.composerId, activity.preferredSize)
+        : 5;
+    config.requiredLevel = RequiredActivityLevel(master, config);
+
+    ComposerGearProfile const gear = GearProfileFor(config);
+    if (!gear.minimum)
+        return 0;
+
+    uint32 const ilvl = uint32(master->GetAverageItemLevel() + 0.5f);
+    if (ilvl < gear.minimum)
+        return -28;
+
+    // The sweet spot is content the player can reasonably enter but that can still move their
+    // character forward. Heavily overgeared farm content remains available, it just stops crowding
+    // the top of "What should we do tonight?".
+    if (gear.target && ilvl < gear.target)
+        return 18;
+    if (gear.target && ilvl > uint32(gear.target) + 20u)
+        return -12;
+    return 6;
+}
+
+bool IsActionableUnlockReason(std::string const& reason)
+{
+    return reason.find("Complete ") != std::string::npos ||
+        reason.find("Obtain ") != std::string::npos ||
+        reason.find("Requires ") != std::string::npos;
+}
+
 void SendJourney(ChatHandler* handler, Player* master)
 {
     if (!handler || !master)
@@ -1417,20 +1456,28 @@ void SendJourney(ChatHandler* handler, Player* master)
             lockout.bound ? 1 : 0, lockout.instanceId, lockout.completedEncounters, lockout.extended ? 1 : 0,
             Sanitize(clears.guildFirstRoster));
 
-        if (activity.era == liveEra && activity.support == AdventureSupport::Ready && available && !personalComplete)
+        if (activity.era == liveEra && activity.support == AdventureSupport::Ready && available)
         {
-            if (lockout.bound)
-                recommendations.push_back({ &activity, 160 + int(activity.minProgression),
+            int const gear = RecommendationGearAdjustment(master, activity);
+            if (lockout.bound && !personalComplete)
+                recommendations.push_back({ &activity, 160 + int(activity.minProgression) + gear,
                     "Resume your active raid lockout; " + std::to_string(lockout.completedEncounters) +
                     " encounter(s) are already recorded in this instance.", true });
-            else
-                recommendations.push_back({ &activity, 100 + int(activity.minProgression),
+            else if (!guildComplete)
+                recommendations.push_back({ &activity, 122 + int(activity.minProgression) + gear,
+                    personalComplete
+                        ? "Guild progression target: you have cleared it, but your guild has no recorded clear yet."
+                        : "Guild progression target: neither you nor your guild has a recorded clear yet.", true });
+            else if (!personalComplete)
+                recommendations.push_back({ &activity, 100 + int(activity.minProgression) + gear,
                     "Available progression raid you have not completed yet.", true });
         }
         else if (activity.era == liveEra && activity.support == AdventureSupport::Ready && !available && !personalComplete)
         {
             int const distance = std::max<int>(0, int(RequiredProgressionFor(config)) - int(progression));
-            int const score = 42 - std::min(28, distance * 4);
+            int score = 42 - std::min(28, distance * 4);
+            if (IsActionableUnlockReason(reason))
+                score += 10;
             recommendations.push_back({ &activity, score, "Next unlock: " + reason, false });
         }
     }
@@ -1451,7 +1498,9 @@ void SendJourney(ChatHandler* handler, Player* master)
         if (!available)
         {
             int const levelGap = std::max<int>(0, int(activity.minLevel) - int(master->GetLevel()));
-            int const score = 34 - std::min(24, levelGap * 3);
+            int score = 34 - std::min(24, levelGap * 3);
+            if (IsActionableUnlockReason(reason))
+                score += 10;
             recommendations.push_back({ &activity, score, "Next unlock: " + reason, false });
             continue;
         }
@@ -1460,7 +1509,9 @@ void SendJourney(ChatHandler* handler, Player* master)
         int score = 80 - std::min(40, levelDistance * 4);
         if (master->GetLevel() >= AdventureCatalog::EraLevelCap(liveEra) && activity.minLevel >= AdventureCatalog::EraLevelCap(liveEra) - 5)
             score += 25;
-        recommendations.push_back({ &activity, score, "Available dungeon that fits your current era and level.", true });
+        score += RecommendationGearAdjustment(master, activity);
+        recommendations.push_back({ &activity, score,
+            "Available dungeon weighted by your current era, level and Composer gear profile.", true });
     }
 
     std::stable_sort(recommendations.begin(), recommendations.end(), [](Recommendation const& a, Recommendation const& b)
