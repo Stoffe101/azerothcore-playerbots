@@ -1176,7 +1176,7 @@ assert 'function GC:ScanGroupMembers()' in CORE and 'isBot = fields[9] == "1"' i
 assert 'if not anchor.isBot then out[#out + 1] = anchor end' in CORE
 assert 'export function groupMembers()' in MODEL and 'export function fixedRoleCounts()' in MODEL
 assert 'const anchors = Model.groupMembers();' in MODERN
-assert '"Current bot · locked"' in MODERN and '"already in your group"' in MODERN
+assert '"Current bot · locked"' in MODERN and 'already in your group' in MODERN
 assert 'sLFGMgr->InitializeLockedDungeons(bot, bot->GetGroup());' in SERVER
 assert 'sLFGMgr->InitializeLockedDungeons(player, group);' in SERVER
 assert 'GetState(group->GetGUID()) != lfg::LFG_STATE_ROLECHECK' in SERVER
