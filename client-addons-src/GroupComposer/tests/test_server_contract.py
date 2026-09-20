@@ -724,7 +724,7 @@ assert "modal.setHeaderRole(currentRole)" in SELECTOR
 assert "classStepBadge" in SELECTOR and "specStepBadge" in SELECTOR
 assert '"Select a class above to unlock specializations."' in SELECTOR
 assert "const classRows = Math.max(1, Math.ceil(validClasses.length / columns));" in SELECTOR
-assert "const classHeight = classRows > 1 ? 258 : 164;" in SELECTOR
+assert "const classHeight = classRows > 1 ? 300 : 186;" in SELECTOR
 assert "const specHeight = currentClass === undefined ? 68 : 176;" in SELECTOR
 assert "modal.frame.SetHeight(classHeight + specHeight + 222);" in SELECTOR, (
     "Build selector lost content-sensitive Tank/Healer/DPS sizing"
@@ -1010,7 +1010,7 @@ assert "sMapStore.LookupEntry" in SERVER and "GetMapEntranceTrigger" in SERVER
 assert "GetCreatureTemplate(activity.finalBossEntry)" in SERVER
 assert "CATDIAGDONE" in SERVER and "CATDIAGDONE" in CORE
 assert "Activity Diagnostics" in ACTIVITY_DIAGNOSTICS and "Run Validation" in ACTIVITY_DIAGNOSTICS
-assert "Problems" in ACTIVITY_DIAGNOSTICS and "Passed" in ACTIVITY_DIAGNOSTICS
+assert "Needs Review" in ACTIVITY_DIAGNOSTICS and "Passed" in ACTIVITY_DIAGNOSTICS
 assert "ActivityDiagnosticsUI.createActivityDiagnosticsPage" in MODERN
 
 

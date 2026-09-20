@@ -243,7 +243,12 @@ export function humans(): HumanAnchor[] {
 }
 
 export function groupMembers(): GroupAnchor[] {
-    return (GC.ScanGroupMembers() ?? GC.ScanHumans() ?? []) as GroupAnchor[];
+    // Keep the generated shell tolerant of a Core.lua hot-reload race and the mocked runtime
+    // harness. Production Core exposes ScanGroupMembers; older/mocked cores safely fall back to
+    // the human-only snapshot until the authoritative anchor method exists.
+    if (GC.ScanGroupMembers !== undefined)
+        return (GC.ScanGroupMembers() ?? []) as GroupAnchor[];
+    return (GC.ScanHumans() ?? []) as GroupAnchor[];
 }
 
 export function humanReady(): boolean {
