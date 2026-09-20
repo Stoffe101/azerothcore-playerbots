@@ -66,7 +66,8 @@ For every meaningful pass:
 - append `PASS_LOG.md`;
 - change `NEXT_WORK.md` if priority changed;
 - change `TEST_MATRIX.md` when test status/coverage changed;
-- change `ERA_FIDELITY.md` whenever expansion-stage rules, bot/economy/world gates or release-transition behavior changed.
+- change `ERA_FIDELITY.md` whenever expansion-stage rules, bot/economy/world gates or release-transition behavior changed;
+- change `MASTER_ROADMAP.md` whenever an approved ERA/FEATURE item changes status, dependency, scope or completion evidence.
 
 A pass is not done if its code exists but the canonical handoff still describes the previous reality.
 

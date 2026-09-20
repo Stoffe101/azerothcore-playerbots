@@ -2,6 +2,28 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-20 — All era + broader feature proposals approved
+
+Status: **ROADMAP ACCEPTED; documentation commit entering exact-head local CI**.
+
+User decision:
+- Approved all 20 era-relevance improvements.
+- Approved all 20 broader server features.
+- Requested durable GitHub tracking and that items be crossed off as they are completed.
+
+Work:
+- Added `MASTER_ROADMAP.md` with stable IDs ERA-01..ERA-20 and FEATURE-01..FEATURE-20.
+- Classified existing foundations honestly as PARTIAL instead of pretending they are either untouched or complete.
+- Added strict cross-off semantics: only DONE items receive `[x]`, with CI/runtime evidence required where applicable.
+- Added phased dependency order so future sessions always know what comes next.
+- Kept the current Group Composer runtime validation as NOW-01.
+- Set the first new architecture work after validation to ERA-01 Central Era Policy + ERA-02 Era Integrity Scanner.
+- Added FEATURE-19 snapshot/rollback early in the dependency chain before expansion-transition work.
+
+CI:
+- This pass is intentionally committed with `[local-ci]` and is not considered green until all exact-SHA workflows complete successfully.
+
+
 ## 2026-09-20 — Era-relevance + feature idea-bank pass
 
 Status: **DOCUMENTED + EXACT-HEAD LOCAL CI VERIFIED; ideas are not implementation claims**.

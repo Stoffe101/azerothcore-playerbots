@@ -106,9 +106,9 @@ Verified planning checkpoint: `402ce7c3c1acfbf8a85ef5b6f3d0d1f8282b13f8`.
 
 Exact-head CI for that checkpoint: client checks **SUCCESS**, backend staging **SUCCESS**, Group Composer compile **SUCCESS** on `stoffes-pc`, Integration **SUCCESS** on `stoffes-pc`.
 
-A canonical `FEATURE_IDEAS.md` now captures expansion-fidelity improvements and broader server features. These are **not implemented** merely because they are documented. Work becomes active only when promoted into `NEXT_WORK.md` and then follows normal exact-SHA CI/runtime validation.
+The user has now explicitly approved the full set of 20 era-relevance improvements and 20 broader server features. `MASTER_ROADMAP.md` is the canonical execution board with stable IDs, statuses, dependencies and cross-off rules. `FEATURE_IDEAS.md` remains the longer design/rationale bank. Approval does **not** mean implementation; individual roadmap items remain TODO/PARTIAL until completed and proven.
 
-High-value future candidates include an Expansion Command Center, Era Integrity dashboard, Vanilla/TBC LFG Board, persistent bot bench, bot crafting orders, dynamic population director, wipe analyzer and guild chronicle.
+Immediate execution remains the already-built P0 runtime validation. Once that is stable, the first new architecture pass is ERA-01 Central Era Policy + ERA-02 Era Integrity Scanner because the other era features depend on one source of truth and measurable leak detection.
 
 ## Known current runtime state
 

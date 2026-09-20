@@ -18,12 +18,13 @@
 2. Read `CURRENT_STATE.md`.
 3. Read the newest entries in `PASS_LOG.md`.
 4. Read `NEXT_WORK.md`.
-5. Use `TEST_MATRIX.md` when the user is actively testing.
-6. Read `ERA_FIDELITY.md` before changing expansion gates, bots, economy, world availability, templates, classes or release flow.
-7. Use `DEVELOPMENT_RULES.md` before changing code or CI.
-8. Verify the actual branch head and exact-head GitHub Actions results before claiming anything is green.
-9. Read `FEATURE_IDEAS.md` when planning the next major feature rather than re-inventing ideas from chat history.
-10. Treat runtime screenshots/results from the user as newer truth than assumptions in older design prose.
+5. Read `MASTER_ROADMAP.md` for the accepted 40-item execution board and current statuses.
+6. Use `TEST_MATRIX.md` when the user is actively testing.
+7. Read `ERA_FIDELITY.md` before changing expansion gates, bots, economy, world availability, templates, classes or release flow.
+8. Use `DEVELOPMENT_RULES.md` before changing code or CI.
+9. Verify the actual branch head and exact-head GitHub Actions results before claiming anything is green.
+10. Read `FEATURE_IDEAS.md` for long-form feature rationale rather than re-inventing ideas from chat history.
+11. Treat runtime screenshots/results from the user as newer truth than assumptions in older design prose.
 
 ## Documentation rule for every future pass
 
@@ -35,9 +36,14 @@ Every meaningful development/runtime pass must update documentation **before it 
 - `TEST_MATRIX.md`: update when a new test becomes required, passes, fails, or is blocked.
 - `DEVELOPMENT_RULES.md`: update only when workflow/deployment rules change.
 - `ERA_FIDELITY.md`: update whenever expansion-stage behavior, economy/world gating, bot-era behavior or release-transition rules change.
-- `FEATURE_IDEAS.md`: curated idea bank. Keep speculative ideas here until they are intentionally promoted into `NEXT_WORK.md`.
+- `FEATURE_IDEAS.md`: long-form design/rationale for approved and future feature concepts.
+- `MASTER_ROADMAP.md`: canonical accepted execution board. Update status/checkbox/dependencies whenever one of the approved ERA/FEATURE items moves.
 
 Historical design docs stay in the repository, but do not force a new chat to reconstruct the present from archaeology.
+
+## Accepted roadmap rule
+
+The user has explicitly approved all 20 era-relevance items and all 20 broader feature items captured in `MASTER_ROADMAP.md`. They are no longer speculative suggestions. They are approved backlog, but **approval does not mean implemented**. Work them in dependency order and cross them off only when the DONE rule in `MASTER_ROADMAP.md` is satisfied.
 
 ## Canonical expansion-stage contract
 

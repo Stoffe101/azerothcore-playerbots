@@ -21,6 +21,19 @@ This file is priority-ordered. Do not re-add items already marked implemented in
 4. Use `.ap nextstarter vanilla` to create a genuine low-level throwaway character.
 5. Validate low-level anti-boost and Vanilla dungeon access with real Playerbots.
 
+## P0.5 — First new architecture pass after runtime validation
+
+Do **not** start all approved features at once.
+
+As soon as P0 runtime validation is stable:
+
+1. Promote **ERA-01 Central Era Policy** to IN PROGRESS.
+2. Build **ERA-02 Era Integrity Scanner** on top of it.
+3. Add **FEATURE-19 Safe Snapshot / Rollback** before destructive release-transition work.
+4. Then follow the dependency order in `MASTER_ROADMAP.md`.
+
+Why: one authoritative era source prevents forty independent gates from drifting, and the audit tells us where WotLK/TBC leakage actually exists before we patch systems blindly.
+
 ## P1 — Era-fidelity hardening before the fresh friends realm
 
 Design source: ERA_FIDELITY.md.
@@ -91,21 +104,11 @@ For every raid tier:
 - Optional `join.skrra.dev` through HTTPS reverse proxy or Cloudflare Tunnel.
 - Normal friend accounts, no GM.
 
-## P3 — Candidate feature bank
+## P3 — Approved feature roadmap
 
-See `FEATURE_IDEAS.md` for the maintained idea list. Do not implement the entire idea bank blindly.
+All 40 approved ERA/FEATURE items are tracked in `MASTER_ROADMAP.md`; `FEATURE_IDEAS.md` contains the long-form rationale.
 
-Highest-leverage candidates after P0/P1:
-- Expansion Command Center;
-- Classic-style Vanilla/TBC LFG Board integrated with Composer;
-- persistent guild bot bench;
-- bot crafting orders + guild-bank steward;
-- dynamic world population director;
-- wipe analyzer / raid coach;
-- guild chronicle / trophy history;
-- character journey page.
-
-Promote one candidate at a time into P1/P2 only when its prerequisites are clear and the current runtime loop is stable.
+Do not implement all forty in parallel. Promote items according to the execution phases/dependencies in the master roadmap, while allowing runtime blockers to override priority when documented.
 
 ## Possible polish after runtime evidence
 

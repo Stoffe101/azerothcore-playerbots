@@ -1,6 +1,6 @@
 # Feature Ideas / Future Backlog
 
-_Status: idea bank, not an implementation promise. Items become scheduled work only when promoted into NEXT_WORK.md._
+_Status: long-form design bank. On 2026-09-20 the user explicitly approved all 20 era-relevance items and all 20 broader features. Delivery status is tracked in `MASTER_ROADMAP.md`; approval is not an implementation claim._
 
 The goal is to make the realm feel alive and era-correct without throwing away the quality-of-life advantages of a private server with Playerbots.
 
@@ -359,6 +359,10 @@ Later, separate from the canonical friends experience:
 - raid-size challenge.
 
 These should be opt-in character/realm rules and never contaminate the normal progression path.
+
+## Execution tracking
+
+Do not use this file as the completion scoreboard. Stable IDs, PARTIAL/TODO/DONE state, dependency phases and cross-off evidence live in `MASTER_ROADMAP.md`.
 
 ## Candidates worth prototyping first
 
