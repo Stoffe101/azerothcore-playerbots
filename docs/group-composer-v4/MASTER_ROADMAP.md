@@ -32,6 +32,16 @@ Runtime-pass-3 implementation is exact-head CI green at `91f8cff1beeb6d09875c60a
 
 **Why first:** these are already implemented and waiting for real evidence. Starting a large era-policy refactor before validating them would mix old runtime defects with new architecture and make failures harder to attribute.
 
+### NOW-02 — Admin security + addon launchers
+
+**Status: IN PROGRESS**
+
+While runtime testing is temporarily unavailable:
+- harden Azeroth Control so only server-authorized GM sessions can expose/open the UI while privileged commands remain server-authoritative;
+- add a clickable Group Composer minimap launcher without removing `/gc`.
+
+These are bounded security/QoL changes that do not invalidate the pending P0 runtime evidence.
+
 ### NEXT-01 — ERA-01 + ERA-02
 
 After P0 is stable, the first new implementation should be:

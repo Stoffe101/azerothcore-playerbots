@@ -770,6 +770,43 @@ function GC:DeleteProfile(name)
     return ok, err
 end
 
+function GC:CreateMinimapButton()
+    if GC.minimapButton or not Minimap then return end
+
+    local button = CreateFrame("Button", "GroupComposerMinimapButton", Minimap)
+    button:SetWidth(31)
+    button:SetHeight(31)
+    button:SetPoint("BOTTOMLEFT", Minimap, "BOTTOMLEFT", -4, 4)
+    button:SetFrameStrata("MEDIUM")
+    button:SetNormalTexture("Interface\\Buttons\\UI-Quickslot2")
+    button:SetPushedTexture("Interface\\Buttons\\UI-Quickslot-Depress")
+    button:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
+
+    local icon = button:CreateTexture(nil, "ARTWORK")
+    icon:SetTexture("Interface\\Icons\\Ability_DualWield")
+    icon:SetPoint("TOPLEFT", button, "TOPLEFT", 6, -6)
+    icon:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -6, 6)
+    icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+
+    button:SetScript("OnClick", function()
+        if GC.Toggle then
+            GC:Toggle()
+        elseif DEFAULT_CHAT_FRAME then
+            DEFAULT_CHAT_FRAME:AddMessage("|cffff5555Group Composer UI shell did not load.|r Run |cffffff00/gc debug|r.")
+        end
+    end)
+    button:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:SetText("Group Composer", 1, 1, 1)
+        GameTooltip:AddLine("Build dungeon and raid groups with Playerbots.", 0.75, 0.82, 0.92, true)
+        GameTooltip:AddLine("Click to open • /gc also works", 0.58, 0.72, 0.90, true)
+        GameTooltip:Show()
+    end)
+    button:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    GC.minimapButton = button
+end
+
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
@@ -780,6 +817,7 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == "GroupComposer" then
         GC.db = P.InitializeDB()
         GC.config = (GC.db.lastProfile and P.Get(GC.db.lastProfile)) or P.New(GC.db.lastMode)
+        GC:CreateMinimapButton()
         if ChatFrame_AddMessageEventFilter then ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", SystemFilter) end
         GC:Fire("CONFIG_CHANGED", GC.config, GC.db.lastProfile)
     elseif event == "PLAYER_LOGIN" then

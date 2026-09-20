@@ -148,6 +148,15 @@ Still requiring in-game retest after deployment:
 
 Do not convert those TODOs to PASS from CI alone.
 
+## P0.5 security / addon launcher pass
+
+Implementation status: **PUSHED; exact-head CI required; runtime validation pending**.
+
+- Azeroth Control already had GM-only server command registrations for privileged actions. This pass adds a harmless server authorization probe so the addon can know whether the current session is actually GM-authorized.
+- Non-GM clients keep the Azeroth Control minimap button hidden, cannot keep the panel frame shown, and `/ap` / `/adminpanel` will not open privileged UI.
+- The client-side gate is defense-in-depth only; privileged `.ap` commands remain `SEC_GAMEMASTER` server-side, so a modified addon cannot grant itself authority.
+- Group Composer addon version 0.15.2 adds a stock-texture minimap launcher. Clicking it toggles the same modern dashboard as `/gc`; slash commands remain available as fallback.
+
 ## Realm / server direction
 
 - Current realm remains permanent development/test realm.

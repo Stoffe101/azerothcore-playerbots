@@ -47,6 +47,14 @@ Status vocabulary:
 - TODO: already-grouped overlevel bot blocks with explicit message rather than being kicked.
 - TODO: humans remain exempt from bot-only anti-boost rule.
 
+## Admin security / addon launchers
+
+- TODO: normal non-GM account sees no Azeroth Control minimap button after login authorization resolves.
+- TODO: normal non-GM account cannot open Azeroth Control with `/ap` or `/adminpanel`.
+- TODO: normal non-GM account cannot execute a privileged manual command such as `.ap givegold 1000`.
+- TODO: GM account receives Azeroth Control access, sees its minimap button and can open the panel normally.
+- TODO: Group Composer minimap button is visible, has the intended stock icon/tooltip and toggles the same dashboard as `/gc`.
+
 ## Group lifecycle
 
 - TODO: automatic 5-player composition.

@@ -54,11 +54,23 @@ local function Hex(r, g, b)
     return string.format("|cff%02x%02x%02x", math.floor(r * 255), math.floor(g * 255), math.floor(b * 255))
 end
 
+local access = {
+    resolved = false,
+    allowed = false,
+    pendingOpen = false,
+}
+
+local function RequestAccess()
+    SendChatMessage(".ap access", "SAY")
+end
+
 local function Send(command)
+    if not access.allowed then return end
     if command and command ~= "" then SendChatMessage(".ap " .. command, "SAY") end
 end
 
 local function SendRaw(command)
+    if not access.allowed then return end
     if command and command ~= "" then SendChatMessage(command, "SAY") end
 end
 
@@ -127,6 +139,9 @@ frame:SetBackdrop({
 frame:SetBackdropColor(C.bg[1], C.bg[2], C.bg[3], C.bg[4])
 frame:SetPoint(unpack(DB.point))
 frame:Hide()
+frame:SetScript("OnShow", function(self)
+    if not access.allowed then self:Hide() end
+end)
 frame:SetScript("OnDragStart", function(self) self:StartMoving() end)
 frame:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
@@ -514,20 +529,89 @@ local function ParseKeyValues(msg, marker)
     for key, value in string.gmatch(msg, "([%a%d_]+)=([^%s]+)") do state[key] = value end
     return true
 end
-local event = CreateFrame("Frame"); event:RegisterEvent("CHAT_MSG_SYSTEM")
+local mini
+
+local function AccessMessageFilter(_, _, message, ...)
+    if type(message) == "string" and string.find(message, "[AdminPanel] ACCESS", 1, true) then
+        return true
+    end
+    return false, message, ...
+end
+
+local event = CreateFrame("Frame")
+event:RegisterEvent("CHAT_MSG_SYSTEM")
+event:RegisterEvent("PLAYER_LOGIN")
 event:SetScript("OnEvent", function(self, eventName, msg)
+    if eventName == "PLAYER_LOGIN" then
+        access.resolved = false
+        access.allowed = false
+        access.pendingOpen = false
+        frame:Hide()
+        if mini then mini:Hide() end
+        RequestAccess()
+        return
+    end
+
     if type(msg) ~= "string" or not string.find(msg, "[AdminPanel]", 1, true) then return end
+
+    if string.find(msg, "[AdminPanel] ACCESS", 1, true) then
+        access.resolved = true
+        access.allowed = string.find(msg, "allowed=1", 1, true) ~= nil
+        if access.allowed then
+            if mini then mini:Show() end
+            if access.pendingOpen then
+                access.pendingOpen = false
+                frame:Show()
+                SelectPage(DB.page or "Dashboard")
+                Send("status")
+                Send("health")
+            end
+        else
+            access.pendingOpen = false
+            frame:Hide()
+            if mini then mini:Hide() end
+        end
+        return
+    end
+
+    if not access.allowed then return end
     footer:SetText(msg)
     if ParseKeyValues(msg, "[AdminPanel] STATUS") then UpdateUI() elseif ParseKeyValues(msg, "[AdminPanel] HEALTH") then UpdateUI() elseif string.find(msg, "WOTLK RELEASED", 1, true) or string.find(msg, "TBC RELEASED", 1, true) then Send("status"); Send("health") end
 end)
 
+if ChatFrame_AddMessageEventFilter then
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", AccessMessageFilter)
+end
+
 -- MINIMAP + SLASH ------------------------------------------------------------
-local mini = CreateFrame("Button", "AzerothAdminPanelMinimapButton", Minimap); mini:SetWidth(31); mini:SetHeight(31); mini:SetPoint("TOPLEFT", Minimap, "TOPLEFT", -4, -4); mini:SetFrameStrata("MEDIUM"); mini:SetNormalTexture("Interface\\Buttons\\UI-Quickslot2"); mini:SetPushedTexture("Interface\\Buttons\\UI-Quickslot-Depress")
+mini = CreateFrame("Button", nil, Minimap); mini:SetWidth(31); mini:SetHeight(31); mini:SetPoint("TOPLEFT", Minimap, "TOPLEFT", -4, -4); mini:SetFrameStrata("MEDIUM"); mini:SetNormalTexture("Interface\\Buttons\\UI-Quickslot2"); mini:SetPushedTexture("Interface\\Buttons\\UI-Quickslot-Depress"); mini:Hide()
 local miniText = Text(mini, "AC", "GameFontNormalSmall", C.cyan[1], C.cyan[2], C.cyan[3]); miniText:SetPoint("CENTER", 0, 1)
-mini:SetScript("OnClick", function() if frame:IsShown() then frame:Hide() else frame:Show(); SelectPage(DB.page or "Dashboard"); Send("status"); Send("health") end end)
+
+local function TogglePanel()
+    if not access.allowed then
+        access.pendingOpen = true
+        RequestAccess()
+        if DEFAULT_CHAT_FRAME then
+            DEFAULT_CHAT_FRAME:AddMessage(access.resolved
+                and "|cffff5555Azeroth Control is restricted to GM accounts.|r"
+                or "|cff29b8f0Azeroth Control|r: checking GM access...")
+        end
+        return
+    end
+    if frame:IsShown() then
+        frame:Hide()
+    else
+        frame:Show()
+        SelectPage(DB.page or "Dashboard")
+        Send("status")
+        Send("health")
+    end
+end
+
+mini:SetScript("OnClick", TogglePanel)
 mini:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:SetText("Azeroth Control", 1, 1, 1); GameTooltip:AddLine("GM realm controls • click to open", 0.75, 0.82, 0.92); GameTooltip:Show() end)
 mini:SetScript("OnLeave", function() GameTooltip:Hide() end)
 SLASH_AZEROTHADMIN1 = "/ap"; SLASH_AZEROTHADMIN2 = "/adminpanel"
-SlashCmdList["AZEROTHADMIN"] = function() if frame:IsShown() then frame:Hide() else frame:Show(); SelectPage(DB.page or "Dashboard"); Send("status"); Send("health") end end
+SlashCmdList["AZEROTHADMIN"] = TogglePanel
 SelectPage(DB.page or "Dashboard")
 UpdateUI()

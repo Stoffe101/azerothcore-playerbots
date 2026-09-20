@@ -28,7 +28,13 @@ This file is priority-ordered. Do not re-add items already marked implemented in
    - level 80 + level 14 friend targets bots around level 14 (13-17 for a level-13 dungeon).
 6. Keep using the one-shot `.ap nextstarter vanilla` lane for low-level validation.
 
-## P0.5 — First new architecture pass after runtime validation
+## P0.5 — Security / launcher polish while runtime testing is unavailable
+
+1. Admin Panel GM-only client authorization + server-authoritative command protection.
+2. Group Composer clickable minimap launcher while retaining `/gc`.
+3. Once exact-head CI is green, runtime validation remains TODO until a GM and a normal account can be tested.
+
+## P0.6 — First new architecture pass after runtime validation / while P0 runtime evidence is blocked
 
 Do **not** start all approved features at once.
 

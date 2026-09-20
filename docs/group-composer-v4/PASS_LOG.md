@@ -2,6 +2,32 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-20 — P0.5 Admin security + Group Composer launcher
+
+Status: **IMPLEMENTATION PUSHED; exact-head local CI + runtime validation required**.
+
+User request:
+- normal/non-GM players must not be able to access or use Azeroth Control/Admin Panel;
+- Group Composer should have a real clickable addon launcher instead of relying only on `/gc`.
+
+Findings:
+- privileged `.ap` commands were already correctly registered as `SEC_GAMEMASTER`, so server execution authority was protected;
+- the AdminPanel addon itself still exposed its minimap button and could open its frame for every client;
+- Group Composer had no clickable launcher despite having a mature UI shell.
+
+Implemented:
+- added `.ap access`, a harmless `SEC_PLAYER` authorization probe that returns only whether the current session meets `SEC_GAMEMASTER`;
+- kept every privileged Admin Panel action at `SEC_GAMEMASTER`;
+- AdminPanel now requests authorization on login, hides its minimap button until authorized, refuses to remain shown for unauthorized sessions and gates all client Send/SendRaw helpers;
+- removed the globally named Admin Panel minimap button; the existing named main frame remains only for ProfessionTools compatibility but now has an OnShow authorization guard;
+- bumped Azeroth Control addon to 2.3.0;
+- added `GroupComposerMinimapButton` with a stock WoW icon/tooltip and click-to-toggle behavior while preserving `/gc`;
+- bumped Group Composer addon to 0.15.2;
+- added static contracts proving all privileged Admin Panel commands remain GM-only and the new launch/access guards exist.
+
+CI:
+- commit uses `[local-ci]`; do not mark green until client checks, backend staging, Group Composer compile and Integration all succeed for the exact final SHA.
+
 ## 2026-09-20 — Runtime pass 3.1: peer-policy observability
 
 Status: **IMPLEMENTED; exact-head local CI + runtime verification required**.

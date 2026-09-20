@@ -350,6 +350,7 @@ public:
     {
         static ChatCommandTable sub =
         {
+            { "access",          HandleAccess,          SEC_PLAYER,     Console::No },
             { "status",          HandleStatus,          SEC_GAMEMASTER, Console::No },
             { "health",          HandleHealth,          SEC_GAMEMASTER, Console::No },
             { "xp",              HandleXp,              SEC_GAMEMASTER, Console::No },
@@ -424,6 +425,16 @@ private:
 
         SaveSetting(key, std::to_string(value));
         handler->PSendSysMessage("{} {} multiplier set to {:.2f}x and saved.", PREFIX, label, value);
+        return true;
+    }
+
+    static bool HandleAccess(ChatHandler* handler)
+    {
+        if (!handler || !handler->GetSession())
+            return true;
+
+        bool const allowed = handler->GetSession()->GetSecurity() >= SEC_GAMEMASTER;
+        handler->PSendSysMessage("{} ACCESS allowed={}", PREFIX, allowed ? 1 : 0);
         return true;
     }
 

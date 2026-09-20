@@ -43,6 +43,8 @@ ADVENTURE_START = (ROOT / "modules/mod-raid-roster/src/AdventureStart.cpp").read
 ADVENTURE_START_CONTROL = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.cpp").read_text(encoding="utf-8")
 ADVENTURE_START_CONTROL_H = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.h").read_text(encoding="utf-8")
 ADMIN_PANEL = (ROOT / "modules/mod-admin-panel/src/AdminPanel.cpp").read_text(encoding="utf-8")
+ADMIN_PANEL_CLIENT = (ROOT / "client-addons-src/AdminPanel/AdminPanel.lua").read_text(encoding="utf-8")
+ADMIN_PANEL_TOC = (ROOT / "client-addons-src/AdminPanel/AdminPanel.toc").read_text(encoding="utf-8")
 ADVENTURE_CATALOG = (ROOT / "modules/mod-raid-roster/src/AdventureCatalog.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY = (ROOT / "modules/mod-raid-roster/src/AdventureProgressionHistory.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY_SQL = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_00_mod_adventure_progression_history.sql").read_text(encoding="utf-8")
@@ -131,7 +133,7 @@ for command in (
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
 assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
-assert '## Version: 0.15.1' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
+assert '## Version: 0.15.2' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
@@ -935,7 +937,7 @@ assert "function wheel(this: void" in CHOICE_SELECT
 assert "function wheel(this: void" in SCROLL_LIST
 assert "sync-group-composer-client.sh" in UPDATE_SH
 assert "GroupComposerModernUI.lua" in SYNC_CLIENT and "Interface/AddOns/GroupComposer" in SYNC_CLIENT
-assert "0.15.1" in TOC and "0.15.1" in DATA
+assert "0.15.2" in TOC and "0.15.2" in DATA
 
 # Long activity lists use a dedicated filtered two-column browser instead of the compact ChoiceSelect.
 assert 'ActivityBrowserUI.createActivityBrowser(frame)' in MODERN
@@ -1228,3 +1230,28 @@ assert 'GC.plan.summary.botTargetLevel = ParseNumber(fields[10], 0)' in CORE
 assert 'GC.plan.summary.minBotLevel = ParseNumber(fields[11], 0)' in CORE
 assert 'GC.plan.summary.maxBotLevel = ParseNumber(fields[12], 0)' in CORE
 assert '"Lowest-human target Lv "' in MODERN and '"  ·  bots Lv "' in MODERN
+
+
+# P0.5 admin-security + launcher contracts.
+admin_commands = re.findall(r'\{\s*"([^"]+)"\s*,\s*(Handle\w+)\s*,\s*(SEC_\w+)\s*,\s*Console::No\s*\}', ADMIN_PANEL)
+assert admin_commands, "Admin Panel command table could not be parsed"
+for command, handler_name, security in admin_commands:
+    if command == "access":
+        assert security == "SEC_PLAYER", "Only the harmless authorization probe may be player-visible"
+    else:
+        assert security == "SEC_GAMEMASTER", f"Privileged Admin Panel command {command} lost GM-only security"
+assert 'handler->GetSession()->GetSecurity() >= SEC_GAMEMASTER' in ADMIN_PANEL
+assert '"{} ACCESS allowed={}"' in ADMIN_PANEL
+assert 'local access = {' in ADMIN_PANEL_CLIENT
+assert 'frame:SetScript("OnShow", function(self)' in ADMIN_PANEL_CLIENT
+assert 'if not access.allowed then self:Hide() end' in ADMIN_PANEL_CLIENT
+assert 'mini:Hide()' in ADMIN_PANEL_CLIENT
+assert 'RequestAccess()' in ADMIN_PANEL_CLIENT
+assert 'Azeroth Control is restricted to GM accounts.' in ADMIN_PANEL_CLIENT
+assert '## Version: 2.3.0' in ADMIN_PANEL_TOC
+
+assert 'function GC:CreateMinimapButton()' in CORE
+assert '"GroupComposerMinimapButton"' in CORE
+assert 'Interface\\\\Icons\\\\Ability_DualWield' in CORE
+assert 'Click to open • /gc also works' in CORE
+assert 'GC:CreateMinimapButton()' in CORE

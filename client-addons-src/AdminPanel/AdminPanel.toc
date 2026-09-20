@@ -2,7 +2,7 @@
 ## Title: Azeroth Control
 ## Notes: Expansion-aware GM control center for the private AzerothCore realm.
 ## Author: Skrra server project
-## Version: 2.2.0
+## Version: 2.3.0
 ## SavedVariables: AzerothAdminPanelDB
 
 AdminPanel.lua
