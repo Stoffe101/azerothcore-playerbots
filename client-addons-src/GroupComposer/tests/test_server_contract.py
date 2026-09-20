@@ -51,6 +51,7 @@ RECOMMENDATIONS_PAGE = (ROOT / "client-ui/src/components/RecommendationsPage.ts"
 MEMBER_DETAILS = (ROOT / "client-ui/src/components/MemberDetailsModal.ts").read_text(encoding="utf-8")
 GROUP_ACTIONS = (ROOT / "client-ui/src/components/GroupActionsModal.ts").read_text(encoding="utf-8")
 ACTIVITY_DIAGNOSTICS = (ROOT / "client-ui/src/components/ActivityDiagnosticsPage.ts").read_text(encoding="utf-8")
+UTILITY_COVERAGE = (ROOT / "client-ui/src/components/UtilityCoverageModal.ts").read_text(encoding="utf-8")
 RAID_HISTORY_MODAL = (ROOT / "client-ui/src/components/RaidHistoryModal.ts").read_text(encoding="utf-8")
 GENERATED_UI = (ROOT / "client-addons-src/GroupComposer/GroupComposerModernUI.lua").read_text(encoding="utf-8")
 
@@ -1136,3 +1137,31 @@ assert "IsActionableUnlockReason" in SERVER
 assert "Guild progression target:" in SERVER
 assert "gear.target && ilvl < gear.target" in SERVER
 assert "score += RecommendationGearAdjustment(master, activity)" in SERVER
+
+
+# Runtime regression contracts discovered during the first in-game V4 validation pass.
+assert '"[GC]|ACTIVITY|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}"' in SERVER, (
+    "ACTIVITY protocol must have exactly eleven payload placeholders"
+)
+assert '"[GC]|ACTIVITY|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}"' not in SERVER, (
+    "ACTIVITY protocol regressed to the 12-placeholder/11-argument runtime format error"
+)
+assert "ProgressionCompletionStage" not in SERVER, (
+    "Progression stage must never masquerade as an actual recorded raid clear"
+)
+assert "bool const personalComplete = clears.personalCount > 0;" in SERVER, (
+    "Journey clear state must come from the durable clear ledger"
+)
+assert "center.Hide();" in MODERN and "status.frame.Hide();" in MODERN
+assert "center.Show();" in MODERN and "status.frame.Show();" in MODERN
+assert '"★ Favorites"' not in ACTIVITY_BROWSER and '"☆"' not in ACTIVITY_BROWSER
+assert 'card.favorite.setText("Fav")' in ACTIVITY_BROWSER
+assert "card.button.setEnabled(true);" in ACTIVITY_BROWSER, (
+    "Locked activities must remain clickable so their exact unlock requirements can open"
+)
+assert '"[GC]|COVERAGECOUNTS|{}|{}|{}|{}|{}|{}|{}"' in SERVER
+assert '"[GC]|RAIDBUFF|{}|{}|{}|{}"' in SERVER
+assert 'kind == "COVERAGECOUNTS"' in CORE and 'kind == "RAIDBUFF"' in CORE
+assert "Utility Coverage Details" in UTILITY_COVERAGE
+assert "Major raid buff families present:" in UTILITY_COVERAGE
+assert "MISSING  " in UTILITY_COVERAGE and "PRESENT  " in UTILITY_COVERAGE

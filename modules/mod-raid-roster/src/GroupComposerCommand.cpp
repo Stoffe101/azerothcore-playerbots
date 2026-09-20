@@ -309,6 +309,82 @@ std::string MemberSelectionReason(Member const& member, Config const& config)
     return out;
 }
 
+struct UtilityProviderCounts
+{
+    uint32 interrupts = 0;
+    uint32 dispels = 0;
+    uint32 raidBuffs = 0;
+    uint32 heroism = 0;
+    uint32 battleRez = 0;
+    uint32 crowdControl = 0;
+    uint32 threat = 0;
+};
+
+UtilityProviderCounts CountUtilityProviders(Plan const& plan)
+{
+    UtilityProviderCounts counts;
+    for (Member const& member : plan.members)
+    {
+        uint32 const mask = member.utilityMask;
+        if (mask & UTILITY_INTERRUPT) ++counts.interrupts;
+        if (mask & UTILITY_DISPEL) ++counts.dispels;
+        if (mask & UTILITY_RAID_BUFF) ++counts.raidBuffs;
+        if (mask & UTILITY_HEROISM) ++counts.heroism;
+        if (mask & UTILITY_BATTLE_REZ) ++counts.battleRez;
+        if (mask & UTILITY_CC) ++counts.crowdControl;
+        if (mask & UTILITY_THREAT) ++counts.threat;
+    }
+    return counts;
+}
+
+void SendMajorRaidBuffCoverage(ChatHandler* handler, Plan const& plan)
+{
+    if (!handler)
+        return;
+
+    auto sendBuff = [&](char const* token, char const* label, auto&& matches)
+    {
+        uint32 count = 0;
+        std::vector<std::string> providers;
+        for (Member const& member : plan.members)
+        {
+            if (!matches(member))
+                continue;
+            ++count;
+            if (providers.size() < 4)
+                providers.push_back(member.name);
+        }
+
+        std::string providerText = JoinNames(providers);
+        if (count > providers.size())
+        {
+            if (!providerText.empty()) providerText += ", ";
+            providerText += "+" + std::to_string(count - providers.size()) + " more";
+        }
+
+        handler->PSendSysMessage("[GC]|RAIDBUFF|{}|{}|{}|{}",
+            token, Sanitize(label), count, Sanitize(providerText));
+    };
+
+    // These are major baseline/class-capability buff families, not a claim that every
+    // talent-only aura or encounter debuff is present. They answer the practical raid-leader
+    // question: which core group buffs can this prepared roster supply at all?
+    sendBuff("stamina", "Stamina - Fortitude / Commanding Shout",
+        [](Member const& member) { return member.cls == CLASS_PRIEST || member.cls == CLASS_WARRIOR; });
+    sendBuff("intellect", "Intellect - Arcane Intellect",
+        [](Member const& member) { return member.cls == CLASS_MAGE; });
+    sendBuff("wild", "Stats - Mark / Gift of the Wild",
+        [](Member const& member) { return member.cls == CLASS_DRUID; });
+    sendBuff("kings", "Stats - Blessing of Kings",
+        [](Member const& member) { return member.cls == CLASS_PALADIN; });
+    sendBuff("attack-power", "Attack Power - Battle Shout / Blessing of Might",
+        [](Member const& member) { return member.cls == CLASS_WARRIOR || member.cls == CLASS_PALADIN; });
+    sendBuff("mana-regen", "Mana Regen - Blessing of Wisdom / Mana Spring",
+        [](Member const& member) { return member.cls == CLASS_PALADIN || member.cls == CLASS_SHAMAN; });
+    sendBuff("strength-agility", "Strength & Agility - Horn of Winter / Strength of Earth",
+        [](Member const& member) { return member.cls == CLASS_DEATH_KNIGHT || member.cls == CLASS_SHAMAN; });
+}
+
 void SendPlan(ChatHandler* handler, Plan const& plan)
 {
     if (!handler) return;
@@ -335,6 +411,12 @@ void SendPlan(ChatHandler* handler, Plan const& plan)
 
     handler->PSendSysMessage("[GC]|COVERAGE|{}|{}|{}", uint32(plan.coverage.rangedDps),
         uint32(plan.coverage.meleeDps), Sanitize(Planner::CoverageSummary(plan)));
+
+    UtilityProviderCounts const utilityCounts = CountUtilityProviders(plan);
+    handler->PSendSysMessage("[GC]|COVERAGECOUNTS|{}|{}|{}|{}|{}|{}|{}",
+        utilityCounts.interrupts, utilityCounts.dispels, utilityCounts.raidBuffs,
+        utilityCounts.heroism, utilityCounts.battleRez, utilityCounts.crowdControl, utilityCounts.threat);
+    SendMajorRaidBuffCoverage(handler, plan);
     for (std::string const& warning : plan.warnings)
         handler->PSendSysMessage("[GC]|WARN|{}", Sanitize(warning));
     handler->PSendSysMessage("[GC]|READY|{}|{}|{}|{}|{}", plan.valid ? 1 : 0, guild, world, humans, uint32(plan.members.size()));
@@ -973,7 +1055,7 @@ void SendActivityEligibility(ChatHandler* handler, Player* master, std::string c
         char const* support = activity ? AdventureCatalog::SupportLabel(activity->support) : "Guild Ready";
         uint32 const mapId = activity ? activity->instanceMap : 0;
 
-        handler->PSendSysMessage("[GC]|ACTIVITY|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+        handler->PSendSysMessage("[GC]|ACTIVITY|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             modeToken, id, eligible ? 1 : 0, Sanitize(eligible ? "Available" : reason),
             Sanitize(label), era, minLevel, minProgression, preferredSize, Sanitize(support), mapId);
     };
@@ -1410,34 +1492,6 @@ RaidLockoutState CurrentRaidLockout(Player* player, AdventureActivity const& act
     return state;
 }
 
-uint8 ProgressionCompletionStage(std::string const& id)
-{
-    if (id == "molten_core") return 1;
-    if (id == "blackwing_lair") return 3;
-    if (id == "aq40") return 6;
-    if (id == "karazhan") return 9;
-    if (id == "tempest_keep") return 10;
-    if (id == "black_temple") return 12;
-    if (id == "sunwell") return 13;
-    if (id == "naxxramas") return 14;
-    if (id == "ulduar") return 15;
-    if (id == "trial_crusader") return 16;
-    if (id == "icecrown") return 17;
-    if (id == "ruby_sanctum") return 18;
-    return 0;
-}
-
-bool PlayerRaidComplete(Player* player, AdventureActivity const& activity)
-{
-    if (!player)
-        return false;
-    if (ClearStats(player, activity).personalCount > 0)
-        return true;
-
-    uint8 const completionStage = ProgressionCompletionStage(activity.composerId);
-    return completionStage && AdventureStartControl::CurrentProgression(player) >= completionStage;
-}
-
 void ApplyRecommendationRoleTargets(Config& config)
 {
     if (config.mode == "dungeon")
@@ -1708,7 +1762,7 @@ void SendJourney(ChatHandler* handler, Player* master)
         bool const available = ActivityEligible(master, config, reason);
         ActivityClearStats const clears = ClearStats(master, activity);
         RaidLockoutState const lockout = CurrentRaidLockout(master, activity, config);
-        bool const personalComplete = PlayerRaidComplete(master, activity);
+        bool const personalComplete = clears.personalCount > 0;
         bool const guildComplete = clears.guildCount > 0;
 
         handler->PSendSysMessage("[GC]|JOURNEYRAID|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",

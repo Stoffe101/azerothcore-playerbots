@@ -7,6 +7,7 @@ import * as RecommendationsPageUI from "./RecommendationsPage";
 import * as MemberDetailsUI from "./MemberDetailsModal";
 import * as GroupActionsUI from "./GroupActionsModal";
 import * as ActivityDiagnosticsUI from "./ActivityDiagnosticsPage";
+import * as UtilityCoverageUI from "./UtilityCoverageModal";
 import * as Native from "../core/Native";
 import type { ClassId, Role } from "../data/WotlkBuilds";
 import * as Builds from "../data/WotlkBuilds";
@@ -176,6 +177,7 @@ export function createModernDashboard(): Dashboard {
 
     const memberDetails = MemberDetailsUI.createMemberDetailsModal(frame);
     const groupActions = GroupActionsUI.createGroupActionsModal(frame);
+    const utilityCoverage = UtilityCoverageUI.createUtilityCoverageModal(frame);
 
     const root = Native.createSolid(frame, theme.colors.background);
     root.SetAllPoints(frame);
@@ -862,6 +864,11 @@ export function createModernDashboard(): Dashboard {
     }
     const coverageTitle = Native.createText(coverageCard.frame, "UTILITY COVERAGE", "GameFontNormalSmall", theme.colors.muted);
     coverageTitle.SetPoint("LEFT", coverageGlyph.frame, "RIGHT", 9, 0);
+    const coverageDetailsButton = ButtonUI.createButton(coverageCard.frame, {
+        text: "Details", width: 72, height: 26, accent: theme.colors.primary, flat: true,
+        onClick: () => utilityCoverage.open(),
+    });
+    coverageDetailsButton.frame.SetPoint("TOPRIGHT", coverageCard.frame, "TOPRIGHT", -10, -10);
 
     const coverageDefs: Array<{ token: string; label: string }> = [
         { token: "interrupt", label: "Interrupt" },
@@ -1814,6 +1821,7 @@ export function createModernDashboard(): Dashboard {
 
         const utilityRaw = String(Model.plan().summary?.utility ?? "");
         const hasPreparedCoverage = Model.plan().summary?.utility !== undefined;
+        coverageDetailsButton.setEnabled(hasPreparedCoverage);
         for (let i = 0; i < coverageChips.length; i += 1) {
             const widgets = coverageChips[i];
             const covered = hasPreparedCoverage && utilityRaw.indexOf(String(widgets.token)) >= 0;
@@ -1906,6 +1914,8 @@ export function createModernDashboard(): Dashboard {
         progressionPage.hide();
         recommendationsPage.hide();
         diagnosticsPage.hide();
+        center.Show();
+        status.frame.Show();
         refresh();
         Model.requestActivities(Model.config().mode === "RAID" ? "RAID" : "DUNGEON");
     });
@@ -1915,12 +1925,16 @@ export function createModernDashboard(): Dashboard {
         progressionPage.hide();
         recommendationsPage.hide();
         diagnosticsPage.hide();
+        center.Show();
+        status.frame.Show();
         if (mode !== undefined) Model.setMode(mode);
         refresh();
         Model.requestActivities(Model.config().mode === "RAID" ? "RAID" : "DUNGEON");
     };
     showProgressionPage = () => {
         activePage = "PROGRESSION";
+        center.Hide();
+        status.frame.Hide();
         recommendationsPage.hide();
         diagnosticsPage.hide();
         progressionPage.show();
@@ -1928,6 +1942,8 @@ export function createModernDashboard(): Dashboard {
     };
     showRecommendationsPage = () => {
         activePage = "RECOMMENDED";
+        center.Hide();
+        status.frame.Hide();
         progressionPage.hide();
         diagnosticsPage.hide();
         recommendationsPage.show();
@@ -1935,6 +1951,8 @@ export function createModernDashboard(): Dashboard {
     };
     showDiagnosticsPage = () => {
         activePage = "DIAGNOSTICS";
+        center.Hide();
+        status.frame.Hide();
         progressionPage.hide();
         recommendationsPage.hide();
         diagnosticsPage.show();

@@ -604,6 +604,26 @@ function GC:HandleProtocolMessage(message)
         }
     elseif kind == "COVERAGE" then
         GC.plan.summary.ranged = ParseNumber(fields[2], 0); GC.plan.summary.melee = ParseNumber(fields[3], 0); GC.plan.summary.utility = fields[4] or ""
+        GC.plan.summary.utilityCounts = nil
+        GC.plan.summary.raidBuffs = {}
+    elseif kind == "COVERAGECOUNTS" then
+        GC.plan.summary.utilityCounts = {
+            interrupt = ParseNumber(fields[2], 0),
+            dispel = ParseNumber(fields[3], 0),
+            buffs = ParseNumber(fields[4], 0),
+            heroism = ParseNumber(fields[5], 0),
+            battleRez = ParseNumber(fields[6], 0),
+            cc = ParseNumber(fields[7], 0),
+            threat = ParseNumber(fields[8], 0),
+        }
+    elseif kind == "RAIDBUFF" then
+        GC.plan.summary.raidBuffs = GC.plan.summary.raidBuffs or {}
+        GC.plan.summary.raidBuffs[#GC.plan.summary.raidBuffs + 1] = {
+            token = fields[2] or "",
+            label = fields[3] or "",
+            count = ParseNumber(fields[4], 0),
+            providers = fields[5] or "",
+        }
     elseif kind == "DIAG" then
         GC.plan.summary.diagnostics = fields[2] or ""
         GC.pendingCommand = nil

@@ -139,7 +139,7 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
             { key: "Vanilla", label: "Vanilla" },
             { key: "TBC", label: "TBC" },
             { key: "WotLK", label: "WotLK" },
-            { key: "FAVORITES", label: "★ Favorites" },
+            { key: "FAVORITES", label: "Favorites" },
             { key: "RECENT", label: "Recent" },
         ];
     }
@@ -173,13 +173,13 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
                 const iconBadge = Native.createFramedIcon(button.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 42, theme.colors.borderStrong);
                 iconBadge.frame.SetPoint("LEFT", button.frame, "LEFT", 12, 0);
                 const title = Native.createText(button.frame, "", "GameFontNormal");
-                title.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -12); title.SetWidth(328);
+                title.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -12); title.SetWidth(300);
                 const detail = Native.createText(button.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-                detail.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -35); detail.SetWidth(328);
+                detail.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -35); detail.SetWidth(300);
                 const tag = Native.createText(button.frame, "", "GameFontNormalSmall", theme.colors.primary);
                 tag.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -55); tag.SetWidth(260);
                 const favorite = ButtonUI.createButton(button.frame, {
-                    text: "☆", width: 34, height: 30, accent: theme.colors.warning, flat: true,
+                    text: "Fav", width: 44, height: 30, accent: theme.colors.warning, flat: true,
                 });
                 favorite.frame.SetPoint("TOPRIGHT", button.frame, "TOPRIGHT", -7, -7);
                 scroll.bindWheel(button.frame);
@@ -196,7 +196,7 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
             const access = Model.activityEligibility(item.id, mode());
             const selected = String(Model.config().activity) === item.id;
             card.button.setSelected(selected);
-            card.button.setEnabled(access.known && access.eligible);
+            card.button.setEnabled(true);
             card.iconBadge.icon.SetTexture(item.icon);
             card.iconBadge.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
             card.iconBadge.outline.setColor(
@@ -218,7 +218,9 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
             }
             const id = item.id;
             const selectedMode = mode();
-            card.favorite.setText(Model.isFavorite(selectedMode, id) ? "★" : "☆");
+            const favoriteSelected = Model.isFavorite(selectedMode, id);
+            card.favorite.setText("Fav");
+            card.favorite.setSelected(favoriteSelected);
             card.favorite.frame.SetScript("OnMouseDown", () => {
                 Model.toggleFavorite(selectedMode, id);
                 refresh();
