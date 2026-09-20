@@ -1273,9 +1273,16 @@ void ApplyRecommendationRoleTargets(Config& config)
     config.dps = config.size - config.tanks - config.healers;
 }
 
+struct ComposerGearProfile;
+ComposerGearProfile GearProfileFor(Config const& config);
+
 struct RecommendationCapacity
 {
     bool feasible = false;
+    uint32 playerItemLevel = 0;
+    uint32 recommendedFloor = 0;
+    uint32 recommendedTarget = 0;
+    bool gearReady = true;
     uint32 humans = 0;
     uint32 guildBots = 0;
     uint32 selectedBots = 0;
@@ -1306,6 +1313,12 @@ RecommendationCapacity EvaluateRecommendationCapacity(Player* master, AdventureA
     config.preferGuild = true;
     config.fillWorld = true;
     config.keepMe = true;
+
+    ComposerGearProfile const gear = GearProfileFor(config);
+    result.playerItemLevel = uint32(master->GetAverageItemLevel() + 0.5f);
+    result.recommendedFloor = gear.minimum;
+    result.recommendedTarget = gear.target;
+    result.gearReady = !gear.minimum || master->GetAverageItemLevel() + 0.001f >= gear.minimum;
 
     Plan preview;
     std::string error;
@@ -1341,6 +1354,14 @@ RecommendationCapacity EvaluateRecommendationCapacity(Player* master, AdventureA
         " eligible guild candidate(s) were seen.";
     if (!result.humanNames.empty())
         result.detail += " Anchored humans: " + result.humanNames + ".";
+    if (result.recommendedFloor)
+    {
+        result.detail += " Your ilvl is " + std::to_string(result.playerItemLevel) +
+            "; Composer's recommended floor is " + std::to_string(result.recommendedFloor);
+        if (result.recommendedTarget)
+            result.detail += " and target is " + std::to_string(result.recommendedTarget);
+        result.detail += result.gearReady ? "." : " — gear is below the recommended floor.";
+    }
     return result;
 }
 
@@ -1454,7 +1475,7 @@ void SendJourney(ChatHandler* handler, Player* master)
         else
             capacity.detail = "Unlock this activity before Composer evaluates a roster for it.";
 
-        handler->PSendSysMessage("[GC]|RECOMMEND|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+        handler->PSendSysMessage("[GC]|RECOMMEND|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             recommendation.activity->composerId,
             recommendation.activity->kind == AdventureActivityKind::Raid ? "RAID" : "DUNGEON",
             Sanitize(recommendation.activity->name),
@@ -1467,6 +1488,10 @@ void SendJourney(ChatHandler* handler, Player* master)
             capacity.guildCandidates,
             capacity.humans,
             Sanitize(capacity.humanNames),
+            capacity.playerItemLevel,
+            capacity.recommendedFloor,
+            capacity.recommendedTarget,
+            capacity.gearReady ? 1 : 0,
             Sanitize(capacity.detail));
         if (++sent >= 6)
             break;

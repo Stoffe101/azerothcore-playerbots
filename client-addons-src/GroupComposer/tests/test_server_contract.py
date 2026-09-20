@@ -1080,3 +1080,11 @@ assert "Anchored humans:" in SERVER
 assert "humans = ParseNumber(fields[12], 0)" in CORE
 assert "humanNames = fields[13] or \"\"" in CORE
 assert "GROUP READY · " in RECOMMENDATIONS_PAGE and "human(s)" in RECOMMENDATIONS_PAGE
+
+
+# Recommendations reuse Composer's own gear profile rather than inventing a separate ilvl model.
+assert "recommendedFloor" in SERVER and "recommendedTarget" in SERVER and "gearReady" in SERVER
+assert "Composer's recommended floor" in SERVER
+assert "playerItemLevel = ParseNumber(fields[14], 0)" in CORE
+assert "recommendedFloor = ParseNumber(fields[15], 0)" in CORE
+assert "GEAR READY" in RECOMMENDATIONS_PAGE and "GEAR LOW" in RECOMMENDATIONS_PAGE

@@ -76,6 +76,10 @@ export interface Recommendation {
     guildCandidates: number;
     humans: number;
     humanNames: string;
+    playerItemLevel: number;
+    recommendedFloor: number;
+    recommendedTarget: number;
+    gearReady: boolean;
     readiness: string;
 }
 

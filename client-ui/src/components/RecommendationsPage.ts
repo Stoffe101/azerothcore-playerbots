@@ -102,11 +102,19 @@ export function createRecommendationsPage(parent: WoWFrame, onConfigure: () => v
                     ? "GROUP READY · " + String(item.humans) + " human(s) · " + String(item.selectedBots) + " bot(s) · " + String(item.guildBots) + " guild bot(s)"
                     : "ROSTER NEEDS WORK")
                 : "NEXT UNLOCK";
+            const gear = item.recommendedFloor > 0
+                ? (item.gearReady
+                    ? " · GEAR READY " + String(item.playerItemLevel) + "/" + String(item.recommendedFloor) +
+                        (item.recommendedTarget > 0 ? " (target " + String(item.recommendedTarget) + ")" : "")
+                    : " · GEAR LOW " + String(item.playerItemLevel) + "/" + String(item.recommendedFloor))
+                : "";
             card.meta.SetText(item.era + " · " + (item.mode === "RAID" ? "Raid" : "Dungeon") + " · " + availability);
             const humanLine = item.humanNames !== "" ? " · Anchored: " + item.humanNames : "";
             card.reason.SetText(item.reason + humanLine);
-            card.readiness.SetText(readiness + (item.readiness !== "" ? " · " + item.readiness : ""));
-            const accent = !item.available ? theme.colors.warning : (item.feasible ? theme.colors.success : theme.colors.error);
+            card.readiness.SetText(readiness + gear + (item.readiness !== "" ? " · " + item.readiness : ""));
+            const accent = !item.available
+                ? theme.colors.warning
+                : (!item.gearReady ? theme.colors.warning : (item.feasible ? theme.colors.success : theme.colors.error));
             card.readiness.SetTextColor(accent[0], accent[1], accent[2], 1);
             card.iconBadge.outline.setColor(accent);
             card.use.setEnabled(item.available);

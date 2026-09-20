@@ -549,7 +549,11 @@ function GC:HandleProtocolMessage(message)
             guildCandidates = ParseNumber(fields[11], 0),
             humans = ParseNumber(fields[12], 0),
             humanNames = fields[13] or "",
-            readiness = fields[14] or "",
+            playerItemLevel = ParseNumber(fields[14], 0),
+            recommendedFloor = ParseNumber(fields[15], 0),
+            recommendedTarget = ParseNumber(fields[16], 0),
+            gearReady = fields[17] ~= "0",
+            readiness = fields[18] or "",
         }
     elseif kind == "JOURNEYDONE" then
         GC.journey.ready = true

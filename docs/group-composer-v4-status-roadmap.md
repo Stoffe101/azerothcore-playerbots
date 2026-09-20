@@ -280,6 +280,20 @@ For an active lockout Group Composer tracks:
 
 The Progression page shows active lockouts, and Recommended Activities prioritizes an unfinished raid the player is already saved to as **Resume active lockout** instead of pretending every raid recommendation is a fresh run.
 
+### Gear-aware recommendations
+
+Recommended Activities now reuse the **same Composer gear profile** that prepares bots for an activity.
+
+For an available recommendation the page can show:
+
+- your current average item level;
+- Composer's recommended floor;
+- the stronger target item level when one is defined;
+- **GEAR READY** when you meet the floor;
+- **GEAR LOW** when the activity is technically unlocked but your character is below the recommended preparation floor.
+
+This is advisory unless AzerothCore itself has a hard item-level access requirement. It prevents "unlocked" from being confused with "good idea right now" without fabricating a second independent gearing model.
+
 ### Friend-aware recommendation previews
 
 Recommendation dry-runs now expose the real-human side of the preview, not just the bots.
