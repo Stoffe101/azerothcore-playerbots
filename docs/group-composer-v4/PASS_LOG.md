@@ -2,6 +2,12 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — Playerbots era-quarantine patch format repair
+
+Status: **FIX PUSHED; exact-head local CI required**.
+
+Local Group Composer compile on `5be15b74` stopped during pinned-tree assembly before C++ compilation because `0042-playerbot-era-cap-quarantine.patch` had stale new-side hunk counts. The patch contents/behavior were correct, but its headers under-counted inserted lines. Hunk lengths/offsets are repaired; no quarantine behavior was removed.
+
 ## 2026-09-21 — FEATURE-19 slice 1: safe realm snapshot foundation
 
 Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.

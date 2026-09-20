@@ -9,7 +9,7 @@ diff --git a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp b/modules/mod
  #include "ChannelMgr.h"
  #include "DBCStores.h"
  #include "DBCStructure.h"
-@@ -736,6 +737,14 @@ uint32 RandomPlayerbotMgr::AddRandomBots()
+@@ -736,6 +737,15 @@ uint32 RandomPlayerbotMgr::AddRandomBots()
          // Lambda to handle bot login logic
          auto tryLoginBot = [&](CharacterInfo const& charInfo) -> bool
          {
@@ -25,7 +25,7 @@ diff --git a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp b/modules/mod
              if (GetEventValue(charInfo.guid, "add") ||
                  GetEventValue(charInfo.guid, "logout") ||
                  GetPlayerBot(charInfo.guid) ||
-@@ -1339,6 +1348,25 @@ bool RandomPlayerbotMgr::ProcessBot(uint32 bot)
+@@ -1339,6 +1349,26 @@ bool RandomPlayerbotMgr::ProcessBot(uint32 bot)
      ObjectGuid botGUID = ObjectGuid::Create<HighGuid::Player>(bot);
      Player* player = GetPlayerBot(botGUID);
      PlayerbotAI* botAI = player ? GET_PLAYERBOT_AI(player) : nullptr;
@@ -51,7 +51,7 @@ diff --git a/modules/mod-playerbots/src/Bot/RandomPlayerbotMgr.cpp b/modules/mod
  
      uint32 isValid = GetEventValue(bot, "add");
      if (!isValid)
-@@ -2030,6 +2058,10 @@ void RandomPlayerbotMgr::RandomizeFirst(Player* bot)
+@@ -2030,6 +2060,10 @@ void RandomPlayerbotMgr::RandomizeFirst(Player* bot)
                                                        : sPlayerbotAIConfig.randombotStartingLevel;
      }
  
