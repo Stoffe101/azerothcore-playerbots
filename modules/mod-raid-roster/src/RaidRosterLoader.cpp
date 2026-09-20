@@ -8,6 +8,7 @@
 #include "AutoDungeonClear.h"
 #include "EncounterLifecycle.h"
 #include "EraPolicy.h"
+#include "EraAuditCommand.h"
 #include "GroupComposerCommand.h"
 #include "GroupComposerTitanRune.h"
 #include "GuildGroupDirector.h"
@@ -78,6 +79,7 @@ void Addmod_raid_rosterScripts()
     new AdventureCatchupCommand();
     new AdventureCacheCommand();
     new AdventureGuideCommand();
+    new EraAuditCommand();
     new RaidLeaderCommand();
     AddGroupComposerScripts();
     AddGroupComposerTitanRuneScripts();

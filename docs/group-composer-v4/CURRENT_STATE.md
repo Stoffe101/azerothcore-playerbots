@@ -133,6 +133,12 @@ Slice 4b is also **IN PROGRESS**: the Playerbots runtime population path now ski
 
 ERA-01 is **not DONE yet**. AH, global bot population/geography, professions, vendors, travel, classes/races, PvP and other systems still need migration/enforcement.
 
+## ERA-02 integrity scanner
+
+Status: **IN PROGRESS**.
+
+First read-only slice adds GM-only `.era audit` with PASS/WARN/FAIL sections for central cap drift, online over-cap RNDbots, preserved/quarantined stored RNDbots, Outland/Northrend map gates, and future Composer activity map leakage. It reports counts plus up to five examples where useful and never mutates realm state. AH/items/vendors/professions/classes/races/PvP sections remain TODO.
+
 ## Era-fidelity architecture pass
 
 Canonical design is now recorded in ERA_FIDELITY.md.

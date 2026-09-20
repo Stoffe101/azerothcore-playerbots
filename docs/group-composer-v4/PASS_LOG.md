@@ -2,6 +2,23 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — ERA-02 slice 1: read-only integrity audit scaffold
+
+Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
+
+Implemented GM-only `.era audit`:
+- reports live era, level cap and progression ceiling;
+- FAILs if Individual Progression or Playerbots runtime caps drift from EraPolicy;
+- counts online RNDbots above the live cap and prints examples;
+- counts preserved stored RNDbots above cap as WARN/quarantined, with examples;
+- validates Outland/Northrend map gates against released era;
+- scans future Adventure Catalog entries for map-policy leaks;
+- prints one read-only PASS/WARN/FAIL summary and never mutates world state.
+
+Remaining audit sections: item provenance/equipped bot gear, AH, vendors/currencies, professions, classes/races, PvP, convenience systems, geography/transports and automated rewards.
+
+CI: `[local-ci]` is queued on `stoffes-pc`; exact final SHA must pass all required workflows.
+
 ## 2026-09-21 — ERA-01 slice 4b: non-destructive RNDbot quarantine
 
 Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.

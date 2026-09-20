@@ -47,8 +47,8 @@ ERA-01 is now **IN PROGRESS** while P0 runtime evidence is blocked.
 3. **Current slice:** central Map.dbc-backed map policy plus Admin/Composer travel containment.
 4. **Current parallel slice:** synchronize Playerbots runtime max-level/brackets to EraPolicy and hard-fence Composer/RaidRoster prep.
 5. **Current parallel slice:** non-destructive pre-login/active-population quarantine for stored RNDbots above the live era cap.
-6. Next add audit visibility/counts for quarantined/over-cap bots, then begin ERA-02 as the first read-only integrity surface.
-7. Build **ERA-02 Era Integrity Scanner** once the core policy surface is stable enough to audit against.
+6. **IN PROGRESS:** ERA-02 `.era audit` scaffold covers cap drift, RNDbot quarantine, maps and future Composer-map leakage.
+7. Expand the scanner alongside each subsequent era subsystem instead of inventing a separate audit later.
 4. Add **FEATURE-19 Safe Snapshot / Rollback** before destructive release-transition work.
 5. Then follow the dependency order in `MASTER_ROADMAP.md`.
 

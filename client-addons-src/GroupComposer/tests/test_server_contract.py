@@ -57,6 +57,7 @@ ADVENTURE_CONTROL = (ROOT / "modules/mod-raid-roster/src/AdventureControlCommand
 GROUP_COMPOSER_TITAN = (ROOT / "modules/mod-raid-roster/src/GroupComposerTitanRune.cpp").read_text(encoding="utf-8")
 RAID_ROSTER_ERA = (ROOT / "modules/mod-raid-roster/src/RaidRosterEra.cpp").read_text(encoding="utf-8")
 RAID_ROSTER_LOADER = (ROOT / "modules/mod-raid-roster/src/RaidRosterLoader.cpp").read_text(encoding="utf-8")
+ERA_AUDIT = (ROOT / "modules/mod-raid-roster/src/EraAuditCommand.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY = (ROOT / "modules/mod-raid-roster/src/AdventureProgressionHistory.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY_SQL = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_00_mod_adventure_progression_history.sql").read_text(encoding="utf-8")
 PROGRESSION_ACTIVITY_ID_MIGRATION = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_01_mod_adventure_progression_activity_id.sql").read_text(encoding="utf-8")
@@ -1338,3 +1339,15 @@ assert 'LogoutPlayerBot(botGUID);' in RANDOM_BOT_ERA_PATCH
 assert 'player && player->GetGroup()' in RANDOM_BOT_ERA_PATCH
 assert 'leaving it stored for a later era' in RANDOM_BOT_ERA_PATCH
 assert 'if (level > maxLevel)' in RANDOM_BOT_ERA_PATCH
+
+
+# ERA-02 slice 1: read-only audit scaffold.
+assert '{ "audit", HandleAudit, SEC_GAMEMASTER, Console::No }' in ERA_AUDIT
+assert '[EraAudit] {} SUMMARY' in ERA_AUDIT
+assert 'sIndividualProgression->BotAccountsMaxLevel == cap' in ERA_AUDIT
+assert 'sPlayerbotAIConfig.randomBotMaxLevel == cap' in ERA_AUDIT
+assert 'quarantinedOverCap=' in ERA_AUDIT
+assert 'EraPolicy::IsMapAllowed(530)' in ERA_AUDIT
+assert 'EraPolicy::IsMapAllowed(571)' in ERA_AUDIT
+assert 'AdventureCatalog::All()' in ERA_AUDIT
+assert 'new EraAuditCommand();' in RAID_ROSTER_LOADER

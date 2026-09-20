@@ -72,10 +72,10 @@ They are the dependency spine for most other approved era work. First define one
   - Slice 4b non-destructively quarantines stored/ungrouped RNDbots above the live cap instead of downlevelling or deleting them.
   - Finish when Group Composer, bots, AH, vendors, professions, travel, starter/catch-up, Titan Rune and PvP consume one authoritative policy rather than inventing independent era logic.
 
-- [ ] **ERA-02 — Era Integrity scanner — TODO**
-  - Add read-only GM/admin diagnostics such as `.era audit`.
+- [ ] **ERA-02 — Era Integrity scanner — IN PROGRESS**
+  - GM-only read-only `.era audit` scaffold is implemented for cap drift, RNDbot quarantine, map gates and future Composer-map leakage.
   - PASS/WARN/FAIL sections for bots, AH, gear, vendors, professions, travel/maps, Composer catalog, classes/races, PvP/systems and automated rewards.
-  - Must provide counts/examples instead of opaque booleans.
+  - Current sections provide counts/examples and one PASS/WARN/FAIL summary; AH/items/vendors/professions/classes/PvP/geography/rewards sections remain TODO.
 
 - [ ] **ERA-03 — Strict bot era rules — PARTIAL**
   - Existing foundation: Composer anti-boost and bot-to-master progression sync.

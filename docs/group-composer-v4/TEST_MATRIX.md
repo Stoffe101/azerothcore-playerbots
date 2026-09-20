@@ -63,6 +63,10 @@ Status vocabulary:
 - TODO: stored RNDbot above live cap is skipped without changing its stored level.
 - TODO: ungrouped active RNDbot above live cap is logged out/quarantined and becomes eligible again after expansion cap rises.
 - TODO: a grouped over-cap RNDbot is not forcibly removed mid-run.
+- TODO: `.era audit` is GM-only and does not mutate state.
+- TODO: `.era audit` reports central cap drift as FAIL.
+- TODO: `.era audit` reports stored over-cap RNDbots as WARN/quarantined with examples.
+- TODO: `.era audit` reports Outland/Northrend map policy correctly for Vanilla/TBC/WotLK.
 - TODO: Azeroth Control refuses Shattrath before TBC and Dalaran/Argent before WotLK.
 - TODO: Azeroth Control goto/saved-location travel refuses a future-era map.
 - TODO: Group Composer cannot teleport a reviewed roster into a future-era instance map.
