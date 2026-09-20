@@ -164,8 +164,9 @@ These are implemented and CI-tested, but should not yet be treated as proven gam
 2. **Richer raid readiness**
    - pre-assembly warnings for encounter-specific composition needs;
    - consumable/readiness summaries;
-   - lockout conflicts across multiple real players;
    - clearer "this group can enter but is probably not ready" distinction.
+
+Multi-human raid lockout conflicts are now handled by the co-op preflight: Composer compares the selected raid/difficulty's real AzerothCore instance binds for every online human anchor and blocks conflicting saved instance IDs before roster assembly.
 
 3. **Progression history v2**
    - explicit Composer activity ID in history;

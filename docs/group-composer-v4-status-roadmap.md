@@ -168,6 +168,8 @@ The Unlock Requirements modal includes **Player:** rows so it is clear exactly w
 
 The same access rules are rechecked during Build & Prepare and again immediately before assembly, preventing a stale preview from allowing one human to strand the group at the portal.
 
+For raids, this preflight also compares the real AzerothCore instance bind for every online human anchor at the selected difficulty. Humans saved to different instance IDs are rejected with a player-specific lockout-conflict reason before Composer commits the roster. An unbound friend remains compatible with a bound friend, so ordinary "join my saved run" play still works.
+
 ### Exact unlock-path modal
 
 Locked activity cards are now interactive instead of dead ends.

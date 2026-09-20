@@ -1072,6 +1072,9 @@ assert "cannot enter:" in SERVER
 assert "must be online so Group Composer can validate their activity access" in SERVER
 assert "no longer satisfies the selected activity access requirements" in SERVER
 assert "A real player in this composition is not ready for the selected activity" in SERVER
+assert "PartyRaidLockout" in SERVER and "CompatibleRaidLockout" in SERVER
+assert "PlayerGetBoundInstance" in SERVER
+assert "conflicts with" in SERVER and "saved instance" in SERVER
 
 
 # Recommendations must explain the real-human composition they are previewing.

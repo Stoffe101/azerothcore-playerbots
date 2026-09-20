@@ -768,6 +768,43 @@ bool PlayerActivityEligible(Player* player, Config const& config, std::string& r
 
 bool IsBotGuid(ObjectGuid guid);
 
+struct PartyRaidLockout
+{
+    uint32 instanceId = 0;
+    std::string playerName;
+};
+
+bool CompatibleRaidLockout(Player* player, Config const& config, PartyRaidLockout& expected, std::string& blocker)
+{
+    blocker.clear();
+    if (!player || config.mode != "raid")
+        return true;
+
+    AdventureActivity const* activity = AdventureCatalog::FindComposer(config.activity);
+    if (!activity || activity->kind != AdventureActivityKind::Raid || !activity->instanceMap)
+        return true;
+
+    InstancePlayerBind* bind = sInstanceSaveMgr->PlayerGetBoundInstance(
+        player->GetGUID(), activity->instanceMap, ActivityDifficulty(config));
+    if (!bind || !bind->save)
+        return true;
+
+    uint32 const instanceId = bind->save->GetInstanceId();
+    if (!expected.instanceId)
+    {
+        expected.instanceId = instanceId;
+        expected.playerName = player->GetName();
+        return true;
+    }
+    if (expected.instanceId == instanceId)
+        return true;
+
+    blocker = "is saved to raid instance " + std::to_string(instanceId) +
+        ", which conflicts with " + expected.playerName + "'s saved instance " +
+        std::to_string(expected.instanceId) + " for this raid/difficulty.";
+    return false;
+}
+
 bool PartyActivityEligible(Player* master, Config const& config, std::string& reason,
     std::vector<std::pair<std::string, std::string>>* humanBlockers = nullptr)
 {
@@ -778,6 +815,7 @@ bool PartyActivityEligible(Player* master, Config const& config, std::string& re
     }
 
     std::unordered_set<uint32> checked;
+    PartyRaidLockout raidLockout;
     auto check = [&](Player* player, std::string const& label) -> bool
     {
         if (!player || GET_PLAYERBOT_AI(player))
@@ -792,6 +830,15 @@ bool PartyActivityEligible(Player* master, Config const& config, std::string& re
                 humanBlockers->push_back({ label, blocker });
             if (reason.empty())
                 reason = label + " cannot enter: " + blocker;
+            return false;
+        }
+
+        if (!CompatibleRaidLockout(player, config, raidLockout, blocker))
+        {
+            if (humanBlockers)
+                humanBlockers->push_back({ label, blocker });
+            if (reason.empty())
+                reason = label + " " + blocker;
             return false;
         }
 
