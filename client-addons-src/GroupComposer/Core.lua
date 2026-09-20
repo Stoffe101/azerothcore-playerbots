@@ -484,6 +484,10 @@ function GC:HandleProtocolMessage(message)
             guildComplete = fields[8] == "1",
             support = fields[9] or "Unknown",
             reason = fields[10] or "",
+            playerClearCount = ParseNumber(fields[11], 0),
+            playerFirstClear = fields[12] or "",
+            guildClearCount = ParseNumber(fields[13], 0),
+            guildFirstClear = fields[14] or "",
         }
     elseif kind == "RECOMMEND" then
         GC.journey.recommendations[#GC.journey.recommendations + 1] = {

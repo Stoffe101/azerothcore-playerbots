@@ -836,27 +836,61 @@ void SendActivityEligibility(ChatHandler* handler, Player* master, std::string c
         modeToken, uint32(AdventureStartControl::CurrentProgression(master)));
 }
 
-bool HasBossClear(uint32 playerGuid, AdventureActivity const& activity)
+struct ActivityClearStats
 {
-    if (!playerGuid || !activity.finalBossEntry)
-        return false;
+    uint32 personalCount = 0;
+    uint32 guildCount = 0;
+    std::string personalFirst;
+    std::string guildFirst;
+};
 
-    return CharacterDatabase.Query(
+ActivityClearStats ClearStats(Player* player, AdventureActivity const& activity)
+{
+    ActivityClearStats stats;
+    if (!player || !activity.finalBossEntry)
+        return stats;
+
+    uint32 const playerGuid = player->GetGUID().GetCounter();
+    if (QueryResult result = CharacterDatabase.Query(
+        "SELECT COUNT(*), COALESCE(DATE_FORMAT(MIN(killed_at), '%Y-%m-%d'), '') "
+        "FROM mod_adventure_progression_event "
+        "WHERE player_guid = {} AND map_id = {} AND creature_entry = {}",
+        playerGuid, activity.instanceMap, activity.finalBossEntry))
+    {
+        Field* fields = result->Fetch();
+        stats.personalCount = fields[0].Get<uint32>();
+        stats.personalFirst = fields[1].Get<std::string>();
+    }
+
+    if (uint32 guildId = player->GetGuildId())
+    {
+        if (QueryResult result = CharacterDatabase.Query(
+            "SELECT COUNT(DISTINCT instance_id), COALESCE(DATE_FORMAT(MIN(killed_at), '%Y-%m-%d'), '') "
+            "FROM mod_adventure_progression_event "
+            "WHERE guild_id = {} AND map_id = {} AND creature_entry = {}",
+            guildId, activity.instanceMap, activity.finalBossEntry))
+        {
+            Field* fields = result->Fetch();
+            stats.guildCount = fields[0].Get<uint32>();
+            stats.guildFirst = fields[1].Get<std::string>();
+        }
+    }
+
+    // Compatibility with test realms that have old one-time bounty history from before this ledger.
+    if (!stats.personalCount && CharacterDatabase.Query(
         "SELECT 1 FROM mod_adventure_boss_bounty WHERE player_guid = {} AND map_id = {} "
         "AND creature_entry = {} LIMIT 1",
-        playerGuid, activity.instanceMap, activity.finalBossEntry) != nullptr;
-}
+        playerGuid, activity.instanceMap, activity.finalBossEntry))
+        stats.personalCount = 1;
 
-bool GuildHasBossClear(Player* player, AdventureActivity const& activity)
-{
-    if (!player || !player->GetGuildId() || !activity.finalBossEntry)
-        return false;
-
-    return CharacterDatabase.Query(
+    if (!stats.guildCount && player->GetGuildId() && CharacterDatabase.Query(
         "SELECT 1 FROM mod_adventure_boss_bounty b "
         "INNER JOIN guild_member gm ON gm.guid = b.player_guid "
         "WHERE gm.guildid = {} AND b.map_id = {} AND b.creature_entry = {} LIMIT 1",
-        player->GetGuildId(), activity.instanceMap, activity.finalBossEntry) != nullptr;
+        player->GetGuildId(), activity.instanceMap, activity.finalBossEntry))
+        stats.guildCount = 1;
+
+    return stats;
 }
 
 uint8 ProgressionCompletionStage(std::string const& id)
@@ -880,7 +914,7 @@ bool PlayerRaidComplete(Player* player, AdventureActivity const& activity)
 {
     if (!player)
         return false;
-    if (HasBossClear(player->GetGUID().GetCounter(), activity))
+    if (ClearStats(player, activity).personalCount > 0)
         return true;
 
     uint8 const completionStage = ProgressionCompletionStage(activity.composerId);
@@ -919,14 +953,16 @@ void SendJourney(ChatHandler* handler, Player* master)
 
         std::string reason;
         bool const available = ActivityEligible(master, config, reason);
+        ActivityClearStats const clears = ClearStats(master, activity);
         bool const personalComplete = PlayerRaidComplete(master, activity);
-        bool const guildComplete = GuildHasBossClear(master, activity);
+        bool const guildComplete = clears.guildCount > 0;
 
-        handler->PSendSysMessage("[GC]|JOURNEYRAID|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+        handler->PSendSysMessage("[GC]|JOURNEYRAID|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             activity.composerId, Sanitize(activity.name), AdventureCatalog::EraName(activity.era),
             uint32(RequiredProgressionFor(config)), available ? 1 : 0, personalComplete ? 1 : 0,
             guildComplete ? 1 : 0, Sanitize(AdventureCatalog::SupportLabel(activity.support)),
-            Sanitize(available ? activity.supportNote : reason));
+            Sanitize(available ? activity.supportNote : reason),
+            clears.personalCount, Sanitize(clears.personalFirst), clears.guildCount, Sanitize(clears.guildFirst));
 
         if (activity.era == liveEra && activity.support == AdventureSupport::Ready && available && !personalComplete)
             recommendations.push_back({ &activity, 100 + int(activity.minProgression), "Available progression raid you have not completed yet." });

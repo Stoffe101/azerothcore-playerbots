@@ -20,6 +20,7 @@
 void AddAdventureStartScripts();
 void AddAdventureControlPlayerScripts();
 void AddAdventureProgressionRewardScripts();
+void AddAdventureProgressionHistoryScripts();
 void AddAdventureEconomyScripts();
 
 class RaidRosterWorld : public WorldScript
@@ -45,6 +46,7 @@ void Addmod_raid_rosterScripts()
     AddAdventureStartScripts();
     AddAdventureControlPlayerScripts();
     AddAdventureProgressionRewardScripts();
+    AddAdventureProgressionHistoryScripts();
     AddRaidRosterGuildScripts();
     AddGuildGroupDirectorScripts();
     AddEncounterLifecycleScripts();

@@ -186,6 +186,22 @@ Activities can be starred, and recent selections are remembered in the addon dat
 
 Cards display availability, era, support status and the exact lock reason when unavailable.
 
+### Persistent clear history ledger
+
+Boss-clear history is now recorded independently of the optional adventurer-economy bounty system.
+
+For each real player and instanced dungeon/raid boss, the server stores:
+
+- map and boss;
+- instance ID;
+- difficulty;
+- group size;
+- guild ID at the time of the kill;
+- first and last kill timestamps;
+- per-character clear count.
+
+The Progression page uses final-boss entries from the authoritative Adventure Catalog to show personal and guild clear counts plus first-clear dates. Existing bounty rows remain a compatibility fallback for older test-realm clears.
+
 ### Progression page
 
 Group Composer now has a dedicated **Progression** page.

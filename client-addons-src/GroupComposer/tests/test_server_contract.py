@@ -41,6 +41,8 @@ ADVENTURE_START = (ROOT / "modules/mod-raid-roster/src/AdventureStart.cpp").read
 ADVENTURE_START_CONTROL = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.cpp").read_text(encoding="utf-8")
 ADVENTURE_START_CONTROL_H = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.h").read_text(encoding="utf-8")
 ADVENTURE_CATALOG = (ROOT / "modules/mod-raid-roster/src/AdventureCatalog.cpp").read_text(encoding="utf-8")
+PROGRESSION_HISTORY = (ROOT / "modules/mod-raid-roster/src/AdventureProgressionHistory.cpp").read_text(encoding="utf-8")
+PROGRESSION_HISTORY_SQL = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_00_mod_adventure_progression_history.sql").read_text(encoding="utf-8")
 PROGRESSION_PAGE = (ROOT / "client-ui/src/components/ProgressionPage.ts").read_text(encoding="utf-8")
 RECOMMENDATIONS_PAGE = (ROOT / "client-ui/src/components/RecommendationsPage.ts").read_text(encoding="utf-8")
 MEMBER_DETAILS = (ROOT / "client-ui/src/components/MemberDetailsModal.ts").read_text(encoding="utf-8")
@@ -970,3 +972,14 @@ assert "click for why" in GENERATED_UI
 assert "RANDOM_DUNGEON_NORMAL_CLASSIC = 258u" in SERVER
 assert "switch (AdventureCatalog::CurrentRealmEra())" in SERVER
 assert "master->GetLevel() >= 71" not in SERVER
+
+
+# Progression history must be independent of economy/bounty settings.
+assert "AdventureProgressionHistoryPlayerScript" in PROGRESSION_HISTORY
+assert "IsRealPlayer(player)" in PROGRESSION_HISTORY
+assert "mod_adventure_progression_event" in PROGRESSION_HISTORY
+assert "mod_adventure_progression_history" in PROGRESSION_HISTORY
+assert "PRIMARY KEY (`player_guid`, `map_id`, `instance_id`, `creature_entry`)" in PROGRESSION_HISTORY_SQL
+assert "COUNT(DISTINCT instance_id)" in SERVER
+assert "playerClearCount" in CORE and "guildClearCount" in CORE
+assert "Cleared ×" in PROGRESSION_PAGE

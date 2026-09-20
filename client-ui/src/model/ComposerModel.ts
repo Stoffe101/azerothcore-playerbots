@@ -52,6 +52,10 @@ export interface JourneyRaid {
     guildComplete: boolean;
     support: string;
     reason: string;
+    playerClearCount: number;
+    playerFirstClear: string;
+    guildClearCount: number;
+    guildFirstClear: string;
 }
 
 export interface Recommendation {

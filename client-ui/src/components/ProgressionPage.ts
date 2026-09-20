@@ -155,12 +155,20 @@ export function createProgressionPage(parent: WoWFrame): ProgressionPage {
             }
 
             card.detail.SetText(raid.reason);
-            card.player.SetText(raid.playerComplete ? "You: Cleared ✓" : "You: Not cleared");
+            const playerHistory = raid.playerClearCount > 0
+                ? "You: Cleared ×" + String(raid.playerClearCount) +
+                    (raid.playerFirstClear !== "" ? " · first " + raid.playerFirstClear : "")
+                : (raid.playerComplete ? "You: Cleared ✓" : "You: Not cleared");
+            card.player.SetText(playerHistory);
             card.player.SetTextColor(
                 raid.playerComplete ? theme.colors.success[0] : theme.colors.muted[0],
                 raid.playerComplete ? theme.colors.success[1] : theme.colors.muted[1],
                 raid.playerComplete ? theme.colors.success[2] : theme.colors.muted[2], 1);
-            card.guild.SetText(raid.guildComplete ? "Guild: Cleared ✓" : "Guild: Not recorded");
+            const guildHistory = raid.guildClearCount > 0
+                ? "Guild: Cleared ×" + String(raid.guildClearCount) +
+                    (raid.guildFirstClear !== "" ? " · first " + raid.guildFirstClear : "")
+                : (raid.guildComplete ? "Guild: Cleared ✓" : "Guild: Not recorded");
+            card.guild.SetText(guildHistory);
             card.guild.SetTextColor(
                 raid.guildComplete ? theme.colors.success[0] : theme.colors.muted[0],
                 raid.guildComplete ? theme.colors.success[1] : theme.colors.muted[1],
