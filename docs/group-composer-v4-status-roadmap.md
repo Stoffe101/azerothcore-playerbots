@@ -280,6 +280,20 @@ For an active lockout Group Composer tracks:
 
 The Progression page shows active lockouts, and Recommended Activities prioritizes an unfinished raid the player is already saved to as **Resume active lockout** instead of pretending every raid recommendation is a fresh run.
 
+### Friend-aware recommendation previews
+
+Recommendation dry-runs now expose the real-human side of the preview, not just the bots.
+
+A **GROUP READY** recommendation shows:
+
+- how many real players are anchored;
+- which human character names are being preserved;
+- how many bots would be selected;
+- how many selected bots are guild companions;
+- the current eligible guild-candidate count.
+
+This makes recommendations useful when friends are already grouped: the page can say, in effect, "the three of you are anchored and Composer only needs two bots," instead of presenting the recommendation as if it were a solo-player roster.
+
 ### Capacity-aware recommendations
 
 Recommended Activities now dry-run the real Group Composer planner before presenting an available activity as group-ready.

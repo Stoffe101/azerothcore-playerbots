@@ -1276,9 +1276,11 @@ void ApplyRecommendationRoleTargets(Config& config)
 struct RecommendationCapacity
 {
     bool feasible = false;
+    uint32 humans = 0;
     uint32 guildBots = 0;
     uint32 selectedBots = 0;
     uint32 guildCandidates = 0;
+    std::string humanNames;
     std::string detail;
 };
 
@@ -1321,16 +1323,24 @@ RecommendationCapacity EvaluateRecommendationCapacity(Player* master, AdventureA
     for (Member const& member : preview.members)
     {
         if (member.human)
+        {
+            ++result.humans;
+            if (!result.humanNames.empty()) result.humanNames += ", ";
+            result.humanNames += member.name;
             continue;
+        }
         ++result.selectedBots;
         if (member.guild)
             ++result.guildBots;
     }
 
     result.detail = "Composer can build a standard " + std::to_string(unsigned(config.size)) +
-        "-player roster now: " + std::to_string(result.selectedBots) + " bot(s) selected, " +
-        std::to_string(result.guildBots) + " from your guild, with " +
-        std::to_string(result.guildCandidates) + " eligible guild candidate(s) seen.";
+        "-player roster now with " + std::to_string(result.humans) + " real player(s) and " +
+        std::to_string(result.selectedBots) + " bot(s); " + std::to_string(result.guildBots) +
+        " selected bot(s) come from your guild and " + std::to_string(result.guildCandidates) +
+        " eligible guild candidate(s) were seen.";
+    if (!result.humanNames.empty())
+        result.detail += " Anchored humans: " + result.humanNames + ".";
     return result;
 }
 
@@ -1444,7 +1454,7 @@ void SendJourney(ChatHandler* handler, Player* master)
         else
             capacity.detail = "Unlock this activity before Composer evaluates a roster for it.";
 
-        handler->PSendSysMessage("[GC]|RECOMMEND|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+        handler->PSendSysMessage("[GC]|RECOMMEND|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             recommendation.activity->composerId,
             recommendation.activity->kind == AdventureActivityKind::Raid ? "RAID" : "DUNGEON",
             Sanitize(recommendation.activity->name),
@@ -1455,6 +1465,8 @@ void SendJourney(ChatHandler* handler, Player* master)
             capacity.guildBots,
             capacity.selectedBots,
             capacity.guildCandidates,
+            capacity.humans,
+            Sanitize(capacity.humanNames),
             Sanitize(capacity.detail));
         if (++sent >= 6)
             break;

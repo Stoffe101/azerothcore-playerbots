@@ -74,6 +74,8 @@ export interface Recommendation {
     guildBots: number;
     selectedBots: number;
     guildCandidates: number;
+    humans: number;
+    humanNames: string;
     readiness: string;
 }
 

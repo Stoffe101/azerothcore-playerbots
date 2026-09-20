@@ -1072,3 +1072,11 @@ assert "cannot enter:" in SERVER
 assert "must be online so Group Composer can validate their activity access" in SERVER
 assert "no longer satisfies the selected activity access requirements" in SERVER
 assert "A real player in this composition is not ready for the selected activity" in SERVER
+
+
+# Recommendations must explain the real-human composition they are previewing.
+assert "uint32 humans = 0;" in SERVER and "humanNames" in SERVER
+assert "Anchored humans:" in SERVER
+assert "humans = ParseNumber(fields[12], 0)" in CORE
+assert "humanNames = fields[13] or \"\"" in CORE
+assert "GROUP READY · " in RECOMMENDATIONS_PAGE and "human(s)" in RECOMMENDATIONS_PAGE

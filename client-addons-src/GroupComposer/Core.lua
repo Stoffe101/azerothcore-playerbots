@@ -547,7 +547,9 @@ function GC:HandleProtocolMessage(message)
             guildBots = ParseNumber(fields[9], 0),
             selectedBots = ParseNumber(fields[10], 0),
             guildCandidates = ParseNumber(fields[11], 0),
-            readiness = fields[12] or "",
+            humans = ParseNumber(fields[12], 0),
+            humanNames = fields[13] or "",
+            readiness = fields[14] or "",
         }
     elseif kind == "JOURNEYDONE" then
         GC.journey.ready = true
