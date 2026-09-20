@@ -89,3 +89,11 @@ git pull
 - Do not wipe/sanitize it to fake a release.
 - Future friends realm is a separate clean realm/database state.
 - Fresh release engineering happens only after gameplay validation.
+
+## Realm snapshot safety
+
+- The permanent dirty development realm is `REALM_PROFILE=dev` or an unmarked legacy install.
+- A future clean friends realm must explicitly use `REALM_PROFILE=friends`.
+- Release-transition tooling additionally requires `RELEASE_OPERATIONS=1`; do not enable that on the dirty dev realm.
+- Before any future expansion-opening mutation, create `./realm-snapshot.sh --purpose release-transition`.
+- Never bypass profile or Git-SHA restore guards during normal operation. Override flags exist only for deliberate disaster recovery.

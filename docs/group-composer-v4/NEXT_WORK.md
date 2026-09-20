@@ -51,8 +51,9 @@ ERA-01 is now **IN PROGRESS** while P0 runtime evidence is blocked.
 7. **Current policy slice:** central class/race/profession availability plus Composer/RaidRoster enforcement and audit sections.
 8. **Current UI follow-up:** Group Composer hides Death Knight before WotLK; typed UI must publish the generated Lua bundle.
 9. Expand the scanner alongside each subsequent era subsystem instead of inventing a separate audit later.
-10. Add **FEATURE-19 Safe Snapshot / Rollback** before destructive release-transition work.
-11. Then follow the dependency order in `MASTER_ROADMAP.md`.
+10. **IN PROGRESS:** FEATURE-19 snapshot/rollback foundation records DB/config/Git/migrations with dev-vs-friends and code-SHA restore guards.
+11. Runtime-test snapshot/restore on the dev realm before wiring it into expansion transition.
+12. Then follow the dependency order in `MASTER_ROADMAP.md`.
 
 Why: one authoritative era source prevents forty independent gates from drifting, and the audit tells us where WotLK/TBC leakage actually exists before we patch systems blindly.
 

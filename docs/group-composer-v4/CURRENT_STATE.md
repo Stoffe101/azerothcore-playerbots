@@ -202,3 +202,14 @@ Implementation status: **DONE + exact-head local CI verified at `8dc94defe9e2a21
   - `join.skrra.dev`: optional registration/download/instructions site.
 - Expose only TCP 3724 and 8085 for WoW.
 - Keep MySQL 3306, SOAP 7878, raw webreg 8090, lore 8091 and Ollama 11434 private.
+
+## FEATURE-19 safe snapshot / rollback foundation
+
+Status: **PARTIAL / IN PROGRESS**.
+
+- New `realm-snapshot.sh` wraps the existing DB backup and enriches it with realm profile, overlay Git SHA/branch/dirty state, actual core/module Git SHAs, repo pins, SQL migration inventory and the persistent server/module config tree.
+- `--purpose release-transition` fails closed unless the installed realm explicitly has `REALM_PROFILE=friends`, `RELEASE_OPERATIONS=1` and a clean overlay worktree. Existing installs with no marker are treated as `dev`.
+- `restore.sh` recognizes enriched snapshots and refuses profile mismatch or overlay-SHA mismatch unless an explicit dangerous override is supplied.
+- A friends realm refuses legacy/unidentified backups by default.
+- Enriched restore reapplies the saved persistent config tree after setup regeneration and restarts auth/world services.
+- This is the safety primitive for future expansion transitions. It does not yet provide the Admin Panel/Command Center release button or automatically checkout an old Git SHA.

@@ -55,6 +55,11 @@ tar -cf "$OUT" -C "$STAGE" database.sql.gz env
 chmod 600 "$OUT"   # contains plaintext secrets via env
 
 echo "[$(date)] Backup OK ($(du -h "$OUT" | cut -f1)). Pruning to last $KEEP."
+
+# Machine-readable handoff for realm-snapshot.sh and other safe wrappers.
+if [[ -n "${BACKUP_RESULT_FILE:-}" ]]; then
+  printf '%s\n' "$OUT" > "$BACKUP_RESULT_FILE"
+fi
 # Delete all but the newest $KEEP bundles.
 ls -1t "$BACKUP_DIR"/acore-*.tar 2>/dev/null | tail -n +"$((KEEP + 1))" | xargs -r rm -f
 

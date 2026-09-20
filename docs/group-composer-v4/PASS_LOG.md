@@ -2,6 +2,23 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — FEATURE-19 slice 1: safe realm snapshot foundation
+
+Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
+
+Implemented:
+- enriched `realm-snapshot.sh` built on the existing DB backup path;
+- snapshot provenance includes realm profile, exact overlay/core/module Git state, repo pins, migration inventory and persistent config archive;
+- release-transition snapshot is allowed only on an explicitly marked friends realm with release operations enabled and a clean worktree;
+- dev/default realms fail closed for release-transition operations;
+- restore refuses cross-profile and wrong-code-SHA snapshots by default;
+- friends realms refuse legacy unidentified bundles unless the operator explicitly overrides the guard;
+- enriched restore reapplies the captured persistent config tree;
+- shell syntax is executed in the contract suite with `bash -n`.
+
+Scope:
+- FEATURE-19 remains PARTIAL until transition tooling automatically creates these snapshots and the full restore path is runtime-tested.
+
 ## 2026-09-21 — Group Composer era class visibility
 
 Status: **IMPLEMENTATION PUSHED; typed UI + exact-head local CI required**.

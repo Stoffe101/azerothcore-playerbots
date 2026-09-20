@@ -193,7 +193,7 @@ They are the dependency spine for most other approved era work. First define one
   - Existing registration/addon-distribution groundwork and target hostname exist.
   - Finish friend-facing account registration, realm status/current era, client/addon setup, changelog and starter guidance while keeping admin/DB services private.
 
-- [ ] **FEATURE-19 — Safe snapshot / rollback tooling — TODO**
+- [ ] **FEATURE-19 — Safe snapshot / rollback tooling — PARTIAL**
   - Snapshot DB + config + Git SHA + migration summary before major releases.
   - Clear restore instructions and guardrails against targeting the permanent dev realm accidentally.
 

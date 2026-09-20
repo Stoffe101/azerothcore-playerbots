@@ -76,6 +76,16 @@ Status vocabulary:
 - TODO: Azeroth Control goto/saved-location travel refuses a future-era map.
 - TODO: Group Composer cannot teleport a reviewed roster into a future-era instance map.
 
+## Snapshot / rollback safety
+
+- STATIC/CI: backup, restore and realm-snapshot shell syntax passes `bash -n`.
+- TODO: manual dev snapshot produces DB/env/config/Git/pin/migration metadata.
+- TODO: `--purpose release-transition` is refused on the dirty dev realm.
+- TODO: friends-profile snapshot is refused when `RELEASE_OPERATIONS` is disabled.
+- TODO: restore refuses profile mismatch.
+- TODO: restore refuses overlay SHA mismatch.
+- TODO: dev snapshot can be restored end-to-end and services return healthy without losing captured config.
+
 ## Admin security / addon launchers
 
 - TODO: normal non-GM account sees no Azeroth Control minimap button after login authorization resolves.

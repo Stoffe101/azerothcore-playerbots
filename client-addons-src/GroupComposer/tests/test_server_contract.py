@@ -8,8 +8,13 @@ critical assembly-safety hooks fail CI loudly instead of drifting silently.
 
 from pathlib import Path
 import re
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[3]
+REALM_SNAPSHOT = (ROOT / "realm-snapshot.sh").read_text(encoding="utf-8")
+BACKUP_SCRIPT = (ROOT / "backup.sh").read_text(encoding="utf-8")
+RESTORE_SCRIPT = (ROOT / "restore.sh").read_text(encoding="utf-8")
+ENV_EXAMPLE = (ROOT / ".env.example").read_text(encoding="utf-8")
 DATA = (ROOT / "client-addons-src/GroupComposer/Data.lua").read_text(encoding="utf-8")
 RUNTIME = (ROOT / "client-addons-src/GroupComposer/RuntimeGuards.lua").read_text(encoding="utf-8")
 TOC = (ROOT / "client-addons-src/GroupComposer/GroupComposer.toc").read_text(encoding="utf-8")
@@ -1382,3 +1387,20 @@ assert 'classAllowedForRealm' in SELECTOR
 assert 'classId !== "DEATHKNIGHT" || realm().era === "WotLK"' in SELECTOR
 assert 'if (enforceEra && !classAllowedForRealm(classId)) continue;' in SELECTOR
 assert '!classAllowedForRealm(currentClass)' in SELECTOR
+
+
+# FEATURE-19 snapshot/rollback foundation.
+assert "REALM_PROFILE=dev" in ENV_EXAMPLE
+assert "RELEASE_OPERATIONS=0" in ENV_EXAMPLE
+assert "REALM_PROFILE=friends and RELEASE_OPERATIONS=1" in REALM_SNAPSHOT
+assert "release-transition snapshot requires a clean overlay git worktree" in REALM_SNAPSHOT
+assert "snapshot-meta.env" in REALM_SNAPSHOT
+assert "configs.tar.gz" in REALM_SNAPSHOT
+assert "git-state.txt" in REALM_SNAPSHOT
+assert "migrations.txt" in REALM_SNAPSHOT
+assert "BACKUP_RESULT_FILE" in BACKUP_SCRIPT
+assert "--allow-profile-mismatch" in RESTORE_SCRIPT
+assert "--allow-code-mismatch" in RESTORE_SCRIPT
+assert "refusing legacy/unidentified backup on a friends realm" in RESTORE_SCRIPT
+for script in ("backup.sh", "restore.sh", "realm-snapshot.sh"):
+    subprocess.run(["bash", "-n", str(ROOT / script)], check=True)
