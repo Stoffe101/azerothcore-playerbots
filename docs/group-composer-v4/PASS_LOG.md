@@ -2,6 +2,33 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-20 — Expansion-era fidelity architecture
+
+Status: **DESIGN DONE; implementation intentionally tracked as TODO/PARTIAL**.
+
+Why:
+- The future realm is meant to progress Vanilla → TBC → WotLK, but a level cap alone does not stop future-era bots, AH items, professions, vendors, travel or preparation systems leaking backward.
+- Group Composer needs different composition logic and presentation for 40-player Vanilla, subgroup-sensitive TBC and 10/25-player WotLK.
+
+Findings:
+- Existing Individual Progression + AdventureCatalog already provide a strong three-era foundation.
+- Existing RaidRosterEra::SyncBotToMaster handles Composer/roster bot era synchronization.
+- configure-ahbot.sh is deliberately WotLK-biased today and is therefore a confirmed future-release contamination risk if reused unchanged.
+- mod-ah-bot-plus exposes useful item/use-level and custom-disabled-item filters, but level/item-level filters alone are not enough to prove expansion provenance.
+
+Work:
+- Added canonical ERA_FIDELITY.md.
+- Defined the additive expansion rule: Vanilla; then Vanilla+TBC; then Vanilla+TBC+WotLK.
+- Defined server-authoritative era-policy direction and a read-only Era Integrity audit.
+- Defined per-era Group Composer browsing, class/spec rules, raid-template strategy and dungeon/RDF behavior.
+- Defined bot population/gear constraints and non-destructive dev-realm handling.
+- Defined AH market profiles and layered future-item filtering.
+- Defined profession/vendor/reward/map/transport requirements and a forward-only expansion release transaction.
+
+Next:
+- Finish the already-scheduled runtime validation first.
+- Then implement era fidelity in ordered passes from central policy/audit outward.
+
 ## 2026-09-20 — Canonical handoff + low-level test lane
 
 Final verified green implementation: `86ce6c8dc8bd6faddbe0ae1cbd98c082424e21d4`

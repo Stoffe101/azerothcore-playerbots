@@ -88,6 +88,18 @@ Implemented solution:
 
 This is test tooling, not a friends-realm gameplay feature. It is compiled and CI-verified; its in-game one-shot behavior is still a runtime test.
 
+## Era-fidelity architecture pass
+
+Canonical design is now recorded in ERA_FIDELITY.md.
+
+Current assessment:
+- **DONE:** three-era progression/level-cap foundation, activity-era catalog gates, manual expansion hold/advance foundation, Era Talents, bot-to-master era synchronization, Composer anti-boost foundation.
+- **PARTIAL:** Group Composer era presentation/templates/subgroup logic; global bot-population era ceiling; expansion release orchestration.
+- **TODO:** strict AH item provenance, era market profiles, profession/vendor/reward/map/transport gates, race/class release policy, era-integrity audit.
+- **Known contamination risk:** configure-ahbot.sh is intentionally WotLK-oriented today and must not be reused unchanged for a fresh Vanilla/TBC realm.
+
+The friends-realm rule is additive and forward-only: TBC keeps legitimate Vanilla content; WotLK keeps legitimate Vanilla + TBC content. Future-era content may never leak backward.
+
 ## Known current runtime state
 
 The newest code after `3b548b3d` still needs in-game verification for:

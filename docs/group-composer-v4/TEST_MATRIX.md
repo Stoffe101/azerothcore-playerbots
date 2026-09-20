@@ -73,3 +73,53 @@ Status vocabulary:
 - TODO: TBC cap 70, WotLK remains locked.
 - TODO: manual WotLK release.
 - TODO: WotLK cap 80 and Titan Rune availability.
+
+
+## Era-fidelity acceptance
+
+These are release-realm acceptance tests. All remain TODO until implemented and observed.
+
+### Vanilla realm
+
+- TODO: declared realm era is Vanilla and effective player cap is 60.
+- TODO: no normal random/world/guild/Composer bot above 60 is eligible/visible to players.
+- TODO: Composer does not offer Death Knights.
+- TODO: Composer defaults to Vanilla activities/templates; TBC/WotLK are locked previews at most.
+- TODO: TBC/WotLK activities cannot be assembled or teleported to.
+- TODO: AH contains no TBC/WotLK-only items, socket-gem system stock or glyphs.
+- TODO: automated bot gear/prep cannot produce TBC/WotLK items.
+- TODO: Outland and Northrend access is blocked.
+- TODO: profession cap is 300; Jewelcrafting and Inscription are unavailable.
+- TODO: future-era vendor/reward/catch-up items are unavailable.
+
+### TBC realm
+
+- TODO: declared realm era is TBC and effective player cap is 70.
+- TODO: Vanilla content remains available.
+- TODO: no normal bot above 70 is eligible/visible.
+- TODO: Death Knights remain unavailable.
+- TODO: Composer defaults to TBC endgame and preserves Vanilla under legacy/leveling.
+- TODO: TBC 25-player templates optimize 5-player subgroup-local utility.
+- TODO: Northrend/WotLK activities remain blocked.
+- TODO: AH contains Vanilla + TBC stock but no WotLK-only items or glyphs.
+- TODO: profession cap is 375; Jewelcrafting is available; Inscription is unavailable.
+- TODO: automated bot gear/prep cannot produce WotLK items.
+
+### WotLK realm
+
+- TODO: declared realm era is WotLK and effective player cap is 80.
+- TODO: Vanilla + TBC content remain available.
+- TODO: Death Knights become available.
+- TODO: profession cap is 450; Inscription/glyph economy becomes available.
+- TODO: Composer exposes WotLK 10/25 templates and WotLK recommendations.
+- TODO: Titan Rune modes obey their intended WotLK progression/phase gates.
+- TODO: Random WotLK Normal/Heroic may use Blizzard RDF handoff where appropriate.
+
+### Expansion transition integrity
+
+- TODO: opening TBC is forward-only and does not wipe valid Vanilla progress/items/history.
+- TODO: opening WotLK is forward-only and does not wipe valid Vanilla/TBC progress/items/history.
+- TODO: bot population reconciles to the new cap without replacing the world with instant max-level raid bots.
+- TODO: AH keeps older legal stock and adds newly legal expansion stock.
+- TODO: Composer refreshes era header/catalog/templates/recommendations immediately after release.
+- TODO: Era Integrity audit reports zero future-era leakage after each transition.

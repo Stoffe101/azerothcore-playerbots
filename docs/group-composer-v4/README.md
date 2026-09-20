@@ -19,9 +19,10 @@
 3. Read the newest entries in `PASS_LOG.md`.
 4. Read `NEXT_WORK.md`.
 5. Use `TEST_MATRIX.md` when the user is actively testing.
-6. Use `DEVELOPMENT_RULES.md` before changing code or CI.
-7. Verify the actual branch head and exact-head GitHub Actions results before claiming anything is green.
-8. Treat runtime screenshots/results from the user as newer truth than assumptions in older design prose.
+6. Read `ERA_FIDELITY.md` before changing expansion gates, bots, economy, world availability, templates, classes or release flow.
+7. Use `DEVELOPMENT_RULES.md` before changing code or CI.
+8. Verify the actual branch head and exact-head GitHub Actions results before claiming anything is green.
+9. Treat runtime screenshots/results from the user as newer truth than assumptions in older design prose.
 
 ## Documentation rule for every future pass
 
@@ -32,8 +33,13 @@ Every meaningful development/runtime pass must update documentation **before it 
 - `NEXT_WORK.md`: update only when priorities/backlog change.
 - `TEST_MATRIX.md`: update when a new test becomes required, passes, fails, or is blocked.
 - `DEVELOPMENT_RULES.md`: update only when workflow/deployment rules change.
+- `ERA_FIDELITY.md`: update whenever expansion-stage behavior, economy/world gating, bot-era behavior or release-transition rules change.
 
 Historical design docs stay in the repository, but do not force a new chat to reconstruct the present from archaeology.
+
+## Canonical expansion-stage contract
+
+`ERA_FIDELITY.md` defines what Vanilla → TBC → WotLK means across Group Composer, bots, AH/economy, items, professions, world access and release transitions. The design is canonical; individual enforcement items remain tracked as TODO until implemented and runtime-proven.
 
 ## Current verified implementation checkpoint
 

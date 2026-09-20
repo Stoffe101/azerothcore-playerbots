@@ -21,6 +21,26 @@ This file is priority-ordered. Do not re-add items already marked implemented in
 4. Use `.ap nextstarter vanilla` to create a genuine low-level throwaway character.
 5. Validate low-level anti-boost and Vanilla dungeon access with real Playerbots.
 
+## P1 — Era-fidelity hardening before the fresh friends realm
+
+Design source: ERA_FIDELITY.md.
+
+1. **Central era policy + read-only Era Integrity audit** so every subsystem uses one source of truth.
+2. **Bot population fidelity:** hard realm cap, quarantine/ignore over-cap dev bots, prevent future-era bot gear/prep.
+3. **Group Composer era behavior:**
+   - current-era header/filtering;
+   - no DK before WotLK;
+   - era-specific templates;
+   - TBC subgroup/party-local utility optimization;
+   - current-expansion-first recommendations;
+   - Vanilla/TBC Composer travel rather than pretending Wrath RDF existed there.
+4. **Auction House fidelity:** replace the current WotLK-only market setup with Vanilla/TBC/WotLK profiles, level guards and a reproducible future-item provenance filter.
+5. **World-system gates:** profession caps, Jewelcrafting/Inscription, vendors/rewards, maps/transports, expansion-only classes/races where practical.
+6. **Expansion release transaction:** forward-only TBC/WotLK unlock with preview, bot/AH/Composer reconciliation and post-change audit.
+7. Add CI/runtime acceptance coverage for zero future-era leakage at Vanilla and TBC stages.
+
+Do not destructively "clean" the permanent dev realm to simulate release. The future friends realm remains a separate fresh database/world state.
+
 ## P1 — Runtime correctness still unproven
 
 - Persistent clear counter increments from actual final-boss kills.
