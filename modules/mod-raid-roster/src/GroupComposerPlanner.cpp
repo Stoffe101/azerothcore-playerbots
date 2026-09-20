@@ -375,20 +375,14 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         bool disposableCapacity = !sameGuild && (config.fillWorld || alreadyGrouped) &&
             (randomCapacity || addClassCapacity);
         bool underLevel = bot->GetLevel() < config.requiredLevel;
+        bool belowPeerBand = bot->GetLevel() < config.minBotLevel;
         bool belowPeerTarget = bot->GetLevel() < config.botTargetLevel;
         bool abovePeerBand = bot->GetLevel() > config.maxBotLevel;
         float liveItemLevel = bot->GetAverageItemLevel();
         bool underGear = config.minimumItemLevel && liveItemLevel + 0.001f < config.minimumItemLevel;
 
-        // Group Composer must never turn a leveling dungeon into a boost run. Non-grouped bots
-        // above the owner/activity peer band are ineligible. Existing live-group bots stay visible
-        // so Build() can fail explicitly rather than silently pruning somebody from the party.
         if (abovePeerBand && !alreadyGrouped) return;
-
-        // Persistent guild identities must already satisfy the activity floor. RNDbots and AddClass
-        // bodies are Composer-owned elastic capacity and may be raised toward the owner's peer level
-        // during Build & Prepare. Persistent identities are never downleveled or rewritten.
-        if ((underLevel || underGear) && !disposableCapacity) return;
+        if ((underLevel || underGear || belowPeerBand) && !disposableCapacity && !alreadyGrouped) return;
 
         Candidate c;
         c.guid = bot->GetGUID();
@@ -396,7 +390,7 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         c.cls = bot->getClass();
         c.role = Planner::InferRole(bot);
         c.spec = Planner::InferSpec(bot);
-        c.level = belowPeerTarget && disposableCapacity ? config.botTargetLevel : bot->GetLevel();
+        c.level = belowPeerTarget && disposableCapacity && !alreadyGrouped ? config.botTargetLevel : bot->GetLevel();
         c.guild = sameGuild;
         c.online = true;
         c.alreadyGrouped = alreadyGrouped;
@@ -595,7 +589,7 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         uint8 candidateLevel = online ? online->GetLevel() : sCharacterCache->GetCharacterLevelByGuid(guid);
         if (candidateLevel > config.maxBotLevel && !alreadyGrouped) continue;
         bool sameGuild = guildId && sCharacterCache->GetCharacterGuildIdByGuid(guid) == guildId;
-        if (sameGuild && candidateLevel < config.requiredLevel) continue;
+        if (sameGuild && candidateLevel < config.minBotLevel && !alreadyGrouped) continue;
         if (sameGuild && !online && config.minimumItemLevel) continue; // unknown persistent-guild gear cannot satisfy an explicit floor
 
         Candidate c;
@@ -603,9 +597,9 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         c.cls = row.cls;
         c.role = row.role;
         c.spec = row.specTab;
-        c.level = sameGuild ? candidateLevel : std::max<uint8>(candidateLevel, config.botTargetLevel);
+        c.level = (sameGuild || alreadyGrouped) ? candidateLevel : std::max<uint8>(candidateLevel, config.botTargetLevel);
         c.guild = sameGuild;
-        c.needsPreparation = !sameGuild && candidateLevel < config.botTargetLevel;
+        c.needsPreparation = !sameGuild && !alreadyGrouped && candidateLevel < config.botTargetLevel;
         c.online = online != nullptr;
         c.managed = true;
         c.alreadyGrouped = alreadyGrouped;
@@ -1017,12 +1011,20 @@ bool Planner::Build(Player* master, Config const& config, Plan& out, std::string
     for (Candidate const& candidate : candidates)
     {
         if (!candidate.alreadyGrouped || used.count(candidate.guid.GetCounter())) continue;
+        if (candidate.level < config.minBotLevel)
+        {
+            error = "Existing group bot '" + candidate.name + "' is level " +
+                std::to_string(unsigned(candidate.level)) + ", below the party peer floor of " +
+                std::to_string(unsigned(config.minBotLevel)) +
+                ". Group Composer keeps existing bots sticky; kick it explicitly or rebuild with a level-appropriate bot.";
+            return false;
+        }
         if (candidate.level > config.maxBotLevel)
         {
             error = "Existing group bot '" + candidate.name + "' is level " +
-                std::to_string(unsigned(candidate.level)) + ", above this activity's peer cap of " +
+                std::to_string(unsigned(candidate.level)) + ", above this party's peer cap of " +
                 std::to_string(unsigned(config.maxBotLevel)) +
-                ". Group Composer will not use overleveled bots for boost runs; kick that bot explicitly or choose level-appropriate content.";
+                ". Group Composer will not use overleveled bots for boost runs; kick that bot explicitly or choose a level-appropriate roster.";
             return false;
         }
         if (candidate.role > ROLE_DPS || roleCounts[candidate.role] >= targets[candidate.role])

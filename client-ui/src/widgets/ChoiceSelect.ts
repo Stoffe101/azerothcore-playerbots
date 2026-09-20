@@ -2,7 +2,7 @@ import { createFramedIcon, createPanel, createSolid, createText, withAlpha } fro
 import { theme } from "../theme/Theme";
 import { createButton, UIButton } from "./Button";
 
-export interface ChoiceItem { value: string | number; label: string; detail?: string; icon?: string; }
+export interface ChoiceItem { value: string | number; label: string; detail?: string; icon?: string; disabled?: boolean; }
 export interface ChoiceSelect { readonly frame: WoWFrame; refresh: () => void; close: () => void; }
 export interface ChoiceSelectOptions {
     width: number;
@@ -117,6 +117,7 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
                 row.button.setText(item.label);
                 row.detail.SetText(item.detail ?? "");
                 row.button.setSelected(item.value === options.getValue());
+                row.button.setEnabled(item.disabled !== true);
                 positionRowLabel(row, hasIcon);
                 if (hasIcon) {
                     row.icon.SetTexture(String(item.icon));
@@ -124,7 +125,13 @@ export function createChoiceSelect(parent: WoWFrame, options: ChoiceSelectOption
                     row.iconFrame.Show();
                 } else row.iconFrame.Hide();
                 const value = item.value;
-                row.button.frame.SetScript("OnMouseDown", () => { options.onChange(value); closeActive(); refresh(); });
+                const disabled = item.disabled === true;
+                row.button.frame.SetScript("OnMouseDown", () => {
+                    if (disabled) return;
+                    options.onChange(value);
+                    closeActive();
+                    refresh();
+                });
                 row.button.frame.Show();
             } else row.button.frame.Hide();
         }

@@ -534,7 +534,7 @@ uint8 RequiredActivityLevel(Player* master, Config const& config)
     AdventureActivity const* activity = AdventureCatalog::FindComposer(config.activity);
     if (activity)
     {
-        if (config.mode == "dungeon" && config.difficulty != "normal")
+        if (config.mode == "dungeon" && config.difficulty != "normal" && activity->era != AdventureEra::Vanilla)
         {
             uint8 const heroicFloor = activity->era == AdventureEra::Wotlk ? 80 : 70;
             return std::max<uint8>(activity->minLevel, heroicFloor);
@@ -555,25 +555,54 @@ uint8 RequiredActivityLevel(Player* master, Config const& config)
     return master ? master->GetLevel() : 1;
 }
 
+uint8 LowestRealPlayerLevel(Player* master, Config const& config)
+{
+    if (!master)
+        return 1;
+
+    uint8 lowest = master->GetLevel();
+    std::unordered_set<uint32> seen;
+    auto consider = [&](Player* player)
+    {
+        if (!player || GET_PLAYERBOT_AI(player) || !seen.insert(player->GetGUID().GetCounter()).second)
+            return;
+        lowest = std::min<uint8>(lowest, player->GetLevel());
+    };
+
+    consider(master);
+    if (Group* group = master->GetGroup())
+        for (Group::MemberSlot const& slot : group->GetMemberSlots())
+            consider(ObjectAccessor::FindConnectedPlayer(slot.guid));
+
+    for (AddedHuman const& request : config.extraHumans)
+    {
+        ObjectGuid guid = sCharacterCache->GetCharacterGuidByName(request.name);
+        if (!guid.IsEmpty())
+            consider(ObjectAccessor::FindConnectedPlayer(guid));
+    }
+
+    return lowest;
+}
+
 void ApplyBotLevelPolicy(Player* master, Config& config)
 {
     if (!master)
     {
         config.botTargetLevel = config.requiredLevel;
+        config.minBotLevel = config.requiredLevel;
         config.maxBotLevel = config.requiredLevel;
         return;
     }
 
-    AdventureEra activityEra = AdventureCatalog::CurrentRealmEra();
-    if (AdventureActivity const* activity = AdventureCatalog::FindComposer(config.activity))
-        activityEra = activity->era;
+    uint8 const realmCap = AdventureCatalog::EraLevelCap(AdventureCatalog::CurrentRealmEra());
+    uint8 const lowestRealLevel = std::min<uint8>(LowestRealPlayerLevel(master, config), realmCap);
+    config.botTargetLevel = std::max<uint8>(config.requiredLevel, lowestRealLevel);
 
-    uint8 const eraCap = AdventureCatalog::EraLevelCap(activityEra);
-    uint8 const ownerLevelInEra = std::min<uint8>(master->GetLevel(), eraCap);
-    config.botTargetLevel = std::max<uint8>(config.requiredLevel, ownerLevelInEra);
-
-    uint16 const peerCeiling = std::min<uint16>(eraCap, uint16(ownerLevelInEra) + 2);
-    config.maxBotLevel = std::max<uint8>(config.requiredLevel, static_cast<uint8>(peerCeiling));
+    uint8 const peerFloor = lowestRealLevel > 3 ? static_cast<uint8>(lowestRealLevel - 3) : 1;
+    config.minBotLevel = std::max<uint8>(config.requiredLevel, peerFloor);
+    uint16 const peerCeiling = std::min<uint16>(realmCap, uint16(lowestRealLevel) + 3);
+    config.maxBotLevel = std::max<uint8>(config.minBotLevel,
+        std::max<uint8>(config.requiredLevel, static_cast<uint8>(peerCeiling)));
 }
 
 uint8 RequiredProgressionFor(Config const& config)
@@ -803,19 +832,15 @@ bool PlayerActivityEligible(Player* player, Config const& config, std::string& r
     if (config.mode == "dungeon")
     {
         bool const titan = config.difficulty == "alpha" || config.difficulty == "beta" || config.difficulty == "gamma";
-        if (realmEra == AdventureEra::Vanilla && config.difficulty != "normal")
+        AdventureEra const difficultyEra = activity ? activity->era : realmEra;
+        if (difficultyEra == AdventureEra::Vanilla && config.difficulty != "normal")
         {
-            reason = "Vanilla dungeons only use Normal difficulty on this realm.";
+            reason = "Vanilla dungeons only use Normal difficulty.";
             return false;
         }
-        if (realmEra == AdventureEra::Tbc && titan)
+        if (difficultyEra == AdventureEra::Tbc && titan)
         {
-            reason = "Titan Rune Alpha/Beta/Gamma unlock only in Wrath of the Lich King.";
-            return false;
-        }
-        if (realmEra == AdventureEra::Vanilla && config.activity == "random" && config.difficulty != "normal")
-        {
-            reason = "Vanilla Random Dungeon is Normal-only.";
+            reason = "Titan Rune Alpha/Beta/Gamma apply only to WotLK dungeons.";
             return false;
         }
     }
@@ -2706,6 +2731,13 @@ bool ValidateAssemblySnapshot(Player* master, Plan const& plan, std::string& err
                 ", below the selected activity's required level " + std::to_string(unsigned(plan.config.requiredLevel)) + ".";
             return false;
         }
+        if (live->GetLevel() < plan.config.minBotLevel)
+        {
+            error = "Selected bot '" + member.name + "' is level " + std::to_string(unsigned(live->GetLevel())) +
+                ", below the peer band floor of " + std::to_string(unsigned(plan.config.minBotLevel)) +
+                ". Run Find Roster again for a level-appropriate replacement.";
+            return false;
+        }
         if (live->GetLevel() > plan.config.maxBotLevel)
         {
             error = "Selected bot '" + member.name + "' is level " + std::to_string(unsigned(live->GetLevel())) +
@@ -2816,6 +2848,9 @@ std::string PreparedMemberBlocker(Plan const& plan, Member const& member)
     if (bot->GetLevel() < plan.config.requiredLevel)
         return "is level " + std::to_string(unsigned(bot->GetLevel())) +
             ", below the required level " + std::to_string(unsigned(plan.config.requiredLevel));
+    if (bot->GetLevel() < plan.config.minBotLevel)
+        return "is level " + std::to_string(unsigned(bot->GetLevel())) +
+            ", below the peer band floor " + std::to_string(unsigned(plan.config.minBotLevel));
     if (bot->GetLevel() > plan.config.maxBotLevel)
         return "is level " + std::to_string(unsigned(bot->GetLevel())) +
             ", above the anti-boost peer cap " + std::to_string(unsigned(plan.config.maxBotLevel));
@@ -3350,11 +3385,14 @@ bool GroupComposerCommand::HandleBegin(ChatHandler* handler, std::string mode, s
         { SendError(handler, "Unknown dungeon difficulty."); return true; }
 
         AdventureEra const liveEra = AdventureCatalog::CurrentRealmEra();
+        AdventureEra difficultyEra = liveEra;
+        if (AdventureActivity const* selected = AdventureCatalog::FindComposer(activity))
+            difficultyEra = selected->era;
         bool const titan = difficulty == "alpha" || difficulty == "beta" || difficulty == "gamma";
-        if (liveEra == AdventureEra::Vanilla && difficulty != "normal")
-        { SendError(handler, "Vanilla dungeon mode supports Normal difficulty only."); return true; }
-        if (liveEra == AdventureEra::Tbc && titan)
-        { SendError(handler, "Titan Rune Alpha/Beta/Gamma are WotLK-only."); return true; }
+        if (difficultyEra == AdventureEra::Vanilla && difficulty != "normal")
+        { SendError(handler, "Vanilla dungeons support Normal difficulty only."); return true; }
+        if (difficultyEra == AdventureEra::Tbc && titan)
+        { SendError(handler, "Titan Rune Alpha/Beta/Gamma apply only to WotLK dungeons."); return true; }
     }
 
     Config config;
@@ -3486,6 +3524,9 @@ bool GroupComposerCommand::HandleFind(ChatHandler* handler)
     uint32 owner = master->GetGUID().GetCounter();
     auto draft = s_drafts.find(owner);
     if (draft == s_drafts.end()) { SendError(handler, "No composer request. Configure the addon and press Find Roster again."); return true; }
+
+    draft->second.requiredLevel = RequiredActivityLevel(master, draft->second);
+    ApplyBotLevelPolicy(master, draft->second);
 
     std::string partyEligibilityError;
     if (!PartyActivityEligible(master, draft->second, partyEligibilityError, nullptr))

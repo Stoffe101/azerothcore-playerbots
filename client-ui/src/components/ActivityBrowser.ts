@@ -36,7 +36,7 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
     const D: any = Model.data();
     const modal = ModalUI.createModal(parent, 960, 650);
     modal.setHeaderIcon("Interface\\Icons\\INV_Misc_Map_01");
-    const unlockModal = UnlockRequirementsUI.createUnlockRequirementsModal(parent);
+    const unlockModal = UnlockRequirementsUI.createUnlockRequirementsModal(modal.frame);
 
     const filterButtons: UIButton[] = [];
     for (let i = 0; i < 5; i += 1) {
@@ -252,7 +252,7 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
 
     function open(): void {
         Model.requestActivities(mode());
-        filter = currentEra();
+        filter = Model.relevantEraForPlayer(mode());
         if (mode() === "RAID") {
             modal.setTitle("Choose Raid");
             modal.setSubtitle("Vanilla, TBC and WotLK live in one era-aware progression browser. Click a locked raid to see its exact unlock path.");

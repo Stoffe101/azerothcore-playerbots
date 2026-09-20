@@ -15,14 +15,20 @@ Status vocabulary:
 - TODO: Favorites renders with client-safe text.
 - TODO: Utility Coverage Details shows counts + present/missing buff families.
 - TODO: Build Selector long class/spec text stays inside cards.
-- TODO: Recommended Activities reason/readiness stays inside card.
+- FAIL: Recommended Activities reason/readiness stays inside card. Runtime pass 3 expands and restructures the card; retest required.
 - TODO: Raid Templates tabs do not overlap.
 - TODO: Diagnostics explains WARN as experimental/partial AI support.
 - TODO: existing bot tank appears as current locked Tank slot.
 - TODO: existing bot DPS appears as current locked DPS slot.
 - TODO: existing real human appears as current locked human slot.
 - TODO: Composer fills only remaining role slots.
-- TODO: Random WotLK Heroic handoff enters Blizzard RDF role-check/search.
+- PASS: Random WotLK Heroic handoff enters Blizzard RDF role-check/search.
+- FAIL: Playerbots accept the later RDF dungeon proposal before timeout. Runtime pass 3 adds deterministic bot proposal acceptance; retest required.
+- FAIL: human-anchor class icon aligns naturally in the single-icon row. Runtime pass 3 repositions it; retest required.
+- FAIL: Unlock Requirements cleanly overlays Activity Browser. Runtime pass 3 reparents it above the browser; retest required.
+- TODO: Activity Browser opens on the character-relevant era.
+- TODO: Progression opens on the character-relevant era.
+- TODO: impossible/inapplicable Heroic/Titan choices are visibly locked and cannot be selected.
 
 ## Low-level validation lane
 
@@ -32,8 +38,10 @@ Status vocabulary:
 - TODO: one-shot override auto-clears after first login.
 - TODO: realm remains WotLK.
 - TODO: normal global starter profile remains unchanged.
-- TODO: low-level character sees expected Vanilla dungeon access.
-- TODO: non-grouped bot > player+2 effective levels is rejected.
+- PASS: low-level character sees level-gated Vanilla dungeon access; user confirmed the low-level level gate behaves correctly.
+- TODO: bot level policy uses the lowest real human as reference with a +/-3 peer band, never below dungeon minimum.
+- TODO: solo high-level player in trivial legacy content may use high-level peer bots without being treated as a boost run.
+- TODO: mixed-level real-player group (for example 80 + 14) prepares/selects bots around the lowest human.
 - TODO: eligible peer-level bots can fill normal dungeon roles.
 - TODO: already-grouped overlevel bot blocks with explicit message rather than being kicked.
 - TODO: humans remain exempt from bot-only anti-boost rule.

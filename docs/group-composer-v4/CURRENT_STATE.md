@@ -112,16 +112,11 @@ Immediate execution remains the already-built P0 runtime validation. Once that i
 
 ## Known current runtime state
 
-The newest code after `3b548b3d` still needs in-game verification for:
+Runtime testing on 2026-09-20 confirmed the low-level activity level gate and confirmed that WotLK Random Heroic now reaches Blizzard RDF role-check and QUEUED. The next failure is later: a Playerbot can miss the dungeon proposal/accept window and the whole premade is removed.
 
-- live party recognition with an existing bot tank/DPS and only missing roles filled;
-- Random WotLK Heroic handoff into Blizzard RDF after the LFG cache refresh;
-- Build Selector clipping fix;
-- Recommended card layout;
-- Raid Template tab spacing;
-- clearer Diagnostics labels.
+The same pass exposed UI/policy issues: Recommendation text still clips; the single human-anchor class icon is awkwardly positioned; Unlock Requirements can interleave with the Activity Browser; Activity Browser/Progression default to the realm's maximum era instead of the character's relevant era; impossible Heroic/Titan choices need a real locked state; and the old activity-era anti-boost ceiling wrongly limits a high-level player doing trivial legacy content.
 
-Do not mark those runtime behaviors proven merely because CI is green.
+Runtime pass 3 addresses those findings. Its new peer rule uses the lowest real human as the bot reference, allows +/-3 levels, never goes below the dungeon floor, and clamps to the live realm cap. Runtime proof is still required after exact-head CI.
 
 ## Realm / server direction
 

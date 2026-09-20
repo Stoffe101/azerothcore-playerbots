@@ -599,6 +599,44 @@ export function journey(): JourneyState {
     };
 }
 
+function eraRank(era: string): number {
+    if (era === "Vanilla") return 0;
+    if (era === "TBC") return 1;
+    if (era === "WotLK") return 2;
+    return -1;
+}
+
+export function playerLevel(): number {
+    for (const human of humans()) {
+        if (human.isPlayer === true && Number(human.level ?? 0) > 0)
+            return Number(human.level);
+    }
+    const level = Number(journey().level ?? 0);
+    return level > 0 ? level : 1;
+}
+
+export function relevantEraForPlayer(mode: "DUNGEON" | "RAID"): string {
+    const liveEra = realm().era;
+    const liveRank = eraRank(liveEra);
+    const level = playerLevel();
+    let bestEra = "Vanilla";
+    let bestRank = 0;
+
+    for (const activity of activityMetaList(mode)) {
+        const rank = eraRank(activity.era);
+        if (rank >= 0 && rank <= liveRank && activity.minLevel <= level && rank > bestRank) {
+            bestRank = rank;
+            bestEra = activity.era;
+        }
+    }
+
+    if (bestRank === 0) {
+        if (liveRank >= 2 && level >= 68) return "WotLK";
+        if (liveRank >= 1 && level >= 58) return "TBC";
+    }
+    return bestEra;
+}
+
 export function unlockDetails(): UnlockDetailsState {
     const raw = GC.unlockDetails ?? {};
     return {
@@ -677,16 +715,46 @@ export function dungeonItems(): ChoiceItem[] {
 
 export function difficultyItems(): ChoiceItem[] {
     const currentEra = realm().era;
-    const result: ChoiceItem[] = [{ value: "normal", label: "Normal" }];
+    const selected = activityMeta(String(config().activity ?? ""), "DUNGEON");
+    const localDungeon = dungeonById(String(config().activity ?? ""));
+    const activityEra = String(selected?.era ?? localDungeon?.era ?? currentEra);
+    const level = playerLevel();
+    const normalMin = Number(selected?.minLevel ?? localDungeon?.minLevel ?? 1);
+    const result: ChoiceItem[] = [{
+        value: "normal", label: "Normal",
+        detail: level >= normalMin ? "Available" : "Locked · Level " + String(normalMin) + " required",
+        disabled: level < normalMin,
+    }];
+
     if (currentEra === "Vanilla") return result;
 
-    result.push({ value: "heroic", label: "Heroic" });
+    const heroicMin = activityEra === "WotLK" ? 80 : 70;
+    const heroicApplicable = activityEra !== "Vanilla";
+    const heroicUnlocked = heroicApplicable && level >= heroicMin;
+    result.push({
+        value: "heroic", label: "Heroic",
+        detail: !heroicApplicable
+            ? "Locked · This Vanilla dungeon has no Heroic mode"
+            : (heroicUnlocked ? "Available" : "Locked · Level " + String(heroicMin) + " required"),
+        disabled: !heroicUnlocked,
+    });
+
     if (currentEra === "WotLK") {
-        result.push({ value: "alpha", label: "Titan Rune Alpha" });
-        result.push({ value: "beta", label: "Titan Rune Beta" });
-        result.push({ value: "gamma", label: "Titan Rune Gamma" });
+        const titanUnlocked = activityEra === "WotLK" && level >= 80;
+        const titanDetail = activityEra !== "WotLK"
+            ? "Locked · Titan Rune applies to WotLK dungeons"
+            : (level >= 80 ? "Available" : "Locked · Level 80 required");
+        result.push({ value: "alpha", label: "Titan Rune Alpha", detail: titanDetail, disabled: !titanUnlocked });
+        result.push({ value: "beta", label: "Titan Rune Beta", detail: titanDetail, disabled: !titanUnlocked });
+        result.push({ value: "gamma", label: "Titan Rune Gamma", detail: titanDetail, disabled: !titanUnlocked });
     }
     return result;
+}
+
+function dungeonDifficultySelectable(id: string): boolean {
+    for (const item of difficultyItems())
+        if (String(item.value) === id) return item.disabled !== true;
+    return false;
 }
 
 export function raidItems(): ChoiceItem[] {
@@ -811,7 +879,15 @@ export function setMode(mode: "DUNGEON" | "RAID"): void {
     GC.SetMode(mode);
     requestActivities(mode);
 }
-export function setDungeonActivity(id: string): void { GC.SetDungeonActivity(id); }
+export function setDungeonActivity(id: string): void {
+    GC.SetDungeonActivity(id);
+    const currentDifficulty = String(config().difficulty ?? "normal");
+    if (!dungeonDifficultySelectable(currentDifficulty)) {
+        config().difficulty = "normal";
+        touch("Dungeon changed · difficulty reset to Normal");
+    }
+    requestActivities("DUNGEON");
+}
 export function setRaidActivity(id: string): void { GC.SetRaidActivity(id); }
 export function setRaidSize(size: number): void {
     GC.SetRaidSize(size);

@@ -38,6 +38,7 @@ GEAR_CPP = (ROOT / "modules/mod-raid-roster/src/RaidRosterGear.cpp").read_text(e
 SILENT_LOGIN_PATCH = (ROOT / "patches/0035-playerbot-group-composer-silent-login.patch").read_text(encoding="utf-8")
 CAPACITY_BYPASS_PATCH = (ROOT / "patches/0038-playerbot-group-composer-capacity-bypass.patch").read_text(encoding="utf-8")
 QUIET_BOT_PATCH = (ROOT / "patches/0040-playerbot-quiet-routine-whispers.patch").read_text(encoding="utf-8")
+LFG_PROPOSAL_PATCH = (ROOT / "patches/0041-playerbot-lfg-proposal-autoaccept.patch").read_text(encoding="utf-8")
 ADVENTURE_START = (ROOT / "modules/mod-raid-roster/src/AdventureStart.cpp").read_text(encoding="utf-8")
 ADVENTURE_START_CONTROL = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.cpp").read_text(encoding="utf-8")
 ADVENTURE_START_CONTROL_H = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.h").read_text(encoding="utf-8")
@@ -130,7 +131,7 @@ for command in (
 # while RuntimeGuards keeps protocol-only safety. Legacy dashboards stay in history/source only.
 assert 'GroupComposerModernUI.lua' in TOC, "The live addon must load the generated modern UI"
 assert 'DashboardV4.lua' not in TOC and 'DashboardV3.lua' not in TOC, "Legacy dashboard shells must not load"
-assert '## Version: 0.14.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
+assert '## Version: 0.15.0' in TOC and '## X-UI-Shell: ModernTypedV1' in TOC
 assert 'if GC.pendingCommand == "status" then GC.pendingCommand = nil end' in RUNTIME, (
     "Passive status synchronization can leave the composer permanently action-locked"
 )
@@ -1183,8 +1184,12 @@ assert 'sLFGMgr->InitializeLockedDungeons(player, group);' in SERVER
 assert 'GetState(group->GetGUID()) != lfg::LFG_STATE_ROLECHECK' in SERVER
 assert 'Queueing the assembled party through Blizzard Dungeon Finder' in SERVER
 assert 'height: 108' in SELECTOR and 'specs.SetHeight(46)' in SELECTOR
-assert 'panel.frame.SetSize(1228, 156)' in RECOMMENDATIONS_PAGE
-assert 'rows.length * 164' in RECOMMENDATIONS_PAGE
+assert 'panel.frame.SetSize(1228, 216)' in RECOMMENDATIONS_PAGE
+assert 'rows.length * 224' in RECOMMENDATIONS_PAGE
+assert 'createUnlockRequirementsModal(modal.frame)' in ACTIVITY_BROWSER
+assert 'Model.relevantEraForPlayer(mode())' in ACTIVITY_BROWSER
+assert 'Model.relevantEraForPlayer("RAID")' in PROGRESSION_PAGE
+assert 'disabled?: boolean' in CHOICE_SELECT and 'if (disabled) return;' in CHOICE_SELECT
 assert 'tabs[i].frame.ClearAllPoints();' in TEMPLATE_BROWSER
 assert 'PASS = structurally valid.' in ACTIVITY_DIAGNOSTICS
 assert 'Needs Review' in ACTIVITY_DIAGNOSTICS
@@ -1200,3 +1205,17 @@ assert '"nextstarter"' in ADMIN_PANEL and "HandleNextStarter" in ADMIN_PANEL
 assert "AdventureStartProfile::VanillaFresh" in ADMIN_PANEL
 assert "next eligible non-DK character" in ADMIN_PANEL
 assert "Realm era and normal starter defaults are unchanged." in ADMIN_PANEL
+
+
+# Runtime pass 3 contracts.
+assert "uint8 minBotLevel = 1;" in TYPES
+assert "uint8 LowestRealPlayerLevel(Player* master, Config const& config)" in SERVER
+assert "config.minBotLevel = std::max<uint8>(config.requiredLevel, peerFloor);" in SERVER
+assert "uint16(lowestRealLevel) + 3" in SERVER
+assert "ApplyBotLevelPolicy(master, draft->second);" in SERVER
+assert "belowPeerBand" in PLANNER
+assert "below the party peer floor" in PLANNER
+assert "difficultyEra == AdventureEra::Vanilla" in SERVER
+assert "Titan Rune Alpha/Beta/Gamma apply only to WotLK dungeons." in SERVER
+assert "proposalPlayer->GetSession()->IsBot()" in LFG_PROPOSAL_PATCH
+assert "data.accept = LFG_ANSWER_AGREE;" in LFG_PROPOSAL_PATCH

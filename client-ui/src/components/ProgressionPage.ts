@@ -206,7 +206,7 @@ export function createProgressionPage(parent: WoWFrame): ProgressionPage {
     });
 
     function show(): void {
-        selectedEra = Model.realm().era;
+        selectedEra = Model.relevantEraForPlayer("RAID");
         root.frame.Show();
         scroll.scrollToTop();
         refresh();

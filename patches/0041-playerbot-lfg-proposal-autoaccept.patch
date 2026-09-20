@@ -1,0 +1,33 @@
+diff --git a/src/server/game/DungeonFinding/LFGQueue.cpp b/src/server/game/DungeonFinding/LFGQueue.cpp
+--- a/src/server/game/DungeonFinding/LFGQueue.cpp
++++ b/src/server/game/DungeonFinding/LFGQueue.cpp
+@@ -22,10 +22,12 @@
+ #include "InstanceScript.h"
+ #include "LFGMgr.h"
+ #include "Log.h"
++#include "ObjectAccessor.h"
+ #include "ObjectMgr.h"
+ #include "Player.h"
+ #include "ScriptMgr.h"
+ #include "World.h"
++#include "WorldSession.h"
+ 
+ namespace lfg
+ {
+@@ -444,8 +446,17 @@ namespace lfg
+             LfgProposalPlayer& data = proposal.players[itRoles->first];
+             data.role = itRoles->second;
+             data.group = proposalGroups.find(itRoles->first)->second;
+             if (!proposal.isNew && data.group && data.group == proposal.group) // Player from existing group, autoaccept
+                 data.accept = LFG_ANSWER_AGREE;
+ 
++            // Playerbots already intend to accept through their AI, but that packet/action path can
++            // race the stock proposal timeout after Composer has just prepared/reset them.
++            // Agree bot sessions deterministically at proposal construction. Real player sessions
++            // remain pending and keep the normal Dungeon Finder Accept/Decline interaction.
++            if (Player* proposalPlayer = ObjectAccessor::FindConnectedPlayer(itRoles->first))
++                if (proposalPlayer->GetSession() && proposalPlayer->GetSession()->IsBot())
++                    data.accept = LFG_ANSWER_AGREE;
++
+             if (!completedEncounters && !proposal.isNew)
+             {

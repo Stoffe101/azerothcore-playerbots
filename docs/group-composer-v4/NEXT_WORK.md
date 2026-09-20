@@ -11,15 +11,21 @@ This file is priority-ordered. Do not re-add items already marked implemented in
    git pull
    ./update.sh
    ```
-3. Re-test the runtime-pass-2 fixes:
-   - existing bot tank + existing bot DPS shown as locked;
-   - existing real human shown as locked;
-   - Composer fills only missing roles;
-   - Random Heroic reaches Blizzard RDF role check/search;
-   - selector/recommendation text stays inside cards;
-   - Raid Template tabs do not overlap.
-4. Use `.ap nextstarter vanilla` to create a genuine low-level throwaway character.
-5. Validate low-level anti-boost and Vanilla dungeon access with real Playerbots.
+3. Re-test runtime pass 3:
+   - existing human/bot anchors remain sticky and the single class icon aligns correctly;
+   - only missing roles are filled;
+   - Random Heroic reaches role check, queue and successful bot proposal acceptance;
+   - Recommendation text remains fully inside cards;
+   - Unlock Requirements cleanly overlays Activity Browser;
+   - low-level Activity Browser/Progression default to Vanilla;
+   - impossible Heroic/Alpha/Beta/Gamma choices are visibly locked;
+   - Raid Template tabs remain clean.
+4. Re-test the player-relative peer rule:
+   - solo player: bots stay within +/-3 of that player, bounded by dungeon minimum and live realm cap;
+   - multiple humans: lowest real human is the reference;
+   - level 80 solo in a trivial Vanilla dungeon may use high-level peer bots;
+   - level 80 + level 14 friend targets bots around level 14 (13-17 for a level-13 dungeon).
+5. Keep using the one-shot `.ap nextstarter vanilla` lane for low-level validation.
 
 ## P0.5 — First new architecture pass after runtime validation
 

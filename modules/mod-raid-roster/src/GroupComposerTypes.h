@@ -59,10 +59,11 @@ struct Config
     uint8 healers = 1;
     uint8 dps = 3;
     // Server-derived level policy for the selected activity. The client never supplies this.
-    // requiredLevel gates access. botTargetLevel is the peer level Composer provisions disposable
-    // capacity toward, and maxBotLevel is the hard anti-boost ceiling for selected Playerbots.
+    // requiredLevel gates access. botTargetLevel follows the lowest real player in the planned
+    // party. min/maxBotLevel form the +/-3 peer band (clamped by activity floor + live realm cap).
     uint8 requiredLevel = 1;
     uint8 botTargetLevel = 1;
+    uint8 minBotLevel = 1;
     uint8 maxBotLevel = 1;
 
     bool preferGuild = true;

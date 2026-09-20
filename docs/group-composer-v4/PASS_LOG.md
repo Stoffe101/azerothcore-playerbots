@@ -2,6 +2,34 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-20 — Runtime pass 3: RDF proposals, peer levels and player-aware UI
+
+Status: **IMPLEMENTATION PUSHED; exact-head local CI + runtime retest required**.
+
+Observed:
+- low-level level gating works;
+- RDF role-check and initial queue now work;
+- later RDF proposal acceptance still times out on a Playerbot;
+- Recommendations clip text;
+- human-anchor class icon placement is awkward;
+- nested unlock/browser layers overlap;
+- browser/progression open at WotLK for low-level characters;
+- difficulty choices need locked states;
+- legacy-content anti-boost needs to follow the lowest real human rather than the activity era.
+
+Implemented:
+- deterministic Playerbot RDF proposal auto-agree while real humans retain normal Accept/Decline;
+- taller structured Recommendation cards;
+- nested unlock modal layering;
+- corrected one-icon human-anchor placement;
+- player-relevant Activity Browser/Progression default era;
+- visible disabled difficulty rows and automatic Normal reset after choosing a dungeon incompatible with the previous difficulty;
+- difficulty validity based on selected activity era;
+- lowest-real-human bot target with +/-3 peer band, dungeon-floor clamp and live-realm-cap clamp.
+
+CI:
+- `[local-ci]` is required for this pass. Do not mark it green until the exact commit completes all relevant workflows.
+
 ## 2026-09-20 — All era + broader feature proposals approved
 
 Status: **ROADMAP ACCEPTED + EXACT-HEAD LOCAL CI VERIFIED**.

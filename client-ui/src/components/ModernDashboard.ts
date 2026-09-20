@@ -1432,7 +1432,12 @@ export function createModernDashboard(): Dashboard {
                     : "Fill slot " + String(slot.botIndex ?? 1)
             );
 
+            widgets.classBadge.frame.ClearAllPoints();
+            widgets.classBadge.frame.SetPoint("LEFT", widgets.row.frame, "LEFT", 158, 0);
+
             if (slot.anchor !== undefined) {
+                widgets.classBadge.frame.ClearAllPoints();
+                widgets.classBadge.frame.SetPoint("LEFT", widgets.row.frame, "LEFT", 194, 0);
                 Native.setClassIcon(widgets.classIcon, String(slot.anchor.class));
                 widgets.classBadge.frame.Show();
                 widgets.classBadge.outline.setColor(Native.classColor(String(slot.anchor.class)));
