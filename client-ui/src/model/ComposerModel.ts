@@ -68,6 +68,12 @@ export interface Recommendation {
     label: string;
     era: string;
     reason: string;
+    available: boolean;
+    feasible: boolean;
+    guildBots: number;
+    selectedBots: number;
+    guildCandidates: number;
+    readiness: string;
 }
 
 export interface JourneyState {

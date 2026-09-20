@@ -506,6 +506,12 @@ function GC:HandleProtocolMessage(message)
             label = fields[4] or "",
             era = fields[5] or "Vanilla",
             reason = fields[6] or "",
+            available = fields[7] == "1",
+            feasible = fields[8] == "1",
+            guildBots = ParseNumber(fields[9], 0),
+            selectedBots = ParseNumber(fields[10], 0),
+            guildCandidates = ParseNumber(fields[11], 0),
+            readiness = fields[12] or "",
         }
     elseif kind == "JOURNEYDONE" then
         GC.journey.ready = true

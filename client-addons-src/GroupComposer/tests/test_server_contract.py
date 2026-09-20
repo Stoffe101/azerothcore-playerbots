@@ -1009,3 +1009,14 @@ assert "ACTIVE LOCKOUT #" in PROGRESSION_PAGE
 assert "Activity Diagnostics" in GENERATED_UI
 assert "ACTIVE LOCKOUT #" in GENERATED_UI
 assert "Cleared ×" in GENERATED_UI
+
+
+# Recommendations should answer both "what can we do?" and "can Composer actually form it now?"
+assert "EvaluateRecommendationCapacity" in SERVER
+assert "Planner::Build(master, config, preview, error)" in SERVER
+assert "guildCandidates = preview.guildCandidates" in SERVER
+assert '"Next unlock: " + reason' in SERVER
+assert '"[GC]|RECOMMEND|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}"' in SERVER
+assert "guildCandidates = ParseNumber(fields[11], 0)" in CORE
+assert "GROUP READY" in RECOMMENDATIONS_PAGE and "ROSTER NEEDS WORK" in RECOMMENDATIONS_PAGE
+assert "NEXT UNLOCK" in RECOMMENDATIONS_PAGE

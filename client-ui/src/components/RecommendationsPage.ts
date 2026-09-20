@@ -10,6 +10,7 @@ interface RecommendationCard {
     title: WoWFontString;
     meta: WoWFontString;
     reason: WoWFontString;
+    readiness: WoWFontString;
     use: any;
 }
 
@@ -62,7 +63,7 @@ export function createRecommendationsPage(parent: WoWFrame, onConfigure: () => v
             let card = cards[i];
             if (card === undefined) {
                 const panel = Native.createPanel(scroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                panel.frame.SetSize(1228, 92);
+                panel.frame.SetSize(1228, 112);
                 const iconBadge = Native.createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_Map_01", 50, theme.colors.primary);
                 iconBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 16, 0);
                 const cardTitle = Native.createText(panel.frame, "", "GameFontNormal");
@@ -72,29 +73,47 @@ export function createRecommendationsPage(parent: WoWFrame, onConfigure: () => v
                 meta.SetPoint("TOPLEFT", cardTitle, "BOTTOMLEFT", 0, -5);
                 meta.SetWidth(520);
                 const reason = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-                reason.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 620, -22);
+                reason.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 620, -18);
                 reason.SetWidth(410);
+                reason.SetHeight(36);
+                reason.SetJustifyV("TOP");
+                const readiness = Native.createText(panel.frame, "", "GameFontNormalSmall", theme.colors.primary);
+                readiness.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 620, -67);
+                readiness.SetWidth(410);
                 const use = ButtonUI.createButton(panel.frame, {
                     text: "Configure", width: 150, height: 38, accent: theme.colors.success, emphasis: true,
                 });
                 use.frame.SetPoint("RIGHT", panel.frame, "RIGHT", -16, 0);
                 scroll.bindWheel(panel.frame);
                 scroll.bindWheel(use.frame);
-                card = { panel, iconBadge, title: cardTitle, meta, reason, use };
+                card = { panel, iconBadge, title: cardTitle, meta, reason, readiness, use };
                 cards[i] = card;
             }
 
             const item = rows[i];
             card.panel.frame.ClearAllPoints();
-            card.panel.frame.SetPoint("TOPLEFT", scroll.content, "TOPLEFT", 0, -(i * 100));
+            card.panel.frame.SetPoint("TOPLEFT", scroll.content, "TOPLEFT", 0, -(i * 120));
             card.iconBadge.icon.SetTexture(Model.activityIconFor(item.id, item.mode));
             card.iconBadge.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
             card.title.SetText(item.label);
-            card.meta.SetText(item.era + " · " + (item.mode === "RAID" ? "Raid" : "Dungeon"));
+            const availability = item.available ? "AVAILABLE" : "LOCKED";
+            const readiness = item.available
+                ? (item.feasible
+                    ? "GROUP READY · " + String(item.guildBots) + " guild bot(s) selected · " + String(item.guildCandidates) + " guild candidate(s)"
+                    : "ROSTER NEEDS WORK")
+                : "NEXT UNLOCK";
+            card.meta.SetText(item.era + " · " + (item.mode === "RAID" ? "Raid" : "Dungeon") + " · " + availability);
             card.reason.SetText(item.reason);
+            card.readiness.SetText(readiness + (item.readiness !== "" ? " · " + item.readiness : ""));
+            const accent = !item.available ? theme.colors.warning : (item.feasible ? theme.colors.success : theme.colors.error);
+            card.readiness.SetTextColor(accent[0], accent[1], accent[2], 1);
+            card.iconBadge.outline.setColor(accent);
+            card.use.setEnabled(item.available);
+            card.use.setText(item.available ? "Configure" : "Locked");
             const id = item.id;
             const mode = item.mode;
             card.use.frame.SetScript("OnMouseDown", () => {
+                if (!item.available) return;
                 Model.setMode(mode);
                 if (mode === "RAID") Model.setRaidActivity(id);
                 else Model.setDungeonActivity(id);
@@ -103,7 +122,7 @@ export function createRecommendationsPage(parent: WoWFrame, onConfigure: () => v
             card.panel.frame.Show();
         }
 
-        scroll.setContentHeight(Math.max(690, rows.length * 100));
+        scroll.setContentHeight(Math.max(690, rows.length * 120));
     }
 
     Model.composer().RegisterCallback("JOURNEY_CHANGED", () => {

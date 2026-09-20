@@ -233,6 +233,22 @@ For an active lockout Group Composer tracks:
 
 The Progression page shows active lockouts, and Recommended Activities prioritizes an unfinished raid the player is already saved to as **Resume active lockout** instead of pretending every raid recommendation is a fresh run.
 
+### Capacity-aware recommendations
+
+Recommended Activities now dry-run the real Group Composer planner before presenting an available activity as group-ready.
+
+For each available recommendation the backend reports:
+
+- whether the current live player/bot pool can build a standard role layout right now;
+- how many bots the preview would select;
+- how many of those selected bots are guild companions;
+- how many eligible guild candidates the planner saw;
+- the exact planner error when the roster is not currently feasible.
+
+The page labels cards **GROUP READY** or **ROSTER NEEDS WORK** rather than pretending every unlocked activity can immediately be formed.
+
+The page also includes lower-priority **NEXT UNLOCK** cards for current-era activities that are still locked. These reuse the same exact level/progression/quest/item/achievement blocker text as the activity browser and cannot be configured until unlocked.
+
 ### Recommended Activities page
 
 Group Composer now has a dedicated **Recommended Activities** page.

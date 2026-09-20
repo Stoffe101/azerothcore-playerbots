@@ -961,6 +961,101 @@ bool PlayerRaidComplete(Player* player, AdventureActivity const& activity)
     return completionStage && AdventureStartControl::CurrentProgression(player) >= completionStage;
 }
 
+void ApplyRecommendationRoleTargets(Config& config)
+{
+    if (config.mode == "dungeon")
+    {
+        config.size = 5;
+        config.tanks = 1;
+        config.healers = 1;
+        config.dps = 3;
+        return;
+    }
+
+    if (config.size <= 10)
+    {
+        config.tanks = 2;
+        config.healers = 2;
+    }
+    else if (config.size <= 20)
+    {
+        config.tanks = 2;
+        config.healers = 4;
+    }
+    else if (config.size <= 25)
+    {
+        config.tanks = 2;
+        config.healers = 5;
+    }
+    else
+    {
+        config.tanks = 4;
+        config.healers = 8;
+    }
+    config.dps = config.size - config.tanks - config.healers;
+}
+
+struct RecommendationCapacity
+{
+    bool feasible = false;
+    uint32 guildBots = 0;
+    uint32 selectedBots = 0;
+    uint32 guildCandidates = 0;
+    std::string detail;
+};
+
+RecommendationCapacity EvaluateRecommendationCapacity(Player* master, AdventureActivity const& activity)
+{
+    RecommendationCapacity result;
+    if (!master)
+    {
+        result.detail = "No online player is available for a roster preview.";
+        return result;
+    }
+
+    Config config;
+    config.mode = activity.kind == AdventureActivityKind::Raid ? "raid" : "dungeon";
+    config.activity = activity.composerId;
+    config.difficulty = "normal";
+    config.size = activity.kind == AdventureActivityKind::Raid
+        ? BrowserRaidSize(activity.composerId, activity.preferredSize)
+        : 5;
+    ApplyRecommendationRoleTargets(config);
+    config.requiredLevel = RequiredActivityLevel(master, config);
+    ApplyBotLevelPolicy(master, config);
+    config.preferGuild = true;
+    config.fillWorld = true;
+    config.keepMe = true;
+
+    Plan preview;
+    std::string error;
+    result.feasible = Planner::Build(master, config, preview, error);
+    result.guildCandidates = preview.guildCandidates;
+
+    if (!result.feasible)
+    {
+        result.detail = error.empty()
+            ? "Composer could not build the standard role layout from currently available players/bots."
+            : error;
+        return result;
+    }
+
+    for (Member const& member : preview.members)
+    {
+        if (member.human)
+            continue;
+        ++result.selectedBots;
+        if (member.guild)
+            ++result.guildBots;
+    }
+
+    result.detail = "Composer can build a standard " + std::to_string(unsigned(config.size)) +
+        "-player roster now: " + std::to_string(result.selectedBots) + " bot(s) selected, " +
+        std::to_string(result.guildBots) + " from your guild, with " +
+        std::to_string(result.guildCandidates) + " eligible guild candidate(s) seen.";
+    return result;
+}
+
 void SendJourney(ChatHandler* handler, Player* master)
 {
     if (!handler || !master)
@@ -977,6 +1072,7 @@ void SendJourney(ChatHandler* handler, Player* master)
         AdventureActivity const* activity = nullptr;
         int score = 0;
         std::string why;
+        bool available = true;
     };
     std::vector<Recommendation> recommendations;
 
@@ -1011,10 +1107,16 @@ void SendJourney(ChatHandler* handler, Player* master)
             if (lockout.bound)
                 recommendations.push_back({ &activity, 160 + int(activity.minProgression),
                     "Resume your active raid lockout; " + std::to_string(lockout.completedEncounters) +
-                    " encounter(s) are already recorded in this instance." });
+                    " encounter(s) are already recorded in this instance.", true });
             else
                 recommendations.push_back({ &activity, 100 + int(activity.minProgression),
-                    "Available progression raid you have not completed yet." });
+                    "Available progression raid you have not completed yet.", true });
+        }
+        else if (activity.era == liveEra && activity.support == AdventureSupport::Ready && !available && !personalComplete)
+        {
+            int const distance = std::max<int>(0, int(RequiredProgressionFor(config)) - int(progression));
+            int const score = 42 - std::min(28, distance * 4);
+            recommendations.push_back({ &activity, score, "Next unlock: " + reason, false });
         }
     }
 
@@ -1030,14 +1132,20 @@ void SendJourney(ChatHandler* handler, Player* master)
         config.difficulty = "normal";
         config.size = 5;
         std::string reason;
-        if (!ActivityEligible(master, config, reason))
+        bool const available = ActivityEligible(master, config, reason);
+        if (!available)
+        {
+            int const levelGap = std::max<int>(0, int(activity.minLevel) - int(master->GetLevel()));
+            int const score = 34 - std::min(24, levelGap * 3);
+            recommendations.push_back({ &activity, score, "Next unlock: " + reason, false });
             continue;
+        }
 
         int const levelDistance = std::max<int>(0, int(master->GetLevel()) - int(activity.minLevel));
         int score = 80 - std::min(40, levelDistance * 4);
         if (master->GetLevel() >= AdventureCatalog::EraLevelCap(liveEra) && activity.minLevel >= AdventureCatalog::EraLevelCap(liveEra) - 5)
             score += 25;
-        recommendations.push_back({ &activity, score, "Available dungeon that fits your current era and level." });
+        recommendations.push_back({ &activity, score, "Available dungeon that fits your current era and level.", true });
     }
 
     std::stable_sort(recommendations.begin(), recommendations.end(), [](Recommendation const& a, Recommendation const& b)
@@ -1051,12 +1159,24 @@ void SendJourney(ChatHandler* handler, Player* master)
     {
         if (!recommendation.activity || !seen.insert(recommendation.activity->composerId).second)
             continue;
-        handler->PSendSysMessage("[GC]|RECOMMEND|{}|{}|{}|{}|{}",
+        RecommendationCapacity capacity;
+        if (recommendation.available)
+            capacity = EvaluateRecommendationCapacity(master, *recommendation.activity);
+        else
+            capacity.detail = "Unlock this activity before Composer evaluates a roster for it.";
+
+        handler->PSendSysMessage("[GC]|RECOMMEND|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             recommendation.activity->composerId,
             recommendation.activity->kind == AdventureActivityKind::Raid ? "RAID" : "DUNGEON",
             Sanitize(recommendation.activity->name),
             AdventureCatalog::EraName(recommendation.activity->era),
-            Sanitize(recommendation.why));
+            Sanitize(recommendation.why),
+            recommendation.available ? 1 : 0,
+            capacity.feasible ? 1 : 0,
+            capacity.guildBots,
+            capacity.selectedBots,
+            capacity.guildCandidates,
+            Sanitize(capacity.detail));
         if (++sent >= 6)
             break;
     }
