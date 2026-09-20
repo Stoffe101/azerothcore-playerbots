@@ -4473,7 +4473,7 @@ function ____exports.createActivityBrowser(self, parent)
             {key = "Vanilla", label = "Vanilla"},
             {key = "TBC", label = "TBC"},
             {key = "WotLK", label = "WotLK"},
-            {key = "FAVORITES", label = "★ Favorites"},
+            {key = "FAVORITES", label = "Favorites"},
             {key = "RECENT", label = "Recent"}
         }
     end
@@ -4536,7 +4536,7 @@ function ____exports.createActivityBrowser(self, parent)
                         66,
                         -12
                     )
-                    title:SetWidth(328)
+                    title:SetWidth(300)
                     local detail = Native:createText(button.frame, "", "GameFontHighlightSmall", theme.colors.muted)
                     detail:SetPoint(
                         "TOPLEFT",
@@ -4545,7 +4545,7 @@ function ____exports.createActivityBrowser(self, parent)
                         66,
                         -35
                     )
-                    detail:SetWidth(328)
+                    detail:SetWidth(300)
                     local tag = Native:createText(button.frame, "", "GameFontNormalSmall", theme.colors.primary)
                     tag:SetPoint(
                         "TOPLEFT",
@@ -4556,8 +4556,8 @@ function ____exports.createActivityBrowser(self, parent)
                     )
                     tag:SetWidth(260)
                     local favorite = ButtonUI:createButton(button.frame, {
-                        text = "☆",
-                        width = 34,
+                        text = "Fav",
+                        width = 44,
                         height = 30,
                         accent = theme.colors.warning,
                         flat = true
@@ -4598,7 +4598,7 @@ function ____exports.createActivityBrowser(self, parent)
                 )
                 local selected = tostring(Model:config().activity) == item.id
                 card.button:setSelected(selected)
-                card.button:setEnabled(access.known and access.eligible)
+                card.button:setEnabled(true)
                 card.iconBadge.icon:SetTexture(item.icon)
                 card.iconBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
                 card.iconBadge.outline:setColor(not access.known and theme.colors.borderStrong or (access.eligible and (selected and theme.colors.primary or theme.colors.success) or theme.colors.warning))
@@ -4617,7 +4617,9 @@ function ____exports.createActivityBrowser(self, parent)
                 end
                 local id = item.id
                 local selectedMode = mode(nil)
-                card.favorite:setText(Model:isFavorite(selectedMode, id) and "★" or "☆")
+                local favoriteSelected = Model:isFavorite(selectedMode, id)
+                card.favorite:setText("Fav")
+                card.favorite:setSelected(favoriteSelected)
                 card.favorite.frame:SetScript(
                     "OnMouseDown",
                     function()
@@ -6625,6 +6627,331 @@ function ____exports.createActivityDiagnosticsPage(self, parent)
 end
 return ____exports
  end,
+["components.UtilityCoverageModal"] = function(...) 
+--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+-- Lua Library inline imports
+local function __TS__Number(value)
+    local valueType = type(value)
+    if valueType == "number" then
+        return value
+    elseif valueType == "string" then
+        local numberValue = tonumber(value)
+        if numberValue then
+            return numberValue
+        end
+        if value == "Infinity" then
+            return math.huge
+        end
+        if value == "-Infinity" then
+            return -math.huge
+        end
+        local stringWithoutSpaces = string.gsub(value, "%s", "")
+        if stringWithoutSpaces == "" then
+            return 0
+        end
+        return 0 / 0
+    elseif valueType == "boolean" then
+        return value and 1 or 0
+    else
+        return 0 / 0
+    end
+end
+
+local __TS__Symbol, Symbol
+do
+    local symbolMetatable = {__tostring = function(self)
+        return ("Symbol(" .. (self.description or "")) .. ")"
+    end}
+    function __TS__Symbol(description)
+        return setmetatable({description = description}, symbolMetatable)
+    end
+    Symbol = {
+        asyncDispose = __TS__Symbol("Symbol.asyncDispose"),
+        dispose = __TS__Symbol("Symbol.dispose"),
+        iterator = __TS__Symbol("Symbol.iterator"),
+        hasInstance = __TS__Symbol("Symbol.hasInstance"),
+        species = __TS__Symbol("Symbol.species"),
+        toStringTag = __TS__Symbol("Symbol.toStringTag")
+    }
+end
+
+local __TS__Iterator
+do
+    local function iteratorGeneratorStep(self)
+        local co = self.____coroutine
+        local status, value = coroutine.resume(co)
+        if not status then
+            error(value, 0)
+        end
+        if coroutine.status(co) == "dead" then
+            return
+        end
+        return true, value
+    end
+    local function iteratorIteratorStep(self)
+        local result = self:next()
+        if result.done then
+            return
+        end
+        return true, result.value
+    end
+    local function iteratorStringStep(self, index)
+        index = index + 1
+        if index > #self then
+            return
+        end
+        return index, string.sub(self, index, index)
+    end
+    function __TS__Iterator(iterable)
+        if type(iterable) == "string" then
+            return iteratorStringStep, iterable, 0
+        elseif iterable.____coroutine ~= nil then
+            return iteratorGeneratorStep, iterable
+        elseif iterable[Symbol.iterator] then
+            local iterator = iterable[Symbol.iterator](iterable)
+            return iteratorIteratorStep, iterator
+        else
+            return ipairs(iterable)
+        end
+    end
+end
+-- End of Lua Library inline imports
+local ____exports = {}
+local Model = require("model.ComposerModel")
+local Native = require("core.Native")
+local ____Theme = require("theme.Theme")
+local theme = ____Theme.theme
+local ModalUI = require("widgets.Modal")
+function ____exports.createUtilityCoverageModal(self, parent)
+    local modal = ModalUI:createModal(parent, 900, 620)
+    modal:setHeaderIcon("Interface\\Icons\\INV_Misc_Map_01")
+    modal:setTitle("Utility Coverage Details")
+    modal:setSubtitle("Exact provider counts for the prepared roster, plus the major raid buff families Composer can and cannot supply.")
+    local utilityTitle = Native:createText(modal.content, "UTILITY PROVIDERS", "GameFontNormalSmall", theme.colors.primary)
+    utilityTitle:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        0,
+        0
+    )
+    local utilityText = Native:createText(modal.content, "", "GameFontHighlight", theme.colors.text)
+    utilityText:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        0,
+        -30
+    )
+    utilityText:SetWidth(330)
+    utilityText:SetHeight(300)
+    utilityText:SetJustifyH("LEFT")
+    utilityText:SetJustifyV("TOP")
+    local buffTitle = Native:createText(modal.content, "MAJOR RAID BUFFS", "GameFontNormalSmall", theme.colors.primary)
+    buffTitle:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        370,
+        0
+    )
+    local buffSummary = Native:createText(modal.content, "", "GameFontHighlightSmall", theme.colors.muted)
+    buffSummary:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        370,
+        -28
+    )
+    buffSummary:SetWidth(470)
+    local buffRows = {}
+    do
+        local i = 0
+        while i < 7 do
+            local title = Native:createText(modal.content, "", "GameFontNormal", theme.colors.muted)
+            title:SetPoint(
+                "TOPLEFT",
+                modal.content,
+                "TOPLEFT",
+                370,
+                -(62 + i * 60)
+            )
+            title:SetWidth(470)
+            local detail = Native:createText(modal.content, "", "GameFontHighlightSmall", theme.colors.muted)
+            detail:SetPoint(
+                "TOPLEFT",
+                modal.content,
+                "TOPLEFT",
+                386,
+                -(84 + i * 60)
+            )
+            detail:SetWidth(454)
+            buffRows[#buffRows + 1] = {title = title, detail = detail}
+            i = i + 1
+        end
+    end
+    local note = Native:createText(modal.content, "Counts are roster members capable of supplying that utility. Major raid buffs are baseline/class-capability families; talent-only auras and encounter debuffs are intentionally not guessed.", "GameFontHighlightSmall", theme.colors.muted)
+    note:SetPoint(
+        "BOTTOMLEFT",
+        modal.content,
+        "BOTTOMLEFT",
+        0,
+        0
+    )
+    note:SetWidth(830)
+    note:SetJustifyV("BOTTOM")
+    local function refresh(self)
+        local ____table_summary_0 = Model:plan().summary
+        if ____table_summary_0 == nil then
+            ____table_summary_0 = {}
+        end
+        local summary = ____table_summary_0
+        local counts = summary.utilityCounts
+        local ____summary_raidBuffs_1 = summary.raidBuffs
+        if ____summary_raidBuffs_1 == nil then
+            ____summary_raidBuffs_1 = {}
+        end
+        local buffs = ____summary_raidBuffs_1
+        if counts == nil then
+            utilityText:SetText("Build & Prepare a roster first. Composer will then count every selected member's utility capabilities.")
+            buffSummary:SetText("No prepared roster yet.")
+            for ____, row in ipairs(buffRows) do
+                row.title:SetText("")
+                row.detail:SetText("")
+            end
+            return
+        end
+        local ____utilityText_SetText_19 = utilityText.SetText
+        local ____counts_interrupt_2 = counts.interrupt
+        if ____counts_interrupt_2 == nil then
+            ____counts_interrupt_2 = 0
+        end
+        local ____temp_4 = (("Interrupts: " .. tostring(____counts_interrupt_2)) .. "\n") .. "Dispels / cleanses: "
+        local ____counts_dispel_3 = counts.dispel
+        if ____counts_dispel_3 == nil then
+            ____counts_dispel_3 = 0
+        end
+        local ____temp_6 = ((____temp_4 .. tostring(____counts_dispel_3)) .. "\n") .. "Raid-buff-capable members: "
+        local ____counts_buffs_5 = counts.buffs
+        if ____counts_buffs_5 == nil then
+            ____counts_buffs_5 = 0
+        end
+        local ____temp_8 = ((____temp_6 .. tostring(____counts_buffs_5)) .. "\n") .. "Heroism / Bloodlust: "
+        local ____counts_heroism_7 = counts.heroism
+        if ____counts_heroism_7 == nil then
+            ____counts_heroism_7 = 0
+        end
+        local ____temp_10 = ((____temp_8 .. tostring(____counts_heroism_7)) .. "\n") .. "Battle resurrection: "
+        local ____counts_battleRez_9 = counts.battleRez
+        if ____counts_battleRez_9 == nil then
+            ____counts_battleRez_9 = 0
+        end
+        local ____temp_12 = ((____temp_10 .. tostring(____counts_battleRez_9)) .. "\n") .. "Crowd control: "
+        local ____counts_cc_11 = counts.cc
+        if ____counts_cc_11 == nil then
+            ____counts_cc_11 = 0
+        end
+        local ____temp_14 = ((____temp_12 .. tostring(____counts_cc_11)) .. "\n") .. "Threat support: "
+        local ____counts_threat_13 = counts.threat
+        if ____counts_threat_13 == nil then
+            ____counts_threat_13 = 0
+        end
+        local ____temp_16 = ((____temp_14 .. tostring(____counts_threat_13)) .. "\n\n") .. "Ranged DPS: "
+        local ____summary_ranged_15 = summary.ranged
+        if ____summary_ranged_15 == nil then
+            ____summary_ranged_15 = 0
+        end
+        local ____temp_18 = ((____temp_16 .. tostring(____summary_ranged_15)) .. "\n") .. "Melee DPS: "
+        local ____summary_melee_17 = summary.melee
+        if ____summary_melee_17 == nil then
+            ____summary_melee_17 = 0
+        end
+        ____utilityText_SetText_19(
+            utilityText,
+            ____temp_18 .. tostring(____summary_melee_17)
+        )
+        local present = 0
+        for ____, buff in __TS__Iterator(buffs) do
+            local ____buff_count_20 = buff.count
+            if ____buff_count_20 == nil then
+                ____buff_count_20 = 0
+            end
+            if __TS__Number(____buff_count_20) > 0 then
+                present = present + 1
+            end
+        end
+        buffSummary:SetText((("Major raid buff families present: " .. tostring(present)) .. " / ") .. tostring(buffs.length))
+        do
+            local i = 0
+            while i < #buffRows do
+                do
+                    local __continue13
+                    repeat
+                        local row = buffRows[i + 1]
+                        local buff = buffs[i]
+                        if buff == nil then
+                            row.title:SetText("")
+                            row.detail:SetText("")
+                            __continue13 = true
+                            break
+                        end
+                        local ____buff_count_21 = buff.count
+                        if ____buff_count_21 == nil then
+                            ____buff_count_21 = 0
+                        end
+                        local count = __TS__Number(____buff_count_21)
+                        local available = count > 0
+                        local ____self_25 = row.title
+                        local ____self_25_SetText_26 = ____self_25.SetText
+                        local ____temp_24 = available and "PRESENT  " or "MISSING  "
+                        local ____buff_label_22 = buff.label
+                        if ____buff_label_22 == nil then
+                            ____buff_label_22 = buff.token
+                        end
+                        local ____buff_label_22_23 = ____buff_label_22
+                        if ____buff_label_22_23 == nil then
+                            ____buff_label_22_23 = "Unknown buff"
+                        end
+                        ____self_25_SetText_26(
+                            ____self_25,
+                            ((____temp_24 .. tostring(____buff_label_22_23)) .. "  x") .. tostring(count)
+                        )
+                        row.title:SetTextColor(available and theme.colors.success[1] or theme.colors.warning[1], available and theme.colors.success[2] or theme.colors.warning[2], available and theme.colors.success[3] or theme.colors.warning[3], 1)
+                        local ____self_29 = row.detail
+                        local ____self_29_SetText_30 = ____self_29.SetText
+                        local ____available_28
+                        if available then
+                            local ____buff_providers_27 = buff.providers
+                            if ____buff_providers_27 == nil then
+                                ____buff_providers_27 = "Unknown"
+                            end
+                            ____available_28 = "Providers: " .. tostring(____buff_providers_27)
+                        else
+                            ____available_28 = "No selected roster member supplies this buff family."
+                        end
+                        ____self_29_SetText_30(____self_29, ____available_28)
+                        __continue13 = true
+                    until true
+                    if not __continue13 then
+                        break
+                    end
+                end
+                i = i + 1
+            end
+        end
+    end
+    local function open(self)
+        refresh(nil)
+        modal:show()
+    end
+    return {
+        frame = modal.frame,
+        open = open,
+        hide = function() return modal:hide() end
+    }
+end
+return ____exports
+ end,
 ["widgets.Toggle"] = function(...) 
 --[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
 local ____exports = {}
@@ -6747,6 +7074,7 @@ local RecommendationsPageUI = require("components.RecommendationsPage")
 local MemberDetailsUI = require("components.MemberDetailsModal")
 local GroupActionsUI = require("components.GroupActionsModal")
 local ActivityDiagnosticsUI = require("components.ActivityDiagnosticsPage")
+local UtilityCoverageUI = require("components.UtilityCoverageModal")
 local Native = require("core.Native")
 local Builds = require("data.WotlkBuilds")
 local Model = require("model.ComposerModel")
@@ -6930,7 +7258,7 @@ local function activitySubtitle(self)
     return (mode .. "  ·  5 player  ·  ") .. (cfg.activity == "random" and "Dungeon Finder chooses destination" or "Teleport when ready")
 end
 function ____exports.createModernDashboard(self)
-    local clearDynamicRows, refreshPeople, refreshActivity, refreshHumanPanel, refreshDungeon, refreshQuickRaid, refreshExactRaid, refreshRoster, refreshRaidTabs, refreshStatus, refresh, frame, memberDetails, backendGlow, backendDot, backendText, realmBadge, activePage, navDungeon, navRaid, navProgression, navRecommended, navDiagnostics, statusNotice, activity, activityBadge, activityName, activitySub, activityEligibility, activityFieldLabel, activityBrowse, difficultySelect, raidSizeLabel, raidSizeButtons, humanBadge, humanIcon, humanName, humanSub, humanRoleButtons, compositionTitle, compositionHint, selectorContext, buildSelector, dungeonView, dungeonRows, raidView, raidTab, tabQuick, tabExact, tabRoster, quickView, exactView, rosterView, quickCards, roleOrder, quickSummary, quickTotal, quickCheck, quickCheckIcon, quickCheckBang, quickStatusTitle, quickStatusDetail, exactScroll, exactSections, groupCards, phaseCard, phaseAccent, phaseGlow, phaseDot, phaseText, phaseDetail, rosterCount, sourceText, statusRoleChips, progressFill, progressText, coverageChips, coverageDamageText, nextCard, nextBadge, nextBang, warningsTitle, nextDetail, buildButton, teleportButton, assembleButton, resetButton, groupActionsButton, humanScroll, humanRowsModal, humanEmpty, pinRole, pinRoleButtons, pinToggle, pinScroll, pinRows, pinEmpty, progressionPage, diagnosticsPage, recommendationsPage
+    local clearDynamicRows, refreshPeople, refreshActivity, refreshHumanPanel, refreshDungeon, refreshQuickRaid, refreshExactRaid, refreshRoster, refreshRaidTabs, refreshStatus, refresh, frame, memberDetails, backendGlow, backendDot, backendText, realmBadge, activePage, navDungeon, navRaid, navProgression, navRecommended, navDiagnostics, statusNotice, activity, activityBadge, activityName, activitySub, activityEligibility, activityFieldLabel, activityBrowse, difficultySelect, raidSizeLabel, raidSizeButtons, humanBadge, humanIcon, humanName, humanSub, humanRoleButtons, compositionTitle, compositionHint, selectorContext, buildSelector, dungeonView, dungeonRows, raidView, raidTab, tabQuick, tabExact, tabRoster, quickView, exactView, rosterView, quickCards, roleOrder, quickSummary, quickTotal, quickCheck, quickCheckIcon, quickCheckBang, quickStatusTitle, quickStatusDetail, exactScroll, exactSections, groupCards, phaseCard, phaseAccent, phaseGlow, phaseDot, phaseText, phaseDetail, rosterCount, sourceText, statusRoleChips, progressFill, progressText, coverageDetailsButton, coverageChips, coverageDamageText, nextCard, nextBadge, nextBang, warningsTitle, nextDetail, buildButton, teleportButton, assembleButton, resetButton, groupActionsButton, humanScroll, humanRowsModal, humanEmpty, pinRole, pinRoleButtons, pinToggle, pinScroll, pinRows, pinEmpty, progressionPage, diagnosticsPage, recommendationsPage
     function clearDynamicRows(self, rows)
         for ____, row in ipairs(rows) do
             row:Hide()
@@ -7250,7 +7578,7 @@ function ____exports.createModernDashboard(self)
             local i = 0
             while i < #dungeonRows do
                 do
-                    local __continue162
+                    local __continue163
                     repeat
                         local widgets = dungeonRows[i + 1]
                         local slot = slots[i + 1]
@@ -7289,7 +7617,7 @@ function ____exports.createModernDashboard(self)
                             widgets.choose.frame:Hide()
                             widgets.auto.frame:Hide()
                             widgets.humanAnchor.frame:Show()
-                            __continue162 = true
+                            __continue163 = true
                             break
                         end
                         local exact = slot.exact
@@ -7383,9 +7711,9 @@ function ____exports.createModernDashboard(self)
                         else
                             widgets.auto.frame:Hide()
                         end
-                        __continue162 = true
+                        __continue163 = true
                     until true
-                    if not __continue162 then
+                    if not __continue163 then
                         break
                     end
                 end
@@ -7642,12 +7970,12 @@ function ____exports.createModernDashboard(self)
             local g = 0
             while g < #groupCards do
                 do
-                    local __continue198
+                    local __continue199
                     repeat
                         local widgets = groupCards[g + 1]
                         if g >= totalGroups then
                             widgets.card.frame:Hide()
-                            __continue198 = true
+                            __continue199 = true
                             break
                         end
                         local column = g % columns
@@ -7741,9 +8069,9 @@ function ____exports.createModernDashboard(self)
                             end
                         end
                         widgets.card.frame:Show()
-                        __continue198 = true
+                        __continue199 = true
                     until true
-                    if not __continue198 then
+                    if not __continue199 then
                         break
                     end
                 end
@@ -7943,6 +8271,7 @@ function ____exports.createModernDashboard(self)
             ____opt_84 = ____opt_84.utility
         end
         local hasPreparedCoverage = ____opt_84 ~= nil
+        coverageDetailsButton:setEnabled(hasPreparedCoverage)
         do
             local i = 0
             while i < #coverageChips do
@@ -8159,6 +8488,7 @@ function ____exports.createModernDashboard(self)
     frame:Hide()
     memberDetails = MemberDetailsUI:createMemberDetailsModal(frame)
     local groupActions = GroupActionsUI:createGroupActionsModal(frame)
+    local utilityCoverage = UtilityCoverageUI:createUtilityCoverageModal(frame)
     local root = Native:createSolid(frame, theme.colors.background)
     root:SetAllPoints(frame)
     Native:createChrome(frame, theme.colors.chrome, true)
@@ -9986,6 +10316,24 @@ function ____exports.createModernDashboard(self)
         9,
         0
     )
+    coverageDetailsButton = ButtonUI:createButton(
+        coverageCard.frame,
+        {
+            text = "Details",
+            width = 72,
+            height = 26,
+            accent = theme.colors.primary,
+            flat = true,
+            onClick = function() return utilityCoverage:open() end
+        }
+    )
+    coverageDetailsButton.frame:SetPoint(
+        "TOPRIGHT",
+        coverageCard.frame,
+        "TOPRIGHT",
+        -10,
+        -10
+    )
     local coverageDefs = {
         {token = "interrupt", label = "Interrupt"},
         {token = "dispel", label = "Dispel"},
@@ -10724,6 +11072,8 @@ function ____exports.createModernDashboard(self)
             progressionPage:hide()
             recommendationsPage:hide()
             diagnosticsPage:hide()
+            center:Show()
+            status.frame:Show()
             refresh(nil)
             Model:requestActivities(Model:config().mode == "RAID" and "RAID" or "DUNGEON")
         end
@@ -10733,6 +11083,8 @@ function ____exports.createModernDashboard(self)
         progressionPage:hide()
         recommendationsPage:hide()
         diagnosticsPage:hide()
+        center:Show()
+        status.frame:Show()
         if mode ~= nil then
             Model:setMode(mode)
         end
@@ -10741,6 +11093,8 @@ function ____exports.createModernDashboard(self)
     end
     showProgressionPage = function()
         activePage = "PROGRESSION"
+        center:Hide()
+        status.frame:Hide()
         recommendationsPage:hide()
         diagnosticsPage:hide()
         progressionPage:show()
@@ -10748,6 +11102,8 @@ function ____exports.createModernDashboard(self)
     end
     showRecommendationsPage = function()
         activePage = "RECOMMENDED"
+        center:Hide()
+        status.frame:Hide()
         progressionPage:hide()
         diagnosticsPage:hide()
         recommendationsPage:show()
@@ -10755,6 +11111,8 @@ function ____exports.createModernDashboard(self)
     end
     showDiagnosticsPage = function()
         activePage = "DIAGNOSTICS"
+        center:Hide()
+        status.frame:Hide()
         progressionPage:hide()
         recommendationsPage:hide()
         diagnosticsPage:show()
