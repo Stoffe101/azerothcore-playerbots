@@ -163,10 +163,11 @@ These are implemented and CI-tested, but should not yet be treated as proven gam
 
 2. **Richer raid readiness**
    - pre-assembly warnings for encounter-specific composition needs;
-   - consumable/readiness summaries;
-   - clearer "this group can enter but is probably not ready" distinction.
+   - consumable/readiness summaries.
 
 Multi-human raid lockout conflicts are now handled by the co-op preflight: Composer compares the selected raid/difficulty's real AzerothCore instance binds for every online human anchor and blocks conflicting saved instance IDs before roster assembly.
+
+Prepared raid plans now also distinguish **access/role valid** from **fully bot-ready**. Composer reads the curated Raid Leader encounter ledger and warns when specific bosses are only Playable or Not Ready, naming those encounters instead of flattening the entire raid into one broad support label. It also checks every online real human against the same Composer item-level floor/target used for bot preparation and emits a floor warning or target advisory without turning the advisory into a fabricated hard access gate.
 
 3. **Progression history v2**
    - explicit Composer activity ID in history;

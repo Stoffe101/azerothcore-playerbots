@@ -170,6 +170,8 @@ The same access rules are rechecked during Build & Prepare and again immediately
 
 For raids, this preflight also compares the real AzerothCore instance bind for every online human anchor at the selected difficulty. Humans saved to different instance IDs are rejected with a player-specific lockout-conflict reason before Composer commits the roster. An unbound friend remains compatible with a bound friend, so ordinary "join my saved run" play still works.
 
+Prepared raid plans now add a second readiness layer beyond simple access. Composer reads the curated Raid Leader boss ledger and names any encounters marked **Playable** or **Not Ready**, making it explicit when a roster can enter while some Playerbot mechanics still require manual supervision. Human characters are also checked against the same Composer gear floor/target used for bot preparation; being below that advisory floor is surfaced as readiness information rather than silently promoted into a new hard gate.
+
 ### Exact unlock-path modal
 
 Locked activity cards are now interactive instead of dead ends.

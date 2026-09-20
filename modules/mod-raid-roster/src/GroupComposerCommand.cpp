@@ -7,6 +7,7 @@
 #include "GroupComposerTypes.h"
 #include "RaidRosterEra.h"
 #include "RaidRosterGear.h"
+#include "RaidLeaderKnowledge.h"
 
 #include "CharacterCache.h"
 #include "DatabaseEnv.h"
@@ -95,6 +96,23 @@ std::string Sanitize(std::string value)
     std::replace(value.begin(), value.end(), '\n', ' ');
     std::replace(value.begin(), value.end(), '\r', ' ');
     return value;
+}
+
+void AddPlanWarning(Plan& plan, std::string const& warning)
+{
+    if (!warning.empty() && std::find(plan.warnings.begin(), plan.warnings.end(), warning) == plan.warnings.end())
+        plan.warnings.push_back(warning);
+}
+
+std::string JoinNames(std::vector<std::string> const& names)
+{
+    std::string out;
+    for (std::size_t i = 0; i < names.size(); ++i)
+    {
+        if (i) out += ", ";
+        out += names[i];
+    }
+    return out;
 }
 
 char const* RoleToken(uint8 role)
@@ -1783,6 +1801,90 @@ ComposerGearProfile GearProfileFor(Config const& config)
     return profile;
 }
 
+void AddEncounterReadinessWarning(Plan& plan)
+{
+    if (plan.config.mode != "raid")
+        return;
+
+    AdventureActivity const* activity = AdventureCatalog::FindComposer(plan.config.activity);
+    if (!activity || activity->kind != AdventureActivityKind::Raid)
+        return;
+
+    std::vector<std::string> playable;
+    std::vector<std::string> notReady;
+    auto collect = [&](std::vector<RaidLeaderKnowledge::Encounter> const& encounters)
+    {
+        for (RaidLeaderKnowledge::Encounter const& encounter : encounters)
+        {
+            if (Lower(encounter.raid) != Lower(activity->name))
+                continue;
+            if (encounter.readiness == RaidLeaderKnowledge::Readiness::Playable)
+                playable.push_back(encounter.boss);
+            else if (encounter.readiness == RaidLeaderKnowledge::Readiness::NotReady)
+                notReady.push_back(encounter.boss);
+        }
+    };
+    collect(RaidLeaderKnowledge::Encounters());
+    collect(RaidLeaderKnowledge::SupplementalEncounters());
+
+    if (playable.empty() && notReady.empty())
+        return;
+
+    std::string warning = "Encounter readiness: ";
+    if (!notReady.empty())
+        warning += "NOT READY: " + JoinNames(notReady);
+    if (!playable.empty())
+    {
+        if (!notReady.empty()) warning += " • ";
+        warning += "PLAYABLE/manual: " + JoinNames(playable);
+    }
+    warning += ". The roster can satisfy access/role checks, but these boss strategies still need manual supervision.";
+    AddPlanWarning(plan, warning);
+}
+
+void AddHumanGearReadinessWarnings(Plan& plan)
+{
+    ComposerGearProfile const gear = GearProfileFor(plan.config);
+    if (!gear.minimum)
+        return;
+
+    std::vector<std::string> belowFloor;
+    std::vector<std::string> belowTarget;
+    for (Member const& member : plan.members)
+    {
+        if (!member.human)
+            continue;
+        Player* player = ObjectAccessor::FindConnectedPlayer(member.guid);
+        if (!player || GET_PLAYERBOT_AI(player))
+            continue;
+
+        uint32 const ilvl = uint32(player->GetAverageItemLevel() + 0.5f);
+        std::string const label = member.name + " " + std::to_string(ilvl);
+        if (ilvl < gear.minimum)
+            belowFloor.push_back(label);
+        else if (gear.target && ilvl < gear.target)
+            belowTarget.push_back(label);
+    }
+
+    if (!belowFloor.empty())
+    {
+        AddPlanWarning(plan, "Human gear warning: " + JoinNames(belowFloor) +
+            " below Composer's recommended floor " + std::to_string(gear.minimum) +
+            ". Access may still be legal, but this roster is below the preparation floor.");
+    }
+    else if (!belowTarget.empty())
+    {
+        AddPlanWarning(plan, "Human gear advisory: " + JoinNames(belowTarget) +
+            " meet the floor but are below Composer's target " + std::to_string(gear.target) + ".");
+    }
+}
+
+void AddPlanReadinessWarnings(Plan& plan)
+{
+    AddEncounterReadinessWarning(plan);
+    AddHumanGearReadinessWarnings(plan);
+}
+
 bool IsBotGuid(ObjectGuid guid)
 {
     if (Player* player = ObjectAccessor::FindConnectedPlayer(guid)) return GET_PLAYERBOT_AI(player) != nullptr;
@@ -3118,6 +3220,7 @@ bool GroupComposerCommand::HandleFind(ChatHandler* handler)
         return true;
     }
 
+    AddPlanReadinessWarnings(plan);
     s_plans[owner] = std::move(plan);
     Plan& stored = s_plans[owner];
     std::string prepareError;

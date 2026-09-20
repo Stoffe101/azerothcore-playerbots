@@ -1075,6 +1075,11 @@ assert "A real player in this composition is not ready for the selected activity
 assert "PartyRaidLockout" in SERVER and "CompatibleRaidLockout" in SERVER
 assert "PlayerGetBoundInstance" in SERVER
 assert "conflicts with" in SERVER and "saved instance" in SERVER
+assert '#include "RaidLeaderKnowledge.h"' in SERVER
+assert "Encounter readiness:" in SERVER and "PLAYABLE/manual:" in SERVER and "NOT READY:" in SERVER
+assert "RaidLeaderKnowledge::Encounters()" in SERVER and "RaidLeaderKnowledge::SupplementalEncounters()" in SERVER
+assert "Human gear warning:" in SERVER and "Human gear advisory:" in SERVER
+assert "AddPlanReadinessWarnings(plan);" in SERVER
 
 
 # Recommendations must explain the real-human composition they are previewing.
