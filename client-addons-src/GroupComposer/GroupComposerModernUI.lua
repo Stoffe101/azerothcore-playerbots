@@ -5039,6 +5039,143 @@ function ____exports.createTemplateBrowser(self, parent)
 end
 return ____exports
  end,
+["components.RaidHistoryModal"] = function(...) 
+--[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
+local ____exports = {}
+local Native = require("core.Native")
+local ____Theme = require("theme.Theme")
+local theme = ____Theme.theme
+local ModalUI = require("widgets.Modal")
+function ____exports.createRaidHistoryModal(self, parent)
+    local modal = ModalUI:createModal(parent, 720, 520)
+    modal:setHeaderIcon("Interface\\Icons\\INV_Misc_Book_09")
+    modal:setTitle("Raid History")
+    modal:setSubtitle("Personal progress, guild history and current lockout.")
+    local status = Native:createText(modal.content, "", "GameFontNormal", theme.colors.primary)
+    status:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        8,
+        -8
+    )
+    status:SetWidth(630)
+    local personalTitle = Native:createText(modal.content, "YOUR HISTORY", "GameFontNormalSmall", theme.colors.muted)
+    personalTitle:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        8,
+        -58
+    )
+    local personal = Native:createText(modal.content, "", "GameFontHighlight", theme.colors.text)
+    personal:SetPoint(
+        "TOPLEFT",
+        personalTitle,
+        "BOTTOMLEFT",
+        0,
+        -8
+    )
+    personal:SetWidth(630)
+    local guildTitle = Native:createText(modal.content, "GUILD HISTORY", "GameFontNormalSmall", theme.colors.muted)
+    guildTitle:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        8,
+        -126
+    )
+    local guild = Native:createText(modal.content, "", "GameFontHighlight", theme.colors.text)
+    guild:SetPoint(
+        "TOPLEFT",
+        guildTitle,
+        "BOTTOMLEFT",
+        0,
+        -8
+    )
+    guild:SetWidth(630)
+    local rosterTitle = Native:createText(modal.content, "FIRST RECORDED GUILD-CLEAR ROSTER", "GameFontNormalSmall", theme.colors.warning)
+    rosterTitle:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        8,
+        -202
+    )
+    local roster = Native:createText(modal.content, "", "GameFontHighlight", theme.colors.text)
+    roster:SetPoint(
+        "TOPLEFT",
+        rosterTitle,
+        "BOTTOMLEFT",
+        0,
+        -8
+    )
+    roster:SetWidth(630)
+    roster:SetHeight(74)
+    roster:SetJustifyV("TOP")
+    local lockoutTitle = Native:createText(modal.content, "CURRENT LOCKOUT", "GameFontNormalSmall", theme.colors.muted)
+    lockoutTitle:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        8,
+        -306
+    )
+    local lockout = Native:createText(modal.content, "", "GameFontHighlight", theme.colors.text)
+    lockout:SetPoint(
+        "TOPLEFT",
+        lockoutTitle,
+        "BOTTOMLEFT",
+        0,
+        -8
+    )
+    lockout:SetWidth(630)
+    local accessTitle = Native:createText(modal.content, "ACCESS / SUPPORT", "GameFontNormalSmall", theme.colors.muted)
+    accessTitle:SetPoint(
+        "TOPLEFT",
+        modal.content,
+        "TOPLEFT",
+        8,
+        -374
+    )
+    local access = Native:createText(modal.content, "", "GameFontHighlightSmall", theme.colors.muted)
+    access:SetPoint(
+        "TOPLEFT",
+        accessTitle,
+        "BOTTOMLEFT",
+        0,
+        -8
+    )
+    access:SetWidth(630)
+    access:SetHeight(58)
+    access:SetJustifyV("TOP")
+    return {open = function(____, raid)
+        modal:setTitle(raid.label)
+        modal:setSubtitle(raid.era .. " · Raid history")
+        if raid.playerClearCount > 0 then
+            personal:SetText(("Clears: " .. tostring(raid.playerClearCount)) .. (raid.playerFirstClear ~= "" and " · First recorded clear: " .. raid.playerFirstClear or ""))
+        elseif raid.playerComplete then
+            personal:SetText("Completed through progression state; no detailed kill event is recorded yet.")
+        else
+            personal:SetText("No recorded clear yet.")
+        end
+        if raid.guildClearCount > 0 then
+            guild:SetText(("Guild clears: " .. tostring(raid.guildClearCount)) .. (raid.guildFirstClear ~= "" and " · First recorded clear: " .. raid.guildFirstClear or ""))
+        else
+            guild:SetText("No recorded guild clear yet.")
+        end
+        roster:SetText(raid.guildFirstRoster ~= "" and raid.guildFirstRoster or "No first-clear roster is recorded yet. Historical bounty-only clears cannot reconstruct participants.")
+        if raid.lockoutActive then
+            lockout:SetText((((("Instance #" .. tostring(raid.lockoutInstanceId)) .. " · ") .. tostring(raid.lockoutEncounters)) .. " completed encounter(s)") .. (raid.lockoutExtended and " · Extended" or ""))
+        else
+            lockout:SetText("No active saved raid instance.")
+        end
+        access:SetText(((((raid.available and "Available" or "Locked") .. " · ") .. raid.support) .. "\n") .. raid.reason)
+        modal:show()
+    end}
+end
+return ____exports
+ end,
 ["components.ProgressionPage"] = function(...) 
 --[[ Generated with https://github.com/TypeScriptToLua/TypeScriptToLua ]]
 local ____exports = {}
@@ -5048,6 +5185,7 @@ local ____Theme = require("theme.Theme")
 local theme = ____Theme.theme
 local ButtonUI = require("widgets.Button")
 local ScrollUI = require("widgets.ScrollList")
+local RaidHistoryUI = require("components.RaidHistoryModal")
 local function eraAccent(self, era)
     if era == "Vanilla" then
         return theme.colors.warning
@@ -5074,6 +5212,7 @@ function ____exports.createProgressionPage(self, parent)
         16
     )
     root.frame:Hide()
+    local raidHistory = RaidHistoryUI:createRaidHistoryModal(parent)
     local eyebrow = Native:createText(root.frame, "YOUR JOURNEY", "GameFontNormalSmall", theme.colors.muted)
     eyebrow:SetPoint(
         "TOPLEFT",
@@ -5289,6 +5428,7 @@ function ____exports.createProgressionPage(self, parent)
                         0
                     )
                     scroll:bindWheel(panel.frame)
+                    panel.frame:EnableMouse(true)
                     card = {
                         panel = panel,
                         iconBadge = iconBadge,
@@ -5327,13 +5467,18 @@ function ____exports.createProgressionPage(self, parent)
                     card.status:SetTextColor(theme.colors.warning[1], theme.colors.warning[2], theme.colors.warning[3], 1)
                 end
                 local lockoutText = raid.lockoutActive and ((((" · ACTIVE LOCKOUT #" .. tostring(raid.lockoutInstanceId)) .. " · ") .. tostring(raid.lockoutEncounters)) .. " encounter(s)") .. (raid.lockoutExtended and " · EXTENDED" or "") or ""
-                card.detail:SetText(raid.reason .. lockoutText)
+                card.detail:SetText((raid.reason .. lockoutText) .. " · click for history")
                 local playerHistory = raid.playerClearCount > 0 and ("You: Cleared ×" .. tostring(raid.playerClearCount)) .. (raid.playerFirstClear ~= "" and " · first " .. raid.playerFirstClear or "") or (raid.playerComplete and "You: Cleared ✓" or "You: Not cleared")
                 card.player:SetText(playerHistory)
                 card.player:SetTextColor(raid.playerComplete and theme.colors.success[1] or theme.colors.muted[1], raid.playerComplete and theme.colors.success[2] or theme.colors.muted[2], raid.playerComplete and theme.colors.success[3] or theme.colors.muted[3], 1)
                 local guildHistory = raid.guildClearCount > 0 and ("Guild: Cleared ×" .. tostring(raid.guildClearCount)) .. (raid.guildFirstClear ~= "" and " · first " .. raid.guildFirstClear or "") or (raid.guildComplete and "Guild: Cleared ✓" or "Guild: Not recorded")
                 card.guild:SetText(guildHistory)
                 card.guild:SetTextColor(raid.guildComplete and theme.colors.success[1] or theme.colors.muted[1], raid.guildComplete and theme.colors.success[2] or theme.colors.muted[2], raid.guildComplete and theme.colors.success[3] or theme.colors.muted[3], 1)
+                local raidCopy = raid
+                card.panel.frame:SetScript(
+                    "OnMouseDown",
+                    function() return raidHistory:open(raidCopy) end
+                )
                 card.panel.frame:Show()
                 i = i + 1
             end
