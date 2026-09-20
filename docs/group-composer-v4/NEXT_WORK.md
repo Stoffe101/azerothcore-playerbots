@@ -40,12 +40,13 @@ Implementation/CI is **DONE** at `8dc94def`; runtime acceptance remains TODO.
 
 Do **not** start all approved features at once.
 
-As soon as P0 runtime validation is stable:
+ERA-01 is now **IN PROGRESS** while P0 runtime evidence is blocked.
 
-1. Promote **ERA-01 Central Era Policy** to IN PROGRESS.
-2. Build **ERA-02 Era Integrity Scanner** on top of it.
-3. Add **FEATURE-19 Safe Snapshot / Rollback** before destructive release-transition work.
-4. Then follow the dependency order in `MASTER_ROADMAP.md`.
+1. **Current slice:** central EraPolicy spine + Adventure Catalog/Admin expansion migration.
+2. Migrate the next server-side consumers that currently infer era/caps independently (bot/Titan Rune/travel/start/catch-up boundaries) onto EraPolicy.
+3. Build **ERA-02 Era Integrity Scanner** once the core policy surface is stable enough to audit against.
+4. Add **FEATURE-19 Safe Snapshot / Rollback** before destructive release-transition work.
+5. Then follow the dependency order in `MASTER_ROADMAP.md`.
 
 Why: one authoritative era source prevents forty independent gates from drifting, and the audit tells us where WotLK/TBC leakage actually exists before we patch systems blindly.
 

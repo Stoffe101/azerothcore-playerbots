@@ -26,6 +26,22 @@ The technical base remains the WotLK 3.3.5a client/server. Therefore the practic
 
 ## One server-authoritative era source
 
+### Implemented ERA-01 foundation
+
+`modules/mod-raid-roster/src/EraPolicy.h/.cpp` is now the canonical server policy surface for:
+- the Vanilla/TBC/WotLK enum;
+- current live realm era;
+- realm/era level caps;
+- progression ceilings and minimum progression per era;
+- release comparison;
+- canonical era display/token/key parsing;
+- applying an era to Individual Progression + bot account level ceiling as one operation.
+
+`AdventureCatalog` and `AdminPanelExpansion` must consume that API rather than carry independent era definitions. New systems should depend on EraPolicy directly or through a narrow compatibility facade, never re-create 60/70/80/progression tables locally.
+
+This is a **foundation**, not completion of ERA-01. The remaining subsystems listed below still need migration/enforcement.
+
+
 Every subsystem should eventually consume one named policy/API instead of independently guessing from level, config or UI state.
 
 Proposed shape:

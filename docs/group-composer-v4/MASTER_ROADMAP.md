@@ -42,6 +42,12 @@ While runtime testing is temporarily unavailable:
 
 These are bounded security/QoL changes that do not invalidate the pending P0 runtime evidence.
 
+### NOW-03 — ERA-01 Central Era Policy
+
+**Status: IN PROGRESS**
+
+Runtime testing is unavailable, so architectural work continues in bounded exact-CI slices. The first slice establishes the canonical EraPolicy and migrates Adventure Catalog/Admin expansion control. Subsequent slices migrate remaining consumers without mixing every world system into one commit.
+
 ### NEXT-01 — ERA-01 + ERA-02
 
 After P0 is stable, the first new implementation should be:
@@ -57,8 +63,9 @@ They are the dependency spine for most other approved era work. First define one
 
 ## Era kernel and containment
 
-- [ ] **ERA-01 — Central Era Policy system — PARTIAL**
-  - Existing foundation: Individual Progression limits + `AdventureCatalog::CurrentRealmEra()`.
+- [ ] **ERA-01 — Central Era Policy system — IN PROGRESS**
+  - Canonical `EraPolicy.h/.cpp` now owns the era enum, current-era derivation, 60/70/80 caps, progression ceilings/minimums, release comparison and era application.
+  - Adventure Catalog and AdminPanelExpansion now alias/delegate to EraPolicy; their duplicate enum/state/cap tables are removed.
   - Finish when Group Composer, bots, AH, vendors, professions, travel, starter/catch-up, Titan Rune and PvP consume one authoritative policy rather than inventing independent era logic.
 
 - [ ] **ERA-02 — Era Integrity scanner — TODO**

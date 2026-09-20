@@ -47,6 +47,12 @@ Status vocabulary:
 - TODO: already-grouped overlevel bot blocks with explicit message rather than being kicked.
 - TODO: humans remain exempt from bot-only anti-boost rule.
 
+## Era Policy architecture
+
+- TODO: `.ap status` era/level cap/progression values agree with the live realm after EraPolicy migration.
+- TODO: manual Vanilla -> TBC -> WotLK release still applies the expected 60/70/80 cap and progression ceiling through EraPolicy.
+- STATIC/CI: Adventure Catalog and AdminPanelExpansion share `EraPolicy::Era` and no longer own duplicate era state/cap tables.
+
 ## Admin security / addon launchers
 
 - TODO: normal non-GM account sees no Azeroth Control minimap button after login authorization resolves.

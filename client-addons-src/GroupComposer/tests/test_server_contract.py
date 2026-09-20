@@ -46,6 +46,11 @@ ADMIN_PANEL = (ROOT / "modules/mod-admin-panel/src/AdminPanel.cpp").read_text(en
 ADMIN_PANEL_CLIENT = (ROOT / "client-addons-src/AdminPanel/AdminPanel.lua").read_text(encoding="utf-8")
 ADMIN_PANEL_TOC = (ROOT / "client-addons-src/AdminPanel/AdminPanel.toc").read_text(encoding="utf-8")
 ADVENTURE_CATALOG = (ROOT / "modules/mod-raid-roster/src/AdventureCatalog.cpp").read_text(encoding="utf-8")
+ADVENTURE_CATALOG_H = (ROOT / "modules/mod-raid-roster/src/AdventureCatalog.h").read_text(encoding="utf-8")
+ERA_POLICY_H = (ROOT / "modules/mod-raid-roster/src/EraPolicy.h").read_text(encoding="utf-8")
+ERA_POLICY_CPP = (ROOT / "modules/mod-raid-roster/src/EraPolicy.cpp").read_text(encoding="utf-8")
+ADMIN_PANEL_EXPANSION_H = (ROOT / "modules/mod-admin-panel/src/AdminPanelExpansion.h").read_text(encoding="utf-8")
+ADMIN_PANEL_EXPANSION_CPP = (ROOT / "modules/mod-admin-panel/src/AdminPanelExpansion.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY = (ROOT / "modules/mod-raid-roster/src/AdventureProgressionHistory.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY_SQL = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_00_mod_adventure_progression_history.sql").read_text(encoding="utf-8")
 PROGRESSION_ACTIVITY_ID_MIGRATION = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_01_mod_adventure_progression_activity_id.sql").read_text(encoding="utf-8")
@@ -1255,3 +1260,25 @@ assert '"GroupComposerMinimapButton"' in CORE
 assert 'Interface\\\\Icons\\\\Ability_DualWield' in CORE
 assert 'Click to open • /gc also works' in CORE
 assert 'GC:CreateMinimapButton()' in CORE
+
+
+# ERA-01 central policy foundation.
+assert 'enum class Era : uint8' in ERA_POLICY_H
+assert 'Era CurrentRealmEra();' in ERA_POLICY_H
+assert 'void ApplyRealmEra(Era era);' in ERA_POLICY_H
+assert 'uint8 RealmLevelCap();' in ERA_POLICY_H
+assert 'uint8 RealmProgressionCeiling();' in ERA_POLICY_H
+assert 'bool IsEraReleased(Era era);' in ERA_POLICY_H
+assert 'sIndividualProgression->progressionLimit = era == Era::Wotlk ? 0 : ProgressionCeiling(era);' in ERA_POLICY_CPP
+assert 'sIndividualProgression->BotAccountsMaxLevel = LevelCap(era);' in ERA_POLICY_CPP
+assert 'case Era::Vanilla: return 60;' in ERA_POLICY_CPP
+assert 'case Era::Tbc: return 70;' in ERA_POLICY_CPP
+assert 'case Era::Wotlk: return 80;' in ERA_POLICY_CPP
+assert 'using AdventureEra = EraPolicy::Era;' in ADVENTURE_CATALOG_H
+assert 'return EraPolicy::CurrentRealmEra();' in ADVENTURE_CATALOG
+assert 'return EraPolicy::LevelCap(era);' in ADVENTURE_CATALOG
+assert 'using RealmEra = EraPolicy::Era;' in ADMIN_PANEL_EXPANSION_H
+assert 'EraPolicy::ApplyRealmEra(era);' in ADMIN_PANEL_EXPANSION_CPP
+assert 'return EraPolicy::RealmLevelCap();' in ADMIN_PANEL_EXPANSION_CPP
+assert 'g_currentEra' not in ADMIN_PANEL_EXPANSION_CPP
+assert 'constexpr uint8 VANILLA_PROGRESSION_LIMIT' not in ADMIN_PANEL_EXPANSION_CPP

@@ -2,6 +2,7 @@
 #define MOD_RAID_ROSTER_ADVENTURE_CATALOG_H
 
 #include "Define.h"
+#include "EraPolicy.h"
 
 #include <string>
 #include <vector>
@@ -21,12 +22,7 @@ enum class AdventureSupport : uint8
     NotReady = 2,
 };
 
-enum class AdventureEra : uint8
-{
-    Vanilla = 0,
-    Tbc = 1,
-    Wotlk = 2,
-};
+using AdventureEra = EraPolicy::Era;
 
 struct AdventureActivity
 {

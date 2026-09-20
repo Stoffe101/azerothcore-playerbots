@@ -154,39 +154,22 @@ AdventureActivity const* FindComposer(std::string const& value)
 
 AdventureEra CurrentRealmEra()
 {
-    uint8 const limit = sIndividualProgression->progressionLimit;
-    if (limit == 0 || limit >= PROGRESSION_TBC_TIER_5)
-        return AdventureEra::Wotlk;
-    if (limit >= PROGRESSION_PRE_TBC)
-        return AdventureEra::Tbc;
-    return AdventureEra::Vanilla;
+    return EraPolicy::CurrentRealmEra();
 }
 
 char const* EraName(AdventureEra era)
 {
-    switch (era)
-    {
-        case AdventureEra::Vanilla: return "Vanilla";
-        case AdventureEra::Tbc: return "TBC";
-        case AdventureEra::Wotlk: return "WotLK";
-    }
-    return "Vanilla";
+    return EraPolicy::Name(era);
 }
 
 uint8 EraLevelCap(AdventureEra era)
 {
-    switch (era)
-    {
-        case AdventureEra::Vanilla: return 60;
-        case AdventureEra::Tbc: return 70;
-        case AdventureEra::Wotlk: return 80;
-    }
-    return 60;
+    return EraPolicy::LevelCap(era);
 }
 
 bool IsEraReleased(AdventureEra era)
 {
-    return static_cast<uint8>(era) <= static_cast<uint8>(CurrentRealmEra());
+    return EraPolicy::IsEraReleased(era);
 }
 
 std::string ProgressionRequirementText(uint8 requiredProgression)

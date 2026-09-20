@@ -2,15 +2,11 @@
 #define MOD_ADMIN_PANEL_EXPANSION_H
 
 #include "Define.h"
+#include "EraPolicy.h"
 
 class Player;
 
-enum class RealmEra : uint8
-{
-    Vanilla = 0,
-    Tbc = 1,
-    Wotlk = 2,
-};
+using RealmEra = EraPolicy::Era;
 
 namespace AdminPanelExpansion
 {

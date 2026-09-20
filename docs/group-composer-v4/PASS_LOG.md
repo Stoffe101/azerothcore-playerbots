@@ -2,6 +2,30 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-20 — ERA-01 slice 1: central policy spine
+
+Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
+
+Goal:
+- eliminate competing definitions of Vanilla/TBC/WotLK before migrating more world systems.
+
+Implemented:
+- new `EraPolicy::Era` canonical enum;
+- one canonical 60/70/80 level-cap table;
+- one canonical Vanilla/TBC/WotLK progression-ceiling/minimum table;
+- one authoritative `CurrentRealmEra()` derived from the live Individual Progression ceiling;
+- one `ApplyRealmEra()` path that updates progression ceiling + `BotAccountsMaxLevel` together;
+- canonical name/token/key/parse/release helpers;
+- Adventure Catalog now aliases/delegates its era API to EraPolicy;
+- AdminPanelExpansion now aliases/delegates to EraPolicy and no longer owns `g_currentEra` or duplicate cap tables;
+- static contracts prevent those duplicate policy definitions from silently returning.
+
+Scope note:
+- ERA-01 remains IN PROGRESS. This is the policy spine, not a claim that AH/vendors/professions/travel/PvP/global bots are already era-safe.
+
+CI:
+- commit uses `[local-ci]`; exact-head client/backend/Group Composer compile/Integration must all succeed before this slice is called green.
+
 ## 2026-09-20 — P0.5 Admin security + Group Composer launcher
 
 Status: **IMPLEMENTATION DONE + EXACT-HEAD LOCAL CI VERIFIED; runtime validation required**.

@@ -109,6 +109,20 @@ Implemented solution:
 
 This is test tooling, not a friends-realm gameplay feature. It is compiled and CI-verified; its in-game one-shot behavior is still a runtime test.
 
+## ERA-01 central era policy
+
+Status: **IN PROGRESS**.
+
+First implementation slice:
+- added `EraPolicy.h/.cpp` as the server-authoritative policy API for realm era identity, 60/70/80 caps, progression ceilings/minimums, release comparisons, display/key parsing and applying the active era to Individual Progression;
+- removed the duplicate `AdventureEra` enum by aliasing Adventure Catalog to `EraPolicy::Era`;
+- Adventure Catalog era/cap/release helpers now delegate to EraPolicy rather than re-deriving policy;
+- removed AdminPanelExpansion's separate `g_currentEra`, duplicate 60/70/80 table and duplicate Vanilla/TBC progression ceilings;
+- AdminPanelExpansion is now a compatibility facade over EraPolicy, preserving existing Admin Panel call sites while establishing one source of truth;
+- the active era is derived from Individual Progression's live progression ceiling, so startup cannot disagree merely because module initialization order differs.
+
+ERA-01 is **not DONE yet**. AH, global bot population/geography, professions, vendors, travel, classes/races, PvP, Titan Rune and other systems still need to migrate to/consume the central policy in later slices.
+
 ## Era-fidelity architecture pass
 
 Canonical design is now recorded in ERA_FIDELITY.md.
