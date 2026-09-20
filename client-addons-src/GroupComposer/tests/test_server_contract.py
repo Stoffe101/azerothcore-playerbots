@@ -1275,7 +1275,8 @@ assert 'uint8 RealmLevelCap();' in ERA_POLICY_H
 assert 'uint8 RealmProgressionCeiling();' in ERA_POLICY_H
 assert 'bool IsEraReleased(Era era);' in ERA_POLICY_H
 assert 'sIndividualProgression->progressionLimit = era == Era::Wotlk ? 0 : ProgressionCeiling(era);' in ERA_POLICY_CPP
-assert 'sIndividualProgression->BotAccountsMaxLevel = LevelCap(era);' in ERA_POLICY_CPP
+assert 'SyncRuntimeBotCaps();' in ERA_POLICY_CPP
+assert 'sIndividualProgression->BotAccountsMaxLevel = cap;' in ERA_POLICY_CPP
 assert 'case Era::Vanilla: return 60;' in ERA_POLICY_CPP
 assert 'case Era::Tbc: return 70;' in ERA_POLICY_CPP
 assert 'case Era::Wotlk: return 80;' in ERA_POLICY_CPP

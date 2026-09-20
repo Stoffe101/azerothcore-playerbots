@@ -18,6 +18,7 @@ Important scope boundary:
 - item provenance is still separate ERA-07 work.
 
 CI: `[local-ci]` queues behind the earlier slice-3 jobs on `stoffes-pc`; exact SHA must complete all required workflows before this slice is green.
+- First staging pass on `40d6ed4f` exposed one stale slice-1 assertion that expected the IP cap assignment directly inside `ApplyRealmEra()`. The assignment now correctly lives inside `SyncRuntimeBotCaps()` beside the Playerbots cap update; the contract is updated to verify that centralized location.
 
 ## 2026-09-20 — ERA-01 slice 3: map/travel containment
 
