@@ -5485,7 +5485,7 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                 local card = cards[i + 1]
                 if card == nil then
                     local panel = Native:createPanel(scroll.content, theme.colors.surfaceRaised, theme.colors.border)
-                    panel.frame:SetSize(1228, 92)
+                    panel.frame:SetSize(1228, 112)
                     local iconBadge = Native:createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_Map_01", 50, theme.colors.primary)
                     iconBadge.frame:SetPoint(
                         "LEFT",
@@ -5518,9 +5518,20 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                         panel.frame,
                         "TOPLEFT",
                         620,
-                        -22
+                        -18
                     )
                     reason:SetWidth(410)
+                    reason:SetHeight(36)
+                    reason:SetJustifyV("TOP")
+                    local readiness = Native:createText(panel.frame, "", "GameFontNormalSmall", theme.colors.primary)
+                    readiness:SetPoint(
+                        "TOPLEFT",
+                        panel.frame,
+                        "TOPLEFT",
+                        620,
+                        -67
+                    )
+                    readiness:SetWidth(410)
                     local use = ButtonUI:createButton(panel.frame, {
                         text = "Configure",
                         width = 150,
@@ -5543,6 +5554,7 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                         title = cardTitle,
                         meta = meta,
                         reason = reason,
+                        readiness = readiness,
                         use = use
                     }
                     cards[i + 1] = card
@@ -5554,18 +5566,29 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                     scroll.content,
                     "TOPLEFT",
                     0,
-                    -(i * 100)
+                    -(i * 120)
                 )
                 card.iconBadge.icon:SetTexture(Model:activityIconFor(item.id, item.mode))
                 card.iconBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
                 card.title:SetText(item.label)
-                card.meta:SetText((item.era .. " · ") .. (item.mode == "RAID" and "Raid" or "Dungeon"))
+                local availability = item.available and "AVAILABLE" or "LOCKED"
+                local readiness = item.available and (item.feasible and ((("GROUP READY · " .. tostring(item.guildBots)) .. " guild bot(s) selected · ") .. tostring(item.guildCandidates)) .. " guild candidate(s)" or "ROSTER NEEDS WORK") or "NEXT UNLOCK"
+                card.meta:SetText((((item.era .. " · ") .. (item.mode == "RAID" and "Raid" or "Dungeon")) .. " · ") .. availability)
                 card.reason:SetText(item.reason)
+                card.readiness:SetText(readiness .. (item.readiness ~= "" and " · " .. item.readiness or ""))
+                local accent = not item.available and theme.colors.warning or (item.feasible and theme.colors.success or theme.colors.error)
+                card.readiness:SetTextColor(accent[1], accent[2], accent[3], 1)
+                card.iconBadge.outline:setColor(accent)
+                card.use:setEnabled(item.available)
+                card.use:setText(item.available and "Configure" or "Locked")
                 local id = item.id
                 local mode = item.mode
                 card.use.frame:SetScript(
                     "OnMouseDown",
                     function()
+                        if not item.available then
+                            return
+                        end
                         Model:setMode(mode)
                         if mode == "RAID" then
                             Model:setRaidActivity(id)
@@ -5579,7 +5602,7 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                 i = i + 1
             end
         end
-        scroll:setContentHeight(math.max(690, #rows * 100))
+        scroll:setContentHeight(math.max(690, #rows * 120))
     end
     Model:composer():RegisterCallback(
         "JOURNEY_CHANGED",
