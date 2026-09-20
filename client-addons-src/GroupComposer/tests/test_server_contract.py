@@ -883,7 +883,7 @@ assert 'let statusNotice = "";' in MODERN and 'statusNotice = String(text ?? "")
     "Transient server status must stay visible after removing the debug footer"
 )
 assert 'Add specific builds or keep Auto to prepare your raid.' in MODERN
-assert '"Level " + String(slot.human.level ?? "?")' in MODERN
+assert '"Level " + String(slot.anchor.level ?? "?")' in MODERN
 
 # Build selector keeps the desired class order while using a responsive centered layout.
 assert '"DEATHKNIGHT", "WARRIOR", "PALADIN", "HUNTER", "ROGUE"' in SELECTOR
