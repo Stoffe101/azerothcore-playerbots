@@ -5932,11 +5932,12 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                 card.title:SetText(item.label)
                 local availability = item.available and "AVAILABLE" or "LOCKED"
                 local readiness = item.available and (item.feasible and ((((("GROUP READY · " .. tostring(item.humans)) .. " human(s) · ") .. tostring(item.selectedBots)) .. " bot(s) · ") .. tostring(item.guildBots)) .. " guild bot(s)" or "ROSTER NEEDS WORK") or "NEXT UNLOCK"
+                local gear = item.recommendedFloor > 0 and (item.gearReady and (((" · GEAR READY " .. tostring(item.playerItemLevel)) .. "/") .. tostring(item.recommendedFloor)) .. (item.recommendedTarget > 0 and (" (target " .. tostring(item.recommendedTarget)) .. ")" or "") or ((" · GEAR LOW " .. tostring(item.playerItemLevel)) .. "/") .. tostring(item.recommendedFloor)) or ""
                 card.meta:SetText((((item.era .. " · ") .. (item.mode == "RAID" and "Raid" or "Dungeon")) .. " · ") .. availability)
                 local humanLine = item.humanNames ~= "" and " · Anchored: " .. item.humanNames or ""
                 card.reason:SetText(item.reason .. humanLine)
-                card.readiness:SetText(readiness .. (item.readiness ~= "" and " · " .. item.readiness or ""))
-                local accent = not item.available and theme.colors.warning or (item.feasible and theme.colors.success or theme.colors.error)
+                card.readiness:SetText((readiness .. gear) .. (item.readiness ~= "" and " · " .. item.readiness or ""))
+                local accent = not item.available and theme.colors.warning or (not item.gearReady and theme.colors.warning or (item.feasible and theme.colors.success or theme.colors.error))
                 card.readiness:SetTextColor(accent[1], accent[2], accent[3], 1)
                 card.iconBadge.outline:setColor(accent)
                 card.use:setEnabled(item.available)
