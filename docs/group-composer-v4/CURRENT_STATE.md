@@ -137,7 +137,7 @@ ERA-01 is **not DONE yet**. AH, global bot population/geography, professions, ve
 
 Status: **IN PROGRESS**.
 
-First read-only slice adds GM-only `.era audit` with PASS/WARN/FAIL sections for central cap drift, online over-cap RNDbots, preserved/quarantined stored RNDbots, Outland/Northrend map gates, and future Composer activity map leakage. It reports counts plus up to five examples where useful and never mutates realm state. AH/items/vendors/professions/classes/races/PvP sections remain TODO.
+First read-only slice adds GM-only `.era audit` with PASS/WARN/FAIL sections for central cap drift, online over-cap RNDbots, preserved/quarantined stored RNDbots, Outland/Northrend map gates, and future Composer activity map leakage. It reports counts plus up to five examples where useful and never mutates realm state. The next policy slice adds class/race/profession rules and extends the scanner with active RNDbot identity/profession leak sections. AH/items/vendors/PvP and broader world enforcement remain TODO.
 
 ## Era-fidelity architecture pass
 

@@ -9,7 +9,9 @@
 #include "PlayerbotAIConfig.h"
 #include "RandomPlayerbotMgr.h"
 #include "RBAC.h"
+#include "SharedDefines.h"
 
+#include <array>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -132,6 +134,58 @@ bool EraAuditCommand::HandleAudit(ChatHandler* handler)
         "online=" + std::to_string(onlineRandom) +
             ", overCap=" + std::to_string(onlineOverCap) +
             (onlineExamples.empty() ? "" : ", examples=" + JoinExamples(onlineExamples)));
+
+    uint32 identityLeaks = 0;
+    uint32 professionLeaks = 0;
+    std::vector<std::string> identityExamples;
+    std::vector<std::string> professionExamples;
+    static constexpr std::array<uint32, 14> professionSkills = {
+        SKILL_ALCHEMY, SKILL_BLACKSMITHING, SKILL_ENCHANTING, SKILL_ENGINEERING,
+        SKILL_HERBALISM, SKILL_LEATHERWORKING, SKILL_MINING, SKILL_SKINNING,
+        SKILL_TAILORING, SKILL_COOKING, SKILL_FIRST_AID, SKILL_FISHING,
+        SKILL_JEWELCRAFTING, SKILL_INSCRIPTION
+    };
+    for (Player* bot : sRandomPlayerbotMgr.GetPlayers())
+    {
+        if (!bot || !bot->IsInWorld())
+            continue;
+
+        if (!EraPolicy::IsClassAllowed(bot->getClass()) || !EraPolicy::IsRaceAllowed(bot->getRace()))
+        {
+            ++identityLeaks;
+            if (identityExamples.size() < 5)
+                identityExamples.push_back(
+                    bot->GetName() + "(class=" + std::to_string(bot->getClass()) +
+                    ",race=" + std::to_string(bot->getRace()) + ")");
+        }
+
+        for (uint32 skill : professionSkills)
+        {
+            uint16 const value = bot->GetSkillValue(skill);
+            if (!value)
+                continue;
+            if (!EraPolicy::IsProfessionAllowed(skill) || value > EraPolicy::RealmProfessionSkillCap())
+            {
+                ++professionLeaks;
+                if (professionExamples.size() < 5)
+                    professionExamples.push_back(
+                        bot->GetName() + "(skill=" + std::to_string(skill) +
+                        ",value=" + std::to_string(value) + ")");
+            }
+        }
+    }
+
+    report(
+        identityLeaks ? AuditState::Fail : AuditState::Pass,
+        "BOT_CLASSES_RACES",
+        "leaks=" + std::to_string(identityLeaks) +
+            (identityExamples.empty() ? "" : ", examples=" + JoinExamples(identityExamples)));
+    report(
+        professionLeaks ? AuditState::Fail : AuditState::Pass,
+        "BOT_PROFESSIONS",
+        "cap=" + std::to_string(EraPolicy::RealmProfessionSkillCap()) +
+            ", leaks=" + std::to_string(professionLeaks) +
+            (professionExamples.empty() ? "" : ", examples=" + JoinExamples(professionExamples)));
 
     std::string const accountList = AccountList();
     if (accountList.empty())

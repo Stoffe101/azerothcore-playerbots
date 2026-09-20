@@ -5,6 +5,7 @@
 #include "Log.h"
 #include "PlayerbotAIConfig.h"
 #include "RandomBotLevelMgr.h"
+#include "SharedDefines.h"
 
 #include <algorithm>
 #include <cctype>
@@ -142,6 +143,109 @@ bool IsProgressionAllowed(uint8 progression)
 bool IsEraReleased(Era era)
 {
     return static_cast<uint8>(era) <= static_cast<uint8>(CurrentRealmEra());
+}
+
+Era RequiredEraForClass(uint8 classId)
+{
+    return classId == CLASS_DEATH_KNIGHT ? Era::Wotlk : Era::Vanilla;
+}
+
+bool IsClassAllowed(uint8 classId)
+{
+    switch (classId)
+    {
+        case CLASS_WARRIOR:
+        case CLASS_PALADIN:
+        case CLASS_HUNTER:
+        case CLASS_ROGUE:
+        case CLASS_PRIEST:
+        case CLASS_SHAMAN:
+        case CLASS_MAGE:
+        case CLASS_WARLOCK:
+        case CLASS_DRUID:
+            return true;
+        case CLASS_DEATH_KNIGHT:
+            return IsEraReleased(Era::Wotlk);
+        default:
+            return false;
+    }
+}
+
+Era RequiredEraForRace(uint8 raceId)
+{
+    return raceId == RACE_BLOODELF || raceId == RACE_DRAENEI ? Era::Tbc : Era::Vanilla;
+}
+
+bool IsRaceAllowed(uint8 raceId)
+{
+    switch (raceId)
+    {
+        case RACE_HUMAN:
+        case RACE_ORC:
+        case RACE_DWARF:
+        case RACE_NIGHTELF:
+        case RACE_UNDEAD_PLAYER:
+        case RACE_TAUREN:
+        case RACE_GNOME:
+        case RACE_TROLL:
+            return true;
+        case RACE_BLOODELF:
+        case RACE_DRAENEI:
+            return IsEraReleased(Era::Tbc);
+        default:
+            return false;
+    }
+}
+
+Era RequiredEraForProfession(uint32 skillId)
+{
+    if (skillId == SKILL_INSCRIPTION)
+        return Era::Wotlk;
+    if (skillId == SKILL_JEWELCRAFTING)
+        return Era::Tbc;
+    return Era::Vanilla;
+}
+
+bool IsProfessionAllowed(uint32 skillId)
+{
+    switch (skillId)
+    {
+        case SKILL_ALCHEMY:
+        case SKILL_BLACKSMITHING:
+        case SKILL_ENCHANTING:
+        case SKILL_ENGINEERING:
+        case SKILL_HERBALISM:
+        case SKILL_LEATHERWORKING:
+        case SKILL_MINING:
+        case SKILL_SKINNING:
+        case SKILL_TAILORING:
+        case SKILL_COOKING:
+        case SKILL_FIRST_AID:
+        case SKILL_FISHING:
+            return true;
+        case SKILL_JEWELCRAFTING:
+            return IsEraReleased(Era::Tbc);
+        case SKILL_INSCRIPTION:
+            return IsEraReleased(Era::Wotlk);
+        default:
+            return false;
+    }
+}
+
+uint16 ProfessionSkillCap(Era era)
+{
+    switch (era)
+    {
+        case Era::Vanilla: return 300;
+        case Era::Tbc: return 375;
+        case Era::Wotlk: return 450;
+    }
+    return 300;
+}
+
+uint16 RealmProfessionSkillCap()
+{
+    return ProfessionSkillCap(CurrentRealmEra());
 }
 
 bool TryMapEra(uint32 mapId, Era& era)

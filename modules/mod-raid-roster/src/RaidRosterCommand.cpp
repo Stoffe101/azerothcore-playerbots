@@ -1,4 +1,5 @@
 #include "RaidRosterCommand.h"
+#include "EraPolicy.h"
 #include "RaidRosterConfig.h"
 #include "RaidRosterComp.h"
 #include "RaidRosterStore.h"
@@ -123,6 +124,8 @@ bool RaidRosterCommand::HandleCreate(ChatHandler* handler)
         std::vector<ObjectGuid> v;
         for (ObjectGuid g : pool)
         {
+            CharacterCacheEntry const* cache = sCharacterCache->GetCharacterCacheByGuid(g);
+            if (!EraPolicy::IsClassAllowed(slot.cls) || !cache || !EraPolicy::IsRaceAllowed(cache->Race)) continue;
             if (ObjectAccessor::FindConnectedPlayer(g)) continue;                 // already online
             if (pinned.count(g.GetCounter())) continue;                          // already in some roster
             ObjectGuid::LowType guildId = sCharacterCache->GetCharacterGuildIdByGuid(g);
@@ -208,7 +211,10 @@ bool RaidRosterCommand::HandleLogin(ChatHandler* handler, Optional<uint32> sizeA
     // Death Knight slots are benched and the 4 substitutes are eligible; at/above it the reverse.
     uint8 const masterLevel = master->GetLevel();
     bool const wotlkBand = masterLevel >= kWotlkBandMinLevel;
-    auto eligible = [masterLevel](RaidRosterRow const& r) { return RaidCompEligible(r.band, masterLevel); };
+    auto eligible = [masterLevel](RaidRosterRow const& r)
+    {
+        return EraPolicy::IsClassAllowed(r.cls) && RaidCompEligible(r.band, masterLevel);
+    };
 
     // Roster capacity per role (caps how many of each we can actually field) — eligible rows only.
     uint8 availT = 0, availH = 0, availD = 0;
@@ -306,7 +312,8 @@ static void SyncBotToSpec(Player* master, Player* bot, int specTab)
     // 1) Level to master + learn spells/skills/glyphs/pet/consumables. Randomize also
     //    rolls random-spec gear and enchants — ALL of it is replaced in step 4/5; it's
     //    kept purely for the non-gear work.
-    PlayerbotFactory factory(bot, master->GetLevel(), ITEM_QUALITY_LEGENDARY, 0);
+    uint8 const targetLevel = std::min<uint8>(master->GetLevel(), EraPolicy::RealmLevelCap());
+    PlayerbotFactory factory(bot, targetLevel, ITEM_QUALITY_LEGENDARY, 0);
     factory.Randomize(false);
     // 2) Force the target talent spec (0-based tab). A bot in a managed era band (levelled
     //    to the master in step 1, so BotEra == the master's band) gets an ERA build instead

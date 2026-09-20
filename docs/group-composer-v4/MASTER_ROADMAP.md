@@ -75,7 +75,7 @@ They are the dependency spine for most other approved era work. First define one
 - [ ] **ERA-02 — Era Integrity scanner — IN PROGRESS**
   - GM-only read-only `.era audit` scaffold is implemented for cap drift, RNDbot quarantine, map gates and future Composer-map leakage.
   - PASS/WARN/FAIL sections for bots, AH, gear, vendors, professions, travel/maps, Composer catalog, classes/races, PvP/systems and automated rewards.
-  - Current sections provide counts/examples and one PASS/WARN/FAIL summary; AH/items/vendors/professions/classes/PvP/geography/rewards sections remain TODO.
+  - Current sections include caps, RNDbot quarantine, maps, future Composer-map leakage, active bot classes/races and active bot profession leakage. AH/items/vendors/PvP/geography/rewards remain TODO.
 
 - [ ] **ERA-03 — Strict bot era rules — PARTIAL**
   - Existing foundation: Composer anti-boost and bot-to-master progression sync.
@@ -106,15 +106,15 @@ They are the dependency spine for most other approved era work. First define one
   - Do not rely only on required level or item level.
   - Apply to AH seller, bot gearing/prep, starter/catch-up and integrity audits.
 
-- [ ] **ERA-08 — Profession progression — TODO**
-  - Vanilla 300, TBC 375, WotLK 450.
-  - Jewelcrafting from TBC.
-  - Inscription from WotLK.
+- [ ] **ERA-08 — Profession progression — PARTIAL**
+  - Central EraPolicy now defines Vanilla 300, TBC 375, WotLK 450 and audit detects over-cap active RNDbot profession skills.
+  - Central policy marks Jewelcrafting from TBC.
+  - Central policy marks Inscription from WotLK.
   - Trainers, recipes, bot profession behavior and crafting systems obey the policy.
 
-- [ ] **ERA-09 — Expansion-specific classes and races — TODO**
-  - Death Knight only in WotLK.
-  - Blood Elf/Draenei from TBC.
+- [ ] **ERA-09 — Expansion-specific classes and races — PARTIAL**
+  - Central policy + Composer/RaidRoster server paths now enforce Death Knight only in WotLK.
+  - Central policy + Composer/RaidRoster candidate paths now enforce Blood Elf/Draenei from TBC.
   - Enforce Vanilla Alliance Paladin / Horde Shaman rules where technically practical.
   - Server enforcement wins over merely hiding options in an addon.
 

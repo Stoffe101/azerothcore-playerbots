@@ -2,6 +2,31 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — ERA-01/02 identity and profession policy foundation
+
+Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
+
+Central policy added:
+- Death Knight requires WotLK;
+- Blood Elf and Draenei require TBC;
+- Jewelcrafting requires TBC and Inscription requires WotLK;
+- profession skill caps are 300/375/450 for Vanilla/TBC/WotLK.
+
+Enforcement added:
+- Group Composer filters unreleased classes/races from ordinary online, AddClass and offline reserve candidates;
+- `CanClassFillRole` refuses an unreleased class, so explicit DK requirements cannot sneak through before WotLK;
+- RaidRoster creation excludes unreleased class/race identities;
+- RaidRoster login benches unreleased classes regardless of dirty dev-character level;
+- RaidRoster sync clamps bot target level to the live realm cap instead of blindly copying a level-80 dirty master.
+
+Audit expansion:
+- `.era audit` reports active RNDbot class/race leaks;
+- `.era audit` reports future profession presence or profession skill values above the live 300/375/450 cap.
+
+Still TODO: server character-creation enforcement, trainers/recipes, full profession behavior, Group Composer client-side DK hiding, and broader persistent guild-bot identity handling.
+
+CI: commit uses `[local-ci]` on `stoffes-pc`.
+
 ## 2026-09-21 — ERA-02 slice 1: read-only integrity audit scaffold
 
 Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.

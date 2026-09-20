@@ -29,6 +29,17 @@ uint8 MinimumProgression(Era era);
 uint8 RealmMinimumProgression();
 bool IsProgressionAllowed(uint8 progression);
 bool IsEraReleased(Era era);
+
+Era RequiredEraForClass(uint8 classId);
+bool IsClassAllowed(uint8 classId);
+Era RequiredEraForRace(uint8 raceId);
+bool IsRaceAllowed(uint8 raceId);
+
+Era RequiredEraForProfession(uint32 skillId);
+bool IsProfessionAllowed(uint32 skillId);
+uint16 ProfessionSkillCap(Era era);
+uint16 RealmProfessionSkillCap();
+
 bool TryMapEra(uint32 mapId, Era& era);
 bool IsMapAllowed(uint32 mapId);
 

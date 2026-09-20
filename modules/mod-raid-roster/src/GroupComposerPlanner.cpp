@@ -371,6 +371,10 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
 
         bool sameGuild = guildId && bot->GetGuildId() == guildId;
 
+        if (!alreadyGrouped &&
+            (!EraPolicy::IsClassAllowed(bot->getClass()) || !EraPolicy::IsRaceAllowed(bot->getRace())))
+            return;
+
         // Sticky existing-group bots stay visible so Build() can report the exact problem instead
         // of silently pruning a member. Every ordinary candidate must obey the global live-era cap.
         if (!alreadyGrouped && !EraPolicy::IsLevelAllowed(bot->GetLevel()))
@@ -459,6 +463,9 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
 
         for (uint8 cls : classes)
         {
+            if (!EraPolicy::IsClassAllowed(cls))
+                continue;
+
             uint8 key = RandomPlayerbotMgr::GetTeamClassIdx(alliance, cls);
             auto cacheItr = sRandomPlayerbotMgr.addclassCache.find(key);
             if (cacheItr == sRandomPlayerbotMgr.addclassCache.end()) continue;
@@ -478,6 +485,8 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
                 // or a real guild. Those identities are somebody else's live/persistent context.
                 if (!sCharacterCache->GetCharacterGroupGuidByGuid(guid).IsEmpty()) continue;
                 if (sCharacterCache->GetCharacterGuildIdByGuid(guid)) continue;
+                CharacterCacheEntry const* cache = sCharacterCache->GetCharacterCacheByGuid(guid);
+                if (!cache || !EraPolicy::IsRaceAllowed(cache->Race)) continue;
                 if (!Reserve::AvailableTo(master->GetGUID().GetCounter(), guid)) continue;
 
                 std::string name;
@@ -523,7 +532,7 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
         if (!accountList.empty())
         {
             QueryResult reserveRows = CharacterDatabase.Query(
-                "SELECT guid, name, class, level FROM characters WHERE account IN ({}) ORDER BY guid", accountList);
+                "SELECT guid, name, class, level, race FROM characters WHERE account IN ({}) ORDER BY guid", accountList);
             if (reserveRows)
             {
                 do
@@ -544,6 +553,8 @@ std::vector<Candidate> BuildCandidates(Player* master, Config const& config, Pla
                     c.name = fields[1].Get<std::string>();
                     c.cls = fields[2].Get<uint8>();
                     uint8 storedLevel = fields[3].Get<uint8>();
+                    uint8 storedRace = fields[4].Get<uint8>();
+                    if (!EraPolicy::IsClassAllowed(c.cls) || !EraPolicy::IsRaceAllowed(storedRace)) continue;
                     if (!EraPolicy::IsLevelAllowed(storedLevel) || storedLevel > config.maxBotLevel) continue;
                     c.level = std::max<uint8>(storedLevel, config.botTargetLevel);
                     c.role = ROLE_DPS;
@@ -848,6 +859,9 @@ uint8 Planner::InferSpec(Player* player)
 
 bool Planner::CanClassFillRole(uint8 cls, uint8 role)
 {
+    if (!EraPolicy::IsClassAllowed(cls))
+        return false;
+
     switch (cls)
     {
         case CLASS_WARRIOR:      return role == ROLE_TANK || role == ROLE_DPS;

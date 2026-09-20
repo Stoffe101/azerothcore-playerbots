@@ -56,6 +56,7 @@ ADVENTURE_CATCHUP = (ROOT / "modules/mod-raid-roster/src/AdventureCatchupCommand
 ADVENTURE_CONTROL = (ROOT / "modules/mod-raid-roster/src/AdventureControlCommand.cpp").read_text(encoding="utf-8")
 GROUP_COMPOSER_TITAN = (ROOT / "modules/mod-raid-roster/src/GroupComposerTitanRune.cpp").read_text(encoding="utf-8")
 RAID_ROSTER_ERA = (ROOT / "modules/mod-raid-roster/src/RaidRosterEra.cpp").read_text(encoding="utf-8")
+RAID_ROSTER_COMMAND = (ROOT / "modules/mod-raid-roster/src/RaidRosterCommand.cpp").read_text(encoding="utf-8")
 RAID_ROSTER_LOADER = (ROOT / "modules/mod-raid-roster/src/RaidRosterLoader.cpp").read_text(encoding="utf-8")
 ERA_AUDIT = (ROOT / "modules/mod-raid-roster/src/EraAuditCommand.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY = (ROOT / "modules/mod-raid-roster/src/AdventureProgressionHistory.cpp").read_text(encoding="utf-8")
@@ -1351,3 +1352,26 @@ assert 'EraPolicy::IsMapAllowed(530)' in ERA_AUDIT
 assert 'EraPolicy::IsMapAllowed(571)' in ERA_AUDIT
 assert 'AdventureCatalog::All()' in ERA_AUDIT
 assert 'new EraAuditCommand();' in RAID_ROSTER_LOADER
+
+
+# ERA-01 identity/profession policy + ERA-02 audit coverage.
+assert 'Era RequiredEraForClass(uint8 classId);' in ERA_POLICY_H
+assert 'bool IsClassAllowed(uint8 classId);' in ERA_POLICY_H
+assert 'Era RequiredEraForRace(uint8 raceId);' in ERA_POLICY_H
+assert 'bool IsRaceAllowed(uint8 raceId);' in ERA_POLICY_H
+assert 'bool IsProfessionAllowed(uint32 skillId);' in ERA_POLICY_H
+assert 'uint16 RealmProfessionSkillCap();' in ERA_POLICY_H
+assert 'classId == CLASS_DEATH_KNIGHT ? Era::Wotlk' in ERA_POLICY_CPP
+assert 'raceId == RACE_BLOODELF || raceId == RACE_DRAENEI' in ERA_POLICY_CPP
+assert 'case SKILL_JEWELCRAFTING:' in ERA_POLICY_CPP
+assert 'case SKILL_INSCRIPTION:' in ERA_POLICY_CPP
+assert 'case Era::Vanilla: return 300;' in ERA_POLICY_CPP
+assert 'case Era::Tbc: return 375;' in ERA_POLICY_CPP
+assert 'case Era::Wotlk: return 450;' in ERA_POLICY_CPP
+assert '!EraPolicy::IsClassAllowed(bot->getClass())' in PLANNER
+assert '!EraPolicy::IsRaceAllowed(bot->getRace())' in PLANNER
+assert 'if (!EraPolicy::IsClassAllowed(cls))' in PLANNER
+assert 'std::min<uint8>(master->GetLevel(), EraPolicy::RealmLevelCap())' in RAID_ROSTER_COMMAND
+assert 'EraPolicy::IsClassAllowed(r.cls)' in RAID_ROSTER_COMMAND
+assert 'BOT_CLASSES_RACES' in ERA_AUDIT
+assert 'BOT_PROFESSIONS' in ERA_AUDIT
