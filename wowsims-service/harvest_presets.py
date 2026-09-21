@@ -376,7 +376,7 @@ def assign_preset_policies(
     return policies
 
 
-def resolve_routedef resolve_route(catalog: dict[str, Any], era: str, request: dict[str, Any]) -> dict[str, Any]:
+def resolve_route(catalog: dict[str, Any], era: str, request: dict[str, Any]) -> dict[str, Any]:
     raid, player = find_player(request)
     talents = player.get("talentsString", "")
     if not isinstance(talents, str) or not talents:

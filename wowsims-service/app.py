@@ -473,7 +473,7 @@ def _select_preset(
     return selected, request
 
 
-def _request_playerdef _request_player(request: dict[str, Any]) -> dict[str, Any]:
+def _request_player(request: dict[str, Any]) -> dict[str, Any]:
     try:
         parties = request["raid"]["parties"]
         players = parties[0]["players"]

@@ -2,6 +2,10 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — Preset repair duplicate-definition cleanup
+
+Candidate `671c8ef317b16fb784b74cd367084e649e60063f`: **FAILED / superseded** in focused backend checks. A second malformed duplicate function-name fragment remained in `app.py`; proactive inspection also found the analogous `resolve_route` fragment in `harvest_presets.py` before that file reached execution. The next repair removes both editing artifacts without changing preset-selection policy.
+
 ## 2026-09-21 — Preset repair syntax correction
 
 Candidate `4c79cd6e91596b2aed41e89173f725f54e9fe69e`: **FAILED / superseded**.
