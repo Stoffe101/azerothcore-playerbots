@@ -12,6 +12,7 @@ ChatCommandTable WoWSimsCommand::GetCommands() const
     static ChatCommandTable sub =
     {
         { "snapshot", HandleSnapshot, SEC_PLAYER, Console::No },
+        { "request", HandleRequest, SEC_PLAYER, Console::No },
         { "validate", HandleValidate, SEC_PLAYER, Console::No },
     };
     static ChatCommandTable root = { { "wowsims", sub } };
@@ -36,6 +37,29 @@ bool WoWSimsCommand::HandleSnapshot(ChatHandler* handler)
         uint32(player->GetLevel()),
         uint32(player->getClass()),
         uint32(player->GetMostPointsTalentTree()));
+    return true;
+}
+
+
+bool WoWSimsCommand::HandleRequest(ChatHandler* handler)
+{
+    Player* player = handler && handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
+    if (!player)
+    {
+        if (handler)
+            handler->SendSysMessage("Run .wowsims request in-world as a player.");
+        return true;
+    }
+
+    std::string summary;
+    std::string error;
+    if (!WoWSimsService::BuildBaselineRequest(player, summary, error))
+    {
+        handler->PSendSysMessage("[WoWSims] request build failed: {}", error);
+        return true;
+    }
+
+    handler->PSendSysMessage("[WoWSims] baseline request built (not simulated): {}", summary);
     return true;
 }
 

@@ -351,6 +351,68 @@ std::string BuildCharacterSnapshot(Player* player)
     return snapshot.dump();
 }
 
+
+bool BuildBaselineRequest(Player* player, std::string& summary, std::string& error)
+{
+    if (!player)
+    {
+        error = "player is unavailable";
+        return false;
+    }
+
+    json snapshot;
+    try
+    {
+        snapshot = json::parse(BuildCharacterSnapshot(player));
+    }
+    catch (std::exception const& ex)
+    {
+        error = std::string("failed to parse authoritative snapshot: ") + ex.what();
+        return false;
+    }
+
+    json const body = {
+        { "snapshot", std::move(snapshot) },
+    };
+    std::string const baseUrl =
+        sConfigMgr->GetOption<std::string>("RaidRoster.WoWSimsUrl", "http://ac-wowsims:8092");
+    uint32 const timeout =
+        std::max<uint32>(1, sConfigMgr->GetOption<uint32>("RaidRoster.WoWSimsTimeoutSeconds", 5));
+
+    std::string response;
+    if (!PostJson(baseUrl, "/v1/snapshot/request", body.dump(), timeout, response, error))
+        return false;
+
+    try
+    {
+        json const parsed = json::parse(response);
+        if (parsed.value("status", std::string()) != "REQUEST_BUILT_UNVALIDATED")
+        {
+            error = parsed.value("error", std::string("service did not build an unvalidated request"));
+            return false;
+        }
+
+        json const preset = parsed.value("preset", json::object());
+        json const support = parsed.value("support", json::object());
+        std::string sha = preset.value("sha256", std::string());
+        if (sha.size() > 12)
+            sha.resize(12);
+        summary =
+            "era=" + parsed.value("era", std::string("UNKNOWN")) +
+            ", route=" + parsed.value("routeKey", std::string("?")) +
+            ", preset=" + preset.value("file", std::string("?")) +
+            ", sha=" + (sha.empty() ? std::string("?") : sha) +
+            ", support=" + support.value("status", std::string("UNKNOWN")) +
+            ", status=REQUEST_BUILT_UNVALIDATED";
+        return true;
+    }
+    catch (std::exception const& ex)
+    {
+        error = std::string("invalid request-builder response: ") + ex.what();
+        return false;
+    }
+}
+
 bool ValidateCharacterSnapshot(Player* player, std::string& summary, std::string& error)
 {
     if (!player)

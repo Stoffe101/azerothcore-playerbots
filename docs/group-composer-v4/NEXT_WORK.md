@@ -63,8 +63,9 @@ ERA-01 is now **IN PROGRESS** while P0 runtime evidence is blocked.
 15d. **DONE + green:** authoritative worldserver character snapshot + private service validation is exact-head green at `0e4fadb2` on all four workflows. Server owns era/level/class/role/talents/gear/enchants/gems/glyphs/professions.
 15e. **DONE + green:** pinned per-era model catalog repair `7c959151` passed all four exact-SHA workflows, with both heavy jobs on `stoffes-pc`.
 15f. **DONE + green:** engine-native preset harvesting is exact-head green at `998d297a`; Vanilla=24 requests/15 routes, TBC=15/15, WotLK=37/33. All three runtime preset catalogs report ready.
-15g. **CURRENT:** authoritative snapshot overlay -> selected preset -> baseline RaidSimRequest -> candidate slot mutation -> asynchronous compare transport.
-15h. **CURRENT / local CI:** addon layout safety. GearAdvisor v0.3.1 plus bounded Group Composer button/activity/recommendation text regions; real-client visual acceptance remains TODO.
+15g. **CURRENT / local CI:** authoritative snapshot -> exact preset -> baseline RaidSimRequest builder. Endpoint returns `REQUEST_BUILT_UNVALIDATED`, preserves preset combat assumptions, uses pinned WotLK glyph mapping, and fails closed on ambiguous presets/random properties.
+15h. **NEXT:** candidate slot mutation + exact baseline/candidate equivalence guard + asynchronous compare transport.
+15i. **DONE + exact-head green at `c9690919`:** addon layout safety. GearAdvisor v0.3.1 plus bounded Group Composer button/activity/recommendation text regions; real-client visual acceptance remains TODO.
 16. **DONE + green:** ERA-07 slice 3 PlayerbotFactory + AdventureStart/catch-up item policy is exact-head green at `e990dff5` on all four GitHub-hosted workflows.
 17. **DONE + green:** ERA-07 slice 4 Adventure Cache reward provenance is exact-head green at `e1a2e6fa`; pending caches survive provenance failure and created reward items are policy-gated.
 18. **NEXT ERA-07:** automated vendors/reward helpers, then loot/crafting/recipes and remaining non-PlayerbotFactory item sources. Runtime-generate the central snapshot on the dev realm and inspect `.era audit` when the server PC is available again.

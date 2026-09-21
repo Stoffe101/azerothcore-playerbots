@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import copy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -241,6 +243,317 @@ def preset_catalog_summary(catalog: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+
+RACE_ENUMS = {
+    "BLOODELF": "RaceBloodElf",
+    "DRAENEI": "RaceDraenei",
+    "DWARF": "RaceDwarf",
+    "GNOME": "RaceGnome",
+    "HUMAN": "RaceHuman",
+    "NIGHTELF": "RaceNightElf",
+    "ORC": "RaceOrc",
+    "TAUREN": "RaceTauren",
+    "TROLL": "RaceTroll",
+    "UNDEAD": "RaceUndead",
+}
+
+CLASS_ENUMS = {
+    "WARRIOR": "ClassWarrior",
+    "PALADIN": "ClassPaladin",
+    "HUNTER": "ClassHunter",
+    "ROGUE": "ClassRogue",
+    "PRIEST": "ClassPriest",
+    "DEATHKNIGHT": "ClassDeathknight",
+    "SHAMAN": "ClassShaman",
+    "MAGE": "ClassMage",
+    "WARLOCK": "ClassWarlock",
+    "DRUID": "ClassDruid",
+}
+
+PROFESSION_ENUMS = {
+    "ALCHEMY": "Alchemy",
+    "BLACKSMITHING": "Blacksmithing",
+    "ENCHANTING": "Enchanting",
+    "ENGINEERING": "Engineering",
+    "HERBALISM": "Herbalism",
+    "INSCRIPTION": "Inscription",
+    "JEWELCRAFTING": "Jewelcrafting",
+    "LEATHERWORKING": "Leatherworking",
+    "MINING": "Mining",
+    "SKINNING": "Skinning",
+    "TAILORING": "Tailoring",
+}
+
+ERA_PROFESSIONS = {
+    "VANILLA": {
+        "ALCHEMY", "BLACKSMITHING", "ENCHANTING", "ENGINEERING", "HERBALISM",
+        "LEATHERWORKING", "MINING", "SKINNING", "TAILORING",
+    },
+    "TBC": {
+        "ALCHEMY", "BLACKSMITHING", "ENCHANTING", "ENGINEERING", "HERBALISM",
+        "JEWELCRAFTING", "LEATHERWORKING", "MINING", "SKINNING", "TAILORING",
+    },
+    "WOTLK": set(PROFESSION_ENUMS),
+}
+
+
+def load_glyph_spell_map(
+    path: str | os.PathLike[str] | None = None,
+    *,
+    required: bool | None = None,
+) -> dict[int, int]:
+    glyph_path = Path(
+        path
+        or os.environ.get("WOWSIMS_WOTLK_GLYPH_MAP")
+        or Path(__file__).with_name("wotlk-glyph-id-map.json")
+    )
+    if required is None:
+        required = os.environ.get("WOWSIMS_REQUIRE_GLYPH_MAP", "0") == "1"
+    if not glyph_path.is_file():
+        if required:
+            raise RuntimeError(f"WotLK glyph map is missing: {glyph_path}")
+        return {}
+    try:
+        data = json.loads(glyph_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"failed to load WotLK glyph map {glyph_path}: {exc}") from exc
+    if not isinstance(data, list):
+        raise RuntimeError("WotLK glyph map must be an array")
+    result: dict[int, int] = {}
+    for entry in data:
+        if not isinstance(entry, dict):
+            raise RuntimeError("WotLK glyph map contains a non-object entry")
+        item_id = entry.get("itemId")
+        spell_id = entry.get("spellId")
+        if not isinstance(item_id, int) or item_id <= 0 or not isinstance(spell_id, int) or spell_id <= 0:
+            raise RuntimeError("WotLK glyph map contains an invalid itemId/spellId")
+        if spell_id in result and result[spell_id] != item_id:
+            raise RuntimeError(f"WotLK glyph spell {spell_id} maps to multiple items")
+        result[spell_id] = item_id
+    return result
+
+
+def _canonical_request_sha256(request: dict[str, Any]) -> str:
+    body = json.dumps(request, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(body).hexdigest()
+
+
+def _preset_route_key(snapshot: dict[str, Any]) -> str:
+    character = snapshot["character"]
+    return f'{character["classId"]}:{character["dominantTree"]}:{character["role"]}'
+
+
+def _select_preset(
+    preset_catalog: dict[str, Any],
+    era: str,
+    route_key: str,
+    preset_sha256: str | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    era_entry = preset_catalog["eras"].get(era, {})
+    entries = era_entry.get("routes", {}).get(route_key, [])
+    if not entries:
+        raise ServiceError(f"no engine-native preset exists for {era} route {route_key}")
+    if preset_sha256 is None:
+        if len(entries) != 1:
+            choices = ",".join(str(entry.get("sha256", "")) for entry in entries)
+            raise ServiceError(
+                f"{era} route {route_key} has {len(entries)} preset candidates; "
+                f"presetSha256 is required ({choices})"
+            )
+        selected = entries[0]
+    else:
+        matches = [entry for entry in entries if entry.get("sha256") == preset_sha256]
+        if len(matches) != 1:
+            raise ServiceError(f"presetSha256 is not valid for {era} route {route_key}")
+        selected = matches[0]
+
+    root = Path(preset_catalog["root"]).resolve()
+    era_root = (root / era).resolve()
+    request_path = (era_root / str(selected["file"])).resolve()
+    if not request_path.is_relative_to(era_root):
+        raise ServiceError("preset path escapes the pinned preset root", HTTPStatus.INTERNAL_SERVER_ERROR)
+    try:
+        request = json.loads(request_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ServiceError(
+            f"failed to load pinned preset {selected['file']}",
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+        ) from exc
+    if not isinstance(request, dict):
+        raise ServiceError("pinned preset request is not a JSON object", HTTPStatus.INTERNAL_SERVER_ERROR)
+    digest = _canonical_request_sha256(request)
+    if digest != selected.get("sha256"):
+        raise ServiceError(
+            f"pinned preset checksum mismatch for {selected['file']}",
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+        )
+    return selected, request
+
+
+def _request_player(request: dict[str, Any]) -> dict[str, Any]:
+    try:
+        parties = request["raid"]["parties"]
+        players = parties[0]["players"]
+        player = players[0]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise ServiceError("pinned preset has no first raid player", HTTPStatus.INTERNAL_SERVER_ERROR) from exc
+    if not isinstance(player, dict):
+        raise ServiceError("pinned preset first player is invalid", HTTPStatus.INTERNAL_SERVER_ERROR)
+    return player
+
+
+def _equipment_from_snapshot(era: str, gear: list[Any]) -> dict[str, Any]:
+    items: list[dict[str, Any]] = []
+    for index, item in enumerate(gear):
+        if item is None:
+            items.append({})
+            continue
+        spec: dict[str, Any] = {
+            "id": item["id"],
+        }
+        enchant = item.get("enchant", 0)
+        if enchant:
+            spec["enchant"] = enchant
+        if era in {"TBC", "WOTLK"}:
+            gems = list(item.get("gems", []))
+            while gems and gems[-1] == 0:
+                gems.pop()
+            if gems:
+                spec["gems"] = gems
+        if era in {"VANILLA", "TBC"}:
+            random_property_id = item.get("randomPropertyId", 0)
+            if isinstance(random_property_id, bool) or not isinstance(random_property_id, int):
+                raise ServiceError(f"character.gear[{index}].randomPropertyId must be an integer")
+            if random_property_id > 0:
+                raise ServiceError(
+                    f"character.gear[{index}] uses random property {random_property_id}; "
+                    "automatic WoWSims mapping currently supports suffix IDs only"
+                )
+            if random_property_id < 0:
+                spec["randomSuffix"] = -random_property_id
+        items.append(spec)
+    return {"items": items}
+
+
+def _professions_from_snapshot(era: str, professions: Any) -> tuple[str, str]:
+    if not isinstance(professions, list):
+        raise ServiceError("character.professions must be an array")
+    values: list[str] = []
+    for index, profession in enumerate(professions):
+        if not isinstance(profession, dict):
+            raise ServiceError(f"character.professions[{index}] must be an object")
+        token = profession.get("name")
+        if not isinstance(token, str) or token not in PROFESSION_ENUMS:
+            raise ServiceError(f"character.professions[{index}].name is unsupported")
+        if token not in ERA_PROFESSIONS[era]:
+            raise ServiceError(f"{token} is unavailable in {era}")
+        enum_value = PROFESSION_ENUMS[token]
+        if enum_value not in values:
+            values.append(enum_value)
+    if len(values) > 2:
+        raise ServiceError("WoWSims supports at most two character professions")
+    values += ["ProfessionUnknown"] * (2 - len(values))
+    return values[0], values[1]
+
+
+def _glyphs_from_snapshot(glyphs: Any, glyph_spell_map: dict[int, int]) -> dict[str, int]:
+    if not isinstance(glyphs, list):
+        raise ServiceError("character.glyphs must be an array")
+    major: list[tuple[int, int]] = []
+    minor: list[tuple[int, int]] = []
+    for index, glyph in enumerate(glyphs):
+        if not isinstance(glyph, dict):
+            raise ServiceError(f"character.glyphs[{index}] must be an object")
+        slot = glyph.get("slot")
+        spell_id = glyph.get("spellId")
+        type_flags = glyph.get("typeFlags")
+        if not isinstance(slot, int) or slot < 0 or slot >= 6:
+            raise ServiceError(f"character.glyphs[{index}].slot is invalid")
+        if not isinstance(spell_id, int) or spell_id <= 0:
+            raise ServiceError(f"character.glyphs[{index}].spellId is invalid")
+        if type_flags not in (0, 1):
+            raise ServiceError(f"character.glyphs[{index}].typeFlags must be 0 (major) or 1 (minor)")
+        item_id = glyph_spell_map.get(spell_id)
+        if item_id is None:
+            raise ServiceError(f"WotLK glyph spell {spell_id} is absent from the pinned WoWSims glyph map")
+        (major if type_flags == 0 else minor).append((slot, item_id))
+    major.sort()
+    minor.sort()
+    if len(major) > 3 or len(minor) > 3:
+        raise ServiceError("character has more than three major or minor glyphs")
+    major_ids = [item for _, item in major] + [0] * (3 - len(major))
+    minor_ids = [item for _, item in minor] + [0] * (3 - len(minor))
+    return {
+        "major1": major_ids[0],
+        "major2": major_ids[1],
+        "major3": major_ids[2],
+        "minor1": minor_ids[0],
+        "minor2": minor_ids[1],
+        "minor3": minor_ids[2],
+    }
+
+
+def build_baseline_request(
+    snapshot: dict[str, Any],
+    model_support: dict[str, Any],
+    preset_catalog: dict[str, Any],
+    glyph_spell_map: dict[int, int],
+    *,
+    preset_sha256: str | None = None,
+) -> dict[str, Any]:
+    validation = validate_character_snapshot(snapshot, model_support)
+    support = validation["support"]
+    if support["status"] == "UNSUPPORTED":
+        raise ServiceError(support["reason"])
+
+    era = validation["era"]
+    character = snapshot["character"]
+    route_key = _preset_route_key(snapshot)
+    preset, raw_request = _select_preset(preset_catalog, era, route_key, preset_sha256)
+    request = copy.deepcopy(raw_request)
+    player = _request_player(request)
+
+    race_token = character.get("race")
+    class_token = character.get("class")
+    if not isinstance(race_token, str) or race_token not in RACE_ENUMS:
+        raise ServiceError(f"unsupported character.race {race_token!r}")
+    if era == "VANILLA" and race_token in {"BLOODELF", "DRAENEI"}:
+        raise ServiceError(f"{race_token} is unavailable in VANILLA")
+    if not isinstance(class_token, str) or class_token not in CLASS_ENUMS:
+        raise ServiceError(f"unsupported character.class {class_token!r}")
+    if era != "WOTLK" and class_token == "DEATHKNIGHT":
+        raise ServiceError("Death Knight is unavailable before WOTLK")
+
+    profession1, profession2 = _professions_from_snapshot(era, character.get("professions", []))
+
+    player["name"] = str(character.get("name") or "SkrraPlayer")
+    player["race"] = RACE_ENUMS[race_token]
+    player["class"] = CLASS_ENUMS[class_token]
+    player["equipment"] = _equipment_from_snapshot(era, character["gear"])
+    player["talentsString"] = character["talents"]
+    player["profession1"] = profession1
+    player["profession2"] = profession2
+    if era == "WOTLK":
+        player["glyphs"] = _glyphs_from_snapshot(character.get("glyphs", []), glyph_spell_map)
+    else:
+        player.pop("glyphs", None)
+
+    return {
+        "schema": SCHEMA_VERSION,
+        "status": "REQUEST_BUILT_UNVALIDATED",
+        "era": era,
+        "routeKey": route_key,
+        "support": support,
+        "preset": {
+            "file": preset["file"],
+            "sha256": preset["sha256"],
+            "source": preset.get("source"),
+            "protoSpecField": preset.get("protoSpecField"),
+        },
+        "request": request,
+    }
+
+
 def normalize_era(value: Any) -> str:
     if not isinstance(value, str):
         raise ServiceError("era must be one of VANILLA, TBC or WOTLK")
@@ -405,6 +718,7 @@ class SimRunner:
         self.manifest = manifest
         self.model_support = load_model_support(manifest=manifest)
         self.preset_catalog = load_preset_catalog(manifest=manifest)
+        self.glyph_spell_map = load_glyph_spell_map()
         self.timeout_seconds = timeout_seconds or _env_float(
             "WOWSIMS_TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS
         )
@@ -442,6 +756,20 @@ class SimRunner:
 
     def validate_snapshot(self, payload: dict[str, Any]) -> dict[str, Any]:
         return validate_character_snapshot(payload, self.model_support)
+
+    def build_snapshot_request(
+        self,
+        snapshot: dict[str, Any],
+        *,
+        preset_sha256: str | None = None,
+    ) -> dict[str, Any]:
+        return build_baseline_request(
+            snapshot,
+            self.model_support,
+            self.preset_catalog,
+            self.glyph_spell_map,
+            preset_sha256=preset_sha256,
+        )
 
     def simulate(self, era: str, request: dict[str, Any]) -> dict[str, Any]:
         era = normalize_era(era)
@@ -622,6 +950,21 @@ class ApiHandler(BaseHTTPRequestHandler):
             payload = self._read_json()
             if self.path == "/v1/snapshot/validate":
                 response = self.runner.validate_snapshot(payload)
+                response["engine"] = self.runner.engine_info(response["era"])
+                self._send_json(HTTPStatus.OK, response)
+                return
+
+            if self.path == "/v1/snapshot/request":
+                snapshot = payload.get("snapshot")
+                if not isinstance(snapshot, dict):
+                    raise ServiceError("snapshot must be an object")
+                preset_sha256 = payload.get("presetSha256")
+                if preset_sha256 is not None and not isinstance(preset_sha256, str):
+                    raise ServiceError("presetSha256 must be a string")
+                response = self.runner.build_snapshot_request(
+                    snapshot,
+                    preset_sha256=preset_sha256,
+                )
                 response["engine"] = self.runner.engine_info(response["era"])
                 self._send_json(HTTPStatus.OK, response)
                 return

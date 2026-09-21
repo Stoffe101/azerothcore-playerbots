@@ -58,6 +58,7 @@ COPY app.py /app/app.py
 COPY sources.json /app/sources.json
 COPY model-support.json /app/model-support.json
 COPY --from=builder /presets /app/presets
+COPY --from=builder /src/wotlk/assets/db_inputs/glyph_id_map.json /app/wotlk-glyph-id-map.json
 COPY --from=builder /out/wowsimcli-classic /usr/local/bin/wowsimcli-classic
 COPY --from=builder /out/wowsimcli-tbc /usr/local/bin/wowsimcli-tbc
 COPY --from=builder /out/wowsimcli-wotlk /usr/local/bin/wowsimcli-wotlk
@@ -68,7 +69,9 @@ ENV WOWSIMS_MANIFEST=/app/sources.json \
     WOWSIMS_GOMAXPROCS=2 \
     WOWSIMS_MAX_CONCURRENT=2 \
     WOWSIMS_PRESET_ROOT=/app/presets \
-    WOWSIMS_REQUIRE_PRESETS=1
+    WOWSIMS_REQUIRE_PRESETS=1 \
+    WOWSIMS_WOTLK_GLYPH_MAP=/app/wotlk-glyph-id-map.json \
+    WOWSIMS_REQUIRE_GLYPH_MAP=1
 
 EXPOSE 8092
 USER 10001

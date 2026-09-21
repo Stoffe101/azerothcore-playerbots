@@ -1,6 +1,6 @@
 # WoWSims Integration
 
-_Status: preset harvesting is exact-head green at `998d297a`; authoritative snapshot-to-preset baseline/candidate construction is next._
+_Status: preset harvesting is green; authoritative baseline request construction is implemented and awaiting exact-head local CI. Candidate mutation/simulation remains next._
 
 ## Decision
 
@@ -233,3 +233,39 @@ Exact SHA `998d297a7f38e941740c41bdc972842157de0e97` passed all four workflows. 
 - WotLK: 37 unique requests across 33 routes.
 
 Coverage means an engine-native request fixture exists for that route. It does **not** promote that route to SIM-BACKED. The next adapter must copy authoritative server-owned character state into the selected preset, preserve the preset's non-character assumptions, build baseline/candidate requests that differ only in the intended item slot, and then validate the result against Skrra/AzerothCore behavior.
+
+
+## Baseline request-construction boundary
+
+The first authoritative adapter deliberately stops **before simulation**.
+
+`POST /v1/snapshot/request` accepts the worldserver snapshot plus an optional `presetSha256`. It:
+
+1. validates era/class/tree/role against the pinned model catalog;
+2. resolves the harvested route key;
+3. selects exactly one preset, requiring `presetSha256` when multiple upstream presets exist;
+4. recalculates the preset's canonical SHA-256 and rejects drift;
+5. deep-copies the preset;
+6. keeps preset-owned rotation/APL, spec options, consumes, buffs/debuffs, encounter and sim options;
+7. replaces server-owned character state: name, race, class, equipment, talents and professions;
+8. for WotLK, maps live glyph spell IDs to WoWSims glyph **item IDs** using the exact pinned engine's `assets/db_inputs/glyph_id_map.json`;
+9. returns the complete request as `REQUEST_BUILT_UNVALIDATED`.
+
+No call to `wowsimcli` is made by this endpoint. It cannot produce a SIM-BACKED result.
+
+### Identifier contracts verified
+
+- permanent item enchant from AzerothCore's `PERM_ENCHANTMENT_SLOT` is the SpellItemEnchantment **effect ID** expected by all three pinned WoWSims cores;
+- AzerothCore negative random-property IDs represent random suffix entries, so `-1979` maps to WoWSims `randomSuffix: 1979`;
+- positive random-property IDs are not silently reinterpreted and currently fail closed;
+- WotLK WoWSims glyph proto values are glyph item IDs, while the server snapshot owns glyph spell IDs; translation therefore comes from the pinned WoWSims glyph database rather than a hand-maintained table.
+
+### Remaining accuracy gates
+
+Before any route becomes authoritative:
+- resolve a canonical preset policy for routes with multiple upstream candidates;
+- validate meta-gem activation handling and any item-specific database assumptions;
+- construct candidate requests by mutating exactly the intended equipment slot;
+- assert baseline/candidate requests are otherwise equivalent;
+- run the comparison asynchronously so the world thread is never blocked;
+- validate model mechanics against Skrra/AzerothCore and only then promote confidence to SIM-BACKED.

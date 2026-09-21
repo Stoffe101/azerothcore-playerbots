@@ -8,6 +8,7 @@ class Player;
 namespace WoWSimsService
 {
 std::string BuildCharacterSnapshot(Player* player);
+bool BuildBaselineRequest(Player* player, std::string& summary, std::string& error);
 bool ValidateCharacterSnapshot(Player* player, std::string& summary, std::string& error);
 }
 

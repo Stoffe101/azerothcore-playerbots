@@ -240,6 +240,193 @@ class AppTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 app.load_preset_catalog(root, manifest=MANIFEST, required=False)
 
+    def _preset_catalog(self, root, era, route_key, requests):
+        route_entries = []
+        era_dir = Path(root) / era
+        request_dir = era_dir / "requests"
+        request_dir.mkdir(parents=True)
+        for index, request in enumerate(requests):
+            digest = app._canonical_request_sha256(request)
+            filename = f"sample-{index}.json"
+            (request_dir / filename).write_text(
+                json.dumps(request, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            route_entries.append(
+                {
+                    "file": f"requests/{filename}",
+                    "sha256": digest,
+                    "source": f"unit-{index}",
+                    "protoSpecField": "mage",
+                }
+            )
+        return {
+            "root": str(root),
+            "required": True,
+            "eras": {
+                "VANILLA": {"ready": era == "VANILLA", "routes": {}},
+                "TBC": {"ready": era == "TBC", "routes": {}},
+                "WOTLK": {"ready": era == "WOTLK", "routes": {}},
+            },
+        } | {
+            "eras": {
+                key: (
+                    {"ready": True, "routes": {route_key: route_entries}}
+                    if key == era
+                    else {"ready": False, "routes": {}}
+                )
+                for key in ("VANILLA", "TBC", "WOTLK")
+            }
+        }
+
+    def _wotlk_preset(self):
+        return {
+            "raid": {
+                "buffs": {"arcaneBrilliance": True},
+                "parties": [
+                    {
+                        "players": [
+                            {
+                                "name": "Preset Mage",
+                                "race": "RaceGnome",
+                                "class": "ClassMage",
+                                "equipment": {"items": [{"id": 1}]},
+                                "consumes": {"flask": "FlaskOfTheFrostWyrm"},
+                                "talentsString": "preset",
+                                "glyphs": {"major1": 1},
+                                "profession1": "Engineering",
+                                "profession2": "Tailoring",
+                                "rotation": {"type": "Auto"},
+                                "mage": {"options": {"armor": "MoltenArmor"}},
+                            }
+                        ]
+                    }
+                ],
+            },
+            "encounter": {"duration": 180},
+            "simOptions": {"iterations": 1000},
+        }
+
+    def test_build_baseline_request_overlays_character_and_preserves_preset_assumptions(self):
+        snapshot = self._snapshot()
+        snapshot["character"]["glyphs"] = [
+            {"slot": 0, "spellId": 1001, "typeFlags": 0},
+            {"slot": 3, "spellId": 2001, "typeFlags": 1},
+        ]
+        snapshot["character"]["professions"] = [
+            {"skillId": 202, "name": "ENGINEERING", "level": 450},
+            {"skillId": 197, "name": "TAILORING", "level": 450},
+        ]
+        preset = self._wotlk_preset()
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [preset])
+            out = app.build_baseline_request(
+                snapshot,
+                app.load_model_support(manifest=MANIFEST),
+                catalog,
+                {1001: 44955, 2001: 43364},
+            )
+
+        self.assertEqual(out["status"], "REQUEST_BUILT_UNVALIDATED")
+        self.assertEqual(out["routeKey"], "8:0:DPS")
+        player = out["request"]["raid"]["parties"][0]["players"][0]
+        self.assertEqual(player["name"], "Tester")
+        self.assertEqual(player["race"], "RaceHuman")
+        self.assertEqual(player["class"], "ClassMage")
+        self.assertEqual(player["talentsString"], snapshot["character"]["talents"])
+        self.assertEqual(player["equipment"]["items"][0]["id"], 40416)
+        self.assertEqual(len(player["equipment"]["items"]), 17)
+        self.assertEqual(player["equipment"]["items"][1], {})
+        self.assertEqual(player["glyphs"]["major1"], 44955)
+        self.assertEqual(player["glyphs"]["minor1"], 43364)
+        self.assertEqual(player["profession1"], "Engineering")
+        self.assertEqual(player["profession2"], "Tailoring")
+        self.assertEqual(player["rotation"], {"type": "Auto"})
+        self.assertEqual(player["mage"], {"options": {"armor": "MoltenArmor"}})
+        self.assertEqual(player["consumes"], {"flask": "FlaskOfTheFrostWyrm"})
+        self.assertEqual(out["request"]["raid"]["buffs"], {"arcaneBrilliance": True})
+        self.assertEqual(out["request"]["encounter"], {"duration": 180})
+        self.assertEqual(out["request"]["simOptions"], {"iterations": 1000})
+
+    def test_build_baseline_request_requires_explicit_choice_for_ambiguous_route(self):
+        snapshot = self._snapshot()
+        preset = self._wotlk_preset()
+        alternate = self._wotlk_preset()
+        alternate["encounter"] = {"duration": 240}
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [preset, alternate])
+            with self.assertRaisesRegex(app.ServiceError, "presetSha256 is required"):
+                app.build_baseline_request(
+                    snapshot,
+                    app.load_model_support(manifest=MANIFEST),
+                    catalog,
+                    {},
+                )
+            selected = catalog["eras"]["WOTLK"]["routes"]["8:0:DPS"][1]["sha256"]
+            out = app.build_baseline_request(
+                snapshot,
+                app.load_model_support(manifest=MANIFEST),
+                catalog,
+                {},
+                preset_sha256=selected,
+            )
+        self.assertEqual(out["preset"]["sha256"], selected)
+        self.assertEqual(out["request"]["encounter"]["duration"], 240)
+
+    def test_build_baseline_request_rejects_preset_checksum_drift(self):
+        snapshot = self._snapshot()
+        preset = self._wotlk_preset()
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [preset])
+            catalog["eras"]["WOTLK"]["routes"]["8:0:DPS"][0]["sha256"] = "0" * 64
+            with self.assertRaisesRegex(app.ServiceError, "checksum mismatch"):
+                app.build_baseline_request(
+                    snapshot,
+                    app.load_model_support(manifest=MANIFEST),
+                    catalog,
+                    {},
+                )
+
+    def test_classic_equipment_maps_suffix_only_and_rejects_random_property(self):
+        gear = self._snapshot()["character"]["gear"]
+        gear[0]["randomPropertyId"] = -1979
+        equipment = app._equipment_from_snapshot("VANILLA", gear)
+        self.assertEqual(equipment["items"][0]["randomSuffix"], 1979)
+        self.assertNotIn("gems", equipment["items"][0])
+
+        gear[0]["randomPropertyId"] = 42
+        with self.assertRaisesRegex(app.ServiceError, "random property 42"):
+            app._equipment_from_snapshot("VANILLA", gear)
+
+    def test_wotlk_glyph_map_uses_spell_to_item_and_type_flags(self):
+        glyphs = [
+            {"slot": 2, "spellId": 54733, "typeFlags": 0},
+            {"slot": 5, "spellId": 52648, "typeFlags": 1},
+        ]
+        out = app._glyphs_from_snapshot(glyphs, {54733: 40909, 52648: 43361})
+        self.assertEqual(out["major1"], 40909)
+        self.assertEqual(out["minor1"], 43361)
+        self.assertEqual(out["major2"], 0)
+        with self.assertRaisesRegex(app.ServiceError, "absent from the pinned"):
+            app._glyphs_from_snapshot(
+                [{"slot": 0, "spellId": 99999, "typeFlags": 0}],
+                {},
+            )
+
+    def test_professions_are_era_gated(self):
+        with self.assertRaisesRegex(app.ServiceError, "JEWELCRAFTING is unavailable in VANILLA"):
+            app._professions_from_snapshot(
+                "VANILLA",
+                [{"name": "JEWELCRAFTING", "skillId": 755, "level": 300}],
+            )
+        self.assertEqual(
+            app._professions_from_snapshot(
+                "TBC",
+                [{"name": "JEWELCRAFTING", "skillId": 755, "level": 375}],
+            ),
+            ("Jewelcrafting", "ProfessionUnknown"),
+        )
+
     def test_snapshot_rejects_future_era_class(self):
         payload = self._snapshot()
         payload["era"] = "VANILLA"

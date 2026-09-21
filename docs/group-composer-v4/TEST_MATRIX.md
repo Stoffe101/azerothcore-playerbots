@@ -344,3 +344,20 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - TODO runtime: long era warnings and sim explanations stay inside GearAdvisor without touching stats/footer/WoWSims button.
 - TODO runtime: Activity Browser locked reasons/support labels remain inside their cards and never overlap Favorites or the next row.
 - TODO runtime: Recommended Activity reason/readiness copy never overlaps Configure/View Unlocks or adjacent cards.
+
+
+### WoWSims baseline request-construction slice
+
+- PASS: addon layout/source contracts are exact-head green at `c9690919ab40c8d40c3af20fdb2e5847ca59bbf3`.
+- STATIC: `POST /v1/snapshot/request` exists and returns `REQUEST_BUILT_UNVALIDATED`.
+- UNIT: authoritative character fields replace preset character fields while rotation/spec options/consumes/buffs/encounter/simOptions remain unchanged.
+- UNIT: preset canonical SHA-256 is reverified before overlay.
+- UNIT: an ambiguous route with multiple presets requires explicit `presetSha256`.
+- UNIT: WotLK glyph spell IDs map to glyph item IDs and unknown mappings fail closed.
+- UNIT: Vanilla profession/race restrictions and pre-WotLK DK restrictions remain enforced.
+- UNIT: negative AzerothCore random-property ID maps to Classic/TBC randomSuffix; positive random-property IDs fail closed.
+- STATIC: service image copies the WotLK glyph map from the exact pinned engine checkout and requires it at startup.
+- STATIC: `.wowsims request` calls the private request-builder endpoint but does not simulate.
+- TODO runtime: build a request for a real single-preset route and inspect gear/talents/race/professions/glyphs against the live character.
+- TODO runtime: choose explicit preset IDs for ambiguous routes before automatic simulation.
+- TODO: meta-gem enabled/disabled semantics must be verified for TBC/WotLK before affected routes become authoritative.

@@ -3,6 +3,36 @@
 Newest entries belong at the top of the dated section.
 
 
+## 2026-09-21 — Addon layout green + authoritative WoWSims request builder
+
+Addon layout checkpoint: **DONE + exact-head local-CI green at `c9690919ab40c8d40c3af20fdb2e5847ca59bbf3`**.
+
+Exact-head proof:
+- Group Composer client checks: SUCCESS;
+- Stage Group Composer V4 backend: SUCCESS;
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`;
+- Integration build: SUCCESS on `stoffes-pc`.
+
+This locks GearAdvisor v0.3.1 and Group Composer bounded-text geometry at the CI level. Real 3.3.5a visual acceptance remains TODO.
+
+Current simulation adapter: **IMPLEMENTED / exact-head local CI required**.
+- `POST /v1/snapshot/request` builds a baseline request from server-owned character state and one exact pinned preset;
+- preset checksum is reverified before use;
+- engine-owned combat assumptions are preserved;
+- authoritative gear/talents/race/class/professions replace preset character state;
+- WotLK glyph spell IDs use the pinned upstream spell->item glyph map;
+- ambiguous preset routes and unsupported random-property semantics fail closed;
+- status remains `REQUEST_BUILT_UNVALIDATED`;
+- no simulator execution occurs in this slice;
+- `.wowsims request` exposes the boundary in game for diagnostics.
+
+Next after green:
+- candidate item/slot request mutation;
+- structural baseline-vs-candidate equivalence guard;
+- asynchronous sim queue;
+- result/confidence/explanation transport to GearAdvisor.
+
+
 ## 2026-09-21 — WoWSims preset green checkpoint + addon layout safety
 
 Preset status: **DONE + exact-head local-CI green at `998d297a7f38e941740c41bdc972842157de0e97`**.

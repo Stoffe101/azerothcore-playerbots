@@ -142,3 +142,14 @@ The real service image harvested:
 These are reproducible engine-native preset candidates, not automatic SIM-BACKED approval. The next simulation slice overlays the authoritative worldserver snapshot onto a selected preset and constructs equivalent baseline/candidate requests.
 
 Current client follow-up is a layout-safety pass: GearAdvisor v0.3.1 gets larger bounded era/simulation explanation regions, Group Composer buttons receive bounded labels, Activity Browser cards receive explicit two-line status space, and Recommendations reserve separate copy/action columns. TypeScript source and `GroupComposerModernUI.lua` move together. Real 3.3.5a visual acceptance remains required.
+
+
+### Addon layout-safety checkpoint
+
+Exact SHA `c9690919ab40c8d40c3af20fdb2e5847ca59bbf3` is **fully exact-head local-CI green**:
+- Group Composer client checks: SUCCESS;
+- Stage Group Composer V4 backend: SUCCESS;
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`;
+- Integration build: SUCCESS on `stoffes-pc`.
+
+This locks the static/client contract for GearAdvisor v0.3.1 and the Group Composer text-bound changes. Real 3.3.5a visual/runtime acceptance is still required before calling the UI visually accepted.

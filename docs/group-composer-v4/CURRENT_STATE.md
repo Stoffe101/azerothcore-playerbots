@@ -430,4 +430,28 @@ Current client layout-safety work:
 - Recommended Activities gains bounded title/meta/reason/readiness areas and a reserved right-side action column;
 - the TypeScript source and checked-in `GroupComposerModernUI.lua` contain the same geometry changes.
 
-This pass still requires exact-head CI and real-client screenshot/runtime acceptance before its visual rows become PASS.
+This pass is exact-head CI green at `c9690919ab40c8d40c3af20fdb2e5847ca59bbf3`. Real-client screenshot/runtime acceptance is still required before the visual acceptance rows become PASS.
+
+
+### Current WoWSims request-construction slice
+
+The next bounded slice constructs a real baseline RaidSimRequest from the authoritative worldserver snapshot without running the simulator yet.
+
+Implemented in the current candidate:
+- new `POST /v1/snapshot/request` endpoint;
+- validates the snapshot/model route, loads one exact harvested preset and verifies its canonical SHA-256;
+- preserves preset-owned rotation/APL, spec options, consumes, individual/party/raid buffs, debuffs, encounter and sim options;
+- overlays server-owned name, race, class, exact 17-slot gear, permanent enchant effect IDs, gem item IDs, talent string and professions;
+- WotLK glyph spell IDs are translated to WoWSims glyph item IDs using the pinned engine's own `assets/db_inputs/glyph_id_map.json`;
+- Vanilla rejects Blood Elf/Draenei and pre-WotLK rejects Death Knight;
+- profession availability is era-gated;
+- Classic/TBC random suffixes map only from AzerothCore's negative random-property ID convention; positive random-property IDs fail closed instead of being guessed;
+- routes with multiple engine-native preset candidates require explicit `presetSha256` instead of arbitrary selection;
+- returned status is `REQUEST_BUILT_UNVALIDATED`. It does not run WoWSims and does not grant SIM-BACKED authority;
+- `.wowsims request` provides an in-game diagnostic for single-preset routes.
+
+Known follow-up:
+- select/validate canonical presets for ambiguous routes;
+- validate meta-gem activation semantics where needed;
+- add candidate-slot mutation and prove baseline/candidate differ only in the intended slot;
+- move actual simulator execution/result delivery to the asynchronous queue path.

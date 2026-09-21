@@ -1,6 +1,6 @@
 # Client Addon Bundle
 
-_Status: bundle foundation is green; GearAdvisor v0.3.1 / Group Composer layout-safety follow-up is in exact-head local-CI validation; in-game acceptance still TODO._
+_Status: GearAdvisor v0.3.1 / Group Composer layout-safety source contracts are exact-head green at `c9690919`; real-client visual acceptance is still TODO._
 
 ## Distribution model
 
