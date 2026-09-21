@@ -1,5 +1,6 @@
 #include "WoWSimsService.h"
 
+#include "Bag.h"
 #include "Config.h"
 #include "DBCStores.h"
 #include "EraPolicy.h"
@@ -167,15 +168,37 @@ std::string BuildTalentString(Player* player)
     return out.str();
 }
 
-json BuildGear(Player* player)
+json BuildItemState(Item* item)
 {
-    json gear = json::array();
     static constexpr std::array<EnchantmentSlot, 3> socketSlots = {
         SOCK_ENCHANTMENT_SLOT,
         SOCK_ENCHANTMENT_SLOT_2,
         SOCK_ENCHANTMENT_SLOT_3,
     };
 
+    json gems = json::array();
+    for (EnchantmentSlot socket : socketSlots)
+    {
+        uint32 const enchantId = item->GetEnchantmentId(socket);
+        uint32 gemId = 0;
+        if (enchantId)
+            if (SpellItemEnchantmentEntry const* enchant = sSpellItemEnchantmentStore.LookupEntry(enchantId))
+                gemId = enchant->GemID;
+        gems.push_back(gemId);
+    }
+
+    return {
+        { "id", item->GetEntry() },
+        { "enchant", item->GetEnchantmentId(PERM_ENCHANTMENT_SLOT) },
+        { "gems", std::move(gems) },
+        { "randomPropertyId", item->GetItemRandomPropertyId() },
+        { "suffixFactor", item->GetItemSuffixFactor() },
+    };
+}
+
+json BuildGear(Player* player)
+{
+    json gear = json::array();
     for (GearSlot const& descriptor : kGearSlots)
     {
         Item* item = player->GetItemByPos(INVENTORY_SLOT_BAG_0, descriptor.slot);
@@ -185,27 +208,104 @@ json BuildGear(Player* player)
             continue;
         }
 
-        json gems = json::array();
-        for (EnchantmentSlot socket : socketSlots)
-        {
-            uint32 const enchantId = item->GetEnchantmentId(socket);
-            uint32 gemId = 0;
-            if (enchantId)
-                if (SpellItemEnchantmentEntry const* enchant = sSpellItemEnchantmentStore.LookupEntry(enchantId))
-                    gemId = enchant->GemID;
-            gems.push_back(gemId);
-        }
-
-        gear.push_back({
-            { "slot", descriptor.name },
-            { "id", item->GetEntry() },
-            { "enchant", item->GetEnchantmentId(PERM_ENCHANTMENT_SLOT) },
-            { "gems", std::move(gems) },
-            { "randomPropertyId", item->GetItemRandomPropertyId() },
-            { "suffixFactor", item->GetItemSuffixFactor() },
-        });
+        json state = BuildItemState(item);
+        state["slot"] = descriptor.name;
+        gear.push_back(std::move(state));
     }
     return gear;
+}
+
+bool CandidateWouldChangeSecondSlot(Player* player, Item* item, uint8 equipmentSlot)
+{
+    if (!player || !item || equipmentSlot != EQUIPMENT_SLOT_MAINHAND)
+        return false;
+
+    ItemTemplate const* proto = item->GetTemplate();
+    if (!proto || proto->InventoryType != INVTYPE_2HWEAPON)
+        return false;
+    if (!player->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND))
+        return false;
+
+    return !player->CanTitanGrip() ||
+        proto->SubClass == ITEM_SUBCLASS_WEAPON_POLEARM ||
+        proto->SubClass == ITEM_SUBCLASS_WEAPON_STAFF ||
+        proto->SubClass == ITEM_SUBCLASS_WEAPON_FISHING_POLE;
+}
+
+json BuildBagCandidates(Player* player)
+{
+    json candidates = json::array();
+    uint32 scanned = 0;
+    uint32 eraBlocked = 0;
+    uint32 noEquipSlot = 0;
+    uint32 multiSlotBlocked = 0;
+
+    auto inspect = [&](Item* item, uint8 bag, uint8 slot)
+    {
+        if (!item)
+            return;
+
+        ++scanned;
+        if (!EraPolicy::IsItemAllowed(item->GetEntry()))
+        {
+            ++eraBlocked;
+            return;
+        }
+
+        json slotIndexes = json::array();
+        for (std::size_t index = 0; index < kGearSlots.size(); ++index)
+        {
+            GearSlot const& descriptor = kGearSlots[index];
+            uint16 dest = 0;
+            if (player->CanEquipItem(descriptor.slot, dest, item, true, false) != EQUIP_ERR_OK)
+                continue;
+            if (uint8(dest & 0xFF) != descriptor.slot)
+                continue;
+            if (CandidateWouldChangeSecondSlot(player, item, descriptor.slot))
+            {
+                ++multiSlotBlocked;
+                continue;
+            }
+            slotIndexes.push_back(index);
+        }
+
+        if (slotIndexes.empty())
+        {
+            ++noEquipSlot;
+            return;
+        }
+
+        candidates.push_back({
+            { "bag", bag },
+            { "slot", slot },
+            { "item", BuildItemState(item) },
+            { "slotIndexes", std::move(slotIndexes) },
+        });
+    };
+
+    for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
+        inspect(player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot), INVENTORY_SLOT_BAG_0, slot);
+
+    for (uint8 bagSlot = INVENTORY_SLOT_BAG_START; bagSlot < INVENTORY_SLOT_BAG_END; ++bagSlot)
+    {
+        Bag* bag = player->GetBagByPos(bagSlot);
+        if (!bag)
+            continue;
+        for (uint8 slot = 0; slot < bag->GetBagSize(); ++slot)
+            inspect(bag->GetItemByPos(slot), bagSlot, slot);
+    }
+
+    return {
+        { "schema", 1 },
+        { "era", EraPolicy::Token(EraPolicy::CurrentRealmEra()) },
+        { "candidates", std::move(candidates) },
+        { "scan", {
+            { "items", scanned },
+            { "eraBlocked", eraBlocked },
+            { "noEquipSlot", noEquipSlot },
+            { "multiSlotBlocked", multiSlotBlocked },
+        } },
+    };
 }
 
 json BuildGlyphs(Player* player)
@@ -350,6 +450,92 @@ std::string BuildCharacterSnapshot(Player* player)
 
     return snapshot.dump();
 }
+
+
+std::string BuildBagCandidateSnapshot(Player* player)
+{
+    if (!player)
+        return "{}";
+    if (!EraPolicy::ItemProvenanceReady())
+    {
+        return json({
+            { "schema", 1 },
+            { "era", EraPolicy::Token(EraPolicy::CurrentRealmEra()) },
+            { "error", std::string("item provenance unavailable: ") + EraPolicy::ItemProvenanceError() },
+            { "candidates", json::array() },
+        }).dump();
+    }
+    return BuildBagCandidates(player).dump();
+}
+
+
+bool BuildBagCandidateManifest(Player* player, std::string& summary, std::string& error)
+{
+    if (!player)
+    {
+        error = "player is unavailable";
+        return false;
+    }
+    if (!EraPolicy::ItemProvenanceReady())
+    {
+        error = std::string("item provenance unavailable: ") + EraPolicy::ItemProvenanceError();
+        return false;
+    }
+
+    json snapshot;
+    json bagCandidates;
+    try
+    {
+        snapshot = json::parse(BuildCharacterSnapshot(player));
+        bagCandidates = json::parse(BuildBagCandidateSnapshot(player));
+    }
+    catch (std::exception const& ex)
+    {
+        error = std::string("failed to build authoritative bag candidate input: ") + ex.what();
+        return false;
+    }
+
+    json const body = {
+        { "snapshot", std::move(snapshot) },
+        { "candidates", bagCandidates.value("candidates", json::array()) },
+    };
+    std::string const baseUrl =
+        sConfigMgr->GetOption<std::string>("RaidRoster.WoWSimsUrl", "http://ac-wowsims:8092");
+    uint32 const timeout =
+        std::max<uint32>(1, sConfigMgr->GetOption<uint32>("RaidRoster.WoWSimsTimeoutSeconds", 5));
+
+    std::string response;
+    if (!PostJson(baseUrl, "/v1/snapshot/bag-candidates", body.dump(), timeout, response, error))
+        return false;
+
+    try
+    {
+        json const parsed = json::parse(response);
+        if (parsed.value("status", std::string()) != "BAG_CANDIDATES_BUILT_UNVALIDATED")
+        {
+            error = parsed.value("error", std::string("service did not build an unvalidated bag candidate manifest"));
+            return false;
+        }
+
+        json const scan = bagCandidates.value("scan", json::object());
+        summary =
+            "era=" + parsed.value("era", std::string("UNKNOWN")) +
+            ", candidates=" + std::to_string(parsed.value("candidateCount", 0u)) +
+            ", swaps=" + std::to_string(parsed.value("swapCount", 0u)) +
+            ", no-change=" + std::to_string(parsed.value("skippedCount", 0u)) +
+            ", scanned=" + std::to_string(scan.value("items", 0u)) +
+            ", era-blocked=" + std::to_string(scan.value("eraBlocked", 0u)) +
+            ", multi-slot-blocked=" + std::to_string(scan.value("multiSlotBlocked", 0u)) +
+            ", status=BAG_CANDIDATES_BUILT_UNVALIDATED";
+        return true;
+    }
+    catch (std::exception const& ex)
+    {
+        error = std::string("invalid bag-candidate response: ") + ex.what();
+        return false;
+    }
+}
+
 
 
 bool BuildBaselineRequest(Player* player, std::string& summary, std::string& error)

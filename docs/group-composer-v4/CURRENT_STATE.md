@@ -478,3 +478,20 @@ The next exact-head candidate:
 - footer wording changes from “Sim-backed upgrades” to “WoWSims upgrade authority” until automatic result transport is truly live.
 
 Future “Sim Bags” candidate capture should stay server-authoritative: read the actual bag `Item` objects in worldserver and derive candidate state there rather than trusting client-parsed enchant/gem/suffix data.
+
+
+### Server-authoritative Sim Bags candidate enumeration
+
+Current bounded slice: **IMPLEMENTED / exact-head local CI required**.
+
+- `8d3ff2be...` is fully green and is the prerequisite candidate-isolation checkpoint.
+- worldserver scans the player's actual backpack and equipped bag contents, not addon-exported item strings;
+- every item is filtered through central ERA-07 item provenance and `EraPolicy::IsItemAllowed`;
+- each candidate is tested through AzerothCore `Player::CanEquipItem` against the exact 17 WoWSims equipment slots while ignoring temporary combat/death restrictions;
+- swaps that would secretly mutate a second slot, notably a non-Titan-Grip 2H main-hand swap that clears an occupied offhand, are excluded from this one-slot pipeline;
+- the service endpoint `POST /v1/snapshot/bag-candidates` reuses one authoritative baseline request, validates every proposed slot mutation through the same candidate isolation guard, and returns request fingerprints/counts rather than sim results;
+- exact no-op swaps are skipped rather than treated as errors;
+- `.wowsims bags` exposes the manifest boundary in game for diagnostics;
+- status remains `BAG_CANDIDATES_BUILT_UNVALIDATED`. No `wowsimcli` execution occurs.
+
+Next after this slice is green: canonical preset selection for ambiguous routes, then asynchronous compare execution/result transport. Automatic addon-triggered simulation remains intentionally disabled until those boundaries are proven.

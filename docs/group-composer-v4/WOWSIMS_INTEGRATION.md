@@ -296,3 +296,22 @@ Output status is `CANDIDATE_REQUEST_BUILT_UNVALIDATED`. This endpoint does **not
 WotLK random-property state is explicitly rejected because the pinned WotLK `ItemSpec` has no random suffix/property field. Classic/TBC continue to accept only AzerothCore negative random-property IDs as suffix IDs.
 
 For the eventual player-facing “Sim Bags” flow, candidate state should be captured from server-owned `Item` objects. The addon should request a scan/action; it should not be the authority for candidate enchant/gem/suffix state.
+
+
+## Server-authoritative Sim Bags manifest
+
+The client is not trusted to describe candidate item state. The worldserver now owns candidate discovery:
+
+1. scan backpack and equipped bags;
+2. require central item provenance to be ready;
+3. reject items not allowed by the live era;
+4. ask AzerothCore whether each real Item instance can equip into each canonical WoWSims slot;
+5. exclude swaps that would alter a second slot outside the current one-slot request contract;
+6. send candidate item state + allowed slot indexes to `POST /v1/snapshot/bag-candidates`;
+7. build every swap from the same authoritative baseline;
+8. reuse the exact candidate structural-diff guard;
+9. return canonical SHA-256 fingerprints and counts only.
+
+The endpoint returns `BAG_CANDIDATES_BUILT_UNVALIDATED`. It does not invoke `wowsimcli` and cannot produce SIM-BACKED authority.
+
+This makes the future GearAdvisor "Sim Bags" action a request to the server, not a client-side item-parser authority. The next architecture gate is preset disambiguation followed by an asynchronous simulation queue whose completion is drained back onto the world thread.

@@ -3,6 +3,21 @@
 Newest entries belong at the top of the dated section.
 
 
+## 2026-09-21 — Candidate isolation green + server-authoritative Sim Bags manifest
+
+Prerequisite SHA `8d3ff2bea0f73092aeecac9653ae767cbc58a568`: **DONE + exact-head local-CI green** on all four required workflows.
+
+Current slice: **IMPLEMENTED / exact-head local CI required**.
+- scans real server-owned bag Item objects;
+- ERA-07 provenance must be ready and each item must be allowed in the live era;
+- AzerothCore equip rules determine actual replacement slots;
+- one-slot pipeline rejects hidden second-slot side effects;
+- new `/v1/snapshot/bag-candidates` validates all proposed swaps from one baseline and returns canonical request fingerprints;
+- no-op swaps are skipped;
+- `.wowsims bags` provides a diagnostic count summary;
+- no simulator process is launched in this slice.
+
+
 ## 2026-09-21 — Baseline request green; candidate isolation + GearAdvisor v0.3.2
 
 Baseline SHA `f3e17eb7dec14e5dcb272c77c981bef798aa320d`: **DONE + exact-head local-CI green**.

@@ -157,3 +157,12 @@ Only build these if testing shows they add real value:
 - richer per-clear analytics;
 - safe quest-giver/location breadcrumbs where authoritative metadata supports them;
 - recommendation weighting refinements based on actual recommendations seen in game.
+
+
+### WoWSims immediate lane
+
+- DONE + exact-head green: candidate isolation / GearAdvisor v0.3.2 at `8d3ff2be`.
+- CURRENT / local CI: server-authoritative Sim Bags candidate enumeration and service-side manifest/fingerprint validation.
+- NEXT: resolve canonical preset policy for routes with multiple harvested presets.
+- NEXT: asynchronous baseline/candidate simulation queue off the world thread.
+- NEXT: return confidence/result/explanation to GearAdvisor and wire explicit Sim Bags UI action.

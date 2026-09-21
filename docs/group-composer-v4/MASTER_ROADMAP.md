@@ -390,3 +390,10 @@ Runtime evidence beats this ordering. A blocker discovered while testing may jum
 - automatic simulation remains disabled at this boundary;
 - server-authoritative bag enumeration is the intended source for future “Sim Bags” candidate state;
 - GearAdvisor v0.3.2 fixes the key-stat label/value row alignment before runtime visual acceptance.
+
+
+### 2026-09-21 WoWSims Sim Bags manifest slice
+- candidate-isolation prerequisite `8d3ff2be` is exact-head green;
+- current slice moves bag-candidate discovery to authoritative worldserver Item objects;
+- service validates one-slot swap manifests and fingerprints without sim execution;
+- ambiguous preset resolution + async execution remain the next WoWSims milestones.

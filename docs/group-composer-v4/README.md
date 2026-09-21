@@ -165,3 +165,13 @@ The next candidate keeps simulation disabled and adds:
 - recursive proof that no request data outside that slot changed;
 - fail-closed handling for no-op swaps, invalid slots and unrepresentable WotLK random-property state;
 - GearAdvisor v0.3.2 key-stat row alignment repair.
+
+### Candidate-isolation checkpoint
+
+Exact SHA `8d3ff2bea0f73092aeecac9653ae767cbc58a568` is fully exact-head local-CI green:
+- Group Composer client checks: SUCCESS;
+- Stage Group Composer V4 backend: SUCCESS;
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`;
+- Integration build: SUCCESS on `stoffes-pc`.
+
+This locks one-slot candidate request isolation, WotLK random-property fail-closed behavior and GearAdvisor v0.3.2 row alignment at the source/CI level. Real-client visual acceptance remains TODO.

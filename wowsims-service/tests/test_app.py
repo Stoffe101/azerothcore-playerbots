@@ -459,6 +459,77 @@ class AppTests(unittest.TestCase):
                     {},
                 )
 
+    def test_bag_candidate_manifest_reuses_one_baseline_and_fingerprints_swaps(self):
+        snapshot = self._snapshot()
+        preset = self._wotlk_preset()
+        candidates = [
+            {
+                "bag": 0,
+                "slot": 23,
+                "item": {
+                    "id": 40562,
+                    "enchant": 3819,
+                    "gems": [41398, 40058, 0],
+                    "randomPropertyId": 0,
+                    "suffixFactor": 0,
+                },
+                "slotIndexes": [0, 1],
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [preset])
+            out = app.build_bag_candidate_manifest(
+                snapshot,
+                candidates,
+                app.load_model_support(manifest=MANIFEST),
+                catalog,
+                {},
+            )
+
+        self.assertEqual(out["status"], "BAG_CANDIDATES_BUILT_UNVALIDATED")
+        self.assertEqual(out["candidateCount"], 1)
+        self.assertEqual(out["swapCount"], 2)
+        self.assertEqual(out["skippedCount"], 0)
+        self.assertEqual(len(out["baselineFingerprint"]), 64)
+        self.assertEqual(len(out["swaps"][0]["candidateFingerprint"]), 64)
+        self.assertNotEqual(
+            out["baselineFingerprint"],
+            out["swaps"][0]["candidateFingerprint"],
+        )
+        self.assertTrue(
+            all(
+                path == "raid.parties.0.players.0.equipment.items.0"
+                or path.startswith("raid.parties.0.players.0.equipment.items.0.")
+                for path in out["swaps"][0]["changedPaths"]
+            )
+        )
+
+    def test_bag_candidate_manifest_skips_noop_and_rejects_duplicate_slots(self):
+        snapshot = self._snapshot()
+        preset = self._wotlk_preset()
+        current = dict(snapshot["character"]["gear"][0])
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [preset])
+            out = app.build_bag_candidate_manifest(
+                snapshot,
+                [{"bag": 0, "slot": 23, "item": current, "slotIndexes": [0]}],
+                app.load_model_support(manifest=MANIFEST),
+                catalog,
+                {},
+            )
+            self.assertEqual(out["swapCount"], 0)
+            self.assertEqual(out["skippedCount"], 1)
+            self.assertEqual(out["skipped"][0]["reason"], "NO_CHANGE")
+
+            with self.assertRaisesRegex(app.ServiceError, "must not contain duplicates"):
+                app.build_bag_candidate_manifest(
+                    snapshot,
+                    [{"bag": 0, "slot": 23, "item": current, "slotIndexes": [0, 0]}],
+                    app.load_model_support(manifest=MANIFEST),
+                    catalog,
+                    {},
+                )
+
     def test_wotlk_random_property_state_fails_closed(self):
         snapshot = self._snapshot()
         snapshot["character"]["gear"][0]["randomPropertyId"] = -1979

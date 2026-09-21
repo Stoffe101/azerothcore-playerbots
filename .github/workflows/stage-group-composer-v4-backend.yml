@@ -63,6 +63,9 @@ jobs:
           grep -q '/v1/snapshot/request' wowsims-service/app.py
           grep -q '/v1/snapshot/candidate-request' wowsims-service/app.py
           grep -q 'CANDIDATE_REQUEST_BUILT_UNVALIDATED' wowsims-service/app.py
+          grep -q '/v1/snapshot/bag-candidates' wowsims-service/app.py
+          grep -q 'BAG_CANDIDATES_BUILT_UNVALIDATED' wowsims-service/app.py
+          grep -q 'baselineFingerprint' wowsims-service/app.py
           grep -q 'candidate mutation changed data outside the intended equipment slot' wowsims-service/app.py
           grep -q 'REQUEST_BUILT_UNVALIDATED' wowsims-service/app.py
           grep -q 'WOWSIMS_REQUIRE_GLYPH_MAP=1' wowsims-service/Dockerfile
@@ -79,6 +82,10 @@ jobs:
           grep -q 'BuildCharacterSnapshot' modules/mod-raid-roster/src/WoWSimsService.cpp
           grep -q 'BuildBaselineRequest' modules/mod-raid-roster/src/WoWSimsService.cpp
           grep -q '"request", HandleRequest' modules/mod-raid-roster/src/WoWSimsCommand.cpp
+          grep -q 'BuildBagCandidateManifest' modules/mod-raid-roster/src/WoWSimsService.cpp
+          grep -q 'CandidateWouldChangeSecondSlot' modules/mod-raid-roster/src/WoWSimsService.cpp
+          grep -q 'EraPolicy::IsItemAllowed' modules/mod-raid-roster/src/WoWSimsService.cpp
+          grep -q '"bags", HandleBags' modules/mod-raid-roster/src/WoWSimsCommand.cpp
           grep -q 'SOCK_ENCHANTMENT_SLOT_3' modules/mod-raid-roster/src/WoWSimsService.cpp
           grep -q 'sSpellItemEnchantmentStore' modules/mod-raid-roster/src/WoWSimsService.cpp
           grep -q 'BuildTalentString' modules/mod-raid-roster/src/WoWSimsService.cpp

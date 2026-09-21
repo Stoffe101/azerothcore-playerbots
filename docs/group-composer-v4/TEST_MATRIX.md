@@ -374,3 +374,18 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - STATIC: GearAdvisor v0.3.2 anchors both key-stat labels and values at `-370 - (i - 1) * 18`.
 - TODO runtime: verify all seven key-stat rows visually align on 3.3.5a at normal/narrow UI scale.
 - TODO next: server-authoritative inventory enumeration must feed candidate objects without trusting client-exported item state.
+
+
+### Server-authoritative Sim Bags candidate manifest
+
+- STATIC: worldserver inventory scan covers backpack and equipped bag containers.
+- STATIC: candidates pass `EraPolicy::IsItemAllowed` and require item-provenance readiness.
+- STATIC: candidate replacement slots are resolved with `Player::CanEquipItem`, not client inventory-type guesses.
+- STATIC: second-slot-changing 2H main-hand swaps are excluded from the one-slot candidate path.
+- UNIT: bag manifest reuses one baseline request and returns a 64-char canonical baseline fingerprint.
+- UNIT: each accepted swap receives a canonical candidate fingerprint and remains isolated to its declared equipment slot.
+- UNIT: exact no-op swaps are reported as `NO_CHANGE` skips.
+- UNIT: duplicate/invalid slot-index lists fail closed.
+- STATIC: `.wowsims bags` calls the private bag-candidate endpoint and does not simulate.
+- TODO runtime: run `.wowsims bags` with rings, trinkets, 1H/2H weapons and era-blocked items in bags and inspect candidate/swap counters.
+- TODO runtime: verify non-Titan-Grip 2H + occupied offhand is counted as multi-slot-blocked.

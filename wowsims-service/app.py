@@ -598,30 +598,20 @@ def _difference_paths(left: Any, right: Any, path: str = "") -> list[str]:
     return [] if left == right else [path or "$"]
 
 
-def build_candidate_request(
-    snapshot: dict[str, Any],
+def _candidate_request_from_baseline(
+    baseline: dict[str, Any],
     candidate: dict[str, Any],
     slot_index: int,
-    model_support: dict[str, Any],
-    preset_catalog: dict[str, Any],
-    glyph_spell_map: dict[int, int],
     *,
-    preset_sha256: str | None = None,
+    label: str = "candidate",
 ) -> dict[str, Any]:
     if isinstance(slot_index, bool) or not isinstance(slot_index, int) or not 0 <= slot_index < 17:
         raise ServiceError("slotIndex must be an integer from 0 through 16")
     if not isinstance(candidate, dict):
-        raise ServiceError("candidate must be an item object")
+        raise ServiceError(f"{label} must be an item object")
 
-    baseline = build_baseline_request(
-        snapshot,
-        model_support,
-        preset_catalog,
-        glyph_spell_map,
-        preset_sha256=preset_sha256,
-    )
     era = baseline["era"]
-    candidate_item = _item_spec_from_snapshot(era, candidate, "candidate")
+    candidate_item = _item_spec_from_snapshot(era, candidate, label)
 
     candidate_request = copy.deepcopy(baseline["request"])
     player = _request_player(candidate_request)
@@ -645,18 +635,130 @@ def build_candidate_request(
             "candidate mutation changed data outside the intended equipment slot",
             HTTPStatus.INTERNAL_SERVER_ERROR,
         )
+    return {
+        "slotIndex": slot_index,
+        "changedPaths": diff_paths,
+        "candidateRequest": candidate_request,
+    }
+
+
+def build_candidate_request(
+    snapshot: dict[str, Any],
+    candidate: dict[str, Any],
+    slot_index: int,
+    model_support: dict[str, Any],
+    preset_catalog: dict[str, Any],
+    glyph_spell_map: dict[int, int],
+    *,
+    preset_sha256: str | None = None,
+) -> dict[str, Any]:
+    baseline = build_baseline_request(
+        snapshot,
+        model_support,
+        preset_catalog,
+        glyph_spell_map,
+        preset_sha256=preset_sha256,
+    )
+    built = _candidate_request_from_baseline(baseline, candidate, slot_index)
 
     return {
         "schema": SCHEMA_VERSION,
         "status": "CANDIDATE_REQUEST_BUILT_UNVALIDATED",
-        "era": era,
+        "era": baseline["era"],
         "routeKey": baseline["routeKey"],
         "support": baseline["support"],
         "preset": baseline["preset"],
-        "slotIndex": slot_index,
-        "changedPaths": diff_paths,
+        "slotIndex": built["slotIndex"],
+        "changedPaths": built["changedPaths"],
         "baselineRequest": baseline["request"],
-        "candidateRequest": candidate_request,
+        "candidateRequest": built["candidateRequest"],
+    }
+
+
+def build_bag_candidate_manifest(
+    snapshot: dict[str, Any],
+    candidates: list[Any],
+    model_support: dict[str, Any],
+    preset_catalog: dict[str, Any],
+    glyph_spell_map: dict[int, int],
+    *,
+    preset_sha256: str | None = None,
+) -> dict[str, Any]:
+    if not isinstance(candidates, list):
+        raise ServiceError("candidates must be an array")
+
+    baseline = build_baseline_request(
+        snapshot,
+        model_support,
+        preset_catalog,
+        glyph_spell_map,
+        preset_sha256=preset_sha256,
+    )
+    baseline_fingerprint = _canonical_request_sha256(baseline["request"])
+    swaps: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+
+    for index, entry in enumerate(candidates):
+        label = f"candidates[{index}]"
+        if not isinstance(entry, dict):
+            raise ServiceError(f"{label} must be an object")
+        bag = _require_int(entry.get("bag"), f"{label}.bag")
+        slot = _require_int(entry.get("slot"), f"{label}.slot")
+        item = entry.get("item")
+        if not isinstance(item, dict):
+            raise ServiceError(f"{label}.item must be an object")
+        slot_indexes = entry.get("slotIndexes")
+        if (
+            not isinstance(slot_indexes, list)
+            or not slot_indexes
+            or any(isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < 17 for value in slot_indexes)
+        ):
+            raise ServiceError(f"{label}.slotIndexes must contain WoWSims slot indexes 0-16")
+        if len(set(slot_indexes)) != len(slot_indexes):
+            raise ServiceError(f"{label}.slotIndexes must not contain duplicates")
+
+        for slot_index in slot_indexes:
+            try:
+                built = _candidate_request_from_baseline(
+                    baseline,
+                    item,
+                    slot_index,
+                    label=f"{label}.item",
+                )
+            except ServiceError as exc:
+                if str(exc) == "candidate produces no request change":
+                    skipped.append({
+                        "bag": bag,
+                        "slot": slot,
+                        "itemId": item.get("id"),
+                        "slotIndex": slot_index,
+                        "reason": "NO_CHANGE",
+                    })
+                    continue
+                raise
+
+            swaps.append({
+                "bag": bag,
+                "slot": slot,
+                "itemId": item.get("id"),
+                "slotIndex": slot_index,
+                "changedPaths": built["changedPaths"],
+                "candidateFingerprint": _canonical_request_sha256(built["candidateRequest"]),
+            })
+
+    return {
+        "schema": SCHEMA_VERSION,
+        "status": "BAG_CANDIDATES_BUILT_UNVALIDATED",
+        "era": baseline["era"],
+        "routeKey": baseline["routeKey"],
+        "support": baseline["support"],
+        "preset": baseline["preset"],
+        "baselineFingerprint": baseline_fingerprint,
+        "candidateCount": len(candidates),
+        "swapCount": len(swaps),
+        "skippedCount": len(skipped),
+        "swaps": swaps,
+        "skipped": skipped,
     }
 
 
@@ -895,6 +997,22 @@ class SimRunner:
             preset_sha256=preset_sha256,
         )
 
+    def build_bag_candidate_manifest(
+        self,
+        snapshot: dict[str, Any],
+        candidates: list[Any],
+        *,
+        preset_sha256: str | None = None,
+    ) -> dict[str, Any]:
+        return build_bag_candidate_manifest(
+            snapshot,
+            candidates,
+            self.model_support,
+            self.preset_catalog,
+            self.glyph_spell_map,
+            preset_sha256=preset_sha256,
+        )
+
     def simulate(self, era: str, request: dict[str, Any]) -> dict[str, Any]:
         era = normalize_era(era)
         if not isinstance(request, dict):
@@ -1108,6 +1226,25 @@ class ApiHandler(BaseHTTPRequestHandler):
                     snapshot,
                     candidate,
                     slot_index,
+                    preset_sha256=preset_sha256,
+                )
+                response["engine"] = self.runner.engine_info(response["era"])
+                self._send_json(HTTPStatus.OK, response)
+                return
+
+            if self.path == "/v1/snapshot/bag-candidates":
+                snapshot = payload.get("snapshot")
+                candidates = payload.get("candidates")
+                if not isinstance(snapshot, dict):
+                    raise ServiceError("snapshot must be an object")
+                if not isinstance(candidates, list):
+                    raise ServiceError("candidates must be an array")
+                preset_sha256 = payload.get("presetSha256")
+                if preset_sha256 is not None and not isinstance(preset_sha256, str):
+                    raise ServiceError("presetSha256 must be a string")
+                response = self.runner.build_bag_candidate_manifest(
+                    snapshot,
+                    candidates,
                     preset_sha256=preset_sha256,
                 )
                 response["engine"] = self.runner.engine_info(response["era"])

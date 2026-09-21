@@ -12,6 +12,7 @@ public:
     Acore::ChatCommands::ChatCommandTable GetCommands() const override;
 
     static bool HandleSnapshot(ChatHandler* handler);
+    static bool HandleBags(ChatHandler* handler);
     static bool HandleRequest(ChatHandler* handler);
     static bool HandleValidate(ChatHandler* handler);
 };
