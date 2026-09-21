@@ -201,7 +201,7 @@ void RunProfessionSession(GuildSnapshot const& guild)
 
         if (IsCrafter(bot))
         {
-            acted |= DoAction(bot, "craft random item");
+            acted |= PBAIGuildServices::TryCraftAllowedFromBot(bot);
             acted |= DoAction(bot, "rpg trade useful");
         }
         if (IsGatherer(bot))

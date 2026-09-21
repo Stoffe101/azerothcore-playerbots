@@ -1,5 +1,6 @@
 #include "ArenaRosterGear.h"
 #include "DatabaseEnv.h"
+#include "EraPolicy.h"
 #include "QueryResult.h"
 #include "Field.h"
 #include "ItemTemplate.h"
@@ -101,7 +102,7 @@ std::vector<uint32> CandidatesFor(Player* bot, uint32 invType, ArenaSeason seaso
     for (uint32 entry : RawCandidatesFor(invType, season))
     {
         ItemTemplate const* proto = sObjectMgr->GetItemTemplate(entry);
-        if (!proto)
+        if (!proto || !EraPolicy::IsItemAllowed(entry))
             continue;
         if (!(proto->AllowableClass & classMask))
             continue;
@@ -143,7 +144,7 @@ std::vector<uint32> TrinketCandidatesFor(Player* bot, ArenaSeason season)
     for (uint32 entry : it->second)
     {
         ItemTemplate const* proto = sObjectMgr->GetItemTemplate(entry);
-        if (proto && bot->CanUseItem(proto) == EQUIP_ERR_OK)
+        if (proto && EraPolicy::IsItemAllowed(entry) && bot->CanUseItem(proto) == EQUIP_ERR_OK)
             out.push_back(entry);
     }
     return out;
@@ -155,6 +156,9 @@ std::vector<uint32> TrinketCandidatesFor(Player* bot, ArenaSeason season)
 // (PlayerbotFactory::CanEquipUnseenItem + EquipNewItem is the same idiom, hand-rolled.)
 bool EquipEntry(Player* bot, uint32 entry)
 {
+    if (!EraPolicy::ItemProvenanceReady() || !EraPolicy::IsItemAllowed(entry))
+        return false;
+
     uint16 dest = 0;
     if (bot->CanEquipNewItem(NULL_SLOT, dest, entry, false) != EQUIP_ERR_OK)
         return false;
@@ -192,6 +196,13 @@ bool EquipSeason(Player* bot, uint8_t specTab, ArenaSeason season)
 {
     if (!bot)
         return false;
+    if (!EraPolicy::ItemProvenanceReady())
+    {
+        LOG_WARN("playerbots",
+            "[ArenaRoster] Not gearing {}: central item chronology is unavailable; existing gear was preserved.",
+            bot->GetName());
+        return false;
+    }
     // Gate BEFORE the strip, and at 80 (not 70): the ilvl >= 190 candidate floor means every
     // item this engine can produce requires level 80 — a lower gate would let a 70-79 bot get
     // fully stripped, then fail every equip probe and end up naked.

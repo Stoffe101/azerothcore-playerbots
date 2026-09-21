@@ -2,6 +2,7 @@
 
 #include "Creature.h"
 #include "DatabaseEnv.h"
+#include "EraPolicy.h"
 #include "Field.h"
 #include "GameObject.h"
 #include "Group.h"
@@ -187,29 +188,43 @@ bool HasItem(Loot const* loot, uint32 itemEntry)
     });
 }
 
-void AddRandomFromPool(Loot* loot, std::vector<uint32> const& pool, uint16 lootMode, char const* label)
+uint32 SelectRandomFromPool(Loot const* loot, std::vector<uint32> const& pool)
 {
-    if (!loot || pool.empty())
-        return;
+    if (!loot || pool.empty() || !EraPolicy::ItemProvenanceReady())
+        return 0;
 
     std::vector<uint32> candidates;
     candidates.reserve(pool.size());
     for (uint32 itemEntry : pool)
-        if (!HasItem(loot, itemEntry))
+        if (!HasItem(loot, itemEntry) && EraPolicy::IsItemAllowed(itemEntry))
             candidates.push_back(itemEntry);
 
     if (candidates.empty())
-        return;
+        return 0;
+
+    return candidates[urand(0, uint32(candidates.size() - 1))];
+}
+
+bool AddProtocolItem(Loot* loot, uint32 itemEntry, uint16 lootMode, char const* label)
+{
+    if (!loot || !itemEntry || !EraPolicy::ItemProvenanceReady() ||
+        !EraPolicy::IsItemAllowed(itemEntry) || HasItem(loot, itemEntry))
+        return false;
 
     if (loot->items.size() >= MAX_NR_LOOT_ITEMS)
     {
         LOG_WARN("server.loading", "[TitanRune] Loot window is full; could not add {} protocol reward.", label);
-        return;
+        return false;
     }
 
-    uint32 itemEntry = candidates[urand(0, uint32(candidates.size() - 1))];
     LootStoreItem protocolItem(itemEntry, 0, 100.0f, false, lootMode ? lootMode : LOOT_MODE_DEFAULT, 0, 1, 1);
     loot->AddItem(protocolItem);
+    return true;
+}
+
+bool AddRandomFromPool(Loot* loot, std::vector<uint32> const& pool, uint16 lootMode, char const* label)
+{
+    return AddProtocolItem(loot, SelectRandomFromPool(loot, pool), lootMode, label);
 }
 
 class TitanRuneLootWorldScript final : public WorldScript
@@ -251,23 +266,34 @@ public:
         if (itr == g_protocolLoot.end())
             return;
 
+        // This hook augments ordinary database loot. If chronology is unavailable, preserve that
+        // loot exactly as generated rather than deleting it or guessing from item metadata.
+        if (!EraPolicy::ItemProvenanceReady())
+            return;
+
         SourcePools const& pools = itr->second;
 
         // Alpha keeps normal Heroic loot and adds one Naxx/Sarth/Malygos-era reward, with a Tier 7
         // token on mapped final bosses. Beta and Gamma retain those Alpha additions, replace the
         // ordinary Heroic equipment with Ulduar-10-era gear, and add a Tier 8 token on mapped
         // final bosses. Currency rewards are handled by the death/reward scripts.
-        if ((mode == TitanRuneMode::Beta || mode == TitanRuneMode::Gamma) && !pools[POOL_BETA_GEAR].empty())
-            ReplaceBaselineHeroicEquipment(loot, lootOwner);
+        if (mode == TitanRuneMode::Beta || mode == TitanRuneMode::Gamma)
+        {
+            // Resolve an allowed replacement before removing ordinary Heroic equipment. UNKNOWN
+            // and future-era candidates therefore leave the original database loot untouched.
+            uint32 const betaGear = SelectRandomFromPool(loot, pools[POOL_BETA_GEAR]);
+            if (betaGear)
+            {
+                ReplaceBaselineHeroicEquipment(loot, lootOwner);
+                AddProtocolItem(loot, betaGear, lootMode, "Beta gear");
+            }
+        }
 
         AddRandomFromPool(loot, pools[POOL_ALPHA_GEAR], lootMode, "Alpha gear");
         AddRandomFromPool(loot, pools[POOL_ALPHA_TOKEN], lootMode, "Alpha token");
 
         if (mode == TitanRuneMode::Beta || mode == TitanRuneMode::Gamma)
-        {
-            AddRandomFromPool(loot, pools[POOL_BETA_GEAR], lootMode, "Beta gear");
             AddRandomFromPool(loot, pools[POOL_BETA_TOKEN], lootMode, "Beta token");
-        }
     }
 };
 }

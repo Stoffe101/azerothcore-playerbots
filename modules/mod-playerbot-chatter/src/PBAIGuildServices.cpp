@@ -613,9 +613,72 @@ bool RequestExists(uint32 guildId, uint32 itemId)
         guildId, itemId));
 }
 
+bool IsRecipeItemAllowedForSpell(uint32 spellId)
+{
+    if (!EraPolicy::ItemProvenanceReady())
+        return false;
+
+    static std::unordered_map<uint32, std::vector<uint32>> const recipeItemsBySpell = []
+    {
+        std::unordered_map<uint32, std::vector<uint32>> result;
+        for (auto const& [itemEntry, proto] : *sObjectMgr->GetItemTemplateStore())
+        {
+            if (proto.Class != ITEM_CLASS_RECIPE)
+                continue;
+
+            for (uint8 slot = 0; slot < MAX_ITEM_PROTO_SPELLS; ++slot)
+            {
+                if (proto.Spells[slot].SpellId <= 0 ||
+                    proto.Spells[slot].SpellTrigger != ITEM_SPELLTRIGGER_LEARN_SPELL_ID)
+                    continue;
+                result[uint32(proto.Spells[slot].SpellId)].push_back(itemEntry);
+            }
+        }
+        return result;
+    }();
+
+    // Trainer-taught recipes have no recipe item for central item provenance to classify. Their
+    // created item is still checked at this boundary. If recipe items do exist, fail closed unless
+    // at least one legal recipe item can teach the spell.
+    auto itr = recipeItemsBySpell.find(spellId);
+    if (itr == recipeItemsBySpell.end())
+        return true;
+    return std::any_of(itr->second.begin(), itr->second.end(), [](uint32 itemEntry)
+    {
+        return EraPolicy::IsItemAllowed(itemEntry);
+    });
+}
+
+bool IsCraftSpellAllowed(uint32 spellId, SpellInfo const* info, uint32 requestedItemId)
+{
+    if (!info || !EraPolicy::ItemProvenanceReady())
+        return false;
+
+    bool createsItem = false;
+    bool createsRequestedItem = requestedItemId == 0;
+    for (uint8 effect = 0; effect < MAX_SPELL_EFFECTS; ++effect)
+    {
+        // CREATE_ITEM_2 resolves its output from a runtime loot template. Central provenance
+        // cannot prove that result here, so AI Guild automation does not cast those spells.
+        if (info->Effects[effect].Effect == SPELL_EFFECT_CREATE_ITEM_2)
+            return false;
+        if (info->Effects[effect].Effect != SPELL_EFFECT_CREATE_ITEM)
+            continue;
+
+        createsItem = true;
+        uint32 const resultItemId = info->Effects[effect].ItemType;
+        if (!resultItemId || !EraPolicy::IsItemAllowed(resultItemId))
+            return false;
+        if (resultItemId == requestedItemId)
+            createsRequestedItem = true;
+    }
+
+    return createsItem && createsRequestedItem && IsRecipeItemAllowedForSpell(spellId);
+}
+
 bool FindCraftSpell(Player* bot, uint32 itemId, uint32& spellId)
 {
-    if (!bot || !itemId)
+    if (!bot || !itemId || !EraPolicy::ItemProvenanceReady() || !EraPolicy::IsItemAllowed(itemId))
         return false;
 
     for (PlayerSpellMap::const_iterator itr = bot->GetSpellMap().begin(); itr != bot->GetSpellMap().end(); ++itr)
@@ -624,17 +687,11 @@ bool FindCraftSpell(Player* bot, uint32 itemId, uint32& spellId)
             continue;
 
         SpellInfo const* info = sSpellMgr->GetSpellInfo(itr->first);
-        if (!info)
+        if (!IsCraftSpellAllowed(itr->first, info, itemId))
             continue;
 
-        for (uint8 effect = 0; effect < MAX_SPELL_EFFECTS; ++effect)
-        {
-            if (info->Effects[effect].Effect == SPELL_EFFECT_CREATE_ITEM && info->Effects[effect].ItemType == itemId)
-            {
-                spellId = itr->first;
-                return true;
-            }
-        }
+        spellId = itr->first;
+        return true;
     }
     return false;
 }
@@ -708,6 +765,8 @@ bool TryCraftQueuedFromBot(Player* bot)
 {
     if (!bot || !bot->GetGuildId() || bot->IsInCombat())
         return false;
+    if (!EraPolicy::ItemProvenanceReady())
+        return false;
 
     PlayerbotAI* ai = GET_PLAYERBOT_AI(bot);
     if (!ai)
@@ -724,6 +783,8 @@ bool TryCraftQueuedFromBot(Player* bot)
     do
     {
         uint32 const itemId = requests->Fetch()[0].Get<uint32>();
+        if (!EraPolicy::IsItemAllowed(itemId))
+            continue;
         uint32 spellId = 0;
         if (!FindCraftSpell(bot, itemId, spellId))
             continue;
@@ -736,6 +797,35 @@ bool TryCraftQueuedFromBot(Player* bot)
             bot->GetName(), spellId, itemId);
         return true;
     } while (requests->NextRow());
+    return false;
+}
+
+bool TryCraftAllowedFromBot(Player* bot)
+{
+    if (!bot || !bot->GetGuildId() || bot->IsInCombat() || !EraPolicy::ItemProvenanceReady())
+        return false;
+
+    PlayerbotAI* ai = GET_PLAYERBOT_AI(bot);
+    if (!ai)
+        return false;
+
+    for (PlayerSpellMap::const_iterator itr = bot->GetSpellMap().begin(); itr != bot->GetSpellMap().end(); ++itr)
+    {
+        if (!itr->second || itr->second->State == PLAYERSPELL_REMOVED || !itr->second->Active)
+            continue;
+
+        SpellInfo const* info = sSpellMgr->GetSpellInfo(itr->first);
+        if (!IsCraftSpellAllowed(itr->first, info, 0))
+            continue;
+        if (!ai->CanCastSpell(itr->first, bot, true))
+            continue;
+        if (!ai->CastSpell(itr->first, bot))
+            continue;
+
+        LOG_INFO("server.loading", "[AIGuildEconomy] {} started provenance-approved autonomous recipe {}.",
+            bot->GetName(), itr->first);
+        return true;
+    }
     return false;
 }
 
@@ -1017,7 +1107,8 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
         return true;
     }
 
-    if ((command == "!deposit" || command == "!withdraw" || command == "!mail" || command == "!buy") &&
+    if ((command == "!deposit" || command == "!withdraw" || command == "!mail" || command == "!buy" ||
+         command == "!craft") &&
         !CheckAutomatedItemPolicy(player, itemId, "Item service"))
         return true;
 
