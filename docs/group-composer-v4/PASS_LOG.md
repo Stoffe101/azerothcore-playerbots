@@ -2,6 +2,14 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — Preset repair syntax correction
+
+Candidate `4c79cd6e91596b2aed41e89173f725f54e9fe69e`: **FAILED / superseded**.
+- Stage backend stopped in focused checks before the real image build.
+- Cause: a repository-editing section replacement left a duplicated malformed `preset_catalog_summary` fragment in `wowsims-service/app.py`.
+- The policy changes were not evaluated by the real image in this SHA.
+- Repair removes only that malformed fragment and reruns exact-head CI.
+
 ## 2026-09-21 — Canonical preset real-image repair
 
 Candidate `4ba6b74d8eeef844c53398c6ab3f44a9d089b862`: **FAILED / superseded**.

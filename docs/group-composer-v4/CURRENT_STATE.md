@@ -531,3 +531,8 @@ Current repair policy:
 - health exposes selectable-route and dynamic-route counts, and real-image CI requires every harvested route to have an explicit selection policy.
 
 No simulator execution or SIM-BACKED promotion is part of this repair.
+
+
+### Preset-repair syntax checkpoint
+
+`4c79cd6e91596b2aed41e89173f725f54e9fe69e` is **FAILED / superseded**. Backend focused checks caught a malformed duplicate `preset_catalog_summary` fragment before any real-image policy evaluation. The next repair removes that fragment; the talent-variant/latest-phase policy itself still requires exact-head validation.

@@ -271,9 +271,6 @@ def load_preset_catalog(
     return catalog
 
 
-def preset_catalog_summary    return catalog
-
-
 def preset_catalog_summary(catalog: dict[str, Any]) -> dict[str, Any]:
     return {
         "schema": SCHEMA_VERSION,
