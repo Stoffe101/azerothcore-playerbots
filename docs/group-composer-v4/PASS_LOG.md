@@ -2,6 +2,30 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — Client addon bundle + GearAdvisor
+
+Status: **IMPLEMENTED; exact-head GitHub-hosted CI required**.
+
+Implemented:
+- added NoM0Re's actively maintained 3.3.5a WeakAuras backport, pinned to release `5.22.0-b3706bd4` and SHA-256 `83f62045...`;
+- explicitly rejected the ancient Bunny67 WeakAuras 4.0.0 fallback from the bundle;
+- added the maintained `5Buttons/Details-WotLK` damage/healing/threat meter pinned to exact commit `a2372618...`;
+- zip inputs can now be SHA-256-pinned and verified before extraction;
+- added local `GearAdvisor` addon beside the Character frame;
+- GearAdvisor detects class/talent tree, supports Feral Cat/Bear and DK DPS/Tank role variants, calculates equipped average ilvl, shows hard caps separately from stat priorities, and gives "need +X" guidance;
+- all ten WotLK classes / every talent tree have a profile;
+- realm-era baseline hit/defense targets follow Group Composer's server-reported era when available;
+- superseded `ExtendedCharacterStats` is skipped from the distributed pack so only GearAdvisor owns the character-side stat panel;
+- client CI now parses GearAdvisor under Lua 5.1 and asserts the exact Details/WeakAuras pins.
+
+Boundary:
+- GearAdvisor is guidance, not a simulator/BiS optimizer;
+- raid buffs, racials and encounter-specific gearing can change practical hit/haste targets;
+- WotLK stat priorities are the detailed profile set in this first version; Vanilla/TBC advanced spec priorities remain future work even though hard-cap baselines are era-aware;
+- runtime UI positioning and real-client stat values still need in-game validation.
+
+CI routing: user reported `stoffes-pc` is powered off, so this pass must use `[github-ci]`.
+
 ## 2026-09-21 — ERA-07 slice 2: central item policy + stock/gear enforcement
 
 Status: **DONE FOR SLICE 2 + exact-head local CI verified at `e96d009552b01a84d7e70f4a8956b33b34900843`; ERA-07 overall remains IN PROGRESS**.

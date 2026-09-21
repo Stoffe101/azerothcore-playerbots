@@ -89,6 +89,7 @@ Downgrading a live friends realm is unsupported. Dev/test tooling may simulate e
 - ERA-07 slice 2 is exact-head local-CI green at `e96d009`: all three era blocklists coexist in central EraPolicy, setup/update regenerate a live-world fingerprinted snapshot, deterministic RaidRoster/Group Composer gear prep consumes it, and the integrity scanner checks existing auctions + stored RNDbot equipment.
 - The historical database comparison is a chronology floor, not phase/obtainability proof. UNKNOWN items fail closed for protected automation and explicit overrides record reviewed anomalies.
 - Catch-up/starter gear, vendors/rewards, loot/crafting and broader Playerbots item creation still need the central policy.
+- GearAdvisor client guidance now consumes the Group Composer server-reported realm era for baseline hit/defense cap logic when available; its detailed spec priority text is WotLK-first in v0.1.0, so Vanilla/TBC priority tuning remains a documented follow-up rather than pretending Wrath weights are era-authentic.
 - Full world-system fidelity for professions, vendors, future maps/transport, race/class availability and expansion-only systems is not yet centrally enforced.
 
 ## Group Composer across all three eras

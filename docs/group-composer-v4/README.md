@@ -66,17 +66,16 @@ This checkpoint records all 40 user-approved roadmap items with stable IDs/statu
 
 Latest fully verified green implementation checkpoint:
 
-- `44adb851e37cd916c1e2ebbb5dd7ece1f2cef0fc`
-- Commit: `feat: add ERA-07 item provenance AH gate [local-ci]`
+- `e96d009552b01a84d7e70f4a8956b33b34900843`
+- Commit: `feat: centralize ERA-07 item policy [local-ci]`
 - Group Composer client checks: **SUCCESS**
 - Stage Group Composer V4 backend: **SUCCESS**
 - Group Composer V4 compile: **SUCCESS** on `stoffes-pc`
 - Integration build: **SUCCESS** on `stoffes-pc`
-- Both local builds retained the Ubuntu 26.04 Clang 18 -> GCC 15 libstdc++ workaround.
 
-This checkpoint contains runtime pass 3 plus the current ERA-01/ERA-02 containment stack: central era policy, progression/starter/Titan boundaries, Map.dbc travel gates, Playerbots 60/70/80 runtime caps, non-destructive RNDbot quarantine, class/race/profession policy foundations, the read-only era audit, snapshot/rollback foundation, ERA-06 AH profiles and ERA-07 slice-1 provenance enforcement for new AHBot listings. Current Group Composer addon version is **0.15.3**.
+The documentation checkpoint `253c22880c98ca89ed1abec65b2fa2ef8a46020a` is also exact-head green. ERA-07 slice 2 promotes provenance from an AH-only consumer into central EraPolicy, regenerates all three era blocklists automatically during setup/update, fail-closes deterministic RaidRoster/Group Composer gear preparation when chronology is missing/stale, and extends `.era audit` to existing auction stock plus stored RNDbot equipment.
 
-ERA-07 slice 2 is **DONE + exact-head local-CI green at `e96d009552b01a84d7e70f4a8956b33b34900843`**. It promotes provenance from an AH-only consumer into central EraPolicy, regenerates all three era blocklists automatically during setup/update, fail-closes deterministic RaidRoster/Group Composer gear preparation when chronology is missing/stale, and extends `.era audit` to existing auction stock plus stored RNDbot equipment.
+Current client QoL pass: **IMPLEMENTED / exact-head GitHub CI required**. The distributed addon bundle adds the maintained NoM0Re WeakAuras 3.3.5a backport and maintained Details-WotLK fork, supersedes the old ExtendedCharacterStats bundle entry with the new GearAdvisor character-side panel, and pins external addon inputs for reproducible downloads. Because `stoffes-pc` is currently offline, this pass uses `[github-ci]`.
 
 The peer policy is generic: the **lowest real human at any level** is the peer target. Status exposes `Lowest-human target Lv X · bots Lv A-B` so arbitrary mixed-level groups can be checked directly. Examples such as 80+14 or 80+23 are illustrative only.
 

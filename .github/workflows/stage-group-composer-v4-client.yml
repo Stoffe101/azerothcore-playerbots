@@ -25,6 +25,16 @@ jobs:
           bash -n fetch-client-addons.sh
           bash -n install-group-composer-wsl.sh
           find client-addons-src/GroupComposer -type f -name '*.lua' -print0 | xargs -0 -n1 luac5.1 -p
+          luac5.1 -p client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q 'NoM0Re/WeakAuras-WotLK/releases/download/5.22.0-b3706bd4/WeakAuras2.zip' fetch-client-addons.sh
+          grep -q '83f620454d221440df10faa0d52ba704b4cc53aed5ee94010e35eae37c008175' fetch-client-addons.sh
+          grep -q '5Buttons/Details-WotLK.git|a237261866afaed8c0faf751d682c5d1fcae399d' fetch-client-addons.sh
+          ! grep -q 'Bunny67/WeakAuras-WotLK' fetch-client-addons.sh
+          grep -q 'WARRIOR = {' client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q 'DEATHKNIGHT = {' client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q 'DRUID = {' client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q 'Marksmanship' client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q 'Equipped item level:' client-addons-src/GearAdvisor/GearAdvisor.lua
           lua5.1 client-addons-src/GroupComposer/tests/test_data_profiles.lua
           python3 client-addons-src/GroupComposer/tests/test_server_contract.py
           python3 client-addons-src/GroupComposer/tests/test_titan_bridge_contract.py

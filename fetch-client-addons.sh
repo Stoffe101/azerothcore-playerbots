@@ -37,6 +37,11 @@ ADDONS=(
   # Raid/party unit frames: Grid2 r736 ported for WotLK (the generic Grid/Grid2
   # builds error out because they target retail). Multi-folder.
   "Grid2|https://github.com/bkader/Grid2-WoTLK.git|fc8d5e139b9490236b6676e1d891f98bfe4b2a10"
+  # Combat meter: maintained 3.3.5a Details fork with 2026 combat-log/session fixes.
+  "Details-WotLK|https://github.com/5Buttons/Details-WotLK.git|a237261866afaed8c0faf751d682c5d1fcae399d"
+  # WeakAuras: actively maintained NoM0Re 3.3.5a backport. This intentionally replaces
+  # the old Bunny67 WA 4.0.0 fallback we considered earlier.
+  "WeakAuras-NoM0Re|https://github.com/NoM0Re/WeakAuras-WotLK/releases/download/5.22.0-b3706bd4/WeakAuras2.zip|sha256:83f620454d221440df10faa0d52ba704b4cc53aed5ee94010e35eae37c008175"
   # World Dungeon Maps companion addons (dungeon labels + coords that pair with
   # the WDM .MPQ data patch staged further below). Multi-folder: the parts that
   # matter are WDM, !Astrolabe and LibMapData-1.0 (Mapster/GatherMate/QuestHelper
@@ -51,6 +56,24 @@ for entry in "${ADDONS[@]}"; do
     echo "==> Downloading $name (zip)"
     tmp="$(mktemp -d)"
     curl -fsSL "$url" -o "$tmp/addon.zip"
+    if [[ -n "${pin:-}" ]]; then
+      case "$pin" in
+        sha256:*)
+          expected="${pin#sha256:}"
+          actual="$(sha256sum "$tmp/addon.zip" | awk '{print $1}')"
+          [[ "$actual" == "$expected" ]] || {
+            echo "ERROR: checksum mismatch for $name (expected $expected, got $actual)" >&2
+            rm -rf "$tmp"
+            exit 1
+          }
+          ;;
+        *)
+          echo "ERROR: zip pin for $name must use sha256:<digest>" >&2
+          rm -rf "$tmp"
+          exit 1
+          ;;
+      esac
+    fi
     rm -rf "$dir"; mkdir -p "$dir"
     unzip -q "$tmp/addon.zip" -d "$dir"
     rm -rf "$tmp"
@@ -92,6 +115,13 @@ if [[ -d "$ROOT/client-addons-src" ]]; then
   for src in "$ROOT"/client-addons-src/*/; do
     [[ -d "$src" ]] || continue
     name="$(basename "$src")"
+    # GearAdvisor supersedes the old raw ExtendedCharacterStats panel in the distributed pack.
+    # Keep the source around temporarily for history while ensuring players only get one
+    # character-side gearing/stat panel.
+    if [[ "$name" == "ExtendedCharacterStats" ]]; then
+      echo "==> Skipping superseded local addon $name (replaced by GearAdvisor)"
+      continue
+    fi
     echo "==> Staging local addon $name"
     rm -rf "${DEST:?}/$name"
     cp -a "$src" "$DEST/$name"
@@ -247,8 +277,8 @@ cat <<EOF
  needs a single ./setup.sh re-run to pick up the new mount.
 
  Not every entry is one ready-to-copy folder: MultiBot, PlayerBotManager
- and Questie-335 are single-folder addons, while AtlasLoot, Atlas, Grid2 and
- WDM-addons each unpack to SEVERAL addon folders. The rule is the same either
+ and Questie-335 are single-folder addons, while AtlasLoot, Atlas, Grid2,
+ Details-WotLK, WeakAuras-NoM0Re and WDM-addons each unpack to SEVERAL addon folders. The rule is the same either
  way -- copy every folder that has a .toc at its top level. List them with:
      find "$DEST" -name '*.toc'
 
@@ -277,6 +307,14 @@ cat <<EOF
                     (quest data aligned to AzerothCore).
    - Grid2        : compact raid/party unit frames (r736, WotLK build).
                     Copy Grid2, Grid2Options and Grid2AoeHeals.
+   - Details      : damage/healing/threat meter using the maintained 3.3.5a
+                    Details-WotLK fork pinned by exact commit.
+   - WeakAuras    : NoM0Re's actively maintained 3.3.5a backport, pinned to
+                    release 5.22.0-b3706bd4. Includes the main/options/model
+                    folders shipped by that release.
+   - GearAdvisor  : our character-sheet companion: equipped ilvl, detected
+                    class/spec/role, era-aware PvE caps, stat priorities and
+                    "need +X" guidance. Feral and DK role variants are switchable.
    - WDM          : World Dungeon Maps -- pairs with the .MPQ data patch so the
                     DEFAULT map (M) shows dungeon layouts with your position,
                     like a normal zone. Copy WDM, !Astrolabe and LibMapData-1.0;

@@ -1,6 +1,6 @@
 # Current State
 
-_Last rewritten: 2026-09-20_
+_Last rewritten: 2026-09-21_
 
 ## Product status
 
@@ -65,11 +65,24 @@ Verified green checkpoint after this pass: `3b548b3d29539a1ae0816d10db0e943546d3
 
 ## Latest green development pass
 
-Latest fully verified green implementation checkpoint: `44adb851e37cd916c1e2ebbb5dd7ece1f2cef0fc`
+Latest fully verified green implementation checkpoint: `e96d009552b01a84d7e70f4a8956b33b34900843`
 
-Exact-head CI: client checks **SUCCESS**, backend staging **SUCCESS**, Group Composer compile **SUCCESS** on `stoffes-pc`, Integration **SUCCESS** on `stoffes-pc`. Both heavy workflows retained the Clang 18 -> GCC 15 libstdc++ workaround.
+Exact-head CI: client checks **SUCCESS**, backend staging **SUCCESS**, Group Composer compile **SUCCESS** on `stoffes-pc`, Integration **SUCCESS** on `stoffes-pc`. Documentation head `253c2288` is also fully green.
 
-This head includes runtime pass 3 plus ERA-01 map/travel containment, Playerbots 60/70/80 runtime caps, non-destructive RNDbot quarantine, ERA-02 class/race/profession/AH provenance audit coverage, FEATURE-19 snapshot/rollback foundations, ERA-06 AH profiles, and ERA-07 slice-1 provenance enforcement for new AHBot listings. Current Group Composer version is **0.15.3**.
+This head includes runtime pass 3 plus ERA-01/ERA-02 containment, ERA-06 AH profiles, and ERA-07 slices 1-2 including central item provenance, existing-auction/stored-bot audits and deterministic RaidRoster/Composer gear gating. Current Group Composer version is **0.15.3**.
+
+### Client addon bundle / GearAdvisor pass
+
+Status: **IMPLEMENTED; exact-head GitHub-hosted CI required**.
+
+- `fetch-client-addons.sh` adds NoM0Re/WeakAuras-WotLK release `5.22.0-b3706bd4` with its published SHA-256.
+- The old Bunny67 WeakAuras 4.0.0 fallback is deliberately not used.
+- Details uses the maintained `5Buttons/Details-WotLK` fork pinned to `a2372618...`.
+- New local `GearAdvisor` addon anchors to the right side of the Character frame and shows detected class/spec/role, equipped average item level, boss-oriented caps/targets, current key stats and a stat-priority explanation.
+- GearAdvisor covers every WotLK talent tree. Feral can switch Cat/Bear and Death Knight trees can switch DPS/Tank modes.
+- Hard-cap rows are distinct from priority guidance. Hit targets account for relevant self-talents when detectable; expertise/defense/ArP targets are shown only where they make sense.
+- GearAdvisor reads the server-reported realm era from Group Composer when available and uses era-aware baseline hit/defense rules. Advanced priority prose is presently WotLK-oriented; full Vanilla/TBC priority profiles remain future polish.
+- The superseded `ExtendedCharacterStats` source is retained for history but skipped by the distributed bundle, preventing duplicate character-side panels.
 
 ### Runtime pass 3 implementation
 

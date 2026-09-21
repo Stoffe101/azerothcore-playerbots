@@ -48,6 +48,19 @@ These are bounded security/QoL changes that do not invalidate the pending P0 run
 
 Runtime testing is unavailable, so architectural work continues in bounded exact-CI slices. The first slice establishes the canonical EraPolicy and migrates Adventure Catalog/Admin expansion control. Subsequent slices migrate remaining consumers without mixing every world system into one commit.
 
+### NOW-04 — Client addon bundle + gearing guidance
+
+**Status: IN PROGRESS**
+
+Bounded client QoL pass requested during the era work:
+- package maintained Details-WotLK;
+- package NoM0Re's maintained 3.3.5a WeakAuras backport instead of the old WA 4.0 fallback;
+- replace the distributed raw ExtendedCharacterStats panel with GearAdvisor beside the Character frame;
+- GearAdvisor covers every WotLK talent tree with ilvl, hard caps, current key stats and spec/role priority guidance;
+- keep era fidelity explicit: baseline caps may follow realm era now, while full Vanilla/TBC spec-weight profiles are not claimed complete.
+
+This pass does not reorder the accepted 40 ERA/FEATURE items; after it is green, work returns to ERA-07's remaining automated item consumers.
+
 ### NEXT-01 — ERA-01 + ERA-02
 
 After P0 is stable, the first new implementation should be:

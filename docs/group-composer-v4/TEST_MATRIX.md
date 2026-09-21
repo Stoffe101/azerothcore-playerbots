@@ -108,6 +108,20 @@ Status vocabulary:
 - TODO: restore refuses overlay SHA mismatch.
 - TODO: dev snapshot can be restored end-to-end and services return healthy without losing captured config.
 
+## Client addon bundle / GearAdvisor
+
+- STATIC/CI: `fetch-client-addons.sh` parses and contains exact pins for NoM0Re WeakAuras + maintained Details.
+- STATIC/CI: No Bunny67 WeakAuras fallback is packaged.
+- STATIC/CI: GearAdvisor parses under Lua 5.1 and includes all class/spec profile families.
+- TODO: generated client zip contains Details, WeakAuras/Options/model folders and GearAdvisor, but not ExtendedCharacterStats.
+- TODO: GearAdvisor opens to the right of CharacterFrame without covering paper-doll controls.
+- TODO: switching dual spec refreshes the detected spec/profile immediately.
+- TODO: MM Hunter shows ranged-hit target/shortfall, equipped ilvl and the MM priority profile.
+- TODO: Feral Cat/Bear mode toggle changes guidance without changing the player's talents.
+- TODO: DK DPS/Tank role toggle changes the same tree's guidance safely.
+- TODO: WotLK level-80 rating targets match the live client's combat-rating conversions.
+- TODO: when Group Composer has a server era snapshot, GearAdvisor displays that era rather than relying on level fallback.
+
 ## Admin security / addon launchers
 
 - TODO: normal non-GM account sees no Azeroth Control minimap button after login authorization resolves.
