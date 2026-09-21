@@ -2,6 +2,23 @@
 
 Newest entries belong at the top of the dated section.
 
+
+## 2026-09-21 — ERA-07 automated vendor/reward helpers integrated
+
+Source SHA `9499939ed190af2d68989d69a99f7a58468be042` from Codex was integrated onto the newer WoWSims development line by merge `304aee8d759e52aa231705a91cc92417e43c206c`.
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+- Titan Rune vendor pages hide future/UNKNOWN rewards and refuse purchases/exchange before currency spending when provenance is unavailable or disallowed.
+- Pending Titan Rune rewards remain pending; automatic Gamma signets require ready/allowed provenance.
+- AI Guild stock mail, conservation, real-AH buy/list automation and manual stock helpers fail closed before protected state mutation.
+- Custom Titan Rune IDs 900100, 900101, 900104 and 900105 are reviewed WotLK overrides.
+- `.era audit` adds `AUTOMATED_VENDOR_CATALOG`, `PENDING_ITEM_REWARDS` and `AI_GUILD_ITEM_HELPERS`; unavailable provenance is FAIL and quarantined blocked persistent state is WARN.
+- Codex source checks passed: server contract, Titan bridge contract, provenance generator self-test, Python compile, AzerothCore C++ codestyle and `git diff --check`.
+- No full C++ build was performed on the isolated Codex branch; the docs-synchronized integrated head must prove all four required workflows before this slice is called green.
+- Runtime TODO: regenerate provenance, exercise Vanilla/TBC/WotLK vendor behavior, stale-provenance state preservation, AI Guild item helpers and the new audit sections.
+- Deliberately deferred: protocol loot injection, crafting/recipes, ArenaRoster PvP gear generation and broader ERA-13 world/vendor containment.
+
 ## 2026-09-21 — Preset policy fixture repair
 
 Candidate `d24e5a3bb8e2733ecb8dcd7f00b55c71b8bc1ff8`: **FAILED / superseded** in focused backend unit tests. Syntax/self-tests passed. Two service tests exposed stale fixture assumptions: generated unit catalog entries did not carry preset talent strings for closest-build selection, and the checksum-drift test changed the entry SHA without updating its static selection pointer. The next repair updates only those fixtures; production selection code is unchanged.
