@@ -165,7 +165,9 @@ Only build these if testing shows they add real value:
 
 - DONE + exact-head green: candidate isolation / GearAdvisor v0.3.2 at `8d3ff2be`.
 - DONE + exact-head green: server-authoritative Sim Bags candidate enumeration at `52ac5255`.
-- CURRENT / local CI: finish real-image preset routing proof with authoritative talent + glyph variant selection; `4cfc5adb` exposed WotLK Fire/Frostfire sharing talents but differing glyphs/rotation.
-- CURRENT implementation behind that repair: asynchronous Sim Bags compare queue off the world thread, with one baseline simulation reused across candidate swaps.
-- NEXT: return confidence/result/explanation to GearAdvisor and wire explicit Sim Bags UI action.
+- DONE + exact-head green at `d449136f`: real-image talent + glyph preset routing, including WotLK Fire/Frostfire.
+- DONE + exact-head green at `d449136f`: asynchronous Sim Bags compare queue off the world thread with one baseline reused across candidate swaps.
+- CURRENT / local CI: GearAdvisor v0.3.3 result transport, explicit Sim Bags action and stale-snapshot rejection.
+- NEXT: enrich explanations with cap/stat trade context after the transport boundary is proven.
 - NEXT validation: define/validate tank survivability authority before automatic tank item comparisons are enabled.
+- NEXT authority: validate individual era/spec mechanics before changing ENGINE_PRESENT_UNVALIDATED routes to SIM_BACKED.

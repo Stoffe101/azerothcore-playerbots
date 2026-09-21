@@ -694,9 +694,24 @@ notesText:SetHeight(72)
 notesText:SetJustifyH("LEFT")
 notesText:SetJustifyV("TOP")
 
+local simulationStatusText = nil
+local protocolFilterInstalled = false
+
+local SLOT_LABELS = {
+    [0] = "Head", [1] = "Neck", [2] = "Shoulders", [3] = "Back", [4] = "Chest",
+    [5] = "Wrists", [6] = "Hands", [7] = "Waist", [8] = "Legs", [9] = "Feet",
+    [10] = "Ring 1", [11] = "Ring 2", [12] = "Trinket 1", [13] = "Trinket 2",
+    [14] = "Main hand", [15] = "Off hand", [16] = "Ranged",
+}
+
+local function SetSimulationStatus(text)
+    simulationStatusText = text
+    if notesText and text then notesText:SetText(text) end
+end
+
 local footer = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 footer:SetPoint("BOTTOMLEFT", 20, 10)
-footer:SetPoint("BOTTOMRIGHT", -112, 10)
+footer:SetPoint("BOTTOMRIGHT", -208, 10)
 footer:SetJustifyH("LEFT")
 footer:SetText("WoWSims upgrade authority · hover caps · /ga")
 
@@ -704,7 +719,7 @@ local simButton = CreateFrame("Button", "GearAdvisor335SimButton", panel, "UIPan
 simButton:SetWidth(88)
 simButton:SetHeight(20)
 simButton:SetPoint("BOTTOMRIGHT", -18, 7)
-simButton:SetText("WoWSims")
+simButton:SetText("Export")
 simButton:SetScript("OnClick", function()
     if WoWSimsBridge and WoWSimsBridge.Open then
         WoWSimsBridge.Open("character")
@@ -719,6 +734,24 @@ simButton:SetScript("OnEnter", function(self)
     GameTooltip:Show()
 end)
 simButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+local simBagsButton = CreateFrame("Button", "GearAdvisor335SimBagsButton", panel, "UIPanelButtonTemplate")
+simBagsButton:SetWidth(88)
+simBagsButton:SetHeight(20)
+simBagsButton:SetPoint("RIGHT", simButton, "LEFT", -6, 0)
+simBagsButton:SetText("Sim Bags")
+simBagsButton:SetScript("OnClick", function()
+    SetSimulationStatus("|cff67b7ffSim Bags:|r requesting an authoritative server-side bag comparison...")
+    SendChatMessage(".wowsims simbags", "SAY")
+end)
+simBagsButton:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine("Sim Bags", 0.4, 0.75, 1.0)
+    GameTooltip:AddLine("Ask the server to compare your real bag items with pinned WoWSims. The simulation runs off the world thread.", 1, 1, 1, true)
+    GameTooltip:AddLine("Until a model is validated, results are labeled diagnostic rather than authoritative upgrades.", 1, 0.82, 0, true)
+    GameTooltip:Show()
+end)
+simBagsButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
 local modeButton = CreateFrame("Button", "GearAdvisor335ModeButton", panel, "UIPanelButtonTemplate")
 modeButton:SetWidth(104)
@@ -745,18 +778,95 @@ local hooked = false
 
 function GearAdvisor335_ApplySimulationResult(result)
     if type(result) ~= "table" then return end
-    local metric = result.metric or "DPS"
+    local metric = string.upper(tostring(result.metric or "DPS"))
     local baseline = tonumber(result.baseline) or 0
     local candidate = tonumber(result.candidate) or 0
     local delta = candidate - baseline
-    local pct = baseline ~= 0 and (delta / baseline * 100) or 0
-    local verdict = delta > 0 and "|cff40ff70UPGRADE|r" or (delta < 0 and "|cffff6b6bDOWNGRADE|r" or "|cffffd24aSIDEGRADE|r")
+    local pct = tonumber(result.deltaPercent)
+    if pct == nil then pct = baseline ~= 0 and (delta / baseline * 100) or 0 end
+
+    local support = tostring(result.support or "UNKNOWN")
+    local authoritative = result.authoritative == true or support == "SIM_BACKED"
+    local verdict
+    if authoritative then
+        verdict = delta > 0 and "|cff40ff70UPGRADE|r"
+            or (delta < 0 and "|cffff6b6bDOWNGRADE|r" or "|cffffd24aSIDEGRADE|r")
+    else
+        verdict = delta > 0 and "|cff67b7ffUNVALIDATED GAIN|r"
+            or (delta < 0 and "|cffffa060UNVALIDATED LOSS|r" or "|cffffd24aUNVALIDATED SIDEGRADE|r")
+    end
+
     local text = verdict .. "  " .. metric .. " " .. Number(baseline, 1) .. " -> " .. Number(candidate, 1) ..
         " (" .. (pct >= 0 and "+" or "") .. Number(pct, 2) .. "%)"
+
+    local itemId = tonumber(result.itemId)
+    if itemId and itemId > 0 then
+        local itemName, itemLink = GetItemInfo(itemId)
+        local itemLabel = itemLink or itemName or ("Item #" .. tostring(itemId))
+        local slotLabel = SLOT_LABELS[tonumber(result.slotIndex) or -1] or ("slot " .. tostring(result.slotIndex or "?"))
+        text = text .. "\n" .. itemLabel .. " -> " .. slotLabel
+    end
+
+    if not authoritative then
+        text = text .. "\n|cffffd24aDiagnostic only:|r model status " .. support .. ". Skrra mechanics validation is still required."
+    end
     if result.explanation and result.explanation ~= "" then
         text = text .. "\n" .. result.explanation
     end
-    notesText:SetText(text)
+    SetSimulationStatus(text)
+end
+
+local function SplitProtocol(message)
+    local fields = {}
+    for value in string.gmatch((message or "") .. "|", "([^|]*)|") do
+        fields[#fields + 1] = value
+    end
+    return fields
+end
+
+local function HandleSimulationProtocol(message)
+    if type(message) ~= "string" or string.sub(message, 1, 5) ~= "[GA]|" then return false end
+    local fields = SplitProtocol(message)
+    local kind = fields[2]
+
+    if kind == "SIMQUEUE" then
+        SetSimulationStatus("|cff67b7ffSim Bags:|r job " .. tostring(fields[3] or "?") .. " queued. You can keep playing while it runs.")
+    elseif kind == "SIM" then
+        GearAdvisor335_ApplySimulationResult({
+            jobId = tonumber(fields[3]),
+            metric = fields[4],
+            baseline = tonumber(fields[5]),
+            candidate = tonumber(fields[6]),
+            deltaPercent = tonumber(fields[7]),
+            itemId = tonumber(fields[8]),
+            slotIndex = tonumber(fields[9]),
+            support = fields[10],
+            authoritative = fields[10] == "SIM_BACKED",
+        })
+    elseif kind == "SIMNONE" then
+        local metric = string.upper(tostring(fields[4] or "DPS"))
+        local baseline = Number(tonumber(fields[5]) or 0, 1)
+        local support = tostring(fields[6] or "UNKNOWN")
+        local count = tonumber(fields[7]) or 0
+        SetSimulationStatus(
+            "|cffffd24aSim Bags complete:|r no positive candidate found across " .. tostring(count) ..
+            " simulated swaps. " .. metric .. " baseline " .. baseline ..
+            ".\n|cffffd24aDiagnostic only:|r model status " .. support .. "."
+        )
+    elseif kind == "SIMSTALE" then
+        SetSimulationStatus("|cffffd24aSim Bags result discarded:|r your character or bags changed while job " ..
+            tostring(fields[3] or "?") .. " was running. Run Sim Bags again for current state.")
+    elseif kind == "SIMERROR" then
+        SetSimulationStatus("|cffff6666Sim Bags failed:|r " .. tostring(fields[4] or "unknown server error"))
+    else
+        return false
+    end
+    return true
+end
+
+local function SimulationSystemFilter(_, _, message, ...)
+    if HandleSimulationProtocol(message) then return true end
+    return false, message, ...
 end
 
 local function Anchor()
@@ -883,7 +993,11 @@ local function Update()
     else
         note = "No universal hard PvE cap is being enforced for this profile. Use WoWSims rather than a static stat-weight score for item decisions."
     end
-    notesText:SetText(note)
+    if simulationStatusText then
+        notesText:SetText(simulationStatusText)
+    else
+        notesText:SetText(note)
+    end
 end
 
 local function Show()
@@ -930,6 +1044,13 @@ event:RegisterEvent("ADDON_LOADED")
 event:SetScript("OnEvent", function(self, eventName, arg1)
     if eventName == "PLAYER_ENTERING_WORLD" or eventName == "ADDON_LOADED" then
         HookCharacterFrame()
+    end
+    if eventName == "ADDON_LOADED" and arg1 == ADDON and not protocolFilterInstalled and ChatFrame_AddMessageEventFilter then
+        ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", SimulationSystemFilter)
+        protocolFilterInstalled = true
+    end
+    if eventName == "PLAYER_EQUIPMENT_CHANGED" or eventName == "PLAYER_TALENT_UPDATE" or eventName == "ACTIVE_TALENT_GROUP_CHANGED" then
+        simulationStatusText = nil
     end
     if (eventName == "UNIT_STATS" or eventName == "UNIT_ATTACK_POWER" or eventName == "UNIT_RANGEDDAMAGE") and arg1 and arg1 ~= "player" then
         return

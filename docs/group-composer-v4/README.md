@@ -218,3 +218,10 @@ Status: **IMPLEMENTED / exact-head local CI required**.
 Exact SHA `66c13cb1638fcb64fa66c3f96ab79c4490a072db` is fully green on all four required workflows. It includes the repaired WoWSims talent/phase preset-selection policy plus the integrated Codex ERA-07 automated vendor/reward guards.
 
 Current bounded WoWSims slice: **IMPLEMENTED / exact-head local CI required**. Sim Bags comparison now has an asynchronous worldserver execution boundary: authoritative state is captured before enqueue, a worker performs the private service call, the service runs one baseline plus candidate simulations, and completion is drained back on the world thread. The status remains UNVALIDATED and tank item comparison remains fail-closed until a survivability metric is deliberately defined. GearAdvisor transport is the next simulator slice.
+
+
+### Async WoWSims green + GearAdvisor transport
+
+Exact SHA `d449136f406a942f4553b7adc54a972ce66837cd` is fully green on all four required workflows. This is the first checkpoint that simultaneously proves the real three-engine preset image after the Fire/Frostfire glyph discriminator and the off-world-thread Sim Bags C++ execution path.
+
+Current slice: **GearAdvisor v0.3.3 automatic result transport / exact-head local CI required**. It adds an explicit Sim Bags action, stale-state rejection and a compact 3.3.5a system-message protocol. Current models remain unvalidated, so the UI must say UNVALIDATED GAIN/LOSS rather than claiming an authoritative upgrade.

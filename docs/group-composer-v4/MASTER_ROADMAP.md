@@ -427,3 +427,12 @@ Runtime evidence beats this ordering. A blocker discovered while testing may jum
 - worker inputs are immutable serialized snapshots/candidates only;
 - tank comparisons remain fail-closed until an approved survivability metric exists;
 - result status remains UNVALIDATED; GearAdvisor transport and mechanics validation remain next.
+
+
+### 2026-09-21 GearAdvisor automatic Sim Bags transport slice
+- async execution + real-image glyph-aware preset routing are exact-head green at `d449136f`;
+- current slice delivers queue/result/stale/error state into GearAdvisor through a 3.3.5a-compatible system-message protocol;
+- queue-time character and bag snapshots are revalidated before delivery;
+- unvalidated models cannot render authoritative UPGRADE/DOWNGRADE language;
+- manual WoWSims export remains available;
+- cap/stat trade explanations and route promotion to SIM_BACKED remain later validation work.

@@ -383,3 +383,29 @@ Skrra therefore does not hardcode one fixture as preferred. Harvested variant me
 2. symmetric-difference distance from the live server-owned glyph set after the existing pinned WotLK spell->item translation.
 
 A unique best pair selects the variant. A tie fails closed. This policy also continues to handle routes whose variants are distinguished by talents alone. Filename/source order is never a selection signal.
+
+
+## GearAdvisor result transport and stale-state contract
+
+The async queue is useful only if its result can reach the 3.3.5a client without pretending stale or unvalidated data is authoritative.
+
+The first player-facing transport uses the already-proven system-chat protocol pattern rather than a modern-only addon API:
+
+- GearAdvisor sends `.wowsims simbags` as an explicit user action.
+- The command immediately returns a `[GA]|SIMQUEUE` record after enqueue.
+- Completion returns `SIM` for a best-positive candidate, `SIMNONE` when no positive candidate exists, `SIMERROR` on service failure and `SIMSTALE` when state changed.
+- GearAdvisor installs a CHAT_MSG_SYSTEM filter and consumes only the `[GA]` records, leaving the normal human-readable server diagnostics available.
+- The result record carries metric, baseline, candidate, percent delta, item ID, canonical WoWSims slot and current support status.
+- The client resolves the cached item link/name locally and maps the canonical slot index to a readable slot label.
+
+### Stale-result prevention
+
+Queueing captures both:
+1. the authoritative character snapshot;
+2. the authoritative bag-candidate snapshot.
+
+The worker receives serialized copies only. On completion, the world thread rebuilds both snapshots for the connected player. Any difference means the simulation no longer describes current state, so the response is discarded and GearAdvisor receives `SIMSTALE`.
+
+### Authority wording
+
+`ENGINE_PRESENT_UNVALIDATED` and other non-`SIM_BACKED` routes may display numerical simulator output, but GearAdvisor labels it `UNVALIDATED GAIN`, `UNVALIDATED LOSS` or `UNVALIDATED SIDEGRADE`. Only a future route that has passed Skrra mechanics/assumption validation and is explicitly promoted to `SIM_BACKED` may use authoritative `UPGRADE` / `DOWNGRADE` wording.

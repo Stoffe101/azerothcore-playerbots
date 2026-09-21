@@ -5,6 +5,8 @@
 #include "RBAC.h"
 #include "WoWSimsService.h"
 
+#include <algorithm>
+
 using namespace Acore::ChatCommands;
 
 ChatCommandTable WoWSimsCommand::GetCommands() const
@@ -80,10 +82,17 @@ bool WoWSimsCommand::HandleSimBags(ChatHandler* handler)
     std::string error;
     if (!WoWSimsService::QueueBagComparison(player, jobId, error))
     {
+        std::replace(error.begin(), error.end(), '|', ' ');
+        std::replace(error.begin(), error.end(), '\n', ' ');
+        std::replace(error.begin(), error.end(), '\r', ' ');
+        if (error.size() > 220)
+            error.resize(220);
+        handler->PSendSysMessage("[GA]|SIMERROR|0|{}", error);
         handler->PSendSysMessage("[WoWSims] Sim Bags queue failed: {}", error);
         return true;
     }
 
+    handler->PSendSysMessage("[GA]|SIMQUEUE|{}", jobId);
     handler->PSendSysMessage(
         "[WoWSims] queued asynchronous Sim Bags job {}. The world thread will remain free while WoWSims runs.",
         jobId);

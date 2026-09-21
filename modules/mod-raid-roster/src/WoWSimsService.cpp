@@ -45,6 +45,8 @@ struct AsyncBagJob
     std::string baseUrl;
     uint32 timeoutSeconds = 300;
     std::string body;
+    std::string characterSnapshot;
+    std::string bagCandidateSnapshot;
 };
 
 struct AsyncBagResult
@@ -54,6 +56,8 @@ struct AsyncBagResult
     bool success = false;
     std::string response;
     std::string error;
+    std::string characterSnapshot;
+    std::string bagCandidateSnapshot;
 };
 
 std::mutex g_asyncMutex;
@@ -448,6 +452,16 @@ bool PostJson(std::string const& baseUrl, std::string const& endpoint, std::stri
     return true;
 }
 
+std::string ProtocolField(std::string value)
+{
+    for (char& ch : value)
+        if (ch == '|' || ch == '\n' || ch == '\r')
+            ch = ' ';
+    if (value.size() > 220)
+        value.resize(220);
+    return value;
+}
+
 void AsyncWorkerLoop()
 {
     for (;;)
@@ -466,6 +480,8 @@ void AsyncWorkerLoop()
         AsyncBagResult completed;
         completed.id = job.id;
         completed.playerGuid = job.playerGuid;
+        completed.characterSnapshot = std::move(job.characterSnapshot);
+        completed.bagCandidateSnapshot = std::move(job.bagCandidateSnapshot);
         completed.success = PostJson(
             job.baseUrl,
             "/v1/snapshot/compare-bags",
@@ -724,11 +740,13 @@ bool QueueBagComparison(Player* player, uint64& jobId, std::string& error)
     }
 
     json const body = {
-        { "snapshot", std::move(snapshot) },
+        { "snapshot", snapshot },
         { "candidates", bagCandidates.value("candidates", json::array()) },
     };
 
     AsyncBagJob job;
+    job.characterSnapshot = snapshot.dump();
+    job.bagCandidateSnapshot = bagCandidates.dump();
     job.playerGuid = player->GetGUID().GetCounter();
     job.baseUrl = sConfigMgr->GetOption<std::string>(
         "RaidRoster.WoWSimsUrl", "http://ac-wowsims:8092");
@@ -789,8 +807,28 @@ void TickAsyncResults()
             continue;
 
         ChatHandler handler(player->GetSession());
+        if (
+            BuildCharacterSnapshot(player) != result.characterSnapshot ||
+            BuildBagCandidateSnapshot(player) != result.bagCandidateSnapshot)
+        {
+            handler.PSendSysMessage("[GA]|SIMSTALE|{}", result.id);
+            handler.PSendSysMessage(
+                "[WoWSims] async Sim Bags job {} was discarded because the character or bags changed while it was running.",
+                result.id);
+            continue;
+        }
+
+        auto sendProtocolError = [&](std::string const& detail)
+        {
+            handler.PSendSysMessage(
+                "[GA]|SIMERROR|{}|{}",
+                result.id,
+                ProtocolField(detail));
+        };
+
         if (!result.success)
         {
+            sendProtocolError(result.error);
             handler.PSendSysMessage(
                 "[WoWSims] async Sim Bags job {} failed: {}",
                 result.id,
@@ -803,6 +841,7 @@ void TickAsyncResults()
             json const parsed = json::parse(result.response);
             if (parsed.value("status", std::string()) != "BAG_COMPARE_COMPLETE_UNVALIDATED")
             {
+                sendProtocolError("WoWSims returned an unexpected comparison status");
                 handler.PSendSysMessage(
                     "[WoWSims] async Sim Bags job {} returned an unexpected status.",
                     result.id);
@@ -810,35 +849,71 @@ void TickAsyncResults()
             }
 
             json const support = parsed.value("support", json::object());
+            std::string const supportStatus =
+                ProtocolField(support.value("status", std::string("UNKNOWN")));
+            std::string const metric =
+                ProtocolField(parsed.value("metric", std::string("?")));
+            double const baseline =
+                parsed.contains("baseline") && !parsed["baseline"].is_null()
+                    ? parsed["baseline"].get<double>()
+                    : 0.0;
+
             std::ostringstream message;
             message << "[WoWSims] async Sim Bags job " << result.id
-                    << " complete (UNVALIDATED): metric="
-                    << parsed.value("metric", std::string("?"))
+                    << " complete (UNVALIDATED): metric=" << metric
                     << ", baseline=";
             if (parsed.contains("baseline") && !parsed["baseline"].is_null())
-                message << parsed["baseline"].get<double>();
+                message << baseline;
             else
                 message << "n/a";
             message << ", swaps=" << parsed.value("resultCount", 0u)
                     << ", skipped=" << parsed.value("skippedCount", 0u)
-                    << ", support=" << support.value("status", std::string("UNKNOWN"));
+                    << ", support=" << supportStatus;
 
             json const best = parsed.value("bestUpgrade", json());
             if (best.is_object())
             {
-                message << ", best=item " << best.value("itemId", 0u)
-                        << " -> slot " << best.value("slotIndex", 0u)
-                        << ", delta=" << best.value("delta", 0.0);
-                if (best.contains("deltaPercent") && !best["deltaPercent"].is_null())
-                    message << " (" << best["deltaPercent"].get<double>() << "%)";
+                double const candidate = best.value("candidate", baseline);
+                double const deltaPercent =
+                    best.contains("deltaPercent") && !best["deltaPercent"].is_null()
+                        ? best["deltaPercent"].get<double>()
+                        : 0.0;
+                uint32 const itemId = best.value("itemId", 0u);
+                uint32 const slotIndex = best.value("slotIndex", 0u);
+
+                handler.PSendSysMessage(
+                    "[GA]|SIM|{}|{}|{:.6f}|{:.6f}|{:.6f}|{}|{}|{}",
+                    result.id,
+                    metric,
+                    baseline,
+                    candidate,
+                    deltaPercent,
+                    itemId,
+                    slotIndex,
+                    supportStatus);
+
+                message << ", best=item " << itemId
+                        << " -> slot " << slotIndex
+                        << ", delta=" << best.value("delta", 0.0)
+                        << " (" << deltaPercent << "%)";
             }
             else
+            {
+                handler.PSendSysMessage(
+                    "[GA]|SIMNONE|{}|{}|{:.6f}|{}|{}",
+                    result.id,
+                    metric,
+                    baseline,
+                    supportStatus,
+                    parsed.value("resultCount", 0u));
                 message << ", best=no positive candidate";
+            }
 
             handler.SendSysMessage(message.str());
         }
         catch (std::exception const& ex)
         {
+            sendProtocolError(std::string("invalid WoWSims comparison response: ") + ex.what());
             handler.PSendSysMessage(
                 "[WoWSims] async Sim Bags job {} returned invalid JSON: {}",
                 result.id,

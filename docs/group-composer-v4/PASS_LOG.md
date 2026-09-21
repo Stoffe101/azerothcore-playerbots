@@ -2,6 +2,22 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — Async WoWSims + glyph-aware preset routing green; GearAdvisor transport next
+
+Exact SHA `d449136f406a942f4553b7adc54a972ce66837cd`: **DONE + fully exact-head green**.
+- Group Composer client checks: SUCCESS.
+- Stage Group Composer V4 backend: SUCCESS, including a real Classic/TBC/WotLK service-image build.
+- Integration build: SUCCESS on `stoffes-pc`.
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`.
+- WotLK Fire/Frostfire same-talent ambiguity is resolved from authoritative live glyph state; ties still fail closed.
+- Async Sim Bags execution runs off the world thread, reuses one baseline across candidate simulations and keeps tank comparison blocked until a survivability authority is chosen.
+
+Current follow-up: **IMPLEMENTED / exact-head local CI required**.
+- GearAdvisor v0.3.3 adds a server-backed Sim Bags action and `[GA]` result protocol.
+- queue-time character + bag snapshots are rechecked before delivery so stale results are discarded;
+- only `SIM_BACKED` support may use authoritative upgrade wording; current unvalidated routes display diagnostic gain/loss language;
+- manual WoWSims export stays available separately.
+
 ## 2026-09-21 — WotLK Fire/Frostfire preset discriminator repair
 
 Candidate `4cfc5adbd5c2851c0d19d81f1e49db3c1e5c3280`: **FAILED / superseded** because the real WoWSims image gate reached a same-talent WotLK Mage ambiguity that earlier focused tests could not expose.

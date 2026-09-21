@@ -458,3 +458,20 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - UNIT: same-talent variants still fail closed when talent + glyph scoring remains tied.
 - REAL-IMAGE TODO: WotLK harvest completes with Fire/Frostfire represented by an authoritative-character selection policy.
 - TODO runtime: exercise a Fireball-glyphed and Frostfire-glyphed Mage snapshot and verify the expected pinned source is selected.
+
+
+### GearAdvisor automatic Sim Bags transport
+
+- STATIC: GearAdvisor v0.3.3 exposes a distinct Sim Bags button and retains the manual Export action.
+- STATIC: Sim Bags sends `.wowsims simbags`; no simulator work executes in Lua.
+- STATIC: server protocol covers SIMQUEUE, SIM, SIMNONE, SIMSTALE and SIMERROR.
+- STATIC: async jobs preserve queue-time character + authoritative bag-candidate snapshots.
+- STATIC: world-thread delivery compares current character + bag snapshots and discards stale results.
+- STATIC: GearAdvisor only uses UPGRADE/DOWNGRADE wording when support is `SIM_BACKED`; current ENGINE_PRESENT_UNVALIDATED results use UNVALIDATED GAIN/LOSS/SIDEGRADE.
+- STATIC: normal GearAdvisor stat refreshes preserve the latest simulation status/result until equipment or talent state changes.
+- TODO runtime: click Sim Bags from GearAdvisor and verify the button immediately reports queued state while the world remains responsive.
+- TODO runtime: verify a completed DPS result appears with item/slot, baseline/candidate and diagnostic support status.
+- TODO runtime: modify equipped gear or bag contents during a running job and verify SIMSTALE replaces the old result instead of displaying it.
+- TODO runtime: verify no-positive-candidate and server-error states render cleanly without leaking `[GA]` protocol text into chat.
+- TODO runtime: close/reopen CharacterFrame after a result and verify the result remains readable until gear/talent state changes.
+- TODO runtime: manual Export still opens WoWSimsBridge normally.

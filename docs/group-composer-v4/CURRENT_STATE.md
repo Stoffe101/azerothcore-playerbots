@@ -562,9 +562,9 @@ No simulator execution or SIM-BACKED promotion is part of this repair.
 
 ## Current WoWSims asynchronous comparison slice
 
-Status: **IMPLEMENTED / exact-head local CI required**.
+Status: **DONE + exact-head local-CI green at `d449136f406a942f4553b7adc54a972ce66837cd`**.
 
-The next bounded WoWSims layer moves expensive comparison execution completely off the AzerothCore world thread:
+The bounded WoWSims execution layer moves expensive comparison execution completely off the AzerothCore world thread:
 
 - `POST /v1/snapshot/compare-bags` rebuilds the same authoritative baseline/candidate set already proven by Sim Bags;
 - DPS routes use raid DPS and healer routes use raid HPS; tank comparison still fails closed because no approved survivability metric exists yet;
@@ -584,7 +584,7 @@ The next slice after this is green is result/confidence/explanation transport in
 
 The first async candidate `4cfc5adb...` forced a real service-image rebuild and exposed a previously unproven WotLK preset ambiguity. Upstream `TestFire` and `TestFrostFire` share the exact same Mage talent string, so talent distance alone is insufficient. The pinned upstream fixtures differ in their major glyph set: Fire uses Glyph of Fireball while Frostfire uses Glyph of Frostfire.
 
-Current repair: **IMPLEMENTED / exact-head local CI required**.
+Repair status: **DONE + real-image + exact-head local-CI green at `d449136f406a942f4553b7adc54a972ce66837cd`**.
 
 - harvested entries now retain sorted non-zero glyph item IDs from the pinned request;
 - multi-variant routes use `closest-live-character` selection;
@@ -596,3 +596,23 @@ Current repair: **IMPLEMENTED / exact-head local CI required**.
 - canonical policy version advances to `talent-glyph-variant-latest-phase-v2`.
 
 This is still preset routing only. It does not make Fire/Frostfire mechanics SIM-BACKED.
+
+
+## GearAdvisor automatic Sim Bags transport
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+This slice connects the green async comparison boundary to the existing GearAdvisor result surface without promoting unvalidated models:
+
+- GearAdvisor v0.3.3 adds an explicit `Sim Bags` button beside the manual WoWSims export button;
+- the button sends `.wowsims simbags`, which only queues work and returns immediately;
+- worldserver completion emits a compact `[GA]` system-message protocol consumed through the same 3.3.5a-compatible chat-filter pattern already proven by Group Composer;
+- queue, success, no-positive-candidate, stale-state and error states have separate protocol records;
+- the async job retains its queue-time character snapshot and authoritative bag-candidate snapshot;
+- before result delivery, the world thread rebuilds both snapshots; if equipped state, talents/spec/professions/glyphs or bag candidates changed, the result is discarded as STALE;
+- GearAdvisor persists the latest simulation result/status in its WHY / WHAT NEXT region rather than losing it on normal stat refresh events;
+- a positive result is labeled `UNVALIDATED GAIN` while model support remains `ENGINE_PRESENT_UNVALIDATED`; only a future `SIM_BACKED` route may render authoritative UPGRADE/DOWNGRADE wording;
+- item ID and canonical equipment slot are shown with the cached item link/name when available;
+- manual WoWSims export remains available as a separate `Export` button.
+
+This is result transport and UX plumbing, not mechanics approval. Route-by-route simulator validation remains a separate gate.
