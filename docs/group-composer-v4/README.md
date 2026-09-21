@@ -211,3 +211,10 @@ Status: **IMPLEMENTED / exact-head local CI required**.
 - `.era audit` now inspects automated vendor catalogs, pending Titan rewards, AI Guild stock and queued automated purchases.
 - Static/local checks passed on the Codex commit, but the integrated docs-synchronized head still requires the four exact-SHA workflows and runtime acceptance.
 - ERA-07 and ERA-13 remain **PARTIAL / IN PROGRESS**. Protocol loot injection, AI Guild profession crafting/recipe discovery, ordinary loot/crafting/recipes, ArenaRoster PvP gear generation, broader quest/NPC/vendor cleanup and Titan Rune world-spawn/map lifecycle remain future slices.
+
+
+### Integrated ERA-07 vendor/reward checkpoint and async WoWSims follow-up
+
+Exact SHA `66c13cb1638fcb64fa66c3f96ab79c4490a072db` is fully green on all four required workflows. It includes the repaired WoWSims talent/phase preset-selection policy plus the integrated Codex ERA-07 automated vendor/reward guards.
+
+Current bounded WoWSims slice: **IMPLEMENTED / exact-head local CI required**. Sim Bags comparison now has an asynchronous worldserver execution boundary: authoritative state is captured before enqueue, a worker performs the private service call, the service runs one baseline plus candidate simulations, and completion is drained back on the world thread. The status remains UNVALIDATED and tank item comparison remains fail-closed until a survivability metric is deliberately defined. GearAdvisor transport is the next simulator slice.

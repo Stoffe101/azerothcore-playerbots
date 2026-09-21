@@ -762,7 +762,7 @@ def build_candidate_request(
     }
 
 
-def build_bag_candidate_manifest(
+def _build_bag_candidate_requests(
     snapshot: dict[str, Any],
     candidates: list[Any],
     model_support: dict[str, Any],
@@ -770,7 +770,7 @@ def build_bag_candidate_manifest(
     glyph_spell_map: dict[int, int],
     *,
     preset_sha256: str | None = None,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
     if not isinstance(candidates, list):
         raise ServiceError("candidates must be an array")
 
@@ -781,7 +781,6 @@ def build_bag_candidate_manifest(
         glyph_spell_map,
         preset_sha256=preset_sha256,
     )
-    baseline_fingerprint = _canonical_request_sha256(baseline["request"])
     swaps: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
 
@@ -798,7 +797,12 @@ def build_bag_candidate_manifest(
         if (
             not isinstance(slot_indexes, list)
             or not slot_indexes
-            or any(isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < 17 for value in slot_indexes)
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or not 0 <= value < 17
+                for value in slot_indexes
+            )
         ):
             raise ServiceError(f"{label}.slotIndexes must contain WoWSims slot indexes 0-16")
         if len(set(slot_indexes)) != len(slot_indexes):
@@ -831,8 +835,33 @@ def build_bag_candidate_manifest(
                 "slotIndex": slot_index,
                 "changedPaths": built["changedPaths"],
                 "candidateFingerprint": _canonical_request_sha256(built["candidateRequest"]),
+                "candidateRequest": built["candidateRequest"],
             })
 
+    return baseline, swaps, skipped
+
+
+def build_bag_candidate_manifest(
+    snapshot: dict[str, Any],
+    candidates: list[Any],
+    model_support: dict[str, Any],
+    preset_catalog: dict[str, Any],
+    glyph_spell_map: dict[int, int],
+    *,
+    preset_sha256: str | None = None,
+) -> dict[str, Any]:
+    baseline, swaps, skipped = _build_bag_candidate_requests(
+        snapshot,
+        candidates,
+        model_support,
+        preset_catalog,
+        glyph_spell_map,
+        preset_sha256=preset_sha256,
+    )
+    public_swaps = [
+        {key: value for key, value in swap.items() if key != "candidateRequest"}
+        for swap in swaps
+    ]
     return {
         "schema": SCHEMA_VERSION,
         "status": "BAG_CANDIDATES_BUILT_UNVALIDATED",
@@ -840,14 +869,13 @@ def build_bag_candidate_manifest(
         "routeKey": baseline["routeKey"],
         "support": baseline["support"],
         "preset": baseline["preset"],
-        "baselineFingerprint": baseline_fingerprint,
+        "baselineFingerprint": _canonical_request_sha256(baseline["request"]),
         "candidateCount": len(candidates),
-        "swapCount": len(swaps),
+        "swapCount": len(public_swaps),
         "skippedCount": len(skipped),
-        "swaps": swaps,
+        "swaps": public_swaps,
         "skipped": skipped,
     }
-
 
 def normalize_era(value: Any) -> str:
     if not isinstance(value, str):
@@ -1100,6 +1128,90 @@ class SimRunner:
             preset_sha256=preset_sha256,
         )
 
+    def compare_bag_candidates(
+        self,
+        snapshot: dict[str, Any],
+        candidates: list[Any],
+        *,
+        preset_sha256: str | None = None,
+    ) -> dict[str, Any]:
+        role = snapshot.get("character", {}).get("role")
+        if role == "TANK":
+            raise ServiceError(
+                "automatic tank bag comparison has no approved survivability metric yet",
+                HTTPStatus.UNPROCESSABLE_ENTITY,
+            )
+        metric = "hps" if role == "HEALER" else "dps"
+
+        baseline, swaps, skipped = _build_bag_candidate_requests(
+            snapshot,
+            candidates,
+            self.model_support,
+            self.preset_catalog,
+            self.glyph_spell_map,
+            preset_sha256=preset_sha256,
+        )
+        baseline_fingerprint = _canonical_request_sha256(baseline["request"])
+        if not swaps:
+            return {
+                "schema": SCHEMA_VERSION,
+                "status": "BAG_COMPARE_COMPLETE_UNVALIDATED",
+                "era": baseline["era"],
+                "routeKey": baseline["routeKey"],
+                "support": baseline["support"],
+                "preset": baseline["preset"],
+                "metric": metric,
+                "baselineFingerprint": baseline_fingerprint,
+                "baseline": None,
+                "resultCount": 0,
+                "skippedCount": len(skipped),
+                "results": [],
+                "skipped": skipped,
+                "bestUpgrade": None,
+            }
+
+        baseline_result = self.simulate(baseline["era"], baseline["request"])
+        baseline_metric = extract_metric(baseline_result, metric)
+        results: list[dict[str, Any]] = []
+
+        for swap in swaps:
+            candidate_result = self.simulate(baseline["era"], swap["candidateRequest"])
+            candidate_metric = extract_metric(candidate_result, metric)
+            delta = candidate_metric - baseline_metric
+            delta_percent = None if baseline_metric == 0 else (delta / baseline_metric) * 100.0
+            results.append({
+                "bag": swap["bag"],
+                "slot": swap["slot"],
+                "itemId": swap["itemId"],
+                "slotIndex": swap["slotIndex"],
+                "changedPaths": swap["changedPaths"],
+                "candidateFingerprint": swap["candidateFingerprint"],
+                "candidate": candidate_metric,
+                "delta": delta,
+                "deltaPercent": delta_percent,
+            })
+
+        best_upgrade = max(results, key=lambda result: result["delta"], default=None)
+        if best_upgrade is not None and best_upgrade["delta"] <= 0:
+            best_upgrade = None
+
+        return {
+            "schema": SCHEMA_VERSION,
+            "status": "BAG_COMPARE_COMPLETE_UNVALIDATED",
+            "era": baseline["era"],
+            "routeKey": baseline["routeKey"],
+            "support": baseline["support"],
+            "preset": baseline["preset"],
+            "metric": metric,
+            "baselineFingerprint": baseline_fingerprint,
+            "baseline": baseline_metric,
+            "resultCount": len(results),
+            "skippedCount": len(skipped),
+            "results": results,
+            "skipped": skipped,
+            "bestUpgrade": best_upgrade,
+        }
+
     def simulate(self, era: str, request: dict[str, Any]) -> dict[str, Any]:
         era = normalize_era(era)
         if not isinstance(request, dict):
@@ -1330,6 +1442,25 @@ class ApiHandler(BaseHTTPRequestHandler):
                 if preset_sha256 is not None and not isinstance(preset_sha256, str):
                     raise ServiceError("presetSha256 must be a string")
                 response = self.runner.build_bag_candidate_manifest(
+                    snapshot,
+                    candidates,
+                    preset_sha256=preset_sha256,
+                )
+                response["engine"] = self.runner.engine_info(response["era"])
+                self._send_json(HTTPStatus.OK, response)
+                return
+
+            if self.path == "/v1/snapshot/compare-bags":
+                snapshot = payload.get("snapshot")
+                candidates = payload.get("candidates")
+                if not isinstance(snapshot, dict):
+                    raise ServiceError("snapshot must be an object")
+                if not isinstance(candidates, list):
+                    raise ServiceError("candidates must be an array")
+                preset_sha256 = payload.get("presetSha256")
+                if preset_sha256 is not None and not isinstance(preset_sha256, str):
+                    raise ServiceError("presetSha256 must be a string")
+                response = self.runner.compare_bag_candidates(
                     snapshot,
                     candidates,
                     preset_sha256=preset_sha256,

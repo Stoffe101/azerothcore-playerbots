@@ -344,3 +344,26 @@ The refined contract is:
 6. expose route selection policy in the catalog/health response and require full selectable-route coverage in the real image.
 
 This deliberately preserves Combat Rogue Daggers vs Sinister Strike while allowing Classic Elemental to use the latest phase assumptions available in the exact pinned engine. The realm does not currently emulate every Classic patch phase separately, so latest-upstream-phase is the explicit policy for same-build phase families.
+
+
+## Asynchronous Sim Bags execution boundary
+
+Once preset selection is deterministic, expensive simulator execution must not block AzerothCore's world thread.
+
+The first execution slice therefore uses this contract:
+
+1. On the world thread, capture the authoritative character snapshot and real bag candidate Item state.
+2. Serialize that state immediately. Live `Player*`, `Item*`, `Bag*` and session objects never enter the worker queue.
+3. Queue at most one active job per character and bound the global pending queue.
+4. A dedicated worker performs the HTTP call to the private `ac-wowsims` service.
+5. `POST /v1/snapshot/compare-bags` rebuilds the same validated baseline/candidate requests used by the manifest boundary.
+6. For DPS, execute the baseline once and use raid DPS as the comparison metric. For healers, use raid HPS. Tanks fail closed because DPS is not an acceptable proxy for survivability.
+7. Execute every accepted candidate against that same baseline request.
+8. Return `BAG_COMPARE_COMPLETE_UNVALIDATED`, per-swap deltas and the best positive result only as diagnostic data.
+9. Push the completed serialized response into a completion queue.
+10. `RaidRosterWorld::OnUpdate` drains completions on the world thread, resolves the player by GUID again and only then touches the session/UI transport.
+11. World shutdown stops and joins the worker; queued jobs are not allowed to outlive server teardown.
+
+The service remains the only process that launches the pinned `wowsimcli` binaries. The worldserver worker merely waits on private-network HTTP away from the game loop.
+
+This slice is deliberately not the final GearAdvisor feature. It proves scheduling, isolation and batch execution. The next layer must transport structured result/confidence/explanation data into GearAdvisor and provide an explicit Sim Bags action. No route becomes SIM-BACKED until its mechanics and assumptions are validated against the Skrra/AzerothCore server.

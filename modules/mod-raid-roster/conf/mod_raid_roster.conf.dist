@@ -19,6 +19,12 @@ RaidRoster.Enable = 1
 RaidRoster.WoWSimsUrl = "http://ac-wowsims:8092"
 RaidRoster.WoWSimsTimeoutSeconds = 5
 
+# Full Sim Bags comparisons run on a dedicated worldserver worker thread. This timeout applies to
+# the complete remote batch, not one simulator process; wowsims-service still enforces its own
+# per-simulation timeout and concurrency limit.
+RaidRoster.WoWSimsAsyncTimeoutSeconds = 300
+RaidRoster.WoWSimsMaxQueuedJobs = 4
+
 ########################################
 # ERA-07 central item provenance
 ########################################

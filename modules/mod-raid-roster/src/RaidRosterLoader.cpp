@@ -19,6 +19,7 @@
 #include "RaidRosterGuild.h"
 #include "SmartLootSystem.h"
 #include "WoWSimsCommand.h"
+#include "WoWSimsService.h"
 #include "PlayerbotFactory.h"
 
 void AddAdventureStartScripts();
@@ -48,10 +49,18 @@ public:
     void OnStartup() override
     {
         EraPolicy::SyncRuntimeBotCaps();
+        WoWSimsService::StartAsyncWorker();
+    }
+
+    void OnShutdown() override
+    {
+        WoWSimsService::StopAsyncWorker();
     }
 
     void OnUpdate(uint32 diff) override
     {
+        WoWSimsService::TickAsyncResults();
+
         if (!_pendingEraCapSync)
             return;
 

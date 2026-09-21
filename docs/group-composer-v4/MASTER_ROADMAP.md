@@ -418,3 +418,12 @@ Runtime evidence beats this ordering. A blocker discovered while testing may jum
 - distinct talent builds remain runtime-selectable by unique closest live talents;
 - unresolved/tied cases fail closed;
 - real-image CI must report selectableRouteCount == routeCount for every era before the slice can be green.
+
+
+### 2026-09-21 WoWSims asynchronous comparison slice
+- integrated/preset-policy base `66c13cb1` is exact-head green on all four workflows;
+- current slice moves full Sim Bags comparisons off the world thread;
+- service reuses one baseline simulation for the complete candidate batch;
+- worker inputs are immutable serialized snapshots/candidates only;
+- tank comparisons remain fail-closed until an approved survivability metric exists;
+- result status remains UNVALIDATED; GearAdvisor transport and mechanics validation remain next.

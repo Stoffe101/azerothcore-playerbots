@@ -13,6 +13,7 @@ ChatCommandTable WoWSimsCommand::GetCommands() const
     {
         { "snapshot", HandleSnapshot, SEC_PLAYER, Console::No },
         { "bags", HandleBags, SEC_PLAYER, Console::No },
+        { "simbags", HandleSimBags, SEC_PLAYER, Console::No },
         { "request", HandleRequest, SEC_PLAYER, Console::No },
         { "validate", HandleValidate, SEC_PLAYER, Console::No },
     };
@@ -61,6 +62,31 @@ bool WoWSimsCommand::HandleBags(ChatHandler* handler)
     }
 
     handler->PSendSysMessage("[WoWSims] authoritative bag candidates built (not simulated): {}", summary);
+    return true;
+}
+
+
+bool WoWSimsCommand::HandleSimBags(ChatHandler* handler)
+{
+    Player* player = handler && handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr;
+    if (!player)
+    {
+        if (handler)
+            handler->SendSysMessage("Run .wowsims simbags in-world as a player.");
+        return true;
+    }
+
+    uint64 jobId = 0;
+    std::string error;
+    if (!WoWSimsService::QueueBagComparison(player, jobId, error))
+    {
+        handler->PSendSysMessage("[WoWSims] Sim Bags queue failed: {}", error);
+        return true;
+    }
+
+    handler->PSendSysMessage(
+        "[WoWSims] queued asynchronous Sim Bags job {}. The world thread will remain free while WoWSims runs.",
+        jobId);
     return true;
 }
 

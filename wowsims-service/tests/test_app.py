@@ -593,6 +593,63 @@ class AppTests(unittest.TestCase):
                     {},
                 )
 
+    def test_compare_bag_candidates_runs_baseline_once_and_reuses_it(self):
+        snapshot = self._snapshot()
+        preset = self._wotlk_preset()
+        candidates = [
+            {
+                "bag": 0,
+                "slot": 23,
+                "item": {
+                    "id": 40562,
+                    "enchant": 3819,
+                    "gems": [41398, 40058, 0],
+                    "randomPropertyId": 0,
+                    "suffixFactor": 0,
+                },
+                "slotIndexes": [0, 1],
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [preset])
+            runner = app.SimRunner(
+                MANIFEST,
+                timeout_seconds=1,
+                binaries={"VANILLA": "/x", "TBC": "/x", "WOTLK": "/x"},
+            )
+            runner.model_support = app.load_model_support(manifest=MANIFEST)
+            runner.preset_catalog = catalog
+            runner.glyph_spell_map = {}
+            simulated = [
+                {"raidMetrics": {"dps": {"avg": 5000.0}}},
+                {"raidMetrics": {"dps": {"avg": 5100.0}}},
+                {"raidMetrics": {"dps": {"avg": 4950.0}}},
+            ]
+            with mock.patch.object(runner, "simulate", side_effect=simulated) as simulate:
+                out = runner.compare_bag_candidates(snapshot, candidates)
+
+        self.assertEqual(simulate.call_count, 3)
+        self.assertEqual(out["status"], "BAG_COMPARE_COMPLETE_UNVALIDATED")
+        self.assertEqual(out["metric"], "dps")
+        self.assertEqual(out["baseline"], 5000.0)
+        self.assertEqual(out["resultCount"], 2)
+        self.assertEqual(out["results"][0]["delta"], 100.0)
+        self.assertEqual(out["results"][1]["delta"], -50.0)
+        self.assertEqual(out["bestUpgrade"]["itemId"], 40562)
+        self.assertEqual(out["bestUpgrade"]["slotIndex"], 0)
+        self.assertNotIn("candidateRequest", out["results"][0])
+
+    def test_compare_bag_candidates_rejects_tank_without_approved_metric(self):
+        snapshot = self._snapshot()
+        snapshot["character"]["role"] = "TANK"
+        runner = app.SimRunner(
+            MANIFEST,
+            timeout_seconds=1,
+            binaries={"VANILLA": "/x", "TBC": "/x", "WOTLK": "/x"},
+        )
+        with self.assertRaisesRegex(app.ServiceError, "survivability metric"):
+            runner.compare_bag_candidates(snapshot, [])
+
     def test_wotlk_random_property_state_fails_closed(self):
         snapshot = self._snapshot()
         snapshot["character"]["gear"][0]["randomPropertyId"] = -1979

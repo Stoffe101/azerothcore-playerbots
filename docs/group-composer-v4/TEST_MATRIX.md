@@ -428,3 +428,23 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - UNIT: equal-distance variant selection fails closed.
 - REAL-IMAGE CI: every route has an explicit static or closest-live-talents policy and selectableRouteCount equals routeCount for Vanilla, TBC and WotLK.
 - TODO runtime: inspect at least one dynamic route result in-game before any SIM-BACKED promotion.
+
+
+### Asynchronous WoWSims Sim Bags comparison
+
+- UNIT: one Sim Bags comparison runs the baseline simulator exactly once and reuses that baseline metric across all candidate swaps.
+- UNIT: each accepted candidate is simulated once and returns exact baseline/candidate/delta/deltaPercent metadata without leaking the internal candidate request.
+- UNIT: the bestUpgrade field is populated only for a positive delta.
+- UNIT: tank Sim Bags comparison fails closed until an approved survivability metric exists.
+- STATIC: worldserver async jobs contain serialized request state + player GUID only; no Player pointer or Item/Bag pointer is stored in the worker queue.
+- STATIC: one active job per character is enforced and the pending global queue is bounded.
+- STATIC: `RaidRosterWorld::OnUpdate` drains completions and resolves the connected player on the world thread.
+- STATIC: `RaidRosterWorld::OnShutdown` stops/joins the worker.
+- STATIC: `.wowsims simbags` queues rather than performing HTTP/simulator work inline.
+- TODO runtime: run `.wowsims simbags` while moving/using Group Composer and confirm the world remains responsive until completion.
+- TODO runtime: disconnect/reconnect while a job runs and verify no stale Player pointer is used and no crash occurs.
+- TODO runtime: queue a second job for the same character and verify it is rejected while the first is pending/running.
+- TODO runtime: exercise a DPS route with at least one positive and one negative bag candidate and compare the returned deltas with direct pinned WoWSims execution.
+- TODO runtime: exercise a healer route and verify HPS routing.
+- TODO: tank authority remains blocked until the chosen survivability metric/model is documented and validated.
+- TODO: results remain UNVALIDATED until per-route Skrra/AzerothCore mechanics acceptance promotes them.

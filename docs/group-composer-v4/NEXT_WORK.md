@@ -69,7 +69,7 @@ ERA-01 is now **IN PROGRESS** while P0 runtime evidence is blocked.
 15j. **NEXT:** server-authoritative bag candidate enumeration, canonical preset policy for ambiguous routes, then asynchronous compare transport.
 16. **DONE + green:** ERA-07 slice 3 PlayerbotFactory + AdventureStart/catch-up item policy is exact-head green at `e990dff5` on all four GitHub-hosted workflows.
 17. **DONE + green:** ERA-07 slice 4 Adventure Cache reward provenance is exact-head green at `e1a2e6fa`; pending caches survive provenance failure and created reward items are policy-gated.
-18. **IMPLEMENTED / exact-head local CI required:** ERA-07 automated vendor/reward-helper slice from Codex source `9499939`, integrated at `304aee8d`. Titan Rune vendors/exchange/pending rewards/Gamma signets and AI Guild stock/AH/item-service helpers now fail closed on unavailable/future/UNKNOWN provenance; audit coverage and four reviewed Titan Rune overrides are included.
+18. **DONE + exact-head local-CI green at `66c13cb1`:** ERA-07 automated vendor/reward-helper slice from Codex source `9499939`, integrated at `304aee8d`. Titan Rune vendors/exchange/pending rewards/Gamma signets and AI Guild stock/AH/item-service helpers fail closed on unavailable/future/UNKNOWN provenance; audit coverage and four reviewed Titan Rune overrides are included.
 19. **NEXT ERA-07:** protocol loot injection, AI Guild recipe discovery / profession crafting, ordinary loot/crafting/recipes and remaining non-PlayerbotFactory item sources. Runtime-generate the central snapshot on the dev realm and inspect the expanded `.era audit` sections.
 20. **NEXT ERA-13 containment:** broader quest/NPC/vendor cleanup plus Titan Rune NPC spawning/map lifecycle after item-source provenance work is proven.
 
@@ -165,6 +165,7 @@ Only build these if testing shows they add real value:
 
 - DONE + exact-head green: candidate isolation / GearAdvisor v0.3.2 at `8d3ff2be`.
 - DONE + exact-head green: server-authoritative Sim Bags candidate enumeration at `52ac5255`.
-- CURRENT / local CI: canonical preset repair using explicit talent variants + latest upstream phase; tied/unresolved selections fail closed.
-- NEXT: asynchronous baseline/candidate simulation queue off the world thread.
+- DONE + exact-head green: canonical preset repair using explicit talent variants + latest upstream phase, included in the fully green integrated head `66c13cb1`; tied/unresolved selections fail closed.
+- CURRENT / local CI: asynchronous Sim Bags compare queue off the world thread, with one baseline simulation reused across candidate swaps.
 - NEXT: return confidence/result/explanation to GearAdvisor and wire explicit Sim Bags UI action.
+- NEXT validation: define/validate tank survivability authority before automatic tank item comparisons are enabled.

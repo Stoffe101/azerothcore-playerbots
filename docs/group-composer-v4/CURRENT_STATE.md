@@ -5,9 +5,9 @@ _Last rewritten: 2026-09-21_
 
 ## Current integrated ERA-07 vendor/reward candidate
 
-Status: **IMPLEMENTED / exact-head local CI required**.
+Status: **DONE + exact-head local-CI green at `66c13cb1638fcb64fa66c3f96ab79c4490a072db`**.
 
-Codex implemented the bounded automated vendor/reward-helper slice at source SHA `9499939ed190af2d68989d69a99f7a58468be042`; it was integrated onto the newer WoWSims line by merge `304aee8d759e52aa231705a91cc92417e43c206c`.
+Codex implemented the bounded automated vendor/reward-helper slice at source SHA `9499939ed190af2d68989d69a99f7a58468be042`; it was integrated onto the newer WoWSims line by merge `304aee8d759e52aa231705a91cc92417e43c206c`, then documented and proven through all four required workflows at `66c13cb1...`.
 
 Covered boundaries:
 - Titan Rune Sidereal/Scourgestone scripted vendor visibility and purchases;
@@ -558,3 +558,23 @@ No simulator execution or SIM-BACKED promotion is part of this repair.
 ### Preset-repair syntax checkpoint
 
 `4c79cd6e91596b2aed41e89173f725f54e9fe69e` is **FAILED / superseded**. Backend focused checks caught a malformed duplicate `preset_catalog_summary` fragment before any real-image policy evaluation. The next repair removes that fragment; the talent-variant/latest-phase policy itself still requires exact-head validation.
+
+
+## Current WoWSims asynchronous comparison slice
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+The next bounded WoWSims layer moves expensive comparison execution completely off the AzerothCore world thread:
+
+- `POST /v1/snapshot/compare-bags` rebuilds the same authoritative baseline/candidate set already proven by Sim Bags;
+- DPS routes use raid DPS and healer routes use raid HPS; tank comparison still fails closed because no approved survivability metric exists yet;
+- the service simulates the baseline exactly once, then each accepted candidate against that same baseline;
+- the response remains `BAG_COMPARE_COMPLETE_UNVALIDATED`; no route is promoted to SIM-BACKED;
+- the worldserver captures snapshot + bag Item state on the world thread, then enqueues only immutable JSON/string state;
+- the worker thread owns all HTTP/simulator waiting and never dereferences `Player*`, inventory objects or world state;
+- completed work is drained by `RaidRosterWorld::OnUpdate` and delivered only after resolving the player again on the world thread;
+- one active Sim Bags job per character and a bounded global queue prevent accidental job floods;
+- `.wowsims simbags` is the diagnostic entry point for this boundary;
+- shutdown joins the worker cleanly and discards queued work.
+
+The next slice after this is green is result/confidence/explanation transport into GearAdvisor plus an explicit client Sim Bags action. Runtime model/mechanics validation remains required before any player-facing result may be called SIM-BACKED.

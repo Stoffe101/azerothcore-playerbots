@@ -1,10 +1,12 @@
 #include "WoWSimsService.h"
 
 #include "Bag.h"
+#include "Chat.h"
 #include "Config.h"
 #include "DBCStores.h"
 #include "EraPolicy.h"
 #include "Item.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
 #include "PlayerbotAI.h"
 #include "SharedDefines.h"
@@ -13,11 +15,16 @@
 
 #include <algorithm>
 #include <array>
+#include <condition_variable>
 #include <cstdint>
+#include <deque>
+#include <mutex>
 #include <regex>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -30,6 +37,33 @@ struct GearSlot
     uint8 slot;
     char const* name;
 };
+
+struct AsyncBagJob
+{
+    uint64 id = 0;
+    uint32 playerGuid = 0;
+    std::string baseUrl;
+    uint32 timeoutSeconds = 300;
+    std::string body;
+};
+
+struct AsyncBagResult
+{
+    uint64 id = 0;
+    uint32 playerGuid = 0;
+    bool success = false;
+    std::string response;
+    std::string error;
+};
+
+std::mutex g_asyncMutex;
+std::condition_variable g_asyncCv;
+std::deque<AsyncBagJob> g_asyncPending;
+std::deque<AsyncBagResult> g_asyncCompleted;
+std::unordered_set<uint32> g_asyncActivePlayers;
+std::thread g_asyncWorker;
+bool g_asyncStopping = false;
+uint64 g_asyncNextJobId = 1;
 
 static constexpr std::array<GearSlot, 17> kGearSlots = {{
     { EQUIPMENT_SLOT_HEAD, "HEAD" },
@@ -413,10 +447,74 @@ bool PostJson(std::string const& baseUrl, std::string const& endpoint, std::stri
     response = result->body;
     return true;
 }
+
+void AsyncWorkerLoop()
+{
+    for (;;)
+    {
+        AsyncBagJob job;
+        {
+            std::unique_lock<std::mutex> lock(g_asyncMutex);
+            g_asyncCv.wait(lock, [] { return g_asyncStopping || !g_asyncPending.empty(); });
+            if (g_asyncStopping)
+                return;
+
+            job = std::move(g_asyncPending.front());
+            g_asyncPending.pop_front();
+        }
+
+        AsyncBagResult completed;
+        completed.id = job.id;
+        completed.playerGuid = job.playerGuid;
+        completed.success = PostJson(
+            job.baseUrl,
+            "/v1/snapshot/compare-bags",
+            job.body,
+            job.timeoutSeconds,
+            completed.response,
+            completed.error);
+
+        std::lock_guard<std::mutex> lock(g_asyncMutex);
+        g_asyncCompleted.push_back(std::move(completed));
+    }
+}
 }
 
 namespace WoWSimsService
 {
+void StartAsyncWorker()
+{
+    std::lock_guard<std::mutex> lock(g_asyncMutex);
+    if (g_asyncWorker.joinable())
+        return;
+
+    g_asyncStopping = false;
+    g_asyncWorker = std::thread(AsyncWorkerLoop);
+}
+
+void StopAsyncWorker()
+{
+    std::thread worker;
+    {
+        std::lock_guard<std::mutex> lock(g_asyncMutex);
+        if (!g_asyncWorker.joinable())
+            return;
+
+        g_asyncStopping = true;
+        g_asyncPending.clear();
+        worker = std::move(g_asyncWorker);
+    }
+
+    g_asyncCv.notify_all();
+    if (worker.joinable())
+        worker.join();
+
+    std::lock_guard<std::mutex> lock(g_asyncMutex);
+    g_asyncCompleted.clear();
+    g_asyncActivePlayers.clear();
+    g_asyncStopping = false;
+}
+
 std::string BuildCharacterSnapshot(Player* player)
 {
     if (!player)
@@ -596,6 +694,156 @@ bool BuildBaselineRequest(Player* player, std::string& summary, std::string& err
     {
         error = std::string("invalid request-builder response: ") + ex.what();
         return false;
+    }
+}
+
+bool QueueBagComparison(Player* player, uint64& jobId, std::string& error)
+{
+    if (!player)
+    {
+        error = "player is unavailable";
+        return false;
+    }
+    if (!EraPolicy::ItemProvenanceReady())
+    {
+        error = std::string("item provenance unavailable: ") + EraPolicy::ItemProvenanceError();
+        return false;
+    }
+
+    json snapshot;
+    json bagCandidates;
+    try
+    {
+        snapshot = json::parse(BuildCharacterSnapshot(player));
+        bagCandidates = json::parse(BuildBagCandidateSnapshot(player));
+    }
+    catch (std::exception const& ex)
+    {
+        error = std::string("failed to capture asynchronous Sim Bags input: ") + ex.what();
+        return false;
+    }
+
+    json const body = {
+        { "snapshot", std::move(snapshot) },
+        { "candidates", bagCandidates.value("candidates", json::array()) },
+    };
+
+    AsyncBagJob job;
+    job.playerGuid = player->GetGUID().GetCounter();
+    job.baseUrl = sConfigMgr->GetOption<std::string>(
+        "RaidRoster.WoWSimsUrl", "http://ac-wowsims:8092");
+    job.timeoutSeconds = std::clamp<uint32>(
+        sConfigMgr->GetOption<uint32>("RaidRoster.WoWSimsAsyncTimeoutSeconds", 300),
+        30,
+        1800);
+    uint32 const maxQueued = std::clamp<uint32>(
+        sConfigMgr->GetOption<uint32>("RaidRoster.WoWSimsMaxQueuedJobs", 4),
+        1,
+        32);
+
+    StartAsyncWorker();
+    {
+        std::lock_guard<std::mutex> lock(g_asyncMutex);
+        if (g_asyncStopping)
+        {
+            error = "WoWSims asynchronous worker is stopping";
+            return false;
+        }
+        if (g_asyncActivePlayers.count(job.playerGuid))
+        {
+            error = "a Sim Bags comparison is already queued or running for this character";
+            return false;
+        }
+        if (g_asyncPending.size() >= maxQueued)
+        {
+            error = "WoWSims asynchronous queue is full";
+            return false;
+        }
+
+        job.id = g_asyncNextJobId++;
+        jobId = job.id;
+        g_asyncActivePlayers.insert(job.playerGuid);
+        g_asyncPending.push_back(std::move(job));
+    }
+
+    g_asyncCv.notify_one();
+    return true;
+}
+
+void TickAsyncResults()
+{
+    std::deque<AsyncBagResult> completed;
+    {
+        std::lock_guard<std::mutex> lock(g_asyncMutex);
+        completed.swap(g_asyncCompleted);
+        for (AsyncBagResult const& result : completed)
+            g_asyncActivePlayers.erase(result.playerGuid);
+    }
+
+    for (AsyncBagResult const& result : completed)
+    {
+        Player* player = ObjectAccessor::FindConnectedPlayer(
+            ObjectGuid::Create<HighGuid::Player>(
+                static_cast<ObjectGuid::LowType>(result.playerGuid)));
+        if (!player || !player->GetSession())
+            continue;
+
+        ChatHandler handler(player->GetSession());
+        if (!result.success)
+        {
+            handler.PSendSysMessage(
+                "[WoWSims] async Sim Bags job {} failed: {}",
+                result.id,
+                result.error);
+            continue;
+        }
+
+        try
+        {
+            json const parsed = json::parse(result.response);
+            if (parsed.value("status", std::string()) != "BAG_COMPARE_COMPLETE_UNVALIDATED")
+            {
+                handler.PSendSysMessage(
+                    "[WoWSims] async Sim Bags job {} returned an unexpected status.",
+                    result.id);
+                continue;
+            }
+
+            json const support = parsed.value("support", json::object());
+            std::ostringstream message;
+            message << "[WoWSims] async Sim Bags job " << result.id
+                    << " complete (UNVALIDATED): metric="
+                    << parsed.value("metric", std::string("?"))
+                    << ", baseline=";
+            if (parsed.contains("baseline") && !parsed["baseline"].is_null())
+                message << parsed["baseline"].get<double>();
+            else
+                message << "n/a";
+            message << ", swaps=" << parsed.value("resultCount", 0u)
+                    << ", skipped=" << parsed.value("skippedCount", 0u)
+                    << ", support=" << support.value("status", std::string("UNKNOWN"));
+
+            json const best = parsed.value("bestUpgrade", json());
+            if (best.is_object())
+            {
+                message << ", best=item " << best.value("itemId", 0u)
+                        << " -> slot " << best.value("slotIndex", 0u)
+                        << ", delta=" << best.value("delta", 0.0);
+                if (best.contains("deltaPercent") && !best["deltaPercent"].is_null())
+                    message << " (" << best["deltaPercent"].get<double>() << "%)";
+            }
+            else
+                message << ", best=no positive candidate";
+
+            handler.SendSysMessage(message.str());
+        }
+        catch (std::exception const& ex)
+        {
+            handler.PSendSysMessage(
+                "[WoWSims] async Sim Bags job {} returned invalid JSON: {}",
+                result.id,
+                ex.what());
+        }
     }
 }
 
