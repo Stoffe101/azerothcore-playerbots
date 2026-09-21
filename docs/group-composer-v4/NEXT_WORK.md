@@ -57,9 +57,10 @@ ERA-01 is now **IN PROGRESS** while P0 runtime evidence is blocked.
 13. **DONE slice 1 / ERA-07 still IN PROGRESS:** reproducible earliest-era provenance gates new AHBot listings and is green at `44adb851`.
 14. **DONE + green:** ERA-07 slice 2 promotes provenance into central EraPolicy, regenerates it automatically on setup/update, audits existing auctions + stored RNDbot equipment, and gates deterministic RaidRoster/Group Composer gear prep. Exact SHA `e96d009` passed all four workflows on the intended local-CI route.
 15. **DONE + green / runtime TODO:** maintained Details + NoM0Re WeakAuras + GearAdvisor are packaged at `de842ba8`; exact-head GitHub-hosted CI passed. Real 3.3.5a UI/stat validation remains TODO.
+15a. **PARALLEL CLIENT POLISH / CI TODO:** GearAdvisor v0.2.0 layout/data polish is prepared; run exact-head CI, then validate alignment/tooltips/spec icon/left-right anchoring in the real client.
 16. **DONE + green:** ERA-07 slice 3 PlayerbotFactory + AdventureStart/catch-up item policy is exact-head green at `e990dff5` on all four GitHub-hosted workflows.
-17. **CURRENT / slice 4:** gate Adventure Cache direct gear/potion rewards through central provenance and preserve pending caches on policy failure.
-18. **NEXT after slice 4:** automated vendors/reward helpers, then loot/crafting/recipes and remaining non-PlayerbotFactory item sources. Runtime-generate the central snapshot on the dev realm and inspect `.era audit` when the server PC is available again.
+17. **DONE + green:** ERA-07 slice 4 Adventure Cache reward provenance is exact-head green at `e1a2e6fa`; pending caches survive provenance failure and created reward items are policy-gated.
+18. **NEXT ERA-07:** automated vendors/reward helpers, then loot/crafting/recipes and remaining non-PlayerbotFactory item sources. Runtime-generate the central snapshot on the dev realm and inspect `.era audit` when the server PC is available again.
 
 Why: one authoritative era source prevents forty independent gates from drifting, and the audit tells us where WotLK/TBC leakage actually exists before we patch systems blindly.
 

@@ -50,13 +50,14 @@ Runtime testing is unavailable, so architectural work continues in bounded exact
 
 ### NOW-04 — Client addon bundle + gearing guidance
 
-**Status: DONE FOR IMPLEMENTATION / runtime acceptance TODO**
+**Status: v0.1.0 DONE + green; v0.2.0 polish PREPARED / exact-head CI + runtime acceptance TODO**
 
 Bounded client QoL pass requested during the era work:
 - package maintained Details-WotLK;
 - package NoM0Re's maintained 3.3.5a WeakAuras backport instead of the old WA 4.0 fallback;
 - replace the distributed raw ExtendedCharacterStats panel with GearAdvisor beside the Character frame;
 - GearAdvisor covers every WotLK talent tree with ilvl, hard caps, current key stats and spec/role priority guidance;
+- v0.2.0 polish adds spec icon, aligned cap columns/tooltips, seven-stat capacity, screen-aware anchoring and explicit non-WotLK priority warning;
 - keep era fidelity explicit: baseline caps may follow realm era now, while full Vanilla/TBC spec-weight profiles are not claimed complete.
 
 This pass does not reorder the accepted 40 ERA/FEATURE items; after it is green, work returns to ERA-07's remaining automated item consumers.
@@ -119,7 +120,7 @@ They are the dependency spine for most other approved era work. First define one
   - Slice 1 is exact-head local-CI green at `44adb851`: exact pinned Classic/TBC/WotLK DB identity determines earliest expansion without level/item-ID chronology guesses.
   - Slice 2 is exact-head local-CI green at `e96d009`: generated chronology is central EraPolicy state, all three blocklists coexist, the live world item set is fingerprinted, setup/update regenerate it, existing auctions + stored RNDbot equipment are audited, and deterministic RaidRoster/Group Composer gear prep is gated.
   - Slice 3 is exact-head GitHub-CI green at `e990dff5`: PlayerbotFactory item generation uses central readiness/allow callbacks applied through a strict post-patch transformer, and AdventureStart/catch-up fail before destructive/one-time state changes.
-  - Slice 4 is IN PROGRESS: Adventure Cache direct gear/potion rewards are being gated through the same central provenance while preserving pending rewards on provenance failure.
+  - Slice 4 is exact-head GitHub-CI green at `e1a2e6fa`: Adventure Cache direct gear/potion rewards use central provenance and pending rewards survive provenance failure.
   - UNKNOWN IDs fail closed for protected automation; explicit overrides are the review ledger.
   - Still TODO after slice 3: runtime provenance generation evidence, vendors/rewards, loot/crafting/recipes, enchant-spell chronology and remaining non-PlayerbotFactory item paths.
 

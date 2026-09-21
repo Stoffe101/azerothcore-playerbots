@@ -94,8 +94,8 @@ Status vocabulary:
 
 ## ERA-07 Adventure Cache reward provenance
 
-- STATIC/CI: cache open checks provenance readiness before consuming the pending cache.
-- STATIC/CI: cache gear candidates and direct item storage call `EraPolicy::IsItemAllowed`.
+- PASS (CI `e1a2e6fa`): cache open checks provenance readiness before consuming the pending cache.
+- PASS (CI `e1a2e6fa`): cache gear candidates and direct item storage call `EraPolicy::IsItemAllowed`.
 - TODO: with provenance unavailable, `.cache open` leaves pending cache unchanged.
 - TODO: after provenance repair, the same pending cache can be opened.
 - TODO: Vanilla/TBC/WotLK cache rewards never create future/UNKNOWN gear or potions.
@@ -137,14 +137,19 @@ Status vocabulary:
 - PASS (CI `de842ba8`): `fetch-client-addons.sh` parses and contains exact pins for NoM0Re WeakAuras + maintained Details.
 - PASS (CI `de842ba8`): no Bunny67 WeakAuras fallback is packaged.
 - PASS (CI `de842ba8`): GearAdvisor parses under Lua 5.1 and includes all class/spec profile families.
+- STATIC/CI TODO for v0.2.0: widened 390px panel, screen clamping, cap tooltips/two-column rows, seven key-stat rows, WotLK-reference warning and Arms 1260 ArP baseline are all asserted by client CI.
 - TODO: generated client zip contains Details, WeakAuras/Options/model folders and GearAdvisor, but not ExtendedCharacterStats.
-- TODO: GearAdvisor opens to the right of CharacterFrame without covering paper-doll controls.
+- TODO: GearAdvisor opens beside CharacterFrame without covering paper-doll/header controls; when right-side space is insufficient it flips left and remains on-screen.
 - TODO: switching dual spec refreshes the detected spec/profile immediately.
 - TODO: MM Hunter shows ranged-hit target/shortfall, equipped ilvl and the MM priority profile.
-- TODO: Feral Cat/Bear mode toggle changes guidance without changing the player's talents.
+- TODO: Feral Cat/Bear mode toggle changes guidance without changing the player's talents; Cat key stats include melee hit and the row layout remains aligned.
 - TODO: DK DPS/Tank role toggle changes the same tree's guidance safely.
 - TODO: WotLK level-80 rating targets match the live client's combat-rating conversions.
 - TODO: when Group Composer has a server era snapshot, GearAdvisor displays that era rather than relying on level fallback.
+- TODO: hover each populated cap row and verify the target explanation/current-target tooltip is readable and does not cover the panel unusably.
+- TODO: long hit/rating/ArP values stay in the right column without clipping into the cap label.
+- TODO: Vanilla/TBC display the visible WotLK-reference warning for detailed priorities.
+- TODO: close-button + `/ga` hide/restore state behaves consistently across CharacterFrame reopen.
 
 ## Admin security / addon launchers
 

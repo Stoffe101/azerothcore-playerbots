@@ -4,8 +4,8 @@ if DB.shown == nil then DB.shown = true end
 DB.variants = DB.variants or {}
 
 local ADDON = "GearAdvisor"
-local PANEL_WIDTH = 352
-local PANEL_HEIGHT = 506
+local PANEL_WIDTH = 390
+local PANEL_HEIGHT = 574
 
 local CLASS_SPECS = {
     WARRIOR = { "Arms", "Fury", "Protection" },
@@ -20,8 +20,8 @@ local CLASS_SPECS = {
     DRUID = { "Balance", "Feral", "Restoration" },
 }
 
-local function Cap(kind, label, talentRules, note)
-    return { kind = kind, label = label, talents = talentRules, note = note }
+local function Cap(kind, label, talentRules, note, target)
+    return { kind = kind, label = label, talents = talentRules, note = note, target = target }
 end
 
 local function P(role, priority, caps, stats, note)
@@ -37,17 +37,17 @@ local HIT_RANGED = function(talents, note) return Cap("rangedHit", "Ranged hit",
 local HIT_SPELL = function(talents, note) return Cap("spellHit", "Spell hit", talents, note) end
 local EXPERTISE = function(note) return Cap("expertise", "Expertise", nil, note) end
 local DEFENSE = function(note) return Cap("defense", "Defense", nil, note) end
-local ARP = function(note) return Cap("arp", "Armor penetration", nil, note) end
+local ARP = function(note, target) return Cap("arp", "Armor penetration", nil, note, target) end
 
 local PROFILES = {
     WARRIOR = {
         [1] = P("DPS", "Hit cap > Expertise cap > Armor Penetration > Strength > Crit > Haste",
-            { HIT_MELEE(nil, "Special attacks vs a raid boss."), EXPERTISE(), ARP("Hard cap only; proc trinkets create lower soft caps.") },
-            { "strength", "attackPower", "meleeCrit", "meleeHit", "expertise", "arp" },
+            { HIT_MELEE(nil, "Special attacks vs a raid boss."), EXPERTISE(), ARP("1260 rating reflects Battle Stance's passive Armor Penetration. Mace Specialization or proc trinkets can lower the practical target further.", 1260) },
+            { "strength", "attackPower", "meleeCrit", "meleeHit", "expertise", "arp", "hasteMelee" },
             "Arms scales extremely well with Armor Penetration in Wrath. Do not chase the hard ArP cap before hit/expertise are stable."),
         [2] = P("DPS", "Hit cap > Expertise cap > Armor Penetration > Strength > Crit > Haste",
             { HIT_MELEE({{"Precision", 1}}, "Precision reduces the gear hit needed for specials."), EXPERTISE(), ARP("Hard cap only; proc trinkets create lower soft caps.") },
-            { "strength", "attackPower", "meleeCrit", "meleeHit", "expertise", "arp" },
+            { "strength", "attackPower", "meleeCrit", "meleeHit", "expertise", "arp", "hasteMelee" },
             "Fury's white-swing cap is much higher than the special-attack cap and is not a sensible primary gearing target."),
         [3] = P("Tank", "Defense cap > Stamina > Armor > Expertise > Hit > Dodge/Parry > Block",
             { DEFENSE("Uncrittable baseline vs level-83 raid bosses."), HIT_MELEE(), EXPERTISE() },
@@ -65,7 +65,7 @@ local PROFILES = {
             "Block value/avoidance can be useful, but stamina and armor remain the safest general raid gearing foundation."),
         [3] = P("DPS", "Hit cap > Expertise cap > Strength > Crit > Agility > Haste",
             { HIT_MELEE(), EXPERTISE() },
-            { "strength", "attackPower", "meleeCrit", "meleeHit", "expertise", "hasteMelee" },
+            { "strength", "agility", "attackPower", "meleeCrit", "meleeHit", "expertise", "hasteMelee" },
             "Armor Penetration is comparatively weak for Retribution because a large share of damage is magical/holy."),
     },
     HUNTER = {
@@ -85,11 +85,11 @@ local PROFILES = {
     ROGUE = {
         [1] = P("DPS", "Poison/spell hit > Expertise > Attack Power > Haste > Crit > Armor Penetration",
             { HIT_MELEE({{"Precision", 1}}, "Yellow melee special cap after Precision."), HIT_SPELL({{"Precision", 1}}, "Poisons use spell hit."), EXPERTISE() },
-            { "agility", "attackPower", "meleeCrit", "meleeHit", "spellHit", "expertise" },
+            { "agility", "attackPower", "meleeCrit", "meleeHit", "spellHit", "expertise", "hasteMelee" },
             "Assassination cares strongly about poison hit. Raid hit debuffs/racials can lower the remaining spell-hit requirement."),
         [2] = P("DPS", "Hit > Expertise > Armor Penetration > Agility / Attack Power > Haste > Crit",
             { HIT_MELEE({{"Precision", 1}}, "Yellow melee special cap after Precision."), HIT_SPELL({{"Precision", 1}}, "Poisons use spell hit."), EXPERTISE(), ARP() },
-            { "agility", "attackPower", "meleeCrit", "meleeHit", "expertise", "arp" },
+            { "agility", "attackPower", "meleeCrit", "meleeHit", "expertise", "arp", "hasteMelee" },
             "Combat scales strongly with weapon damage and Armor Penetration. White-hit cap is intentionally not treated as mandatory."),
         [3] = P("DPS", "Hit > Expertise > Agility > Attack Power > Crit > Haste",
             { HIT_MELEE({{"Precision", 1}}), HIT_SPELL({{"Precision", 1}}, "Poisons use spell hit."), EXPERTISE() },
@@ -118,7 +118,7 @@ local PROFILES = {
                 "Blood is the common Wrath raid-tank tree, but 3.3.5 DK design allows other tank trees too."),
             ["DPS"] = P("DPS", "Hit cap > Expertise cap > Strength > Armor Penetration > Crit > Haste",
                 { HIT_MELEE(), EXPERTISE(), ARP() },
-                { "strength", "attackPower", "meleeCrit", "meleeHit", "expertise", "arp" },
+                { "strength", "attackPower", "meleeCrit", "meleeHit", "expertise", "arp", "hasteMelee" },
                 "Use the role toggle if this Blood build is tanking instead of dealing damage."),
         }),
         [2] = Variants("DPS", {
@@ -149,7 +149,7 @@ local PROFILES = {
             "A raid spell-hit debuff and Draenei racial can reduce the remaining hit requirement beyond your own talents."),
         [2] = P("DPS", "Spell hit > Expertise > Attack Power / Agility > Haste > Crit",
             { HIT_SPELL(nil, "Enhancement still relies heavily on spell-based damage."), HIT_MELEE({{"Dual Wield Specialization", 2}}, "Dual Wield Specialization reduces melee-hit need."), EXPERTISE() },
-            { "agility", "attackPower", "meleeCrit", "meleeHit", "spellHit", "expertise" },
+            { "agility", "attackPower", "meleeCrit", "meleeHit", "spellHit", "expertise", "hasteMelee" },
             "Enhancement has two relevant hit thresholds. Spell hit usually remains useful after yellow melee attacks are capped."),
         [3] = P("Healer", "Spell Power > Haste > Intellect > MP5 > Crit",
             {},
@@ -190,10 +190,10 @@ local PROFILES = {
             { "intellect", "spirit", "spellPower", "spellCrit", "spellHaste", "spellHit" },
             "Improved Faerie Fire is a target debuff; if another raid member supplies equivalent hit support, avoid double-counting assumptions."),
         [2] = Variants("Cat DPS", {
-            ["Cat DPS"] = P("DPS", "Hit / Expertise > Agility > Armor Penetration > Strength > Crit > Haste",
+            ["Cat DPS"] = P("DPS", "Hit / Expertise reference > Agility / Strength > Crit > Armor Penetration when a cap plan is viable > Haste",
                 { HIT_MELEE(), EXPERTISE(), ARP("Hard cap only; proc trinkets create lower soft caps.") },
-                { "agility", "strength", "attackPower", "meleeCrit", "expertise", "arp" },
-                "Feral Cat can trade some cap perfection for stronger raw stats depending on gear, but caps are useful reference points."),
+                { "agility", "strength", "attackPower", "meleeCrit", "meleeHit", "expertise", "arp" },
+                "Feral Cat stat weights move substantially with gear. Treat hit/expertise as useful boss references, then use stronger raw stats until an Armor Penetration soft/hard-cap setup is actually viable."),
             ["Bear Tank"] = P("Tank", "Stamina > Armor > Agility > Dodge > Expertise > Hit",
                 { HIT_MELEE(), EXPERTISE() },
                 { "stamina", "armor", "agility", "dodge", "expertise", "meleeHit" },
@@ -489,7 +489,7 @@ local function CapState(cap, era)
     if cap.kind == "arp" then
         if era ~= "WOTLK" then return true, 0, 0, 0, "No Wrath rating cap in this era" end
         local current = RatingValue("CR_ARMOR_PENETRATION") or 0
-        local target = 1400
+        local target = cap.target or 1400
         return current >= target, current, target, math.max(0, target - current),
             Number(current, 0) .. " / 1400 rating"
     end
@@ -505,123 +505,267 @@ local function ColorForProgress(current, target)
     return "|cffff6b6b"
 end
 
+local function CapDefaultNote(cap)
+    if cap.kind == "meleeHit" or cap.kind == "rangedHit" or cap.kind == "spellHit" then
+        return "Self-only PvE boss target. Raid debuffs, racials and temporary effects are not subtracted automatically."
+    end
+    if cap.kind == "expertise" then
+        return "26 expertise removes a raid boss's dodge chance. DPS should still attack from behind to avoid parries."
+    end
+    if cap.kind == "defense" then
+        return "Boss crit-immunity baseline for a conventional defense-based tank in the selected era."
+    end
+    if cap.kind == "arp" then
+        return "Wrath Armor Penetration hard cap. Proc trinkets can create lower practical soft caps."
+    end
+    return "PvE boss gearing reference."
+end
+
+local function CapDisplay(cap, era)
+    local met, current, target, need, detail = CapState(cap, era)
+    if target == 0 and (cap.kind == "expertise" or cap.kind == "arp") then
+        return "|cff888888" .. detail .. "|r", met, current, target, need
+    end
+
+    local color = ColorForProgress(current, target)
+    if cap.kind == "meleeHit" or cap.kind == "rangedHit" or cap.kind == "spellHit" then
+        local status = met and "OK" or ("+" .. Number(need, 2) .. "%")
+        if not met then
+            local ratingNeed = EstimateRatingForPercent(cap.kind, need)
+            if ratingNeed then status = status .. " (~" .. Number(ratingNeed, 0) .. " rtg)" end
+        end
+        return color .. Number(current, 2) .. "% / " .. Number(target, 2) .. "%  " .. status .. "|r",
+            met, current, target, need
+    end
+
+    local decimals = (cap.kind == "expertise" or cap.kind == "defense" or cap.kind == "arp") and 0 or 1
+    local unit = cap.kind == "arp" and " rtg" or ""
+    local status = met and "OK" or ("+" .. Number(need, decimals) .. unit)
+    return color .. Number(current, decimals) .. " / " .. Number(target, decimals) .. "  " .. status .. "|r",
+        met, current, target, need
+end
+
+local function CreateDivider(parent, y)
+    local line = parent:CreateTexture(nil, "ARTWORK")
+    line:SetPoint("TOPLEFT", 18, y)
+    line:SetPoint("TOPRIGHT", -18, y)
+    line:SetHeight(1)
+    line:SetTexture(1, 1, 1, 0.10)
+    return line
+end
+
 local panel = CreateFrame("Frame", "GearAdvisor335Frame", UIParent)
 panel:SetWidth(PANEL_WIDTH)
 panel:SetHeight(PANEL_HEIGHT)
 panel:SetFrameStrata("HIGH")
 panel:SetBackdrop({
-    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-    tile = true, tileSize = 32, edgeSize = 24,
-    insets = { left = 7, right = 7, top = 7, bottom = 7 }
+    bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = true, tileSize = 16, edgeSize = 12,
+    insets = { left = 3, right = 3, top = 3, bottom = 3 }
 })
+panel:SetBackdropColor(0.035, 0.045, 0.065, 0.97)
+panel:SetBackdropBorderColor(0.35, 0.40, 0.50, 1)
+if panel.SetClampedToScreen then panel:SetClampedToScreen(true) end
 panel:Hide()
 
+local specIcon = panel:CreateTexture(nil, "ARTWORK")
+specIcon:SetWidth(36)
+specIcon:SetHeight(36)
+specIcon:SetPoint("TOPLEFT", 20, -16)
+specIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+local iconBorder = panel:CreateTexture(nil, "OVERLAY")
+iconBorder:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+iconBorder:SetBlendMode("ADD")
+iconBorder:SetAlpha(0.55)
+iconBorder:SetWidth(62)
+iconBorder:SetHeight(62)
+iconBorder:SetPoint("CENTER", specIcon, "CENTER", 0, 0)
+
 local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-title:SetPoint("TOPLEFT", 20, -16)
+title:SetPoint("TOPLEFT", 66, -16)
 title:SetText("Gear Advisor")
 
 local specLine = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-specLine:SetPoint("TOPLEFT", 20, -42)
-specLine:SetWidth(305)
+specLine:SetPoint("TOPLEFT", 66, -39)
+specLine:SetWidth(170)
 specLine:SetJustifyH("LEFT")
 
-local ilvlLine = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-ilvlLine:SetPoint("TOPLEFT", 20, -61)
-ilvlLine:SetWidth(305)
+local ilvlLine = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+ilvlLine:SetPoint("TOPLEFT", 20, -66)
+ilvlLine:SetWidth(350)
 ilvlLine:SetJustifyH("LEFT")
 
+CreateDivider(panel, -88)
+
 local capsTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-capsTitle:SetPoint("TOPLEFT", 20, -91)
+capsTitle:SetPoint("TOPLEFT", 20, -101)
 capsTitle:SetText("CAPS & TARGETS")
 
 local capRows = {}
 for i = 1, 4 do
-    local fs = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    fs:SetPoint("TOPLEFT", 24, -111 - (i - 1) * 20)
-    fs:SetWidth(304)
-    fs:SetJustifyH("LEFT")
-    fs:SetText("")
-    capRows[i] = fs
+    local row = CreateFrame("Button", nil, panel)
+    row:SetPoint("TOPLEFT", 20, -120 - (i - 1) * 20)
+    row:SetWidth(350)
+    row:SetHeight(18)
+    row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+
+    local label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    label:SetPoint("LEFT", 4, 0)
+    label:SetWidth(128)
+    label:SetJustifyH("LEFT")
+
+    local value = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    value:SetPoint("RIGHT", -4, 0)
+    value:SetWidth(210)
+    value:SetJustifyH("RIGHT")
+
+    row.label = label
+    row.value = value
+    row.cap = nil
+    row.detail = nil
+    row:SetScript("OnEnter", function(self)
+        if not self.cap then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(self.cap.label, 1, 0.82, 0)
+        GameTooltip:AddLine(self.cap.note or CapDefaultNote(self.cap), 1, 1, 1, true)
+        if self.cap.note then
+            GameTooltip:AddLine(CapDefaultNote(self.cap), 0.72, 0.78, 0.88, true)
+        end
+        if self.detail then
+            GameTooltip:AddLine("Current / target: " .. self.detail, 0.75, 0.82, 1.0, true)
+        end
+        GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    capRows[i] = row
 end
 
+CreateDivider(panel, -204)
+
 local priorityTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-priorityTitle:SetPoint("TOPLEFT", 20, -198)
+priorityTitle:SetPoint("TOPLEFT", 20, -217)
 priorityTitle:SetText("STAT PRIORITY")
 
 local priorityText = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-priorityText:SetPoint("TOPLEFT", 24, -218)
-priorityText:SetWidth(304)
+priorityText:SetPoint("TOPLEFT", 24, -237)
+priorityText:SetWidth(342)
 priorityText:SetHeight(42)
 priorityText:SetJustifyH("LEFT")
 priorityText:SetJustifyV("TOP")
 
+local eraNotice = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+eraNotice:SetPoint("TOPLEFT", 24, -280)
+eraNotice:SetWidth(342)
+eraNotice:SetHeight(18)
+eraNotice:SetJustifyH("LEFT")
+
+CreateDivider(panel, -303)
+
 local currentTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-currentTitle:SetPoint("TOPLEFT", 20, -270)
+currentTitle:SetPoint("TOPLEFT", 20, -316)
 currentTitle:SetText("YOUR KEY STATS")
 
 local statRows = {}
-for i = 1, 6 do
+for i = 1, 7 do
     local label = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    label:SetPoint("TOPLEFT", 24, -292 - (i - 1) * 18)
-    label:SetWidth(150)
+    label:SetPoint("TOPLEFT", 24, -338 - (i - 1) * 18)
+    label:SetWidth(182)
     label:SetJustifyH("LEFT")
 
     local value = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    value:SetPoint("TOPRIGHT", -24, -292 - (i - 1) * 18)
-    value:SetWidth(145)
+    value:SetPoint("TOPRIGHT", -24, -338 - (i - 1) * 18)
+    value:SetWidth(150)
     value:SetJustifyH("RIGHT")
     statRows[i] = { label = label, value = value }
 end
 
+CreateDivider(panel, -467)
+
 local notesTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-notesTitle:SetPoint("TOPLEFT", 20, -409)
+notesTitle:SetPoint("TOPLEFT", 20, -480)
 notesTitle:SetText("WHY / WHAT NEXT")
 
 local notesText = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-notesText:SetPoint("TOPLEFT", 24, -429)
-notesText:SetWidth(304)
-notesText:SetHeight(50)
+notesText:SetPoint("TOPLEFT", 24, -500)
+notesText:SetWidth(342)
+notesText:SetHeight(48)
 notesText:SetJustifyH("LEFT")
 notesText:SetJustifyV("TOP")
 
 local footer = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-footer:SetPoint("BOTTOMLEFT", 20, 15)
-footer:SetPoint("BOTTOMRIGHT", -20, 15)
+footer:SetPoint("BOTTOMLEFT", 20, 10)
+footer:SetPoint("BOTTOMRIGHT", -20, 10)
 footer:SetJustifyH("CENTER")
-footer:SetText("PvE boss targets | /ga toggles | hard caps != BiS weights")
+footer:SetText("Boss targets are self-only | hover caps for details | /ga toggles")
 
 local modeButton = CreateFrame("Button", "GearAdvisor335ModeButton", panel, "UIPanelButtonTemplate")
-modeButton:SetWidth(94)
-modeButton:SetHeight(20)
-modeButton:SetPoint("TOPRIGHT", -20, -15)
+modeButton:SetWidth(116)
+modeButton:SetHeight(22)
+modeButton:SetPoint("TOPRIGHT", -32, -17)
 modeButton:Hide()
+modeButton:SetScript("OnEnter", function(self)
+    if not self:IsShown() then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine("Role / build mode", 1, 0.82, 0)
+    GameTooltip:AddLine("Click to cycle the available guidance modes for this talent tree.", 1, 1, 1, true)
+    GameTooltip:Show()
+end)
+modeButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-local characterButton
+local closeButton = CreateFrame("Button", "GearAdvisor335CloseButton", panel, "UIPanelCloseButton")
+closeButton:SetPoint("TOPRIGHT", -2, -2)
+closeButton:SetScript("OnClick", function()
+    panel:Hide()
+    DB.shown = false
+end)
+
 local hooked = false
 
 local function Anchor()
     panel:ClearAllPoints()
     if CharacterFrame then
-        panel:SetPoint("TOPLEFT", CharacterFrame, "TOPRIGHT", -6, -7)
+        local screenWidth = UIParent and UIParent:GetWidth()
+        local frameRight = CharacterFrame:GetRight()
+        if screenWidth and frameRight and (frameRight + PANEL_WIDTH + 8 > screenWidth) then
+            panel:SetPoint("TOPRIGHT", CharacterFrame, "TOPLEFT", 6, -7)
+        else
+            panel:SetPoint("TOPLEFT", CharacterFrame, "TOPRIGHT", -6, -7)
+        end
     else
-        panel:SetPoint("CENTER", UIParent, "CENTER", 365, 0)
+        panel:SetPoint("CENTER", UIParent, "CENTER", 390, 0)
     end
 end
 
 local function Update()
-    local classToken, tab, specName = DetectSpec()
+    local classToken, tab, specName, specIconPath = DetectSpec()
     local profile, variant = ResolveProfile(classToken, tab)
     local era, eraSource = RealmEra()
     local className = UnitClass("player")
     className = className or classToken or "Unknown"
 
-    specLine:SetText(className .. " | " .. specName .. " | " .. profile.role .. " | " .. era)
-    ilvlLine:SetText("Equipped item level: |cffffffff" .. Number(EquippedItemLevel(), 1) .. "|r   Era source: " .. eraSource)
+    specIcon:SetTexture(specIconPath or "Interface\\Icons\\INV_Misc_QuestionMark")
+    local classColor = RAID_CLASS_COLORS and RAID_CLASS_COLORS[classToken]
+    if classColor then
+        specLine:SetTextColor(classColor.r, classColor.g, classColor.b)
+    else
+        specLine:SetTextColor(1, 1, 1)
+    end
+    specLine:SetText(className .. " | " .. specName .. " | " .. profile.role)
+    ilvlLine:SetText("Equipped iLvl  |cffffffff" .. Number(EquippedItemLevel(), 1) .. "|r     Realm  |cffffffff" .. era .. "|r  (" .. eraSource .. ")")
+
+    if era == "WOTLK" then
+        priorityTitle:SetText("STAT PRIORITY")
+        eraNotice:SetText("")
+    else
+        priorityTitle:SetText("STAT PRIORITY  |cffffcc66(WOTLK REFERENCE)|r")
+        eraNotice:SetText("|cffffcc66Caps adapt to " .. era .. "; detailed per-spec priority text is still WotLK-focused.|r")
+    end
 
     if variant then
         modeButton:Show()
-        modeButton:SetText(variant.selected)
+        modeButton:SetText("Mode: " .. variant.selected)
         modeButton:SetScript("OnClick", function()
             local names = {}
             for name in pairs(variant.root.variants) do names[#names + 1] = name end
@@ -639,29 +783,30 @@ local function Update()
         modeButton:Hide()
     end
 
-    for i = 1, 4 do capRows[i]:SetText("") end
+    for i = 1, 4 do
+        capRows[i].label:SetText("")
+        capRows[i].value:SetText("")
+        capRows[i].cap = nil
+        capRows[i].detail = nil
+    end
     if #profile.caps == 0 then
-        capRows[1]:SetText("|cffaaaaaaNo universal hard PvE cap for this healing profile.|r")
+        capRows[1].label:SetText("PvE caps")
+        capRows[1].value:SetText("|cffaaaaaaNo universal hard cap|r")
     else
         for i = 1, math.min(4, #profile.caps) do
             local cap = profile.caps[i]
-            local met, current, target, need, detail = CapState(cap, era)
-            if target == 0 and (cap.kind == "expertise" or cap.kind == "arp") then
-                capRows[i]:SetText("|cff888888" .. cap.label .. ": " .. detail .. "|r")
-            else
-                local color = ColorForProgress(current, target)
-                local needDecimals = (cap.kind == "expertise" or cap.kind == "defense" or cap.kind == "arp") and 0 or 2
-                local needUnit = (cap.kind == "meleeHit" or cap.kind == "rangedHit" or cap.kind == "spellHit") and "%"
-                    or (cap.kind == "arp" and " rating" or "")
-                local suffix = met and "  [OK]" or ("  need +" .. Number(need, needDecimals) .. needUnit)
-                capRows[i]:SetText(color .. cap.label .. ": " .. detail .. suffix .. "|r")
-            end
+            capRows[i].cap = cap
+            local _, _, _, _, detail = CapState(cap, era)
+            capRows[i].detail = detail
+            capRows[i].label:SetText(cap.label)
+            local display = CapDisplay(cap, era)
+            capRows[i].value:SetText(display)
         end
     end
 
     priorityText:SetText(profile.priority)
 
-    for i = 1, 6 do
+    for i = 1, 7 do
         local key = profile.stats[i]
         local metric = key and METRICS[key]
         if metric then
@@ -686,7 +831,11 @@ local function Update()
         end
     end
     local note = profile.note
-    if firstMissing then note = firstMissing .. ". " .. note end
+    if firstMissing then
+        note = "|cffffd24aNext target: " .. firstMissing .. ".|r  " .. note
+    elseif #profile.caps > 0 then
+        note = "|cff40ff70Primary listed caps are met.|r  " .. note
+    end
     notesText:SetText(note)
 end
 
@@ -709,13 +858,6 @@ end
 local function HookCharacterFrame()
     if hooked or not CharacterFrame then return end
     hooked = true
-
-    characterButton = CreateFrame("Button", "GearAdvisor335CharacterButton", CharacterFrame, "UIPanelButtonTemplate")
-    characterButton:SetWidth(74)
-    characterButton:SetHeight(20)
-    characterButton:SetText("Advisor")
-    characterButton:SetPoint("TOPRIGHT", CharacterFrame, "TOPRIGHT", -72, -33)
-    characterButton:SetScript("OnClick", Toggle)
 
     CharacterFrame:HookScript("OnShow", function()
         Anchor()

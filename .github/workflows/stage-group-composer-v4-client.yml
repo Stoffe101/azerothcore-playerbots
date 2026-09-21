@@ -34,7 +34,13 @@ jobs:
           grep -q 'DEATHKNIGHT = {' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'DRUID = {' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'Marksmanship' client-addons-src/GearAdvisor/GearAdvisor.lua
-          grep -q 'Equipped item level:' client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q 'Equipped iLvl' client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q 'PANEL_WIDTH = 390' client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q 'SetClampedToScreen' client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q 'hover caps for details' client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q 'WOTLK REFERENCE' client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q 'for i = 1, 7 do' client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q '1260' client-addons-src/GearAdvisor/GearAdvisor.lua
           lua5.1 client-addons-src/GroupComposer/tests/test_data_profiles.lua
           python3 client-addons-src/GroupComposer/tests/test_server_contract.py
           python3 client-addons-src/GroupComposer/tests/test_titan_bridge_contract.py

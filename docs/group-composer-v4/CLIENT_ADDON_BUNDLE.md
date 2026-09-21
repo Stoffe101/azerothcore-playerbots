@@ -42,18 +42,25 @@ Purpose:
 - show current relevant character stats;
 - show remaining shortfall such as hit/expertise/defense;
 - refresh on equipment/talent/stat changes.
+- keep long cap/status values aligned in separate label/value columns;
+- expose cap-specific explanations and current/target detail on hover;
+- show the detected spec icon and class-colored identity line;
+- anchor to the opposite side of CharacterFrame automatically when the preferred right-side panel would run off-screen.
 
-First-version profile coverage:
+Profile coverage:
 - all ten WotLK classes;
 - every talent tree;
 - Feral has Cat DPS / Bear Tank variants;
-- Death Knight Blood/Frost/Unholy can switch DPS/Tank guidance.
+- Death Knight Blood/Frost/Unholy can switch DPS/Tank guidance;
+- v0.2.0 expands key-stat rows where the profile needs a seventh metric (for example Feral Cat hit, Enhancement haste and Rogue haste);
+- Arms uses a 1260 Armor Penetration rating boss reference for the Battle Stance baseline instead of presenting the generic 1400 rating number as universally correct.
 
 Era behavior:
 - baseline physical hit, spell hit and tank defense targets change by realm era;
 - WotLK Armor Penetration hard-cap guidance is hidden outside WotLK;
 - the server-reported Group Composer era wins when available;
-- detailed stat-priority text is WotLK-focused in v0.1.0. Do not claim full Vanilla/TBC spec-weight fidelity until those profiles are explicitly researched and added.
+- detailed stat-priority text remains WotLK-focused, and v0.2.0 now says so visibly in the panel on Vanilla/TBC instead of letting a Wrath priority look era-authentic;
+- full Vanilla/TBC spec-weight fidelity remains a future research pass.
 
 The former `ExtendedCharacterStats` source remains in Git history/source for reference but is skipped from the generated bundle because GearAdvisor supersedes its UI/function.
 
@@ -62,9 +69,12 @@ The former `ExtendedCharacterStats` source remains in Git history/source for ref
 Before calling the pass accepted in game:
 1. build/download the generated zip;
 2. verify WeakAuras, Details and GearAdvisor load on 3.3.5a without Lua errors;
-3. open CharacterFrame and confirm GearAdvisor sits to the right without overlap;
+3. open CharacterFrame and confirm GearAdvisor sits beside it without overlap; at a narrow resolution/UI scale confirm it flips to the left instead of leaving the screen;
 4. test at least one caster, healer, melee, tank and hunter profile;
 5. switch dual spec and verify immediate profile refresh;
 6. compare displayed hit/expertise/defense values to the stock character sheet / known gear totals;
 7. test Feral and Death Knight variant toggles;
-8. confirm ExtendedCharacterStats is absent from the distributed pack.
+8. hover every cap row and verify tooltip text + current/target detail;
+9. verify long hit/rating and Armor Penetration rows remain aligned rather than clipping into labels;
+10. confirm the panel close button hides it and `/ga` restores it;
+11. confirm ExtendedCharacterStats is absent from the distributed pack.

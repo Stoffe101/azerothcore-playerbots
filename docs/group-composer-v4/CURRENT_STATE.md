@@ -84,6 +84,18 @@ Status: **DONE + exact-head GitHub-hosted CI green at `de842ba842721f32d588ba5d9
 - GearAdvisor reads the server-reported realm era from Group Composer when available and uses era-aware baseline hit/defense rules. Advanced priority prose is presently WotLK-oriented; full Vanilla/TBC priority profiles remain future polish.
 - The superseded `ExtendedCharacterStats` source is retained for history but skipped by the distributed bundle, preventing duplicate character-side panels.
 
+GearAdvisor v0.2.0 polish status: **IMPLEMENTATION PREPARED / exact-head CI required**.
+- Panel grows from 352x506 to 390x574 and uses a cleaner native tooltip-style border/background with section dividers.
+- Detected talent-tree icon appears in the header; class/spec/role identity is class-colored.
+- Cap rows are true two-column rows rather than one long FontString, preventing rating/shortfall text from colliding with the cap label.
+- Hovering a cap explains what the target means and shows the full current/target detail.
+- Key-stat capacity increases from six to seven; Feral Cat now visibly includes melee hit, and several haste-sensitive melee profiles expose haste instead of silently omitting it.
+- The side panel flips to CharacterFrame's left when the right side would exceed the screen width and is clamped on-screen.
+- The potentially overlapping CharacterFrame `Advisor` text button is removed; the panel owns a normal close button and `/ga` remains the reopen/toggle path.
+- Vanilla/TBC visibly mark the detailed priority as a **WotLK reference** while their cap math remains era-aware.
+- Arms Armor Penetration uses 1260 rating as its Battle Stance baseline reference; the tooltip notes weapon specialization/proc soft-cap caveats.
+- Runtime visual acceptance remains TODO until the 3.3.5a client is available.
+
 ### Runtime pass 3 implementation
 
 Code/CI status: **DONE**. Runtime acceptance status: **TODO**.
@@ -283,10 +295,11 @@ Exact-head `e990dff5` CI: client checks **SUCCESS**, backend staging **SUCCESS**
 
 ### ERA-07 slice 4 — Adventure Cache direct rewards
 
-Status: **IN PROGRESS**.
+Status: **DONE + exact-head GitHub-hosted CI green at `e1a2e6fa89e375290247b42099c12dca8203c414`**.
 
 - Adventure Cache is a custom item-producing reward path outside PlayerbotFactory.
-- Cache opening will check `EraPolicy::ItemProvenanceReady()` before consuming the pending one-shot reward.
-- Spec-aware cache gear candidates and direct potion/gear storage will call `EraPolicy::IsItemAllowed`.
+- Cache opening checks `EraPolicy::ItemProvenanceReady()` before consuming the pending one-shot reward.
+- Spec-aware cache gear candidates and direct potion/gear storage call `EraPolicy::IsItemAllowed`.
 - If provenance is stale/unavailable, the pending cache remains intact for retry after repair.
+- Exact-head CI: client checks SUCCESS, backend staging SUCCESS, Group Composer V4 compile SUCCESS, Integration SUCCESS.
 - Ordinary vendors/rewards, loot/crafting/recipes and other non-PlayerbotFactory item sources remain later work.

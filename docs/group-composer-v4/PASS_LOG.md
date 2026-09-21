@@ -2,6 +2,30 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — GearAdvisor v0.2.0 visual/data polish
+
+Status: **IMPLEMENTATION PREPARED; exact-head CI + real-client UI acceptance required**.
+
+Prepared:
+- enlarge/re-space the companion panel and switch to native tooltip-style dark chrome + section dividers;
+- add detected talent-tree icon and class-colored spec identity;
+- replace long single-string cap rows with aligned label/value columns;
+- cap rows now have hover tooltips explaining the cap and showing complete current/target detail;
+- add a seventh key-stat row where required and fill previously omitted relevant metrics (including Feral Cat melee hit and haste on multiple haste-sensitive melee profiles);
+- make CharacterFrame anchoring screen-edge aware and clamp the panel to screen;
+- remove the CharacterFrame text toggle that could sit in Blizzard's name/level/title area; use an in-panel close button plus existing `/ga` toggle;
+- visibly label detailed priority prose as **WotLK reference** on Vanilla/TBC while retaining era-aware cap targets;
+- correct Arms hard-cap reference to 1260 ArP rating for the normal Battle Stance baseline and make the caveats discoverable on hover;
+- soften Feral Cat's static ordering language because its weights move materially with gear/ArP-cap planning.
+
+CI additions:
+- Lua 5.1 parse remains mandatory;
+- client checks now assert the widened layout, screen clamping, seven-stat capacity, WotLK-reference warning and Arms 1260 reference.
+
+Boundary:
+- this is still guidance, not a simulator;
+- true visual alignment, tooltip behavior and Blizzard-frame coexistence require an in-game 3.3.5a runtime pass.
+
 ## 2026-09-21 — ERA-07 slice 3 final: post-patch PlayerbotFactory item policy
 
 Status: **DONE + exact-head GitHub-hosted CI verified at `e990dff5cd6e8c7fa317d4b94840320eb6b73adb`**.
@@ -19,9 +43,15 @@ CI: client checks SUCCESS, backend staging SUCCESS, Integration SUCCESS, Group C
 
 ## 2026-09-21 — ERA-07 slice 4: Adventure Cache reward provenance
 
-Status: **IN PROGRESS**.
+Status: **DONE + exact-head GitHub-hosted CI verified at `e1a2e6fa89e375290247b42099c12dca8203c414`**.
 
-Prepared implementation gates direct Adventure Cache gear/potion rewards through central provenance and checks readiness before consuming the pending cache, so a stale provenance snapshot cannot eat the player's one-shot reward.
+Implemented:
+- direct Adventure Cache gear/potion rewards are central-provenance gated;
+- readiness is checked before the one-shot pending cache is consumed;
+- spec-aware gear candidates and the direct storage helper both use `EraPolicy::IsItemAllowed`;
+- stale/missing provenance therefore preserves the pending reward for a clean retry.
+
+CI: client checks SUCCESS, backend staging SUCCESS, Group Composer V4 compile SUCCESS, Integration SUCCESS on exact SHA `e1a2e6fa...`.
 
 ## 2026-09-21 — ERA-07 slice 3 repair: replace fragile 0044 with post-patch transformer
 
