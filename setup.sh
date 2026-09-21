@@ -81,23 +81,10 @@ old_apply = r'''apply_patches () {
     fi
   done
   # mod-era-talents ships its own patch tree (core + IP always; playerbots/bridge when present).
-  # Most wrapper patches run first. 0044 is deferred because it layers central item provenance
-  # on top of EraTalents' PlayerbotFactory changes.
+  # Runs AFTER ours so 0012's Unit.cpp hunk lands before its Shatter/Wand/Molten Fury hunks —
+  # the order every one of its Unit.cpp patches was cut against.
   if [[ -x "$AC_DIR/modules/mod-era-talents/apply-patches.sh" ]]; then
     "$AC_DIR/modules/mod-era-talents/apply-patches.sh" "$AC_DIR"
-  fi
-
-  if [[ -f "$deferred_item_policy_patch" ]]; then
-    if git -C "$AC_DIR" apply --reverse --check "$deferred_item_policy_patch" >/dev/null 2>&1; then
-      echo "    Patch already applied: 0044-playerbot-era-item-policy-hook.patch"
-    elif git -C "$AC_DIR" apply --check "$deferred_item_policy_patch" >/dev/null 2>&1; then
-      git -C "$AC_DIR" apply "$deferred_item_policy_patch"
-      echo "    Applied deferred patch: 0044-playerbot-era-item-policy-hook.patch"
-    else
-      echo "    ERROR: deferred 0044 playerbot item-policy patch no longer applies after EraTalents." >&2
-      git -C "$AC_DIR" apply --check --verbose "$deferred_item_policy_patch" || true
-      exit 1
-    fi
   fi
 }
 '''
@@ -106,13 +93,9 @@ new_apply = r'''apply_patches () {
   [[ -d "$pdir" && -d "$AC_DIR/.git" ]] || return 0
   local patch name
   local -a apply_args
-  local deferred_item_policy_patch="$pdir/0044-playerbot-era-item-policy-hook.patch"
   for patch in "$pdir"/*.patch; do
     [[ -e "$patch" ]] || continue
     name="$(basename "$patch")"
-    if [[ "$name" == "0044-playerbot-era-item-policy-hook.patch" ]]; then
-      continue
-    fi
     apply_args=()
     if [[ "$name" == "0014-playerbot-sunwell.patch" || "$name" == "0016-playerbot-aq40-twins.patch" ]]; then
       apply_args+=(--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp)
@@ -129,12 +112,11 @@ new_apply = r'''apply_patches () {
       exit 1
     fi
   done
-  # mod-era-talents ships its own patch tree (core + IP always; playerbots/bridge when present).
-  # Runs AFTER ours so 0012's Unit.cpp hunk lands before its Shatter/Wand/Molten Fury hunks —
-  # the order every one of its Unit.cpp patches was cut against.
+  # EraTalents must finish its PlayerbotFactory edits before the ERA-07 bridge is applied.
   if [[ -x "$AC_DIR/modules/mod-era-talents/apply-patches.sh" ]]; then
     "$AC_DIR/modules/mod-era-talents/apply-patches.sh" "$AC_DIR"
   fi
+  python3 "$ROOT/tools/apply-playerbot-era-item-policy.py" "$AC_DIR"
 }
 '''
 if old_apply not in text:

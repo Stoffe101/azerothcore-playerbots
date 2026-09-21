@@ -265,17 +265,22 @@ Slice 2 implementation:
 
 Slice 2 exact-SHA CI: client checks **SUCCESS**, backend staging **SUCCESS**, Integration **SUCCESS** on `stoffes-pc`, Group Composer V4 compile **SUCCESS** on `stoffes-pc`.
 
-Slice 3 implementation status: **IN PROGRESS — patch-order repair is implemented; exact head `89367cc` then hit a stale static assertion, now repaired**.
+Slice 3 implementation status: **IN PROGRESS — static patch approach abandoned; strict post-patch transformer prepared for exact-head GitHub CI**.
 
-- PlayerbotFactory gains narrow external item-policy callbacks instead of depending directly on mod-raid-roster.
-- Patch integration rule: 0044 is generated against and applied after EraTalents' PlayerbotFactory patch. The first attempt applied it before EraTalents, causing both heavy jobs to fail before compilation; setup/update and both heavy workflows now defer it consistently.
+- PlayerbotFactory receives narrow external item-policy callbacks without a direct dependency on mod-raid-roster.
 - RaidRoster registers `EraPolicy::ItemProvenanceReady` + `EraPolicy::IsItemAllowed` as those callbacks.
-- AutoGear fails before second-chance equipment destruction when provenance is unavailable/stale.
-- Equipment/start-outfit candidates, PvP trinkets, bags, ammo, potions, food, generic factory-stored items and gem item selection consume the central item policy.
-- The previous PlayerbotFactory raw item-ID expansion thresholds for generated gear/gems are removed from these protected paths; chronology comes from the pinned historical provenance data.
-- Bag automation falls back by live legality: Portable Hole -> Netherweave Bag -> Mooncloth Bag.
+- `tools/apply-playerbot-era-item-policy.py` runs after all wrapper patches and EraTalents in fresh setup, update, Integration CI and Group Composer compile CI.
+- The transformer uses strict semantic markers and aborts if the assembled PlayerbotFactory shape is not the expected pinned integration tree; it is idempotent when already applied.
+- AutoGear/InitEquipment fails before second-chance equipment destruction when provenance is unavailable/stale.
+- Start-outfit candidates, PvP trinkets, normal equipment candidates, bags, ammo, potions, food, generic factory-stored items and gem-item candidates are vetoed by central item provenance.
+- Existing EraTalents/Playerbots item-ID or RequiredLevel heuristics are **not** treated as chronology truth. They remain temporarily as extra conservative restrictions where present; central provenance is the authoritative allow layer.
 - AdventureStart refuses item-producing profiles before progression/level/starter-state mutation when central provenance is unavailable.
-- Explicit AdventureStart supply grants also call `EraPolicy::IsItemAllowed`.
+- Explicit AdventureStart supply grants call `EraPolicy::IsItemAllowed`.
 - `.catchup` refuses before progression unlock or one-time claim mutation when provenance is unavailable, and `EquipCatchup` has a defensive readiness guard.
-- Boundary: item provenance does **not** yet prove enchant-spell chronology. Existing Playerbots enchant-spell era heuristics remain separate work until spell/enchant provenance exists.
-- Vendors/rewards, loot/crafting/recipes and other non-PlayerbotFactory item producers remain later ERA-07 work.
+- Static `0044-playerbot-era-item-policy-hook.patch` is retired because it collided first with EraTalents and then with the fully assembled PlayerbotFactory source.
+- Boundary: item provenance does **not** prove enchant-spell chronology. Vendors/rewards, ordinary loot/crafting/recipes and non-PlayerbotFactory item producers remain later ERA-07 work.
+
+CI history for this slice:
+- `c685274a`: fast checks passed; both heavy jobs failed because 0044 ran before EraTalents.
+- `89367cc`: deferred ordering reached EraTalents successfully, but static 0044 still failed against the fully patched PlayerbotFactory; fast checks also exposed a brittle prose assertion.
+- `e6a2e474`: repaired only that brittle assertion and is superseded by the source-transformer repair; it is not a green implementation checkpoint.

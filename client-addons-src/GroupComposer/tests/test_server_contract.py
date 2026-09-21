@@ -52,7 +52,7 @@ CAPACITY_BYPASS_PATCH = (ROOT / "patches/0038-playerbot-group-composer-capacity-
 QUIET_BOT_PATCH = (ROOT / "patches/0040-playerbot-quiet-routine-whispers.patch").read_text(encoding="utf-8")
 LFG_PROPOSAL_PATCH = (ROOT / "patches/0041-playerbot-lfg-proposal-autoaccept.patch").read_text(encoding="utf-8")
 RANDOM_BOT_ERA_PATCH = (ROOT / "patches/0042-playerbot-era-cap-quarantine.patch").read_text(encoding="utf-8")
-PLAYERBOT_ITEM_POLICY_PATCH = (ROOT / "patches/0044-playerbot-era-item-policy-hook.patch").read_text(encoding="utf-8")
+PLAYERBOT_ITEM_POLICY_APPLIER = (ROOT / "tools/apply-playerbot-era-item-policy.py").read_text(encoding="utf-8")
 ADVENTURE_START = (ROOT / "modules/mod-raid-roster/src/AdventureStart.cpp").read_text(encoding="utf-8")
 ADVENTURE_START_KIT = (ROOT / "modules/mod-raid-roster/src/AdventureStartKit.cpp").read_text(encoding="utf-8")
 ADVENTURE_START_CONTROL = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.cpp").read_text(encoding="utf-8")
@@ -1450,12 +1450,12 @@ assert "BOT_EQUIPMENT" in ERA_AUDIT
 # ERA-07 slice 3: every PlayerbotFactory item-generation path used by starter/catch-up must
 # consume the central chronology. Missing/stale provenance must fail before destructive regear
 # or one-time catch-up progression/claim mutation.
-assert "SetItemPolicyPredicates" in PLAYERBOT_ITEM_POLICY_PATCH
-assert "IsExternalItemPolicyReady" in PLAYERBOT_ITEM_POLICY_PATCH
-assert "IsItemAllowedByExternalPolicy" in PLAYERBOT_ITEM_POLICY_PATCH
-assert "raw item-ID" in PLAYERBOT_ITEM_POLICY_PATCH
-assert "thresholds are not provenance evidence" in PLAYERBOT_ITEM_POLICY_PATCH
-assert "Netherweave Bag" in PLAYERBOT_ITEM_POLICY_PATCH and "Mooncloth Bag" in PLAYERBOT_ITEM_POLICY_PATCH
+assert "SetItemPolicyPredicates" in PLAYERBOT_ITEM_POLICY_APPLIER
+assert "IsExternalItemPolicyReady" in PLAYERBOT_ITEM_POLICY_APPLIER
+assert "IsItemAllowedByExternalPolicy" in PLAYERBOT_ITEM_POLICY_APPLIER
+assert "ERA-07: fail closed before second-chance" in PLAYERBOT_ITEM_POLICY_APPLIER
+assert "GetEquipmentNew(requiredLevel, inventoryType)" in PLAYERBOT_ITEM_POLICY_APPLIER
+assert "enchantGemIdCache" in PLAYERBOT_ITEM_POLICY_APPLIER
 assert "PlayerbotFactory::SetItemPolicyPredicates(&EraPolicy::ItemProvenanceReady, &EraPolicy::IsItemAllowed)" in RAID_ROSTER_LOADER
 assert "Starter kit for {} refused: ERA-07 item provenance unavailable" in ADVENTURE_START_KIT
 assert "EraPolicy::IsItemAllowed(itemId)" in ADVENTURE_START_KIT
@@ -1463,8 +1463,9 @@ assert "No progression or claim was changed." in ADVENTURE_CATCHUP
 assert "Refusing catch-up AutoGear" in GEAR_CPP
 
 
-# 0044 is generated against PlayerbotFactory after EraTalents. Applying it first makes
-# EraTalents' own factory patch fail, so every assembly path must deliberately defer it.
+# PlayerbotFactory is rewritten by several patch stacks. ERA-07 therefore runs as a strict
+# source transformer after EraTalents rather than another order-fragile unified diff.
 for patch_host in (SETUP_SCRIPT, UPDATE_SCRIPT, INTEGRATION_WORKFLOW, COMPILE_WORKFLOW):
-    assert '0044-playerbot-era-item-policy-hook.patch' in patch_host
-    assert 'deferred_item_policy_patch' in patch_host
+    assert 'apply-playerbot-era-item-policy.py' in patch_host
+    assert 'deferred_item_policy_patch' not in patch_host
+    assert '0044-playerbot-era-item-policy-hook.patch' not in patch_host

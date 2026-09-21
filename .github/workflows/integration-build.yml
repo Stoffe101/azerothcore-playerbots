@@ -262,13 +262,9 @@ jobs:
           # Match setup.sh/update.sh exactly. The large Sunwell and AQ40 patches were authored
           # around nearby upstream PlayerbotAI strategy-list changes, so their tiny PlayerbotAI
           # edits are owned by 0014a/0016a compatibility patches against this exact pinned module.
-          deferred_item_policy_patch="$GITHUB_WORKSPACE/patches/0044-playerbot-era-item-policy-hook.patch"
           for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
             [[ -e "$patch" ]] || continue
             name="$(basename "$patch")"
-            if [[ "$name" == "0044-playerbot-era-item-policy-hook.patch" ]]; then
-              continue
-            fi
             apply_args=()
             if [[ "$name" == "0014-playerbot-sunwell.patch" || "$name" == "0016-playerbot-aq40-twins.patch" ]]; then
               apply_args+=(--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp)
@@ -290,18 +286,8 @@ jobs:
             "$CORE/modules/mod-era-talents/apply-patches.sh" "$CORE"
           fi
 
-          # 0044 is generated against PlayerbotFactory after EraTalents has patched it.
-          if [[ -f "$deferred_item_policy_patch" ]]; then
-            if git -C "$CORE" apply --reverse --check "$deferred_item_policy_patch" >/dev/null 2>&1; then
-              echo "Deferred item-policy patch already present"
-            elif git -C "$CORE" apply --check "$deferred_item_policy_patch" >/dev/null 2>&1; then
-              git -C "$CORE" apply "$deferred_item_policy_patch"
-              echo "Applied deferred item-policy patch"
-            else
-              git -C "$CORE" apply --check --verbose "$deferred_item_policy_patch" || true
-              exit 1
-            fi
-          fi
+          # Apply the central item-policy bridge to the fully assembled PlayerbotFactory tree.
+          python3 "$GITHUB_WORKSPACE/tools/apply-playerbot-era-item-policy.py" "$CORE"
 
       - name: Configure
         shell: bash

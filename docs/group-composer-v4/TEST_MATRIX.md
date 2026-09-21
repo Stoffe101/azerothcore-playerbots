@@ -78,20 +78,19 @@ Status vocabulary:
 
 ## ERA-07 starter/catch-up / PlayerbotFactory provenance
 
-- STATIC/CI: setup, update, Integration and Group Composer compile must defer 0044 until after EraTalents applies its PlayerbotFactory patch.
-- STATIC/CI: the contract checks policy code/tokens rather than relying on comment line wrapping inside the generated patch.
-
-- STATIC/CI: wrapper patch exposes PlayerbotFactory item-policy readiness + item-allowed callbacks and removes raw item-ID chronology from generated equipment/gem selection.
+- STATIC/CI: `tools/apply-playerbot-era-item-policy.py` Python-compiles and contains readiness + item-allowed callback insertion contracts.
+- STATIC/CI: setup, update, Integration and Group Composer compile invoke the transformer **after** EraTalents.
+- STATIC/CI: assembly paths contain no deferred-0044 mechanism; the static 0044 patch is retired.
 - STATIC/CI: RaidRoster registers `EraPolicy::ItemProvenanceReady` and `EraPolicy::IsItemAllowed` with PlayerbotFactory.
 - STATIC/CI: AdventureStart and catch-up fail before destructive/one-time state mutation when provenance is unavailable.
-- TODO: Vanilla starter/factory bags never create TBC/WotLK/UNKNOWN items.
-- TODO: TBC starter/factory bags never create WotLK/UNKNOWN items.
+- TODO: Vanilla starter/factory generation never creates TBC/WotLK/UNKNOWN items.
+- TODO: TBC starter/factory generation never creates WotLK/UNKNOWN items.
 - TODO: WotLK factory generation still blocks UNKNOWN items.
 - TODO: catch-up package with provenance disabled/stale leaves progression and claim bit untouched.
 - TODO: catch-up package after provenance repair can be retried successfully.
 - TODO: raid-ready AdventureStart with stale provenance does not level/progress/mark starter state or strip existing gear.
 - TODO: factory-generated ammo/potions/food/reagents/gems used by protected flows obey central item provenance.
-- TODO: no protected AutoGear item depends on the removed `23728` / `35570` item-ID chronology thresholds.
+- TODO: audit remaining legacy factory heuristics separately; they may restrict more than provenance but must never be treated as proof of chronology.
 
 ## Auction House era profiles / ERA-07 provenance
 

@@ -2,6 +2,31 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — ERA-07 slice 3 repair: replace fragile 0044 with post-patch transformer
+
+Status: **IMPLEMENTATION PREPARED; exact-head GitHub-hosted CI required**.
+
+Why this repair is necessary:
+- `c685274a` proved applying 0044 before EraTalents breaks EraTalents' PlayerbotFactory patch.
+- `89367cc` deferred 0044 until after EraTalents, but Group Composer compile proved the static diff still could not match the **fully assembled** PlayerbotFactory source because other wrapper patches also affect that file/header.
+- `e6a2e474` repaired only a brittle static assertion and did not solve the structural fragility, so the static-diff approach is retired.
+
+Prepared:
+- add `tools/apply-playerbot-era-item-policy.py`;
+- delete `patches/0044-playerbot-era-item-policy-hook.patch`;
+- run the strict transformer after EraTalents in `setup.sh`, `update.sh`, Integration and Group Composer compile;
+- transformer inserts the PlayerbotFactory callback API, fail-closed readiness checks and item-allow guards using exact semantic markers;
+- missing/duplicated markers abort assembly instead of silently producing a partially protected factory;
+- focused backend CI Python-compiles the transformer and checks its policy API tokens;
+- server contracts assert every assembly path uses the transformer and no deferred-0044 machinery remains.
+
+Policy boundary:
+- central ERA-07 provenance is the authoritative allow/veto decision;
+- older EraTalents/Playerbots item-ID/RequiredLevel heuristics may remain as extra restrictive backstops in this repair, but are not accepted as chronology evidence;
+- enchant-spell chronology remains separate from item chronology.
+
+CI routing: `stoffes-pc` remains offline, so the repair uses `[github-ci]`.
+
 ## 2026-09-21 — ERA-07 slice 3 static-contract repair
 
 Status: **FIX PREPARED; exact-head GitHub-hosted CI required**.
