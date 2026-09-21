@@ -28,6 +28,13 @@ Second exact SHA `dcbc42012a71b061e8222a8fd100a5a9a77c8b23`:
 - that package intentionally contains stale code and does not compile against the active Classic core;
 - repair changes discovery to mirror Go's directory-ignore rules for components beginning `_` or `.`, with a self-test proving disabled packages are skipped.
 
+
+Third exact SHA `365c194ee1f554f5066a7c450df5e7a8334b0a10`:
+- Classic pristine CLI build succeeded;
+- Classic preset harvest succeeded: **24 unique requests / 15 routes / 16 upstream test functions**;
+- TBC then failed during protobuf generation because the Debian `protoc` install does not search `/usr/include` once an explicit proto path is supplied;
+- repair adds `-I=/usr/include` while preserving TBC's descriptor.proto Go-package mapping from the upstream makefile.
+
 Design:
 - do not hand-copy upstream rotations/spec options/buff packages into Skrra;
 - build the exact pinned `wowsimcli` binaries first;

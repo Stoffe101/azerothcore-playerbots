@@ -30,7 +30,7 @@ RUN git init tbc \
     && git -C tbc fetch --depth 1 origin "${TBC_COMMIT}" \
     && git -C tbc checkout --detach FETCH_HEAD \
     && cd tbc \
-    && protoc -I=./proto \
+    && protoc -I=./proto -I=/usr/include \
         --go_opt=Mgoogle/protobuf/descriptor.proto=google.golang.org/protobuf/types/descriptorpb \
         --go_out=./sim/core ./proto/*.proto \
     && CGO_ENABLED=0 go build --tags=with_db -trimpath -ldflags="-s -w" -o /out/wowsimcli-tbc ./cmd/wowsimcli/cli_main.go

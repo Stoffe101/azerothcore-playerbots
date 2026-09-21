@@ -410,3 +410,6 @@ The first engine-native preset SHA `2027a2d2` intentionally failed the new real 
 
 
 WoWSims preset harvester follow-up: `dcbc4201` proved protobuf generation + pristine Classic CLI build are correct, then failed because discovery included underscore-prefixed disabled legacy packages that normal Go traversal ignores. The harvester now mirrors Go directory-ignore rules instead of maintaining a spec blacklist.
+
+
+Preset-harvester progress: `365c194e` successfully completed the Vanilla engine build and harvested 24 unique Classic requests across 15 routes. TBC stopped before build because distro `protoc` needed `/usr/include` added explicitly for `google/protobuf/descriptor.proto`; the repair preserves the upstream descriptor mapping and only adds the missing include path.
