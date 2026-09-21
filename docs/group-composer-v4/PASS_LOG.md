@@ -2,6 +2,30 @@
 
 Newest entries belong at the top of the dated section.
 
+
+## 2026-09-21 — WoWSims automatic backend service foundation
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+Previous checkpoint:
+- `c420b300cf41455c7f20630b37fdbe37e4b744b4` is fully green on all four workflows;
+- Integration build and Group Composer V4 compile both completed successfully on `stoffes-pc`.
+
+This pass:
+- adds private `ac-wowsims` service packaging pinned Classic/TBC/WotLK `wowsimcli`;
+- adds health, single-sim and baseline-vs-candidate compare contracts;
+- keeps port 8092 Docker-internal only;
+- bounds request size, simulation time and simulator concurrency;
+- wires setup/update Compose configuration;
+- adds unit/static CI coverage and pin synchronization.
+
+Still next:
+- authoritative worldserver RaidSimRequest construction;
+- candidate-slot mutation using server gear/talents/era state;
+- GearAdvisor transport and cap/stat trade explanation;
+- real Docker build/health/simulation runtime acceptance.
+
+
 ## 2026-09-21 — WoWSims bridge client-workflow repair
 
 Status: **REPAIR PREPARED / exact-head local CI required**.

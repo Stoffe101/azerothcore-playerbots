@@ -327,3 +327,19 @@ GearAdvisor v0.3 / WoWSims integration: **IMPLEMENTED FOR FIRST BRIDGE SLICE / e
 Exact head `97178c406f5a009b945b6950af3fd40d605990fc` is **FAILED / superseded** because the client-check workflow file was malformed during repository editing and GitHub could not create the validation job. Backend staging succeeded; heavy jobs from that SHA do not make it a valid checkpoint because the required client workflow failed before execution.
 
 Repair: rebuild `.github/workflows/stage-group-composer-v4-client.yml` from exact green parent `1f5ef71c`, reapply only the intended WoWSims assertions, and rerun via `[local-ci]`.
+
+
+### WoWSims automatic simulation backend foundation
+
+The repaired WoWSimsBridge/GearAdvisor checkpoint `c420b300cf41455c7f20630b37fdbe37e4b744b4` is now **fully green**: Group Composer client checks, Stage Group Composer V4 backend, Group Composer V4 compile and Integration build all completed successfully for that exact SHA. The two heavy jobs used the intended local-CI route.
+
+Current implementation adds the first server-side simulator service foundation:
+
+- `wowsims-service/Dockerfile` builds the exact pinned Classic, TBC and WotLK `wowsimcli` revisions;
+- `/health`, `/v1/sim` and `/v1/compare` provide a private internal contract;
+- compare returns baseline/candidate DPS or HPS plus absolute/percent delta;
+- simulator execution is era-allowlisted, timeout-bounded and concurrency-bounded;
+- `configure-wowsims-service.sh` inserts `ac-wowsims` into the generated Compose override using Docker `expose` only, never a host-published port;
+- setup/update are wired to configure/build the service.
+
+This is **not yet the final automatic GearAdvisor path**. The remaining adapter must construct a validated WoWSims request from authoritative server character state, perform the candidate-slot swap, call the service and send the result/explanation back to the 3.3.5a addon.

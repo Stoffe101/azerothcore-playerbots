@@ -100,3 +100,10 @@ The next client slice is **IN PROGRESS / local CI required**: GearAdvisor v0.3 r
 
 
 WoWSims bridge CI note: exact head `97178c40` is **not green**. The client workflow YAML was malformed by the editing layer before a job could start; this did not establish an addon/runtime failure. A clean workflow reconstructed from the previously green `1f5ef71c` file is the current repair, and the next exact head must pass all four workflows on the intended local-CI route.
+
+
+### WoWSims automatic backend checkpoint
+
+WoWSimsBridge v0.1 / GearAdvisor v0.3 repair checkpoint `c420b300cf41455c7f20630b37fdbe37e4b744b4` is **fully green on all four exact-SHA workflows**.
+
+Current implementation slice: `wowsims-service/` packages the three pinned WoWSims CLIs behind a private Docker-network API with single-sim and baseline-vs-candidate comparison endpoints. This is backend plumbing only until the worldserver request builder and GearAdvisor transport are connected.

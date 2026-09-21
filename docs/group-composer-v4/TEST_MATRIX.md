@@ -276,3 +276,15 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - TODO: AH keeps older legal stock and adds newly legal expansion stock.
 - TODO: Composer refreshes era header/catalog/templates/recommendations immediately after release.
 - TODO: Era Integrity audit reports zero future-era leakage after each transition.
+
+
+## WoWSims automatic backend
+
+- PASS (CI `c420b300`): repaired WoWSimsBridge/GearAdvisor client checkpoint passed all four exact-SHA workflows.
+- STATIC/UNIT: `wowsims-service/app.py` parses and unit tests cover era allowlisting, metric extraction, two-run comparison, fixed-binary invocation and readiness failure.
+- STATIC: image-local `wowsims-service/sources.json` must be byte-identical to canonical `data/wowsims/sources.json`.
+- STATIC: Dockerfile pins must exactly match Classic/TBC/WotLK canonical commits.
+- STATIC: generated Compose block must contain `expose` and must not publish `ports`.
+- TODO runtime: build `ac-wowsims` on the server PC and require `GET /health` ready=true for all three engines.
+- TODO runtime: execute one valid RaidSimRequest per era.
+- TODO integration: worldserver builds equivalent baseline/candidate requests and GearAdvisor receives the returned result/explanation.

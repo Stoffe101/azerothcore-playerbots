@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-09-21",
+  "purpose": "Pinned upstream WoWSims sources for Skrra era-aware simulation integration.",
+  "engines": {
+    "VANILLA": {
+      "repository": "wowsims/classic",
+      "commit": "7779ebbf79dc7f1341e6ab939b28a3402c9a730a",
+      "sim_url": "https://www.wowsims.com/classic/",
+      "license": "MIT"
+    },
+    "TBC": {
+      "repository": "wowsims/tbc-new",
+      "commit": "a4768c9d7ed51f4e49b8e90425f68ab47bde0cbc",
+      "sim_url": "https://www.wowsims.com/tbc/",
+      "license": "MIT"
+    },
+    "WOTLK": {
+      "repository": "wowsims/wotlk",
+      "commit": "563e4a08cb15729f1fdcbcf68e6d68224553bfef",
+      "sim_url": "https://www.wowsims.com/wotlk/",
+      "license": "MIT"
+    }
+  },
+  "reference_exporter": {
+    "repository": "wowsims/exporter",
+    "commit": "ad9e903e3997b99f66a2122a4a91b555d40c4ece",
+    "license": "MIT",
+    "note": "Reference for import schema only. The upstream addon targets modern Classic interfaces, so Skrra ships its own Interface 30300 bridge.",
+    "release": "v3.2.4",
+    "schema_version": "v3.2.4"
+  },
+  "policy": {
+    "upgrade_authority": "WoWSims engine result for the exact era/spec when the model is supported and validated.",
+    "no_static_fallback": "Do not silently fall back to Pawn or invented stat weights when a sim model is unsupported.",
+    "explanation": "GearAdvisor explains the simulated trade using baseline/candidate metrics plus cap/stat deltas."
+  }
+}

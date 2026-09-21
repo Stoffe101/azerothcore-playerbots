@@ -1,6 +1,6 @@
 # WoWSims Integration
 
-_Status: v0.1 bridge implementation in progress; exact-head local CI required._
+_Status: v0.2 automatic-backend foundation in progress; WoWSimsBridge v0.1 is green at `c420b300`, service slice exact-head CI required._
 
 ## Decision
 
@@ -73,6 +73,20 @@ Target lifecycle:
 6. GearAdvisor explains the result in plain language.
 
 The three pinned engines expose `wowsimcli sim --infile <RaidSimRequest JSON>`, so the backend does not need browser scraping.
+
+### Automatic backend foundation
+
+The first automatic-backend slice adds `wowsims-service/` and deployment helper `configure-wowsims-service.sh`.
+
+- Docker builds the exact Classic/TBC/WotLK commits from `data/wowsims/sources.json`.
+- `GET /health` reports binary/pin readiness.
+- `POST /v1/sim` runs one era-specific `RaidSimRequest`.
+- `POST /v1/compare` runs baseline and candidate requests and returns DPS/HPS baseline, candidate, delta and delta percent.
+- request size, process timeout and concurrent simulator count are bounded.
+- the service accepts only the three fixed era binaries and never executes caller-supplied shell commands.
+- Compose uses `expose: 8092`, not a published host `ports` mapping, so the API remains private to `ac-network`.
+
+This slice does **not** yet mean item hovers automatically simulate. The next adapter must build validated RaidSimRequest payloads from authoritative worldserver character state, call `http://ac-wowsims:8092`, and transport the result plus trade explanation to GearAdvisor.
 
 ## Trade explanation contract
 

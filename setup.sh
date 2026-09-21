@@ -222,6 +222,8 @@ if [[ "$rc" -eq 0 ]]; then
   "$ROOT/configure-living-world-bots.sh"
   chmod +x "$ROOT/configure-era-item-provenance.sh"
   "$ROOT/configure-era-item-provenance.sh"
+  chmod +x "$ROOT/configure-wowsims-service.sh"
+  "$ROOT/configure-wowsims-service.sh" --start
   if [[ -d "$ROOT/azerothcore-wotlk" ]]; then
     (cd "$ROOT/azerothcore-wotlk" && docker compose up -d --no-deps --force-recreate ac-worldserver)
   fi

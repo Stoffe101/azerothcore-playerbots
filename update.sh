@@ -185,6 +185,7 @@ done
 sync_module_configs
 migrate_full_adventure_config
 bash "$ROOT/configure-living-world-bots.sh"
+bash "$ROOT/configure-wowsims-service.sh"
 
 cd "$AC_DIR"
 

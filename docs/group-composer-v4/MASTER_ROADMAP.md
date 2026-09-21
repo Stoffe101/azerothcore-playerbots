@@ -366,3 +366,10 @@ This is the default order unless runtime evidence changes it.
 ## Priority override rule
 
 Runtime evidence beats this ordering. A blocker discovered while testing may jump ahead, but the reason and dependency change must be written into `PASS_LOG.md` and `NEXT_WORK.md`.
+
+
+### WoWSims GearAdvisor simulation track
+
+- **DONE + green:** 3.3.5a WoWSimsBridge export foundation and GearAdvisor v0.3 authority change at `c420b300`.
+- **IN PROGRESS:** private Docker-network WoWSims service with pinned Classic/TBC/WotLK CLI engines and baseline-vs-candidate comparison.
+- **NEXT:** authoritative worldserver request builder, support/validation matrix enforcement, candidate item swap, addon transport and human-readable cap/stat trade explanation.

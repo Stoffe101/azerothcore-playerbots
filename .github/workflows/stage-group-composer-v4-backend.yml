@@ -42,6 +42,17 @@ jobs:
           bash -n configure-ahbot.sh
           grep -q 'EraProvenanceDisabledItemIDs' patches/0043-ahbot-era-provenance-filter.patch
           python3 -m py_compile tools/apply-playerbot-era-item-policy.py
+          python3 -m py_compile wowsims-service/app.py
+          python3 -m unittest discover -s wowsims-service/tests -v
+          cmp data/wowsims/sources.json wowsims-service/sources.json
+          bash -n configure-wowsims-service.sh
+          WOWSIMS_RENDER="$(./configure-wowsims-service.sh --render)"
+          grep -q 'ac-wowsims:' <<< "$WOWSIMS_RENDER"
+          grep -q 'expose:' <<< "$WOWSIMS_RENDER"
+          ! grep -q 'ports:' <<< "$WOWSIMS_RENDER"
+          grep -q 'ARG CLASSIC_COMMIT=7779ebbf79dc7f1341e6ab939b28a3402c9a730a' wowsims-service/Dockerfile
+          grep -q 'ARG TBC_COMMIT=a4768c9d7ed51f4e49b8e90425f68ab47bde0cbc' wowsims-service/Dockerfile
+          grep -q 'ARG WOTLK_COMMIT=563e4a08cb15729f1fdcbcf68e6d68224553bfef' wowsims-service/Dockerfile
           grep -q 'SetItemPolicyPredicates' tools/apply-playerbot-era-item-policy.py
           grep -q 'IsExternalItemPolicyReady' tools/apply-playerbot-era-item-policy.py
           grep -q 'IsItemAllowedByExternalPolicy' tools/apply-playerbot-era-item-policy.py
