@@ -620,5 +620,14 @@ bool EquipForSpec(Player* bot, Player* master, int specTab, uint16 minimumItemLe
 
 void RaidRosterGear::EquipCatchup(Player* player, uint32 quality, uint32 itemLevel)
 {
+    if (!player || !EraPolicy::ItemProvenanceReady())
+    {
+        LOG_ERROR(
+            "playerbots",
+            "[RaidRoster] Refusing catch-up AutoGear: ERA-07 provenance unavailable ({}).",
+            EraPolicy::ItemProvenanceError());
+        return;
+    }
+
     PlayerbotFactory::AutoGear(player, quality, itemLevel, true, false, false);
 }

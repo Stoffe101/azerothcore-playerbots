@@ -2,6 +2,31 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — ERA-07 slice 3: PlayerbotFactory + starter/catch-up item provenance
+
+Status: **IMPLEMENTED; exact-head GitHub-hosted CI required**.
+
+Implemented:
+- added wrapper patch `0044-playerbot-era-item-policy-hook.patch` against exact pinned mod-playerbots `b6696bdb...`;
+- PlayerbotFactory exposes independent readiness/item-allowed callbacks, keeping mod-playerbots decoupled from the realm module while still using central EraPolicy;
+- RaidRoster registers the callbacks once during script registration;
+- AutoGear/InitEquipment fails closed before second-chance destruction if provenance is unavailable;
+- protected factory item paths now gate start outfit, equipment candidates, PvP trinket, bags, ammo, potions, food, generic StoreItem/StoreNewItem and gem-item candidates;
+- old item-ID gear/gem expansion heuristics are removed from those protected paths instead of competing with chronology evidence;
+- factory bag provisioning picks the largest currently legal bag through the central policy (Portable Hole -> Netherweave -> Mooncloth);
+- AdventureStart profiles fail before progression/level/starter-state mutation when their item package cannot be proven safe;
+- explicit starter supply IDs are independently checked through EraPolicy;
+- catch-up profiles fail before progression/claim mutation when provenance is unavailable, preserving the player's ability to retry;
+- defensive `EquipCatchup` readiness check prevents a future caller from bypassing the command guard;
+- focused contracts and backend CI assert the policy hook, no-ID-threshold contract and starter/catch-up failure boundaries.
+
+Boundary:
+- this is **item** chronology, not spell chronology; generated enchant spells still need an eventual authoritative era policy;
+- vendors/rewards, loot, recipes/crafting and item-producing systems outside PlayerbotFactory remain TODO;
+- existing contaminated gear/auctions remain audit-only rather than being silently destroyed.
+
+CI routing: `stoffes-pc` remains offline, so the implementation commit uses `[github-ci]`.
+
 ## 2026-09-21 — Client addon bundle + GearAdvisor
 
 Status: **DONE + exact-head GitHub-hosted CI verified at `de842ba842721f32d588ba5d9818b872f9a6c805`**.

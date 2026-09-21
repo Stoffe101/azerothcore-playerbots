@@ -1,0 +1,321 @@
+diff --git a/modules/mod-playerbots/src/Bot/Factory/PlayerbotFactory.h b/modules/mod-playerbots/src/Bot/Factory/PlayerbotFactory.h
+--- a/modules/mod-playerbots/src/Bot/Factory/PlayerbotFactory.h
++++ b/modules/mod-playerbots/src/Bot/Factory/PlayerbotFactory.h
+@@ -82,9 +82,18 @@
+     void InitAmmo();
+     static uint32 CalcMixedGearScore(uint32 gs, uint32 quality);
+     static void DestroyEquippedGear(Player* bot);
+-    static void AutoGear(Player* bot, uint32 itemQuality, uint32 ilvl, bool incremental, bool secondChance = false,
+-                        bool applyFinishers = true);
+-    void InitPetTalents();
++    static void AutoGear(Player* bot, uint32 itemQuality, uint32 ilvl, bool incremental, bool secondChance = false,
++                        bool applyFinishers = true);
++
++    // Optional server integration hooks. Playerbots owns item generation while the caller owns
++    // realm chronology; function pointers keep this module independent from any specific era mod.
++    using ItemPolicyReadyPredicate = bool (*)();
++    using ItemAllowedPredicate = bool (*)(uint32);
++    static void SetItemPolicyPredicates(ItemPolicyReadyPredicate readyPredicate, ItemAllowedPredicate allowedPredicate);
++    static bool IsExternalItemPolicyReady();
++    static bool IsItemAllowedByExternalPolicy(uint32 itemId);
++
++    void InitPetTalents();
+     void CleanupConsumables();
+     void InitReagents();
+     void InitConsumables();
+@@ -234,9 +243,11 @@
+     static std::unordered_map<uint32, std::vector<uint32>> trainerIdCache;
+     static std::vector<uint32> enchantSpellIdCache;
+     static std::vector<uint32> enchantGemIdCache;
+-    static std::vector<uint32> ccBreakTrinketCache;
+-
+-protected:
++    static std::vector<uint32> ccBreakTrinketCache;
++    static ItemPolicyReadyPredicate itemPolicyReadyPredicate;
++    static ItemAllowedPredicate itemAllowedPredicate;
++
++protected:
+     EnchantContainer m_EnchantContainer;
+     Player* bot;
+     PlayerbotAI* botAI;
+diff --git a/modules/mod-playerbots/src/Bot/Factory/PlayerbotFactory.cpp b/modules/mod-playerbots/src/Bot/Factory/PlayerbotFactory.cpp
+--- a/modules/mod-playerbots/src/Bot/Factory/PlayerbotFactory.cpp
++++ b/modules/mod-playerbots/src/Bot/Factory/PlayerbotFactory.cpp
+@@ -64,9 +64,11 @@
+ std::vector<uint32> PlayerbotFactory::enchantSpellIdCache;
+ std::vector<uint32> PlayerbotFactory::enchantGemIdCache;
+ std::unordered_map<uint32, std::vector<uint32>> PlayerbotFactory::trainerIdCache;
+-std::vector<uint32> PlayerbotFactory::ccBreakTrinketCache;
+-
+-namespace
++std::vector<uint32> PlayerbotFactory::ccBreakTrinketCache;
++PlayerbotFactory::ItemPolicyReadyPredicate PlayerbotFactory::itemPolicyReadyPredicate = nullptr;
++PlayerbotFactory::ItemAllowedPredicate PlayerbotFactory::itemAllowedPredicate = nullptr;
++
++namespace
+ {
+ constexpr uint32 SPELL_DRUID_THICK_HIDE = 16931;
+ constexpr uint32 SPELL_OWLKIN_FRENZY = 48393;
+@@ -2277,9 +2279,14 @@
+ //     }
+ // }
+ 
+-void PlayerbotFactory::InitEquipment(bool incremental, bool second_chance)
+-{
+-    if (level < 5)
++void PlayerbotFactory::InitEquipment(bool incremental, bool second_chance)
++{
++    // A configured external policy that is unavailable/stale must fail closed before any
++    // second-chance path can destroy existing equipment.
++    if (!IsExternalItemPolicyReady())
++        return;
++
++    if (level < 5)
+     {
+         // original items
+         if (CharStartOutfitEntry const* oEntry = GetCharStartOutfitEntry(bot->getRace(), bot->getClass(), bot->getGender()))
+@@ -2289,9 +2296,12 @@
+                 if (oEntry->ItemId[j] <= 0)
+                     continue;
+ 
+-                uint32 itemId = oEntry->ItemId[j];
+-
+-                // skip hearthstone
++                uint32 itemId = oEntry->ItemId[j];
++
++                if (!IsItemAllowedByExternalPolicy(itemId))
++                    continue;
++
++                // skip hearthstone
+                 if (itemId == 6948)
+                     continue;
+ 
+@@ -2340,9 +2350,12 @@
+     uint32 pvpTrinket1 = 0;
+     if (isPvp && level >= 50 && !racialHasCcBreak)
+     {
+-        for (uint32 itemId : ccBreakTrinketCache)
+-        {
+-            ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
++        for (uint32 itemId : ccBreakTrinketCache)
++        {
++            if (!IsItemAllowedByExternalPolicy(itemId))
++                continue;
++
++            ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
+             if (!proto) continue;
+             // Respect gear quality limit: trinket must not exceed itemQuality setting
+             if (static_cast<int32>(proto->Quality) > static_cast<int32>(itemQuality)) continue;
+@@ -2420,24 +2433,19 @@
+             {
+                 for (InventoryType inventoryType : GetPossibleInventoryTypeListBySlot((EquipmentSlots)slot))
+                 {
+-                    for (uint32 itemId : sRandomItemMgr.GetEquipmentNew(requiredLevel, inventoryType))
+-                    {
+-                        uint32 skipProb = 25;
+-                        if (urand(1, 100) <= skipProb)
+-                            continue;
+-
+-                        ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
+-                        // disable next expansion gear
+-                        if (sPlayerbotAIConfig.limitGearExpansion && bot->GetLevel() <= 60 && itemId >= 23728)
+-                            continue;
+-
+-                        if (sPlayerbotAIConfig.limitGearExpansion && bot->GetLevel() <= 70 && itemId >= 35570 &&
+-                            itemId != 36737 && itemId != 37739 &&
+-                            itemId != 37740)  // transition point from TBC -> WOTLK isn't as clear, and there are other
+-                                              // wearable TBC items above 35570 but nothing of significance
+-                            continue;
+-
+-                        if (!proto)
++                    for (uint32 itemId : sRandomItemMgr.GetEquipmentNew(requiredLevel, inventoryType))
++                    {
++                        if (!IsItemAllowedByExternalPolicy(itemId))
++                            continue;
++
++                        uint32 skipProb = 25;
++                        if (urand(1, 100) <= skipProb)
++                            continue;
++
++                        ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
++                        // Expansion chronology is owned by the external item policy when present;
++                        // raw item-ID thresholds are not provenance evidence.
++                        if (!proto)
+                             continue;
+ 
+                         bool shouldCheckGS = desiredQuality > ITEM_QUALITY_NORMAL;
+@@ -2673,9 +2681,12 @@
+     return proto->Quality < ITEM_QUALITY_RARE || (bot->GetLevel() - requiredLevel) > delta;
+ }
+ 
+-inline Item* StoreNewItemInInventorySlot(Player* player, uint32 newItemId, uint32 count)
+-{
+-    ItemPosCountVec vDest;
++inline Item* StoreNewItemInInventorySlot(Player* player, uint32 newItemId, uint32 count)
++{
++    if (!PlayerbotFactory::IsItemAllowedByExternalPolicy(newItemId))
++        return nullptr;
++
++    ItemPosCountVec vDest;
+     InventoryResult msg = player->CanStoreNewItem(INVENTORY_SLOT_BAG_0, NULL_SLOT, vDest, newItemId, count);
+     if (msg == EQUIP_ERR_OK)
+     {
+@@ -2795,11 +2806,23 @@
+ //     }
+ // }
+ 
+-void PlayerbotFactory::InitBags(bool destroyOld)
+-{
+-    for (uint8 slot = INVENTORY_SLOT_BAG_START; slot < INVENTORY_SLOT_BAG_END; ++slot)
+-    {
+-        uint32 newItemId = 51809;
++void PlayerbotFactory::InitBags(bool destroyOld)
++{
++    // Bag IDs are QoL preferences only; the external provenance policy decides which expansion
++    // entries are legal on the live realm.
++    uint32 newItemId = 0;
++    if (IsItemAllowedByExternalPolicy(51809))       // Portable Hole (WotLK)
++        newItemId = 51809;
++    else if (IsItemAllowedByExternalPolicy(21841))  // Netherweave Bag (TBC)
++        newItemId = 21841;
++    else if (IsItemAllowedByExternalPolicy(14155))  // Mooncloth Bag (Vanilla)
++        newItemId = 14155;
++
++    if (!newItemId)
++        return;
++
++    for (uint8 slot = INVENTORY_SLOT_BAG_START; slot < INVENTORY_SLOT_BAG_END; ++slot)
++    {
+         Item* old_bag = bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+         if (old_bag && old_bag->GetTemplate()->ItemId == newItemId)
+             continue;
+@@ -3892,9 +3915,9 @@
+             return;
+     }
+ 
+-    uint32 entry = sRandomItemMgr.GetAmmo(level, subClass);
+-    if (!entry)
+-        return;
++    uint32 entry = sRandomItemMgr.GetAmmo(level, subClass);
++    if (!entry || !IsItemAllowedByExternalPolicy(entry))
++        return;
+ 
+     uint32 count = bot->GetItemCount(entry);
+     uint32 maxCount = botClass == CLASS_HUNTER ? 6000 : 1000;
+@@ -3924,10 +3947,31 @@
+     }
+ }
+ 
+-void PlayerbotFactory::AutoGear(Player* bot, uint32 itemQuality, uint32 ilvl, bool incremental, bool secondChance,
+-                                bool applyFinishers)
+-{
+-    uint32 gs = ilvl == 0 ? 0 : CalcMixedGearScore(ilvl, itemQuality);
++void PlayerbotFactory::SetItemPolicyPredicates(
++    ItemPolicyReadyPredicate readyPredicate, ItemAllowedPredicate allowedPredicate)
++{
++    itemPolicyReadyPredicate = readyPredicate;
++    itemAllowedPredicate = allowedPredicate;
++}
++
++bool PlayerbotFactory::IsExternalItemPolicyReady()
++{
++    return !itemPolicyReadyPredicate || itemPolicyReadyPredicate();
++}
++
++bool PlayerbotFactory::IsItemAllowedByExternalPolicy(uint32 itemId)
++{
++    return (!itemPolicyReadyPredicate || itemPolicyReadyPredicate()) &&
++           (!itemAllowedPredicate || itemAllowedPredicate(itemId));
++}
++
++void PlayerbotFactory::AutoGear(Player* bot, uint32 itemQuality, uint32 ilvl, bool incremental, bool secondChance,
++                                bool applyFinishers)
++{
++    if (!IsExternalItemPolicyReady())
++        return;
++
++    uint32 gs = ilvl == 0 ? 0 : CalcMixedGearScore(ilvl, itemQuality);
+     PlayerbotFactory factory(bot, bot->GetLevel(), itemQuality, gs);
+     factory.InitEquipment(incremental, secondChance);
+ 
+@@ -4095,8 +4139,8 @@
+         if (!visitor.GetResult().empty())
+             continue;
+ 
+-        uint32 itemId = sRandomItemMgr.GetRandomPotion(level, effect);
+-        if (!itemId)
++        uint32 itemId = sRandomItemMgr.GetRandomPotion(level, effect);
++        if (!itemId || !IsItemAllowedByExternalPolicy(itemId))
+         {
+             // LOG_INFO("playerbots", "No potions (type {}) available for bot {} ({} level)", effect,
+             // bot->GetName().c_str(), bot->GetLevel());
+@@ -4172,11 +4216,13 @@
+          ++i)
+     {
+         uint32 itemId = i->first;
+-        ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
+-        if (!proto)
+-            continue;
+-
+-        if (proto->Class != ITEM_CLASS_CONSUMABLE || proto->SubClass != ITEM_SUBCLASS_FOOD ||
++        ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
++        if (!proto)
++            continue;
++        if (!IsItemAllowedByExternalPolicy(itemId))
++            continue;
++
++        if (proto->Class != ITEM_CLASS_CONSUMABLE || proto->SubClass != ITEM_SUBCLASS_FOOD ||
+             (proto->Spells[0].SpellCategory != 11 && proto->Spells[0].SpellCategory != 59) || proto->Bonding != NO_BIND)
+             continue;
+ 
+@@ -4785,9 +4831,12 @@
+         StoreItem(7005, 1);  // Skinning Knife
+ }
+ 
+-Item* PlayerbotFactory::StoreItem(uint32 itemId, uint32 count)
+-{
+-    //ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId); //not used, line marked for removal.
++Item* PlayerbotFactory::StoreItem(uint32 itemId, uint32 count)
++{
++    if (!IsItemAllowedByExternalPolicy(itemId))
++        return nullptr;
++
++    //ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId); //not used, line marked for removal.
+     ItemPosCountVec sDest;
+     InventoryResult msg = bot->CanStoreNewItem(INVENTORY_SLOT_BAG_0, NULL_SLOT, sDest, itemId, count);
+     if (msg != EQUIP_ERR_OK)
+@@ -5110,20 +5159,20 @@
+     uint8 jewelersCount = 0;
+     int requiredActive = 2;
+     std::vector<uint32> availableGems;
+-    for (uint32 const& enchantGem : enchantGemIdCache)
+-    {
+-        ItemTemplate const* gemTemplate = sObjectMgr->GetItemTemplate(enchantGem);
+-        if (!gemTemplate)
+-            continue;
+-
+-        GemPropertiesEntry const* gemProperties = sGemPropertiesStore.LookupEntry(gemTemplate->GemProperties);
+-        if (!gemProperties)
+-            continue;
+-
+-        if (sPlayerbotAIConfig.limitEnchantExpansion && bot->GetLevel() <= 70 && enchantGem >= 39900)
+-            continue;
+-
+-        uint32 requiredLevel = gemTemplate->ItemLevel;
++    for (uint32 const& enchantGem : enchantGemIdCache)
++    {
++        if (!IsItemAllowedByExternalPolicy(enchantGem))
++            continue;
++
++        ItemTemplate const* gemTemplate = sObjectMgr->GetItemTemplate(enchantGem);
++        if (!gemTemplate)
++            continue;
++
++        GemPropertiesEntry const* gemProperties = sGemPropertiesStore.LookupEntry(gemTemplate->GemProperties);
++        if (!gemProperties)
++            continue;
++
++        uint32 requiredLevel = gemTemplate->ItemLevel;
+ 
+         if (requiredLevel > bot->GetLevel())
+         {

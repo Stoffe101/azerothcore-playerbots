@@ -76,6 +76,20 @@ Status vocabulary:
 - TODO: Azeroth Control goto/saved-location travel refuses a future-era map.
 - TODO: Group Composer cannot teleport a reviewed roster into a future-era instance map.
 
+## ERA-07 starter/catch-up / PlayerbotFactory provenance
+
+- STATIC/CI: wrapper patch exposes PlayerbotFactory item-policy readiness + item-allowed callbacks and removes raw item-ID chronology from generated equipment/gem selection.
+- STATIC/CI: RaidRoster registers `EraPolicy::ItemProvenanceReady` and `EraPolicy::IsItemAllowed` with PlayerbotFactory.
+- STATIC/CI: AdventureStart and catch-up fail before destructive/one-time state mutation when provenance is unavailable.
+- TODO: Vanilla starter/factory bags never create TBC/WotLK/UNKNOWN items.
+- TODO: TBC starter/factory bags never create WotLK/UNKNOWN items.
+- TODO: WotLK factory generation still blocks UNKNOWN items.
+- TODO: catch-up package with provenance disabled/stale leaves progression and claim bit untouched.
+- TODO: catch-up package after provenance repair can be retried successfully.
+- TODO: raid-ready AdventureStart with stale provenance does not level/progress/mark starter state or strip existing gear.
+- TODO: factory-generated ammo/potions/food/reagents/gems used by protected flows obey central item provenance.
+- TODO: no protected AutoGear item depends on the removed `23728` / `35570` item-ID chronology thresholds.
+
 ## Auction House era profiles / ERA-07 provenance
 
 - STATIC/CI: `configure-era-item-provenance.sh` and `configure-ahbot.sh` parse with `bash -n`.

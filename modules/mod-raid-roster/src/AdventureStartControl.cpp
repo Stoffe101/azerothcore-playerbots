@@ -299,6 +299,19 @@ bool ApplyProfile(Player* player, AdventureStartProfile profile, bool forceStart
         return true;
     }
 
+    // Starter profiles synthesize inventory/equipment. Refuse before progression, level or starter
+    // state changes when the central chronology snapshot is missing/stale.
+    if (g_AdventureStartStarterKit && !EraPolicy::ItemProvenanceReady())
+    {
+        LOG_ERROR(
+            "server.loading",
+            "[AdventureStart] Refusing profile {} for {}: ERA-07 item provenance unavailable ({}).",
+            ProfileName(profile),
+            player->GetName(),
+            EraPolicy::ItemProvenanceError());
+        return false;
+    }
+
     ProfileData const data = DataFor(profile);
     uint32 const guid = player->GetGUID().GetCounter();
 

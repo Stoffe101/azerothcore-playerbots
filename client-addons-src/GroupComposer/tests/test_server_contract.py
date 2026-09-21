@@ -50,7 +50,9 @@ CAPACITY_BYPASS_PATCH = (ROOT / "patches/0038-playerbot-group-composer-capacity-
 QUIET_BOT_PATCH = (ROOT / "patches/0040-playerbot-quiet-routine-whispers.patch").read_text(encoding="utf-8")
 LFG_PROPOSAL_PATCH = (ROOT / "patches/0041-playerbot-lfg-proposal-autoaccept.patch").read_text(encoding="utf-8")
 RANDOM_BOT_ERA_PATCH = (ROOT / "patches/0042-playerbot-era-cap-quarantine.patch").read_text(encoding="utf-8")
+PLAYERBOT_ITEM_POLICY_PATCH = (ROOT / "patches/0044-playerbot-era-item-policy-hook.patch").read_text(encoding="utf-8")
 ADVENTURE_START = (ROOT / "modules/mod-raid-roster/src/AdventureStart.cpp").read_text(encoding="utf-8")
+ADVENTURE_START_KIT = (ROOT / "modules/mod-raid-roster/src/AdventureStartKit.cpp").read_text(encoding="utf-8")
 ADVENTURE_START_CONTROL = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.cpp").read_text(encoding="utf-8")
 ADVENTURE_START_CONTROL_H = (ROOT / "modules/mod-raid-roster/src/AdventureStartControl.h").read_text(encoding="utf-8")
 ADMIN_PANEL = (ROOT / "modules/mod-admin-panel/src/AdminPanel.cpp").read_text(encoding="utf-8")
@@ -1441,3 +1443,18 @@ assert "ItemProvenanceReady()" in ERA_POLICY_CPP
 assert "EraPolicy::IsItemAllowed" in GEAR_CPP
 assert "AUCTION_STOCK" in ERA_AUDIT
 assert "BOT_EQUIPMENT" in ERA_AUDIT
+
+
+# ERA-07 slice 3: every PlayerbotFactory item-generation path used by starter/catch-up must
+# consume the central chronology. Missing/stale provenance must fail before destructive regear
+# or one-time catch-up progression/claim mutation.
+assert "SetItemPolicyPredicates" in PLAYERBOT_ITEM_POLICY_PATCH
+assert "IsExternalItemPolicyReady" in PLAYERBOT_ITEM_POLICY_PATCH
+assert "IsItemAllowedByExternalPolicy" in PLAYERBOT_ITEM_POLICY_PATCH
+assert "raw item-ID thresholds are not provenance evidence" in PLAYERBOT_ITEM_POLICY_PATCH
+assert "Netherweave Bag" in PLAYERBOT_ITEM_POLICY_PATCH and "Mooncloth Bag" in PLAYERBOT_ITEM_POLICY_PATCH
+assert "PlayerbotFactory::SetItemPolicyPredicates(&EraPolicy::ItemProvenanceReady, &EraPolicy::IsItemAllowed)" in RAID_ROSTER_LOADER
+assert "Starter kit for {} refused: ERA-07 item provenance unavailable" in ADVENTURE_START_KIT
+assert "EraPolicy::IsItemAllowed(itemId)" in ADVENTURE_START_KIT
+assert "No progression or claim was changed." in ADVENTURE_CATCHUP
+assert "Refusing catch-up AutoGear" in GEAR_CPP

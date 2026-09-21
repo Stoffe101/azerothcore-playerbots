@@ -41,6 +41,8 @@ jobs:
           bash -n configure-era-item-provenance.sh
           bash -n configure-ahbot.sh
           grep -q 'EraProvenanceDisabledItemIDs' patches/0043-ahbot-era-provenance-filter.patch
+          grep -q 'SetItemPolicyPredicates' patches/0044-playerbot-era-item-policy-hook.patch
+          grep -q 'IsExternalItemPolicyReady' patches/0044-playerbot-era-item-policy-hook.patch
           grep -q 'AuctionHouseBot.EraProvenanceDisabledItemIDs' configure-ahbot.sh
           grep -q 'EraPolicy.ItemProvenance.DisabledVanillaItemIDs' configure-era-item-provenance.sh
           git diff --check

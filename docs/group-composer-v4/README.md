@@ -77,6 +77,8 @@ The documentation checkpoint `253c22880c98ca89ed1abec65b2fa2ef8a46020a` is also 
 
 Current client QoL pass: **DONE + exact-head GitHub-hosted CI green at `de842ba842721f32d588ba5d9818b872f9a6c805`**. The distributed addon bundle adds the maintained NoM0Re WeakAuras 3.3.5a backport and maintained Details-WotLK fork, supersedes the old ExtendedCharacterStats bundle entry with the new GearAdvisor character-side panel, and pins external addon inputs for reproducible downloads. Because `stoffes-pc` is currently offline, this pass uses `[github-ci]`.
 
+Current ERA-07 work: **slice 3 implemented; exact-head GitHub-hosted CI required**. It promotes central provenance into PlayerbotFactory's automated item-generation chokepoints and protects AdventureStart/catch-up before destructive gear or one-time progression/claim changes. This removes the old raw item-ID gear chronology heuristic from protected AutoGear selection.
+
 The peer policy is generic: the **lowest real human at any level** is the peer target. Status exposes `Lowest-human target Lv X · bots Lv A-B` so arbitrary mixed-level groups can be checked directly. Examples such as 80+14 or 80+23 are illustrative only.
 
 All changed runtime behavior still requires in-game observation before the corresponding `TEST_MATRIX.md` rows become PASS.

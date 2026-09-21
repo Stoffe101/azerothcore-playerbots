@@ -1,5 +1,6 @@
 #include "AdventureStartKit.h"
 #include "AdventureProgressionStore.h"
+#include "EraPolicy.h"
 #include "RaidRosterConfig.h"
 
 #include "AiFactory.h"
@@ -95,6 +96,15 @@ void EnsureCount(Player* player, uint32 itemId, uint32 wanted)
 {
     if (!player || !itemId || !wanted)
         return;
+    if (!EraPolicy::IsItemAllowed(itemId))
+    {
+        LOG_WARN(
+            "server.loading",
+            "[AdventureStart] Refusing automated starter item {} while live era is {}.",
+            itemId,
+            EraPolicy::Name(EraPolicy::CurrentRealmEra()));
+        return;
+    }
 
     uint32 const have = player->GetItemCount(itemId, false);
     if (have < wanted)
@@ -267,6 +277,16 @@ bool GrantInitial(Player* player, AdventureStartProfile profile)
         return true;
     }
 
+    if (!EraPolicy::ItemProvenanceReady())
+    {
+        LOG_ERROR(
+            "server.loading",
+            "[AdventureStart] Starter kit for {} refused: ERA-07 item provenance unavailable ({}).",
+            player->GetName(),
+            EraPolicy::ItemProvenanceError());
+        return false;
+    }
+
     bool const raidReady = IsRaidReady(profile);
     bool const wotlkRaidReady = IsWotlkRaidReady(profile);
     uint32 const startingGold = StartingGold(profile);
@@ -370,6 +390,15 @@ bool TryGiveSpecStarterGear(Player* player)
         return false;
     if (!player || !g_AdventureStartStarterKit || !g_AdventureStartAutoGear)
         return true;
+    if (!EraPolicy::ItemProvenanceReady())
+    {
+        LOG_ERROR(
+            "server.loading",
+            "[AdventureStart] Spec-aware starter gear for {} refused: ERA-07 item provenance unavailable ({}).",
+            player->GetName(),
+            EraPolicy::ItemProvenanceError());
+        return false;
+    }
 
     uint32 const guid = player->GetGUID().GetCounter();
     AdventureProgressionStore::State state = AdventureProgressionStore::LoadOrCreate(guid);

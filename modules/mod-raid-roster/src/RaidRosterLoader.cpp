@@ -18,6 +18,7 @@
 #include "RaidRosterConfig.h"
 #include "RaidRosterGuild.h"
 #include "SmartLootSystem.h"
+#include "PlayerbotFactory.h"
 
 void AddAdventureStartScripts();
 void AddAdventureControlPlayerScripts();
@@ -72,6 +73,11 @@ private:
 void Addmod_raid_rosterScripts()
 {
     LOG_INFO("server.loading", "[RaidRoster] Registering complete adventure stack and Group Composer backend.");
+
+    // Playerbots remains independent from this module: register narrow callbacks so every
+    // PlayerbotFactory-generated item can obey the same live ERA-07 chronology.
+    PlayerbotFactory::SetItemPolicyPredicates(&EraPolicy::ItemProvenanceReady, &EraPolicy::IsItemAllowed);
+
     new RaidRosterWorld();
     new RaidRosterCommand();
     new AdventureCommand();

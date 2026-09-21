@@ -205,6 +205,17 @@ bool ApplyProfile(ChatHandler* handler, Player* player, CatchupProfile const& pr
         return true;
     }
 
+    // Fail before progression or one-time claim state changes. A package whose chronology cannot
+    // be proven must be retryable after the provenance snapshot is repaired.
+    if (!EraPolicy::ItemProvenanceReady())
+    {
+        handler->PSendSysMessage(
+            "{} catch-up is temporarily unavailable: item provenance is not ready ({}). No progression or claim was changed.",
+            profile.label,
+            EraPolicy::ItemProvenanceError());
+        return true;
+    }
+
     if (!EnsureProgression(handler, player, profile))
         return true;
 

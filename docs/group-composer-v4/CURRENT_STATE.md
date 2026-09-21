@@ -264,3 +264,17 @@ Slice 2 implementation:
 - `EquipCatchup`, starter/catch-up packages, vendors/rewards and other item-producing paths are intentionally still outside this slice and remain TODO.
 
 Slice 2 exact-SHA CI: client checks **SUCCESS**, backend staging **SUCCESS**, Integration **SUCCESS** on `stoffes-pc`, Group Composer V4 compile **SUCCESS** on `stoffes-pc`.
+
+Slice 3 implementation status: **IMPLEMENTED; exact-head GitHub-hosted CI required**.
+
+- PlayerbotFactory gains narrow external item-policy callbacks instead of depending directly on mod-raid-roster.
+- RaidRoster registers `EraPolicy::ItemProvenanceReady` + `EraPolicy::IsItemAllowed` as those callbacks.
+- AutoGear fails before second-chance equipment destruction when provenance is unavailable/stale.
+- Equipment/start-outfit candidates, PvP trinkets, bags, ammo, potions, food, generic factory-stored items and gem item selection consume the central item policy.
+- The previous PlayerbotFactory raw item-ID expansion thresholds for generated gear/gems are removed from these protected paths; chronology comes from the pinned historical provenance data.
+- Bag automation falls back by live legality: Portable Hole -> Netherweave Bag -> Mooncloth Bag.
+- AdventureStart refuses item-producing profiles before progression/level/starter-state mutation when central provenance is unavailable.
+- Explicit AdventureStart supply grants also call `EraPolicy::IsItemAllowed`.
+- `.catchup` refuses before progression unlock or one-time claim mutation when provenance is unavailable, and `EquipCatchup` has a defensive readiness guard.
+- Boundary: item provenance does **not** yet prove enchant-spell chronology. Existing Playerbots enchant-spell era heuristics remain separate work until spell/enchant provenance exists.
+- Vendors/rewards, loot/crafting/recipes and other non-PlayerbotFactory item producers remain later ERA-07 work.
