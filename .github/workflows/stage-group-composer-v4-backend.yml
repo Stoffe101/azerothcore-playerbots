@@ -64,6 +64,9 @@ jobs:
           grep -q '/v1/presets' wowsims-service/app.py
           grep -q 'SKRRA_WOWSIM_DUMP_DIR' wowsims-service/harvest_presets.py
           grep -q 'WOWSIMS_REQUIRE_PRESETS=1' wowsims-service/Dockerfile
+          grep -q 'protobuf-compiler' wowsims-service/Dockerfile
+          grep -q 'protoc-gen-go@v1.36.10' wowsims-service/Dockerfile
+          grep -q 'go build --tags=with_db' wowsims-service/Dockerfile
           grep -q 'ENGINE_PRESENT_UNVALIDATED' data/wowsims/model-support.json
           grep -q '076c8773ab4c93ed8b2876a3c55f94267bbf1e85' data/wowsims/model-support.json
           grep -q 'BuildCharacterSnapshot' modules/mod-raid-roster/src/WoWSimsService.cpp

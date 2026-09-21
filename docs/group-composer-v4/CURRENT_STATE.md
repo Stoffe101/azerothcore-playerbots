@@ -402,3 +402,8 @@ The next WoWSims slice is staged around a fail-closed preset harvester:
 - the backend workflow performs a real Docker image build only when simulator runtime inputs changed, avoiding three-engine rebuilds on unrelated Group Composer commits.
 
 This still does not promote any route to SIM-BACKED. The next slice must apply authoritative character state to a harvested preset and validate baseline/candidate request construction.
+
+
+### WoWSims real-image build prerequisite repair
+
+The first engine-native preset SHA `2027a2d2` intentionally failed the new real Docker gate before harvesting. A pristine pinned Classic checkout does not contain generated Go protobuf files, so direct `go build` is invalid. The repair now generates protobufs from the pinned source and builds each CLI with upstream `with_db` release semantics; TBC keeps its explicit descriptor.proto mapping. No model has been promoted to SIM-BACKED from this failure.

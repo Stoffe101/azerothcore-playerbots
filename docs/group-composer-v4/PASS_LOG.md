@@ -5,7 +5,21 @@ Newest entries belong at the top of the dated section.
 
 ## 2026-09-21 — Engine-native WoWSims preset harvester
 
-Status: **IMPLEMENTED / exact-head local CI required**.
+Status: **IMPLEMENTED / repair in progress after real-image gate exposed upstream build prerequisites**.
+
+First exact SHA `2027a2d2544efe2e2e62880a6e998a7f5c7df57b`:
+- Group Composer client checks: SUCCESS;
+- focused backend source/unit checks: SUCCESS;
+- real Docker image build: FAILED before harvesting because a pristine Classic checkout does not commit `sim/core/proto/*.pb.go`;
+- upstream release recipes also build `wowsimcli` with the `with_db` tag;
+- this is a Docker packaging prerequisite failure, not a Group Composer compile or preset-classification failure.
+
+Repair:
+- install `protobuf-compiler` and pinned modern `protoc-gen-go`;
+- generate Go protobufs from the exact pinned engine checkout before building;
+- preserve TBC's required descriptor.proto mapping;
+- build all three CLIs with upstream `with_db` release semantics;
+- rerun the real image/harvest gate on a fresh `[local-ci]` SHA.
 
 Design:
 - do not hand-copy upstream rotations/spec options/buff packages into Skrra;

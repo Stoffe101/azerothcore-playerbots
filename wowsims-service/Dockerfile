@@ -1,8 +1,9 @@
 FROM golang:1.25.4-bookworm AS builder
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates git python3 \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get install -y --no-install-recommends ca-certificates git protobuf-compiler python3 \
+    && rm -rf /var/lib/apt/lists/* \
+    && go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
 
 ARG CLASSIC_COMMIT=7779ebbf79dc7f1341e6ab939b28a3402c9a730a
 ARG TBC_COMMIT=a4768c9d7ed51f4e49b8e90425f68ab47bde0cbc
@@ -18,7 +19,8 @@ RUN git init classic \
     && git -C classic fetch --depth 1 origin "${CLASSIC_COMMIT}" \
     && git -C classic checkout --detach FETCH_HEAD \
     && cd classic \
-    && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/wowsimcli-classic ./cmd/wowsimcli
+    && protoc -I=./proto --go_out=./sim/core ./proto/*.proto \
+    && CGO_ENABLED=0 go build --tags=with_db -trimpath -ldflags="-s -w" -o /out/wowsimcli-classic ./cmd/wowsimcli/cli_main.go
 RUN python3 /tools/harvest_presets.py \
     --source /src/classic --era VANILLA --output /presets/VANILLA \
     --model-support /tools/model-support.json --commit "${CLASSIC_COMMIT}"
@@ -28,7 +30,10 @@ RUN git init tbc \
     && git -C tbc fetch --depth 1 origin "${TBC_COMMIT}" \
     && git -C tbc checkout --detach FETCH_HEAD \
     && cd tbc \
-    && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/wowsimcli-tbc ./cmd/wowsimcli
+    && protoc -I=./proto \
+        --go_opt=Mgoogle/protobuf/descriptor.proto=google.golang.org/protobuf/types/descriptorpb \
+        --go_out=./sim/core ./proto/*.proto \
+    && CGO_ENABLED=0 go build --tags=with_db -trimpath -ldflags="-s -w" -o /out/wowsimcli-tbc ./cmd/wowsimcli/cli_main.go
 RUN python3 /tools/harvest_presets.py \
     --source /src/tbc --era TBC --output /presets/TBC \
     --model-support /tools/model-support.json --commit "${TBC_COMMIT}"
@@ -38,7 +43,8 @@ RUN git init wotlk \
     && git -C wotlk fetch --depth 1 origin "${WOTLK_COMMIT}" \
     && git -C wotlk checkout --detach FETCH_HEAD \
     && cd wotlk \
-    && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/wowsimcli-wotlk ./cmd/wowsimcli
+    && protoc -I=./proto --go_out=./sim/core ./proto/*.proto \
+    && CGO_ENABLED=0 go build --tags=with_db -trimpath -ldflags="-s -w" -o /out/wowsimcli-wotlk ./cmd/wowsimcli/cli_main.go
 RUN python3 /tools/harvest_presets.py \
     --source /src/wotlk --era WOTLK --output /presets/WOTLK \
     --model-support /tools/model-support.json --commit "${WOTLK_COMMIT}"
