@@ -42,55 +42,12 @@ jobs:
           grep -q 'PANEL_WIDTH = 390' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'SetClampedToScreen' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'rightSpace >= PANEL_WIDTH + 8 or rightSpace >= leftSpace' client-addons-src/GearAdvisor/GearAdvisor.lua
-          grep -q '^## Version: 0.3.2
+          grep -Fq '## Version: 0.3.2' client-addons-src/GearAdvisor/GearAdvisor.toc
           grep -q 'PANEL_HEIGHT = 638' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'eraNotice:SetHeight(34)' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'notesText:SetHeight(72)' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'WoWSims upgrade authority' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -Fq 'value:SetPoint("TOPRIGHT", -24, -370 - (i - 1) * 18)' client-addons-src/GearAdvisor/GearAdvisor.lua
-          grep -q 'is the upgrade authority for' client-addons-src/GearAdvisor/GearAdvisor.lua
-          ! grep -q 'priorityText:SetText(profile.priority)' client-addons-src/GearAdvisor/GearAdvisor.lua
-          grep -q 'WoWSimsBridge.Open("character")' client-addons-src/GearAdvisor/GearAdvisor.lua
-          grep -q 'www.wowsims.com/classic/' client-addons-src/WoWSimsBridge/WoWSimsBridge.lua
-          grep -q 'www.wowsims.com/tbc/' client-addons-src/WoWSimsBridge/WoWSimsBridge.lua
-          grep -q 'www.wowsims.com/wotlk/' client-addons-src/WoWSimsBridge/WoWSimsBridge.lua
-          grep -q 'BuildCharacterExport' client-addons-src/WoWSimsBridge/WoWSimsBridge.lua
-          grep -q 'BuildBagExport' client-addons-src/WoWSimsBridge/WoWSimsBridge.lua
-          grep -q 'version = "v3.2.4"' client-addons-src/WoWSimsBridge/WoWSimsBridge.lua
-          grep -q '"release": "v3.2.4"' data/wowsims/sources.json
-          grep -q 'static scores do not decide upgrades' client-addons-src/WoWSimsBridge/WoWSimsBridge.lua
-          grep -q 'for i = 1, 7 do' client-addons-src/GearAdvisor/GearAdvisor.lua
-          grep -q '1260' client-addons-src/GearAdvisor/GearAdvisor.lua
-          grep -Fq 'label.SetPoint("LEFT", frame, "LEFT", 8, 0)' client-ui/src/widgets/Button.ts
-          grep -Fq 'height: 88' client-ui/src/components/ActivityBrowser.ts
-          grep -Fq 'tag.SetHeight(28)' client-ui/src/components/ActivityBrowser.ts
-          grep -Fq 'row * 96' client-ui/src/components/ActivityBrowser.ts
-          grep -Fq 'subtitle.SetWidth(900)' client-ui/src/components/RecommendationsPage.ts
-          grep -Fq 'panel.frame.SetSize(1228, 228)' client-ui/src/components/RecommendationsPage.ts
-          grep -Fq 'rows.length * 236' client-ui/src/components/RecommendationsPage.ts
-          grep -Fq 'height = 88' client-addons-src/GroupComposer/GroupComposerModernUI.lua
-          grep -Fq 'tag:SetHeight(28)' client-addons-src/GroupComposer/GroupComposerModernUI.lua
-          grep -Fq 'panel.frame:SetSize(1228, 228)' client-addons-src/GroupComposer/GroupComposerModernUI.lua
-          lua5.1 client-addons-src/GroupComposer/tests/test_data_profiles.lua
-          python3 client-addons-src/GroupComposer/tests/test_server_contract.py
-          python3 client-addons-src/GroupComposer/tests/test_titan_bridge_contract.py
-
-          # During the migration the checked-in generated bundle may appear one bot commit
-          # after the TypeScript source commit. Once the new shell is activated in the TOC,
-          # require that generated output to exist and parse cleanly.
-          if grep -Fxq 'GroupComposerModernUI.lua' client-addons-src/GroupComposer/GroupComposer.toc; then
-            test -f client-addons-src/GroupComposer/GroupComposerModernUI.lua
-            luac5.1 -p client-addons-src/GroupComposer/GroupComposerModernUI.lua
-            ! grep -q '^DashboardV4.lua$' client-addons-src/GroupComposer/GroupComposer.toc
-          fi
-
-          ! grep -R 'SetShown(' client-addons-src/GroupComposer --include='*.lua'
-          git diff --check
- client-addons-src/GearAdvisor/GearAdvisor.toc
-          grep -q 'PANEL_HEIGHT = 638' client-addons-src/GearAdvisor/GearAdvisor.lua
-          grep -q 'eraNotice:SetHeight(34)' client-addons-src/GearAdvisor/GearAdvisor.lua
-          grep -q 'notesText:SetHeight(72)' client-addons-src/GearAdvisor/GearAdvisor.lua
-          grep -q 'Sim-backed upgrades' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'is the upgrade authority for' client-addons-src/GearAdvisor/GearAdvisor.lua
           ! grep -q 'priorityText:SetText(profile.priority)' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'WoWSimsBridge.Open("character")' client-addons-src/GearAdvisor/GearAdvisor.lua
