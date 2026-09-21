@@ -27,3 +27,6 @@ lore-sidecar/.venv/
 # Typed Group Composer UI toolchain
 client-ui/node_modules/
 client-ui/dist/
+
+# ERA-07 downloads pinned historical DB snapshots into a local cache.
+.cache/era-item-provenance/

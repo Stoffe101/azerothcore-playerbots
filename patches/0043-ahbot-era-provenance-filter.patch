@@ -1,0 +1,9 @@
+diff --git a/modules/mod-ah-bot-plus/src/AuctionHouseBot.cpp b/modules/mod-ah-bot-plus/src/AuctionHouseBot.cpp
+--- a/modules/mod-ah-bot-plus/src/AuctionHouseBot.cpp
++++ b/modules/mod-ah-bot-plus/src/AuctionHouseBot.cpp
+@@ -2221,4 +2221,5 @@
+     DisabledItems.clear();
+     ParseNumberListToSet(DisabledItems, sConfigMgr->GetOption<std::string>("AuctionHouseBot.DisabledInvalidItemIDs", ""), "AuctionHouseBot.DisabledInvalidItemIDs");
+     ParseNumberListToSet(DisabledItems, sConfigMgr->GetOption<std::string>("AuctionHouseBot.DisabledCustomItemIDs", ""), "AuctionHouseBot.DisabledCustomItemIDs");
++    ParseNumberListToSet(DisabledItems, sConfigMgr->GetOption<std::string>("AuctionHouseBot.EraProvenanceDisabledItemIDs", ""), "AuctionHouseBot.EraProvenanceDisabledItemIDs");
+     AddValuesToSetByKeyMap(DisabledRecipeProducedItemClassSubClasses, sConfigMgr->GetOption<std::string>("AuctionHouseBot.DisabledRecipeProducedItemClassSubClasses", ""), 0, 20);

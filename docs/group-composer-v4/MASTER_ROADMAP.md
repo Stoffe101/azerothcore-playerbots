@@ -75,7 +75,7 @@ They are the dependency spine for most other approved era work. First define one
 - [ ] **ERA-02 — Era Integrity scanner — IN PROGRESS**
   - GM-only read-only `.era audit` scaffold is implemented for cap drift, RNDbot quarantine, map gates and future Composer-map leakage.
   - PASS/WARN/FAIL sections for bots, AH, gear, vendors, professions, travel/maps, Composer catalog, classes/races, PvP/systems and automated rewards.
-  - Current sections include caps, RNDbot quarantine, maps, future Composer-map leakage, active bot classes/races and active bot profession leakage. AH/items/vendors/PvP/geography/rewards remain TODO.
+  - Current sections include caps, RNDbot quarantine, maps, future Composer-map leakage, active bot classes/races/professions, AH profile drift and ERA-07 provenance profile/coverage. Existing-auction item scans, equipped gear, vendors/PvP/geography/rewards remain TODO.
 
 - [ ] **ERA-03 — Strict bot era rules — PARTIAL**
   - Existing foundation: Composer anti-boost and bot-to-master progression sync.
@@ -101,10 +101,12 @@ They are the dependency spine for most other approved era work. First define one
   - Category containment is implemented: Vanilla no Gems/Glyphs; TBC Gems/no Glyphs; WotLK both; seller equip/use ceiling is 60/70/80.
   - The old unconditional Wrath consumable boosts are now WotLK-profile-only; fresh configuration defaults to Vanilla. Full legal-stock provenance remains ERA-07.
 
-- [ ] **ERA-07 — Item expansion-provenance filtering — TODO**
-  - Generate a reproducible earliest-valid-era manifest for auctionable/automated-gear items.
-  - Do not rely only on required level or item level.
-  - Apply to AH seller, bot gearing/prep, starter/catch-up and integrity audits.
+- [ ] **ERA-07 — Item expansion-provenance filtering — IN PROGRESS**
+  - Slice 1 pins exact CMaNGOS Classic/TBC/WotLK DB commits + Git blob SHAs and deterministically classifies every live AzerothCore item ID by earliest historical database presence.
+  - Required level, item level and raw item-ID thresholds are not used as chronology.
+  - UNKNOWN IDs fail closed for AH automation; explicit overrides are the review ledger.
+  - New AHBot seller listings consume the generated era blocklist through a dedicated config key; `.era audit` reports provenance profile/coverage.
+  - Still TODO: existing-auction scans, bot gearing/prep, starter/catch-up, vendors/rewards and promotion into the central server item policy.
 
 - [ ] **ERA-08 — Profession progression — PARTIAL**
   - Central EraPolicy now defines Vanilla 300, TBC 375, WotLK 450 and audit detects over-cap active RNDbot profession skills.

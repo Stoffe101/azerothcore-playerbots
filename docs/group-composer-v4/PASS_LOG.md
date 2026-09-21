@@ -2,9 +2,33 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — ERA-07 slice 1: reproducible item provenance + AH enforcement
+
+Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
+
+Implemented:
+- new `tools/generate-era-item-provenance.py` with a deterministic self-test;
+- exact CMaNGOS Classic/TBC/WotLK database commits + compressed Git blob SHAs pinned as chronology evidence;
+- generator intersects those historical item identities with the live AzerothCore `item_template` set;
+- earliest historical presence defines Vanilla/TBC/WotLK; no item-ID/required-level/item-level chronology guess is used;
+- IDs absent from all three snapshots become UNKNOWN and fail closed for automated AH listings until explicitly reviewed;
+- `overrides.csv` is the review ledger for source omissions/anomalies;
+- `configure-ahbot.sh` caches verified source dumps, generates compact profile blocklists and publishes provenance metadata;
+- new AHBot patch consumes `AuctionHouseBot.EraProvenanceDisabledItemIDs` separately from normal custom disabled IDs;
+- `.era audit` gains AUCTION_PROVENANCE PASS/WARN/FAIL coverage;
+- focused backend CI runs the provenance self-test, JSON validation and AH script syntax checks.
+
+Boundary:
+- this first consumer protects **new AHBot seller listings** only;
+- existing auctions are not purged or yet scanned by item provenance;
+- bot gearing/prep, starter/catch-up, vendors/rewards and other automated item paths still need the same central provenance policy;
+- UNKNOWNs are safe from AH automation but remain review work, therefore ERA-07 stays IN PROGRESS.
+
+CI: this commit uses `[local-ci]`; do not call the slice green until client checks, backend staging, Group Composer compile and Integration all succeed for the exact SHA.
+
 ## 2026-09-21 — RNDbot quarantine patch format repair (final)
 
-Status: **FIX PUSHED; exact-head local CI required**.
+Status: **DONE + exact-head local CI verified at `1e6f01f25cd63184618abd202cbd2cd0a677a189`**.
 
 Exact-head compile/Integration on `186b4aa8` stopped during pinned-tree assembly because wrapper patch `0042-playerbot-era-cap-quarantine.patch` still declared the ProcessBot hunk as `+26` lines even though that hunk contains 19 insertions + 6 context lines = 25. Git therefore consumed the following hunk header as patch content and reported `corrupt patch at line 54`.
 
@@ -13,7 +37,7 @@ Fix:
 - following RandomizeFirst new-side start corrected from 2060 to 2059 to reflect cumulative insertions;
 - no RNDbot quarantine logic changed.
 
-CI: follow-up uses `[local-ci]`; exact final SHA must pass client, staging, Group Composer compile and Integration before this stack is called green.
+CI: `1e6f01f25cd63184618abd202cbd2cd0a677a189` passed client checks, backend staging, Group Composer V4 compile and Integration. Both heavy jobs used `stoffes-pc`.
 
 ## 2026-09-21 — ERA-06 slice 1: era-aware AH market profiles
 

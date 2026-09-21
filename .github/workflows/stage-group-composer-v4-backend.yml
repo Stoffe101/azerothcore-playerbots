@@ -36,6 +36,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 client-addons-src/GroupComposer/tests/test_server_contract.py
+          python3 tools/generate-era-item-provenance.py --self-test
+          python3 -m json.tool data/era-item-provenance/sources.json >/dev/null
+          bash -n configure-ahbot.sh
+          grep -q 'EraProvenanceDisabledItemIDs' patches/0043-ahbot-era-provenance-filter.patch
+          grep -q 'AuctionHouseBot.EraProvenanceDisabledItemIDs' configure-ahbot.sh
           git diff --check
           grep -q 'group->AddMember(bot)' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           grep -q 'AddPlayerBot(member.guid, account, true)' modules/mod-raid-roster/src/GroupComposerCommand.cpp

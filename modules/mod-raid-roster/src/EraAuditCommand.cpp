@@ -300,6 +300,25 @@ bool EraAuditCommand::HandleAudit(ChatHandler* handler)
                 ", equipUseCap=" + std::to_string(configuredCap) + " expected=" + std::to_string(cap) +
                 ", gems=" + (gemWeight ? "on" : "off") + " expected=" + (gemExpected ? "on" : "off") +
                 ", glyphs=" + (glyphWeight ? "on" : "off") + " expected=" + (glyphExpected ? "on" : "off"));
+        std::string const provenanceProfile =
+            sConfigMgr->GetOption<std::string>("AuctionHouseBot.EraProvenanceProfile", "unset");
+        std::string const provenanceSource =
+            sConfigMgr->GetOption<std::string>("AuctionHouseBot.EraProvenanceSourceSet", "unset");
+        uint32 const provenanceWorldItems =
+            sConfigMgr->GetOption<uint32>("AuctionHouseBot.EraProvenanceWorldItemCount", 0);
+        uint32 const provenanceUnknown =
+            sConfigMgr->GetOption<uint32>("AuctionHouseBot.EraProvenanceUnknownCount", 0);
+        uint32 const provenanceDisabled =
+            sConfigMgr->GetOption<uint32>("AuctionHouseBot.EraProvenanceDisabledCount", 0);
+        bool const provenanceReady = provenanceProfile == expectedProfile && provenanceSource != "unset" && provenanceWorldItems > 0;
+        report(
+            !provenanceReady ? AuditState::Fail : (provenanceUnknown ? AuditState::Warn : AuditState::Pass),
+            "AUCTION_PROVENANCE",
+            "profile=" + provenanceProfile + " expected=" + expectedProfile +
+                ", source=" + provenanceSource +
+                ", worldItems=" + std::to_string(provenanceWorldItems) +
+                ", blockedForEra=" + std::to_string(provenanceDisabled) +
+                ", unknownBlocked=" + std::to_string(provenanceUnknown));
     }
 
     AuditState const summary = failures ? AuditState::Fail : (warnings ? AuditState::Warn : AuditState::Pass);

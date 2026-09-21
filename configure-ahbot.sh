@@ -9,6 +9,11 @@ AC_DIR="$ROOT/azerothcore-wotlk"
 ENV_ROOT="$ROOT/.env"
 ENV_LIVE="$AC_DIR/.env"
 AH_CONF="$AC_DIR/env/dist/etc/modules/mod_ahbot.conf"
+PROVENANCE_TOOL="$ROOT/tools/generate-era-item-provenance.py"
+PROVENANCE_SOURCES="$ROOT/data/era-item-provenance/sources.json"
+PROVENANCE_OVERRIDES="$ROOT/data/era-item-provenance/overrides.csv"
+PROVENANCE_CACHE="$ROOT/.cache/era-item-provenance"
+PROVENANCE_OUT="$PROVENANCE_CACHE/generated"
 
 name="${1:-}"
 if [[ ! "$name" =~ ^[A-Za-z][A-Za-z]{1,11}$ ]]; then
@@ -95,10 +100,47 @@ persist_env() {
   done
 }
 
+[[ -f "$PROVENANCE_TOOL" ]] || { echo "Missing $PROVENANCE_TOOL." >&2; exit 1; }
+[[ -f "$PROVENANCE_SOURCES" ]] || { echo "Missing $PROVENANCE_SOURCES." >&2; exit 1; }
+[[ -f "$PROVENANCE_OVERRIDES" ]] || { echo "Missing $PROVENANCE_OVERRIDES." >&2; exit 1; }
+command -v python3 >/dev/null 2>&1 || { echo "python3 is required for ERA-07 item provenance." >&2; exit 1; }
+
+mkdir -p "$PROVENANCE_CACHE" "$PROVENANCE_OUT"
+world_item_ids="$(mktemp)"
+cleanup_world_item_ids() { rm -f "$world_item_ids"; }
+trap cleanup_world_item_ids EXIT
+mysql_q "SELECT entry FROM acore_world.item_template ORDER BY entry;" > "$world_item_ids"
+[[ -s "$world_item_ids" ]] || { echo "Could not read acore_world.item_template for provenance generation." >&2; exit 1; }
+python3 "$PROVENANCE_TOOL" \
+  --sources "$PROVENANCE_SOURCES" \
+  --overrides "$PROVENANCE_OVERRIDES" \
+  --world-item-ids "$world_item_ids" \
+  --cache-dir "$PROVENANCE_CACHE/sources" \
+  --out-dir "$PROVENANCE_OUT"
+cleanup_world_item_ids
+trap - EXIT
+
+provenance_disabled="$(tr -d '\r\n' < "$PROVENANCE_OUT/ah-disabled-${profile}.txt")"
+read -r provenance_source_set provenance_world_count provenance_unknown_count provenance_disabled_count < <(
+  python3 - "$PROVENANCE_OUT/metadata.json" "$profile" <<'PY'
+import json
+import sys
+meta = json.load(open(sys.argv[1], encoding="utf-8"))
+profile = sys.argv[2]
+print(meta["source_set"], meta["world_item_count"], meta["classified_counts"]["unknown"], meta["disabled_counts"][profile])
+PY
+)
+
 persist_env AHBOT_GUIDS "$guid"
 persist_env AHBOT_ERA_PROFILE "$profile"
 
 set_conf "AuctionHouseBot.GUIDs" "$guid" "$AH_CONF"
+set_conf "AuctionHouseBot.EraProvenanceProfile" "$profile" "$AH_CONF"
+set_conf "AuctionHouseBot.EraProvenanceSourceSet" "$provenance_source_set" "$AH_CONF"
+set_conf "AuctionHouseBot.EraProvenanceWorldItemCount" "$provenance_world_count" "$AH_CONF"
+set_conf "AuctionHouseBot.EraProvenanceUnknownCount" "$provenance_unknown_count" "$AH_CONF"
+set_conf "AuctionHouseBot.EraProvenanceDisabledCount" "$provenance_disabled_count" "$AH_CONF"
+set_conf "AuctionHouseBot.EraProvenanceDisabledItemIDs" "$provenance_disabled" "$AH_CONF"
 set_conf "AuctionHouseBot.EraProfile" "$profile" "$AH_CONF"
 set_conf "AuctionHouseBot.EraLevelCap" "$era_cap" "$AH_CONF"
 set_conf "AuctionHouseBot.EnableSeller" "true" "$AH_CONF"
@@ -106,7 +148,7 @@ set_conf "AuctionHouseBot.Buyer.Enabled" "true" "$AH_CONF"
 set_conf "AuctionHouseBot.Buyer.AcceptablePriceModifier" "1" "$AH_CONF"
 set_conf "AuctionHouseBot.ItemsPerCycle" "500" "$AH_CONF"
 
-# Coarse era containment for new seller listings. ERA-07 still owns true item provenance.
+# Second-layer containment: provenance is authoritative for chronology; use/equip level is an additional guard.
 set_conf "AuctionHouseBot.EquipItemUseOrEquipLevelRestrict.Enabled" "true" "$AH_CONF"
 set_conf "AuctionHouseBot.EquipItemUseOrEquipLevelRestrict.MinLevel" "0" "$AH_CONF"
 set_conf "AuctionHouseBot.EquipItemUseOrEquipLevelRestrict.MaxLevel" "$era_cap" "$AH_CONF"
@@ -187,14 +229,17 @@ echo "  Seller/buyer: enabled"
 echo "  Stock target: 25,000 per auction house"
 echo "  Refill: 500 listings/cycle"
 echo "  Era profile: $profile (equip/use ceiling $era_cap)"
+echo "  ERA-07 provenance: $provenance_source_set; blocked $provenance_disabled_count automated IDs"
+echo "  Provenance unknowns: $provenance_unknown_count (fail-closed from AHBot listings)"
 case "$profile" in
   vanilla) echo "  Expansion categories: gems OFF, glyphs OFF" ;;
   tbc)     echo "  Expansion categories: gems ON, glyphs OFF" ;;
   wotlk)   echo "  Expansion categories: gems ON, glyphs ON; Wrath raid staples boosted" ;;
 esac
 echo
-echo "IMPORTANT: this only constrains NEW seller listings by category/use level."
-echo "ERA-07 item provenance is still required for future-era items with low/no use level."
-echo "Changing profiles does not delete existing auctions."
+echo "IMPORTANT: category/use-level + ERA-07 provenance constrain NEW AHBot seller listings."
+echo "Unknown item provenance is fail-closed for automated AH listings until explicitly overridden."
+echo "Existing auctions are not deleted; live-auction provenance auditing is a separate ERA-02 slice."
+echo "ERA-07 still needs the same central provenance policy wired into bot gear/prep and starter/catch-up systems."
 echo
 echo "After you log back in as your PLAYING character, run '.ahbot update' a few times to seed immediately."

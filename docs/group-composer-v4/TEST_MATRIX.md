@@ -76,15 +76,23 @@ Status vocabulary:
 - TODO: Azeroth Control goto/saved-location travel refuses a future-era map.
 - TODO: Group Composer cannot teleport a reviewed roster into a future-era instance map.
 
-## Auction House era profiles
+## Auction House era profiles / ERA-07 provenance
 
 - STATIC/CI: `configure-ahbot.sh` parses with `bash -n`.
+- STATIC/CI: ERA-07 generator self-test passes and the pinned source manifest parses as JSON.
+- STATIC/CI: AHBot wrapper patch consumes `AuctionHouseBot.EraProvenanceDisabledItemIDs` separately from operator custom IDs.
+- TODO: first provenance generation downloads/verifies the three exact pinned Git blobs and later runs use the verified cache.
+- TODO: generated manifest covers every live `acore_world.item_template` entry as Vanilla/TBC/WotLK/UNKNOWN.
+- TODO: UNKNOWN items are present in every generated AH blocklist until explicitly overridden.
+- TODO: Vanilla AHBot never creates a TBC/WotLK/UNKNOWN listing after provenance profile application.
+- TODO: TBC AHBot never creates a WotLK/UNKNOWN listing after provenance profile application.
+- TODO: `.era audit` AUCTION_PROVENANCE profile/source/world-item counts agree with the active generated profile and WARN on blocked UNKNOWNs.
 - TODO: Vanilla profile persists marker `vanilla`, cap 60, Gems OFF, Glyphs OFF.
 - TODO: TBC profile uses cap 70, Gems ON, Glyphs OFF.
 - TODO: WotLK profile uses cap 80, Gems ON, Glyphs ON and Wrath boost IDs.
 - TODO: applying Vanilla/TBC after WotLK removes script-owned Wrath boost IDs.
 - TODO: `.era audit` FAILs when enabled AH profile disagrees with live era and PASSes when aligned.
-- TODO: existing auction stock is audited separately before friends-realm launch/transition.
+- TODO: existing auction stock is scanned against generated provenance before friends-realm launch/transition.
 
 ## Snapshot / rollback safety
 

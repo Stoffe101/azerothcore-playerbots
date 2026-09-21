@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "source_set": "cmangos-era-db-v1",
+  "sources": {
+    "vanilla": {
+      "repository": "cmangos/classic-db",
+      "commit": "22b51464f1625f6ef6275771de1f5466c6f5d19e",
+      "path": "Full_DB/ClassicDB_1_12_1_z2815.sql.gz",
+      "git_blob_sha": "0a77f5230a3d5d6db968678203dfe3b30c34b8a9",
+      "size": 12959882,
+      "url": "https://raw.githubusercontent.com/cmangos/classic-db/22b51464f1625f6ef6275771de1f5466c6f5d19e/Full_DB/ClassicDB_1_12_1_z2815.sql.gz"
+    },
+    "tbc": {
+      "repository": "cmangos/tbc-db",
+      "commit": "59c5db6052ca6025f39bdee37ddb5b0279b1ad67",
+      "path": "Full_DB/TBCDB_1.11.0_Vengeance_One_A_Cmangos_Story.sql.gz",
+      "git_blob_sha": "2c9dfa34ccfdac308257007696e2572810f74a43",
+      "size": 18168726,
+      "url": "https://raw.githubusercontent.com/cmangos/tbc-db/59c5db6052ca6025f39bdee37ddb5b0279b1ad67/Full_DB/TBCDB_1.11.0_Vengeance_One_A_Cmangos_Story.sql.gz"
+    },
+    "wotlk": {
+      "repository": "cmangos/wotlk-db",
+      "commit": "0fb86aa9351bdb737db6b63e6ab49a1af0022dea",
+      "path": "Full_DB/WoTLKDB_1_9_14092.sql.gz",
+      "git_blob_sha": "9d2dac06567d03ead6bf27b01b49504554e20adb",
+      "size": 30009076,
+      "url": "https://raw.githubusercontent.com/cmangos/wotlk-db/0fb86aa9351bdb737db6b63e6ab49a1af0022dea/Full_DB/WoTLKDB_1_9_14092.sql.gz"
+    }
+  }
+}

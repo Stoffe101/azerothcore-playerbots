@@ -84,8 +84,10 @@ Downgrading a live friends realm is unsupported. Dev/test tooling may simulate e
 
 - Global random/world/guild bot population is not yet proven to obey the realm era as a hard population ceiling.
 - Composer understands activity eras, but its **presentation, templates, subgroup optimization and class availability** still need explicit per-era behavior.
-- The current AH setup is not era-safe. configure-ahbot.sh deliberately boosts WotLK materials, gems, flasks, combat potions and Fish Feast because the dev realm currently targets WotLK.
-- The external mod-ah-bot-plus has useful level/item filters, but those alone cannot prove expansion provenance for every item.
+- ERA-06 now has explicit Vanilla/TBC/WotLK AH profiles with category and 60/70/80 use/equip containment.
+- ERA-07 slice 1 adds deterministic item chronology from exact pinned CMaNGOS Classic/TBC/WotLK database identities and feeds future/unknown IDs into a dedicated AHBot disabled list.
+- The historical database comparison is a chronology floor, not phase/obtainability proof. UNKNOWN items fail closed for AH automation and explicit overrides record reviewed anomalies.
+- Existing auctions and non-AH item-producing systems still need provenance enforcement/auditing.
 - Full world-system fidelity for professions, vendors, future maps/transport, race/class availability and expansion-only systems is not yet centrally enforced.
 
 ## Group Composer across all three eras
@@ -213,10 +215,13 @@ Use several defenses together:
    - useful as a second filter, but **never the sole definition of expansion** because item levels overlap between expansion datasets.
 
 4. **Expansion provenance manifest**
-   - build a reproducible item manifest that records the earliest allowed era for each auctionable item;
-   - feed future-era IDs into the AH seller's disabled/custom filter or patch the seller to call the central policy;
-   - keep explicit override files for edge cases;
-   - test the generated manifest in CI.
+   - **IN PROGRESS:** compare live AzerothCore item IDs against exact pinned CMaNGOS Classic/TBC/WotLK `item_template` identity sets;
+   - pin source commits, compressed Git blob SHAs and byte sizes so regeneration cannot silently drift;
+   - earliest historical presence records Vanilla/TBC/WotLK; absence from all three is UNKNOWN rather than guessed;
+   - UNKNOWN and future-era IDs fail closed from automated AH listing;
+   - a dedicated AHBot config path consumes the generated blocklist without replacing operator custom exclusions;
+   - keep explicit reviewed overrides for source omissions/edge cases;
+   - CI self-tests the parser/classifier; runtime generation verifies the exact source blobs.
 
 5. **Existing auction audit**
    - before a fresh realm opens and after every expansion transition, audit live auctions for future-era items;

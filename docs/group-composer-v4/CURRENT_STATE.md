@@ -65,11 +65,11 @@ Verified green checkpoint after this pass: `3b548b3d29539a1ae0816d10db0e943546d3
 
 ## Latest green development pass
 
-Latest fully verified green checkpoint: `1e3e9d5fa32e52d9abb2b43501e222f812ee6c3a`
+Latest fully verified green checkpoint: `1e6f01f25cd63184618abd202cbd2cd0a677a189`
 
 Exact-head CI: client checks **SUCCESS**, backend staging **SUCCESS**, Group Composer compile **SUCCESS** on `stoffes-pc`, Integration **SUCCESS** on `stoffes-pc`. Both heavy workflows retained the Clang 18 -> GCC 15 libstdc++ workaround.
 
-This head includes the previously verified runtime-pass-3 implementation, peer-policy observability, Admin Panel authorization hardening and the Group Composer minimap launcher. Current Group Composer version is **0.15.3**.
+This head includes runtime pass 3 plus ERA-01 map/travel containment, Playerbots 60/70/80 runtime caps, non-destructive RNDbot quarantine, ERA-02 class/race/profession and AH-profile audit coverage, FEATURE-19 snapshot/rollback foundations, and ERA-06 AH profiles. Current Group Composer version is **0.15.3**.
 
 ### Runtime pass 3 implementation
 
@@ -125,11 +125,11 @@ First implementation slice:
 
 Slice 2 is exact-head local-CI green at `1e3e9d5f`: starter/catch-up availability, player progression shortcuts, direct Composer Titan Rune access and bot progression synchronization now consume EraPolicy.
 
-Slice 3 is **IN PROGRESS**: EraPolicy derives map era from Map.dbc expansion metadata; Admin Panel teleports/goto/summon/saved locations and Group Composer instance travel are being moved onto that map gate. The first static check failure was a too-broad contract assertion and has been corrected without changing the travel implementation.
-
-Slice 4a is now **IN PROGRESS** in parallel with slice-3 CI: EraPolicy synchronizes Playerbots' runtime random-bot maximum and its level-bracket snapshot to 60/70/80, reasserts the cap after config reload, and central level gates protect Composer candidates plus automated RaidRoster gearing.
-
-Slice 4b is also **IN PROGRESS**: the Playerbots runtime population path now skips stored RNDbots above the live cap, removes over-cap ungrouped bots from active population state, and preserves their characters unchanged for later expansion release. A bot already grouped with players is not forcibly yanked mid-run. The wrapper patch's final malformed hunk metadata was corrected after exact-head local CI caught it before compilation.
+Slices 3, 4a and 4b are cumulatively **DONE + exact-head local-CI green at `1e6f01f`**:
+- Map.dbc-backed era policy gates Admin Panel teleport/goto/summon/saved-location travel and Group Composer instance travel.
+- Playerbots runtime random-bot maximum + bracket snapshot follow the live 60/70/80 cap; Composer and automated RaidRoster preparation hard-fence over-cap bots.
+- Stored/ungrouped RNDbots above the cap are quarantined non-destructively rather than downlevelled/deleted; grouped bots are not yanked mid-run.
+- The final wrapper-patch hunk-count repair was compile-verified on `stoffes-pc`.
 
 ERA-01 is **not DONE yet**. AH, global bot population/geography, professions, vendors, travel, classes/races, PvP and other systems still need migration/enforcement.
 
@@ -137,7 +137,7 @@ ERA-01 is **not DONE yet**. AH, global bot population/geography, professions, ve
 
 Status: **IN PROGRESS**.
 
-First read-only slice adds GM-only `.era audit` with PASS/WARN/FAIL sections for central cap drift, online over-cap RNDbots, preserved/quarantined stored RNDbots, Outland/Northrend map gates, and future Composer activity map leakage. It reports counts plus up to five examples where useful and never mutates realm state. The next policy slice adds class/race/profession rules and extends the scanner with active RNDbot identity/profession leak sections. AH/items/vendors/PvP and broader world enforcement remain TODO.
+GM-only `.era audit` is read-only and now covers central cap drift, online/stored RNDbot quarantine, Outland/Northrend map gates, future Composer-map leakage, active bot class/race/profession leaks and ERA-06 AH profile drift. ERA-07 slice 1 adds a generated provenance-profile/coverage section. Existing-auction item scans, equipped-item provenance, vendors/rewards, PvP and broader world enforcement remain TODO.
 
 Group Composer 0.15.3 also hides Death Knight from the Build Selector before WotLK and clears a stale preselected DK build when the selector opens on an earlier-era realm.
 
@@ -146,10 +146,10 @@ Group Composer 0.15.3 also hides Death Knight from the Build Selector before Wot
 Canonical design is now recorded in ERA_FIDELITY.md.
 
 Current assessment:
-- **DONE:** three-era progression/level-cap foundation, activity-era catalog gates, manual expansion hold/advance foundation, Era Talents, bot-to-master era synchronization, Composer anti-boost foundation.
-- **PARTIAL:** Group Composer era presentation/templates/subgroup logic; global bot-population era ceiling; expansion release orchestration.
-- **TODO:** strict AH item provenance, era market profiles, profession/vendor/reward/map/transport gates, race/class release policy, era-integrity audit.
-- **Known contamination risk:** configure-ahbot.sh is intentionally WotLK-oriented today and must not be reused unchanged for a fresh Vanilla/TBC realm.
+- **DONE foundations:** three-era progression/level-cap spine, activity-era catalog gates, manual expansion hold/advance foundation, Era Talents, bot-to-master era synchronization and Composer anti-boost foundation.
+- **PARTIAL:** global bot population containment, Group Composer era presentation/templates/subgroup logic, AH profiles, class/race/profession policy, map/travel gates, integrity scanning, snapshot/rollback and expansion orchestration.
+- **IN PROGRESS:** ERA-07 reproducible item chronology. AH automated listings are the first consumer; bot gear/starter/catch-up/vendors/rewards and live-auction scans still need the same policy.
+- **TODO:** remaining profession trainers/recipes, vendor/currency/reward gates, transport/flying/PvP/convenience/Guild Bank lifecycle and deeper old-world leakage auditing.
 
 The friends-realm rule is additive and forward-only: TBC keeps legitimate Vanilla content; WotLK keeps legitimate Vanilla + TBC content. Future-era content may never leak backward.
 
@@ -224,5 +224,18 @@ Status: **PARTIAL / IN PROGRESS**.
 - WotLK-specific custom boost IDs are scrubbed before every profile and re-added only by the WotLK profile.
 - Fresh installs default `AHBOT_ERA_PROFILE=vanilla`; unmarked existing installs remain WotLK-compatible until explicitly changed.
 - `.era audit` checks enabled AH profile name, seller level ceiling and Gem/Glyph gates against live EraPolicy.
-- This is containment, not ERA-07 item provenance. Later-era items with low/no use level still need an earliest-valid-era manifest.
+- Category/use-level containment is now being paired with ERA-07 provenance rather than pretending level proves chronology.
 - Profile changes do not delete existing auctions; friends-realm progression is forward-only.
+
+## ERA-07 item expansion provenance
+
+Status: **IN PROGRESS — slice 1 implementation in this pass**.
+
+- A deterministic generator compares exact pinned CMaNGOS Classic/TBC/WotLK `item_template` identities and classifies the live AzerothCore world item IDs by earliest database era.
+- Source commits, compressed dump byte sizes and Git blob SHAs are pinned in `data/era-item-provenance/sources.json`; downloaded dumps live only in the ignored cache.
+- No required-level, item-level or item-ID threshold is used as provenance.
+- IDs absent from all three source snapshots are **UNKNOWN** and fail closed for automated AH listings until reviewed in `overrides.csv`.
+- `configure-ahbot.sh` generates a profile-specific compact blocklist and publishes provenance metadata into AHBot config.
+- Patch `0043-ahbot-era-provenance-filter.patch` makes the pinned AH bot consume the dedicated provenance blocklist without overwriting operator `DisabledCustomItemIDs`.
+- `.era audit` reports provenance profile/source/live-item coverage and WARNs when UNKNOWN IDs remain blocked.
+- This slice protects **new automated AH listings only**. Existing auctions, bot gear/prep, starter/catch-up, vendors/rewards and other item-producing systems remain later ERA-07/ERA-02 work.
