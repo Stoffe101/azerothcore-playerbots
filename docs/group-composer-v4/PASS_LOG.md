@@ -2,6 +2,24 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — ERA-07 slice 3 integration repair: item policy after EraTalents
+
+Status: **FIX PREPARED; exact-head GitHub-hosted CI required**.
+
+Failure on `c685274ad29e59029241f16b7a6191b595e9b834`:
+- client checks SUCCESS;
+- backend staging SUCCESS;
+- Group Composer compile FAILURE during pinned-tree assembly;
+- Integration FAILURE during pinned-tree assembly;
+- wrapper 0044 applied, then EraTalents' `playerbots/01-factory-era-talents.patch` failed because both touched `PlayerbotFactory.cpp`.
+
+Repair:
+- regenerate 0044 against exact pinned Playerbots **after** EraTalents' factory patch;
+- defer 0044 in fresh setup, update, Integration CI and Group Composer compile CI;
+- keep central provenance as the final PlayerbotFactory item layer instead of removing either feature;
+- preserve EraTalents' existing consumable backstops for now; central provenance is added as an additional safety gate, while the old gear/gem ID heuristics are replaced in 0044;
+- static contracts assert all four assembly paths contain the deferred-patch rule.
+
 ## 2026-09-21 — ERA-07 slice 3: PlayerbotFactory + starter/catch-up item provenance
 
 Status: **IMPLEMENTED; exact-head GitHub-hosted CI required**.

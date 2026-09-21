@@ -246,9 +246,13 @@ jobs:
             rm -rf "$CORE/modules/$lm"
             cp -a "$GITHUB_WORKSPACE/modules/$lm" "$CORE/modules/$lm"
           done
+          deferred_item_policy_patch="$GITHUB_WORKSPACE/patches/0044-playerbot-era-item-policy-hook.patch"
           for patch in "$GITHUB_WORKSPACE"/patches/*.patch; do
             [[ -e "$patch" ]] || continue
             name="$(basename "$patch")"
+            if [[ "$name" == "0044-playerbot-era-item-policy-hook.patch" ]]; then
+              continue
+            fi
             args=()
             if [[ "$name" == "0014-playerbot-sunwell.patch" || "$name" == "0016-playerbot-aq40-twins.patch" ]]; then
               args+=(--exclude=modules/mod-playerbots/src/Bot/PlayerbotAI.cpp)
@@ -263,6 +267,19 @@ jobs:
             fi
           done
           "$CORE/modules/mod-era-talents/apply-patches.sh" "$CORE"
+
+          # 0044 is generated against PlayerbotFactory after EraTalents has patched it.
+          if [[ -f "$deferred_item_policy_patch" ]]; then
+            if git -C "$CORE" apply --reverse --check "$deferred_item_policy_patch" >/dev/null 2>&1; then
+              echo "Deferred item-policy patch already present"
+            elif git -C "$CORE" apply --check "$deferred_item_policy_patch" >/dev/null 2>&1; then
+              git -C "$CORE" apply "$deferred_item_policy_patch"
+              echo "Applied deferred item-policy patch"
+            else
+              git -C "$CORE" apply --check --verbose "$deferred_item_policy_patch" || true
+              exit 1
+            fi
+          fi
 
       - name: Verify EraTalents relog persistence guard
         run: |

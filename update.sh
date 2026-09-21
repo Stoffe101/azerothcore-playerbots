@@ -59,9 +59,13 @@ apply_patches () {
   [[ -d "$pdir" && -d "$AC_DIR/.git" ]] || return 0
   local patch name
   local -a apply_args
+  local deferred_item_policy_patch="$pdir/0044-playerbot-era-item-policy-hook.patch"
   for patch in "$pdir"/*.patch; do
     [[ -e "$patch" ]] || continue
     name="$(basename "$patch")"
+    if [[ "$name" == "0044-playerbot-era-item-policy-hook.patch" ]]; then
+      continue
+    fi
     apply_args=()
 
     # Sunwell and AQ40 were authored around nearby upstream PlayerbotAI strategy-list changes.
@@ -89,6 +93,21 @@ apply_patches () {
   done
   if [[ -x "$AC_DIR/modules/mod-era-talents/apply-patches.sh" ]]; then
     "$AC_DIR/modules/mod-era-talents/apply-patches.sh" "$AC_DIR"
+  fi
+
+  # 0044 is intentionally layered AFTER EraTalents because both patch PlayerbotFactory.cpp.
+  # It is generated against the exact pinned post-EraTalents tree.
+  if [[ -f "$deferred_item_policy_patch" ]]; then
+    if git -C "$AC_DIR" apply --reverse --check "$deferred_item_policy_patch" >/dev/null 2>&1; then
+      echo "    Patch already applied: 0044-playerbot-era-item-policy-hook.patch"
+    elif git -C "$AC_DIR" apply --check "$deferred_item_policy_patch" >/dev/null 2>&1; then
+      git -C "$AC_DIR" apply "$deferred_item_policy_patch"
+      echo "    Applied deferred patch: 0044-playerbot-era-item-policy-hook.patch"
+    else
+      echo "    ERROR: deferred 0044 playerbot item-policy patch no longer applies after EraTalents." >&2
+      git -C "$AC_DIR" apply --check --verbose "$deferred_item_policy_patch" || true
+      exit 1
+    fi
   fi
 }
 

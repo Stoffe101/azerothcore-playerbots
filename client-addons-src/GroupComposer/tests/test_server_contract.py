@@ -19,6 +19,8 @@ AHBOT_SCRIPT = (ROOT / "configure-ahbot.sh").read_text(encoding="utf-8")
 ERA_PROVENANCE_SCRIPT = (ROOT / "configure-era-item-provenance.sh").read_text(encoding="utf-8")
 SETUP_SCRIPT = (ROOT / "setup.sh").read_text(encoding="utf-8")
 UPDATE_SCRIPT = (ROOT / "update.sh").read_text(encoding="utf-8")
+INTEGRATION_WORKFLOW = (ROOT / ".github/workflows/integration-build.yml").read_text(encoding="utf-8")
+COMPILE_WORKFLOW = (ROOT / ".github/workflows/group-composer-v4-compile.yml").read_text(encoding="utf-8")
 RAID_CONF = (ROOT / "modules/mod-raid-roster/conf/mod_raid_roster.conf.dist").read_text(encoding="utf-8")
 DATA = (ROOT / "client-addons-src/GroupComposer/Data.lua").read_text(encoding="utf-8")
 RUNTIME = (ROOT / "client-addons-src/GroupComposer/RuntimeGuards.lua").read_text(encoding="utf-8")
@@ -1458,3 +1460,10 @@ assert "Starter kit for {} refused: ERA-07 item provenance unavailable" in ADVEN
 assert "EraPolicy::IsItemAllowed(itemId)" in ADVENTURE_START_KIT
 assert "No progression or claim was changed." in ADVENTURE_CATCHUP
 assert "Refusing catch-up AutoGear" in GEAR_CPP
+
+
+# 0044 is generated against PlayerbotFactory after EraTalents. Applying it first makes
+# EraTalents' own factory patch fail, so every assembly path must deliberately defer it.
+for patch_host in (SETUP_SCRIPT, UPDATE_SCRIPT, INTEGRATION_WORKFLOW, COMPILE_WORKFLOW):
+    assert '0044-playerbot-era-item-policy-hook.patch' in patch_host
+    assert 'deferred_item_policy_patch' in patch_host
