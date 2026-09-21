@@ -2,6 +2,17 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — ERA-07 slice 3 static-contract repair
+
+Status: **FIX PREPARED; exact-head GitHub-hosted CI required**.
+
+Exact head `89367cc737a881456a6cb0f8d68808977ece6f9c` reached the new deferred patch-order implementation, but both fast workflows failed on a brittle Python assertion that expected the prose fragment `raw item-ID thresholds are not provenance evidence` to remain on one line inside patch 0044. The regenerated post-EraTalents patch wraps that comment across two lines; the actual code tokens and policy behavior are present.
+
+Repair:
+- replace the prose-shape assertion with two behavior-contract tokens: `raw item-ID` and `thresholds are not provenance evidence`;
+- no server/item-policy behavior changes;
+- heavy builds for `89367cc` may still provide useful assembly evidence, but that SHA cannot be called green because the exact fast checks failed.
+
 ## 2026-09-21 — ERA-07 slice 3 integration repair: item policy after EraTalents
 
 Status: **FIX PREPARED; exact-head GitHub-hosted CI required**.

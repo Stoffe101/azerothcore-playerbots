@@ -265,7 +265,7 @@ Slice 2 implementation:
 
 Slice 2 exact-SHA CI: client checks **SUCCESS**, backend staging **SUCCESS**, Integration **SUCCESS** on `stoffes-pc`, Group Composer V4 compile **SUCCESS** on `stoffes-pc`.
 
-Slice 3 implementation status: **IN PROGRESS — `c685274a` failed during patch assembly; post-EraTalents repair prepared**.
+Slice 3 implementation status: **IN PROGRESS — patch-order repair is implemented; exact head `89367cc` then hit a stale static assertion, now repaired**.
 
 - PlayerbotFactory gains narrow external item-policy callbacks instead of depending directly on mod-raid-roster.
 - Patch integration rule: 0044 is generated against and applied after EraTalents' PlayerbotFactory patch. The first attempt applied it before EraTalents, causing both heavy jobs to fail before compilation; setup/update and both heavy workflows now defer it consistently.

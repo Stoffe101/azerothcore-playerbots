@@ -1453,7 +1453,8 @@ assert "BOT_EQUIPMENT" in ERA_AUDIT
 assert "SetItemPolicyPredicates" in PLAYERBOT_ITEM_POLICY_PATCH
 assert "IsExternalItemPolicyReady" in PLAYERBOT_ITEM_POLICY_PATCH
 assert "IsItemAllowedByExternalPolicy" in PLAYERBOT_ITEM_POLICY_PATCH
-assert "raw item-ID thresholds are not provenance evidence" in PLAYERBOT_ITEM_POLICY_PATCH
+assert "raw item-ID" in PLAYERBOT_ITEM_POLICY_PATCH
+assert "thresholds are not provenance evidence" in PLAYERBOT_ITEM_POLICY_PATCH
 assert "Netherweave Bag" in PLAYERBOT_ITEM_POLICY_PATCH and "Mooncloth Bag" in PLAYERBOT_ITEM_POLICY_PATCH
 assert "PlayerbotFactory::SetItemPolicyPredicates(&EraPolicy::ItemProvenanceReady, &EraPolicy::IsItemAllowed)" in RAID_ROSTER_LOADER
 assert "Starter kit for {} refused: ERA-07 item provenance unavailable" in ADVENTURE_START_KIT

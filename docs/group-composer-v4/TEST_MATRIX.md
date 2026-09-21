@@ -79,6 +79,7 @@ Status vocabulary:
 ## ERA-07 starter/catch-up / PlayerbotFactory provenance
 
 - STATIC/CI: setup, update, Integration and Group Composer compile must defer 0044 until after EraTalents applies its PlayerbotFactory patch.
+- STATIC/CI: the contract checks policy code/tokens rather than relying on comment line wrapping inside the generated patch.
 
 - STATIC/CI: wrapper patch exposes PlayerbotFactory item-policy readiness + item-allowed callbacks and removes raw item-ID chronology from generated equipment/gem selection.
 - STATIC/CI: RaidRoster registers `EraPolicy::ItemProvenanceReady` and `EraPolicy::IsItemAllowed` with PlayerbotFactory.
