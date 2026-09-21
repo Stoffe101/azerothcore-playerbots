@@ -121,3 +121,10 @@ Current slice moves character truth to the worldserver. The server serializes li
 Authoritative snapshot checkpoint `0e4fadb25c06462fb485831bb0875b07979b0ff4` is **fully green on all four exact-SHA workflows**.
 
 Current slice replaces ad-hoc model naming with `data/wowsims/model-support.json`. Each Vanilla/TBC/WotLK route is tied to the exact pinned engine commit and exact `proto/api.proto` Git blob. Engine presence is still labeled `ENGINE_PRESENT_UNVALIDATED`; a route does not become SIM-BACKED until Skrra preset/mechanics validation is completed.
+
+
+### Engine-native WoWSims preset harvesting
+
+Model-catalog repair checkpoint `7c9591511ff25839812bfc99e78cf8cec4f5e9bd` is **fully green on all four exact-SHA workflows** and is the stable base for this slice.
+
+The next layer harvests the pinned engines' own `FullCharacterTestSuiteGenerator` **Average** `RaidSimRequest` objects instead of manually recreating rotations, consumes, raid buffs, debuffs, encounter defaults and spec options. The production `wowsimcli` binaries are built before the temporary test-harness instrumentation, so the shipped CLIs remain exact upstream builds from the pinned commits.

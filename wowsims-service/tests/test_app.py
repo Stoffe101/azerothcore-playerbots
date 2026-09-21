@@ -182,6 +182,64 @@ class AppTests(unittest.TestCase):
             MANIFEST["engines"]["WOTLK"]["commit"],
         )
 
+    def test_preset_catalog_optional_when_not_built(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = app.load_preset_catalog(tmp, manifest=MANIFEST, required=False)
+        self.assertFalse(catalog["eras"]["WOTLK"]["ready"])
+
+    def test_preset_catalog_validates_pins_and_routes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for era, engine in MANIFEST["engines"].items():
+                era_dir = root / era
+                request_dir = era_dir / "requests"
+                request_dir.mkdir(parents=True)
+                request_file = request_dir / "sample.json"
+                request_file.write_text("{}\n", encoding="utf-8")
+                (era_dir / "preset-index.json").write_text(
+                    json.dumps(
+                        {
+                            "schema": 1,
+                            "era": era,
+                            "engineCommit": engine["commit"],
+                            "routeCount": 1,
+                            "requestCount": 1,
+                            "routes": {
+                                "8:0:DPS": [
+                                    {
+                                        "file": "requests/sample.json",
+                                        "sha256": "abc",
+                                    }
+                                ]
+                            },
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+            catalog = app.load_preset_catalog(root, manifest=MANIFEST, required=True)
+            summary = app.preset_catalog_summary(catalog)
+        self.assertTrue(summary["eras"]["WOTLK"]["ready"])
+        self.assertEqual(summary["eras"]["WOTLK"]["requestCount"], 1)
+
+    def test_preset_catalog_rejects_pin_drift(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            era_dir = root / "WOTLK"
+            era_dir.mkdir(parents=True)
+            (era_dir / "preset-index.json").write_text(
+                json.dumps(
+                    {
+                        "schema": 1,
+                        "era": "WOTLK",
+                        "engineCommit": "wrong",
+                        "routes": {"8:0:DPS": [{"file": "x", "sha256": "y"}]},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaises(RuntimeError):
+                app.load_preset_catalog(root, manifest=MANIFEST, required=False)
+
     def test_snapshot_rejects_future_era_class(self):
         payload = self._snapshot()
         payload["era"] = "VANILLA"

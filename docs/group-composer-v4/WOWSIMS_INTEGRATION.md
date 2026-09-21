@@ -185,7 +185,7 @@ The automatic path must not trust client-exported combat state when the server a
 - active glyph property + spell IDs;
 - learned primary professions and skill levels.
 
-The first endpoint, `POST /v1/snapshot/validate`, performs structural/era validation only. A valid snapshot returns `AVAILABLE_UNVALIDATED` plus a semantic model key. That status is deliberately weaker than SIM-BACKED. It means routing exists, not that Skrra/AzerothCore mechanics, buffs, rotation, encounter preset or spec options have been validated.
+The first endpoint, `POST /v1/snapshot/validate`, performs structural/era validation only. A valid catalogued snapshot returns `ENGINE_PRESENT_UNVALIDATED` plus a semantic model key. That status is deliberately weaker than SIM-BACKED. It means routing exists, not that Skrra/AzerothCore mechanics, buffs, rotation, encounter preset or spec options have been validated.
 
 The manual commands `.wowsims snapshot` and `.wowsims validate` exist to prove this boundary in game. Full baseline/candidate simulations must use an asynchronous queue or worker so the world thread is never held while `wowsimcli` runs.
 
@@ -207,3 +207,18 @@ Current status is `ENGINE_PRESENT_UNVALIDATED` for every catalogued route. This 
 The catalog intentionally captures differences between engine families instead of pretending their proto names are interchangeable. Examples include Classic `tank_warrior`, TBC `dps_warrior`, WotLK `protection_warrior`, Classic `warden_shaman`, TBC `feral_cat_druid` / `feral_bear_druid`, and WotLK `deathknight` / `tank_deathknight`.
 
 `GET /v1/models` exposes the pinned catalog summary for diagnostics. The next layer must pin the non-character inputs that addon import intentionally does not provide: rotation, spec options, raid/party buffs, debuffs, consumes, encounter target/duration and simulation options.
+
+
+## Engine-native preset harvesting
+
+Addon import intentionally does not provide the non-character assumptions needed for a complete simulation. Instead of retyping those assumptions, Skrra harvests the pinned engines' own full-character test fixtures.
+
+The Docker builder first compiles the pristine pinned `wowsimcli`. Only **after** that binary exists, `harvest_presets.py` temporarily instruments the checkout's `core.RunTestSuite` and extracts the `Average` RaidSimRequest produced by `FullCharacterTestSuiteGenerator`.
+
+That request carries the engine's own spec options, rotation/APL, consumes, individual/party/raid buffs, debuffs, encounter and sim options. The harvester does not turn an engine model into authority by itself. It creates a reproducible preset candidate.
+
+Every output is classified against `model-support.json` using the actual proto oneof field in the generated Player, the dominant tree from the generated talent string, and tank/healer/DPS semantics from the generated raid request. Unclassified requests are fatal.
+
+Models with no upstream RaidSimRequest remain without a preset. A concrete example is the pinned TBC healer-priest test, which is stats-only; Skrra will not manufacture a healing rotation for it.
+
+The generated per-era `preset-index.json` records route coverage plus SHA-256 for each raw request. Health and `GET /v1/presets` expose that coverage. Automatic GearAdvisor results remain blocked until authoritative character fields are applied to one of these presets and the route is validated against Skrra/AzerothCore behavior.

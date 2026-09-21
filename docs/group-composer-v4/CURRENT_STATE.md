@@ -382,3 +382,23 @@ Current implementation makes model routing data-driven:
 - catalogued routes return `ENGINE_PRESENT_UNVALIDATED`, deliberately weaker than SIM-BACKED.
 
 The next step is a pinned preset contract for buffs/debuffs/consumes/rotation/encounter defaults, followed by actual RaidSimRequest construction and candidate slot mutation.
+
+
+### Engine-native preset harvesting
+
+`7c9591511ff25839812bfc99e78cf8cec4f5e9bd` is fully green: client checks SUCCESS, backend staging SUCCESS, Integration SUCCESS on `stoffes-pc`, and Group Composer V4 compile SUCCESS on `stoffes-pc`.
+
+The next WoWSims slice is staged around a fail-closed preset harvester:
+
+- the harvester temporarily instruments the exact pinned upstream test harness only inside the Docker builder;
+- it discovers spec tests that call `core.RunTestSuite` and extracts only the already-built **Average** `RaidSimRequest`;
+- it does **not** run those simulations during extraction;
+- it classifies every harvested request against `model-support.json` by real proto spec field, dominant talent tree and tank/healer/DPS role;
+- an unclassified harvested request fails the image build rather than being ignored;
+- stats-only upstream models naturally produce no RaidSimRequest preset. For example, the pinned TBC healer-priest suite is stats-only, so no healing rotation is invented;
+- each era receives a generated `preset-index.json` with request SHA-256s and route coverage;
+- the service exposes preset readiness/coverage through health and `GET /v1/presets`;
+- the runtime image requires the three generated preset indexes;
+- the backend workflow performs a real Docker image build only when simulator runtime inputs changed, avoiding three-engine rebuilds on unrelated Group Composer commits.
+
+This still does not promote any route to SIM-BACKED. The next slice must apply authoritative character state to a harvested preset and validate baseline/candidate request construction.

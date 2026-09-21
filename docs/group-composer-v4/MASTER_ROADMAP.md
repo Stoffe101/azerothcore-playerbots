@@ -379,5 +379,6 @@ Runtime evidence beats this ordering. A blocker discovered while testing may jum
 
 - **DONE + green:** private pinned-engine service foundation at `aba336fd`.
 - **DONE + green:** worldserver-owned character snapshot and structural model validation at `0e4fadb2`.
-- **IN PROGRESS:** exact pinned per-era model coverage catalog and route enforcement.
-- **NEXT:** per-era/spec preset matrix, RaidSimRequest construction, candidate slot mutation, asynchronous service queue and addon result/explanation protocol.
+- **DONE + green:** pinned per-era model coverage catalog repair at `7c959151`.
+- **IN PROGRESS:** engine-native preset harvesting from pinned upstream full-character Average RaidSimRequests.
+- **NEXT:** authoritative snapshot overlay, baseline RaidSimRequest construction, candidate slot mutation, asynchronous service queue and addon result/explanation protocol.

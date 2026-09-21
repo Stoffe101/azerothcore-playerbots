@@ -159,6 +159,88 @@ def model_catalog_summary(catalog: dict[str, Any]) -> dict[str, Any]:
     return {"schema": SCHEMA_VERSION, "eras": eras}
 
 
+def load_preset_catalog(
+    root: str | os.PathLike[str] | None = None,
+    manifest: dict[str, Any] | None = None,
+    *,
+    required: bool | None = None,
+) -> dict[str, Any]:
+    preset_root = Path(
+        root
+        or os.environ.get("WOWSIMS_PRESET_ROOT")
+        or Path(__file__).with_name("presets")
+    )
+    if required is None:
+        required = os.environ.get("WOWSIMS_REQUIRE_PRESETS", "0") == "1"
+
+    catalog: dict[str, Any] = {
+        "root": str(preset_root),
+        "required": required,
+        "eras": {},
+    }
+    for era in ERA_TO_BINARY:
+        index_path = preset_root / era / "preset-index.json"
+        if not index_path.is_file():
+            if required:
+                raise RuntimeError(f"WoWSims preset index is missing for {era}: {index_path}")
+            catalog["eras"][era] = {
+                "ready": False,
+                "routeCount": 0,
+                "requestCount": 0,
+                "routes": {},
+            }
+            continue
+
+        try:
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError(f"failed to load WoWSims preset index {index_path}: {exc}") from exc
+
+        if index.get("schema") != SCHEMA_VERSION or index.get("era") != era:
+            raise RuntimeError(f"WoWSims preset index has invalid schema/era for {era}")
+        if manifest is not None and index.get("engineCommit") != manifest["engines"][era]["commit"]:
+            raise RuntimeError(f"WoWSims preset index pin mismatch for {era}")
+        routes = index.get("routes")
+        if not isinstance(routes, dict) or not routes:
+            raise RuntimeError(f"WoWSims preset index has no routes for {era}")
+
+        request_count = 0
+        for route_key, entries in routes.items():
+            if not isinstance(route_key, str) or not isinstance(entries, list) or not entries:
+                raise RuntimeError(f"WoWSims preset index has malformed route for {era}")
+            for entry in entries:
+                if not isinstance(entry, dict) or not entry.get("file") or not entry.get("sha256"):
+                    raise RuntimeError(f"WoWSims preset index has malformed request metadata for {era}/{route_key}")
+                request_file = preset_root / era / entry["file"]
+                if required and not request_file.is_file():
+                    raise RuntimeError(f"WoWSims preset request is missing: {request_file}")
+                request_count += 1
+
+        catalog["eras"][era] = {
+            "ready": True,
+            "routeCount": int(index.get("routeCount", len(routes))),
+            "requestCount": int(index.get("requestCount", request_count)),
+            "routes": routes,
+        }
+    return catalog
+
+
+def preset_catalog_summary(catalog: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema": SCHEMA_VERSION,
+        "required": bool(catalog.get("required", False)),
+        "eras": {
+            era: {
+                "ready": bool(entry.get("ready", False)),
+                "routeCount": int(entry.get("routeCount", 0)),
+                "requestCount": int(entry.get("requestCount", 0)),
+                "routeKeys": sorted(entry.get("routes", {}).keys()),
+            }
+            for era, entry in catalog["eras"].items()
+        },
+    }
+
+
 def normalize_era(value: Any) -> str:
     if not isinstance(value, str):
         raise ServiceError("era must be one of VANILLA, TBC or WOTLK")
@@ -322,6 +404,7 @@ class SimRunner:
     ) -> None:
         self.manifest = manifest
         self.model_support = load_model_support(manifest=manifest)
+        self.preset_catalog = load_preset_catalog(manifest=manifest)
         self.timeout_seconds = timeout_seconds or _env_float(
             "WOWSIMS_TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS
         )
@@ -354,6 +437,7 @@ class SimRunner:
             "ready": ready,
             "engines": engines,
             "models": model_catalog_summary(self.model_support),
+            "presets": preset_catalog_summary(self.preset_catalog),
         }
 
     def validate_snapshot(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -527,6 +611,9 @@ class ApiHandler(BaseHTTPRequestHandler):
             return
         if self.path == "/v1/models":
             self._send_json(HTTPStatus.OK, model_catalog_summary(self.runner.model_support))
+            return
+        if self.path == "/v1/presets":
+            self._send_json(HTTPStatus.OK, preset_catalog_summary(self.runner.preset_catalog))
             return
         self._send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})
 

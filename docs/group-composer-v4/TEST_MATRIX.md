@@ -315,3 +315,17 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - UNIT: TBC Protection Warrior resolves to `protection_warrior`.
 - UNIT: an uncatalogued role/spec combination returns `UNSUPPORTED`, never a substituted model.
 - TODO: preset validation must promote individual routes from ENGINE_PRESENT_UNVALIDATED before automatic sim authority is enabled.
+
+
+### Engine-native WoWSims preset harvesting
+
+- STATIC/UNIT: `harvest_presets.py --self-test` covers Go test-function discovery and model-route classification.
+- STATIC: WotLK single-generator and Vanilla/TBC generator-slice `RunTestSuite` signatures are instrumented separately.
+- CONTRACT: pristine pinned `wowsimcli` binaries are compiled before upstream test-harness instrumentation.
+- CONTRACT: only upstream full-character `Average` RaidSimRequests are harvested.
+- CONTRACT: every harvested request must classify to an exact model-catalog class/tree/role route; unclassified requests fail the image build.
+- CONTRACT: stats-only upstream suites produce no automatic sim preset. No rotation is synthesized.
+- CONTRACT: each generated request is SHA-256 identified inside the era `preset-index.json`.
+- RUNTIME-BUILD: when simulator inputs change, Stage backend must build the real `wowsims-service` image and require preset readiness for VANILLA, TBC and WOTLK.
+- TODO integration: replace template character fields with authoritative worldserver snapshot state and produce a baseline RaidSimRequest.
+- TODO integration: mutate one candidate equipment slot, run baseline/candidate through the same preset and return the exact delta.

@@ -15,7 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: test/group-composer-v4
+          ref: ${{ github.sha }}
+          fetch-depth: 1
 
       - name: Apply V4 backend stages
         run: |
@@ -43,6 +44,8 @@ jobs:
           grep -q 'EraProvenanceDisabledItemIDs' patches/0043-ahbot-era-provenance-filter.patch
           python3 -m py_compile tools/apply-playerbot-era-item-policy.py
           python3 -m py_compile wowsims-service/app.py
+          python3 -m py_compile wowsims-service/harvest_presets.py
+          python3 wowsims-service/harvest_presets.py --self-test
           python3 -m py_compile tools/verify-wowsims-model-support.py
           python3 tools/verify-wowsims-model-support.py
           python3 -m unittest discover -s wowsims-service/tests -v
@@ -58,6 +61,9 @@ jobs:
           grep -q 'ARG WOTLK_COMMIT=563e4a08cb15729f1fdcbcf68e6d68224553bfef' wowsims-service/Dockerfile
           grep -q '/v1/snapshot/validate' wowsims-service/app.py
           grep -q '/v1/models' wowsims-service/app.py
+          grep -q '/v1/presets' wowsims-service/app.py
+          grep -q 'SKRRA_WOWSIM_DUMP_DIR' wowsims-service/harvest_presets.py
+          grep -q 'WOWSIMS_REQUIRE_PRESETS=1' wowsims-service/Dockerfile
           grep -q 'ENGINE_PRESENT_UNVALIDATED' data/wowsims/model-support.json
           grep -q '076c8773ab4c93ed8b2876a3c55f94267bbf1e85' data/wowsims/model-support.json
           grep -q 'BuildCharacterSnapshot' modules/mod-raid-roster/src/WoWSimsService.cpp
@@ -92,6 +98,32 @@ jobs:
           grep -q 'Teleport to Instance' client-ui/src/components/ModernDashboard.ts
           ! grep -q 'press Enter Activity to retry' modules/mod-raid-roster/src/GroupComposerCommand.cpp
           ! grep -Fxq 'DashboardV4.lua' client-addons-src/GroupComposer/GroupComposer.toc
+
+      - name: Build WoWSims service image when simulator inputs change
+        run: |
+          set -euo pipefail
+          BEFORE="${{ github.event.before }}"
+          NEED_BUILD=1
+          if [[ -n "$BEFORE" && ! "$BEFORE" =~ ^0+$ ]]; then
+            git fetch --no-tags --depth=1 origin "$BEFORE"
+            if git diff --quiet "$BEFORE" "${GITHUB_SHA}" -- \
+              wowsims-service/Dockerfile \
+              wowsims-service/app.py \
+              wowsims-service/harvest_presets.py \
+              wowsims-service/model-support.json \
+              wowsims-service/sources.json \
+              data/wowsims/model-support.json \
+              data/wowsims/sources.json; then
+              NEED_BUILD=0
+            fi
+          fi
+          if [[ "$NEED_BUILD" == "0" ]]; then
+            echo "WoWSims runtime inputs unchanged; skipping image build."
+            exit 0
+          fi
+          IMAGE="skrra-wowsims-ci:${GITHUB_SHA}"
+          docker build --progress=plain -t "$IMAGE" ./wowsims-service
+          docker run --rm "$IMAGE" python -c 'import app; m=app.load_manifest(); r=app.SimRunner(m); h=r.health(); assert h["ready"]; assert all(v["ready"] for v in h["presets"]["eras"].values()); print(h["presets"])'
 
       - name: Commit generated backend changes
         run: |

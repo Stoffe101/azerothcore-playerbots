@@ -3,9 +3,43 @@
 Newest entries belong at the top of the dated section.
 
 
+## 2026-09-21 — Engine-native WoWSims preset harvester
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+Design:
+- do not hand-copy upstream rotations/spec options/buff packages into Skrra;
+- build the exact pinned `wowsimcli` binaries first;
+- then temporarily instrument only the builder checkout's upstream test harness;
+- extract the `Average` RaidSimRequest already produced by each upstream full-character suite;
+- classify the request against our exact model catalog;
+- fail the image build on any harvested request that cannot be classified;
+- keep stats-only routes without a RaidSimRequest unsupported for automatic simulation rather than inventing behavior.
+
+Implementation:
+- adds `wowsims-service/harvest_presets.py` with parser/classifier self-test;
+- handles WotLK's single-generator RunTestSuite signature and Classic/TBC's generator-slice signature;
+- writes deterministic per-era request files and `preset-index.json` with SHA-256 identities;
+- Docker build harvests Vanilla/TBC/WotLK after each pristine CLI binary has been compiled;
+- runtime requires all three preset indexes;
+- `GET /v1/presets` and health report route/request coverage;
+- Stage backend conditionally performs a real Docker build only when simulator runtime inputs changed;
+- Stage checkout is pinned to the triggering `github.sha`, not the moving branch head.
+
+Previous exact-head proof:
+- `7c9591511ff25839812bfc99e78cf8cec4f5e9bd`: client checks SUCCESS, backend staging SUCCESS, Integration SUCCESS on `stoffes-pc`, Group Composer V4 compile SUCCESS on `stoffes-pc`.
+
+Next:
+- exact-head CI including the conditional real Docker image build;
+- inspect generated route coverage;
+- authoritative snapshot -> selected preset -> baseline RaidSimRequest;
+- candidate slot mutation and asynchronous compare transport.
+
+
+
 ## 2026-09-21 — Pinned WoWSims model catalog
 
-Status: **IMPLEMENTED / repair CI in progress**.
+Status: **DONE + exact-head local-CI green at `7c9591511ff25839812bfc99e78cf8cec4f5e9bd`**.
 
 First catalog SHA `965231186fc504a726062c3029b1a5208034c2a8`:
 - model-support verifier passed: Vanilla 19 proto models, TBC 18, WotLK 21, 93 expanded character routes;
