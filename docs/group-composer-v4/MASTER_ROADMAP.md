@@ -57,7 +57,7 @@ Bounded client QoL work:
 - GearAdvisor replaces the duplicate raw ExtendedCharacterStats panel;
 - v0.2.1 layout/anchoring is exact-head local-CI green at `1f5ef71c`;
 - v0.3 removes static priority text as item-upgrade authority;
-- new Interface 30300 WoWSimsBridge exports the correct live-era character/bags to WoWSims Classic/TBC/WotLK;
+- new Interface 30300 WoWSimsBridge exports the correct live-era character/bags to WoWSims Classic/TBC/WotLK; first SHA `97178c40` is superseded by a client-workflow parse repair and is not considered green;
 - pinned WoWSims engines become the future baseline/candidate simulation authority;
 - GearAdvisor will explain simulated cap/stat trades rather than merely warn about losing hit/expertise/etc.;
 - unsupported/unvalidated era/spec models must not receive fabricated percentages.

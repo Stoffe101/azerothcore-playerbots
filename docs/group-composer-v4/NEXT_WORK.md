@@ -58,7 +58,7 @@ ERA-01 is now **IN PROGRESS** while P0 runtime evidence is blocked.
 14. **DONE + green:** ERA-07 slice 2 promotes provenance into central EraPolicy, regenerates it automatically on setup/update, audits existing auctions + stored RNDbot equipment, and gates deterministic RaidRoster/Group Composer gear prep. Exact SHA `e96d009` passed all four workflows on the intended local-CI route.
 15. **DONE + green / runtime TODO:** maintained Details + NoM0Re WeakAuras + GearAdvisor are packaged at `de842ba8`; exact-head GitHub-hosted CI passed. Real 3.3.5a UI/stat validation remains TODO.
 15a. **DONE + green:** GearAdvisor v0.2.1 narrow-screen/layout polish is exact-head local-CI green at `1f5ef71c`; real-client visual acceptance remains TODO.
-15b. **CURRENT / local CI:** GearAdvisor v0.3 + WoWSimsBridge v0.1. Static priority output is disabled; correct-era character/bag export is implemented; pin/validate WoWSims engines and bridge contract.
+15b. **CURRENT / local CI repair:** GearAdvisor v0.3 + WoWSimsBridge v0.1 implementation is present, but `97178c40` is not green because the client workflow YAML was malformed by the editing layer. Clean workflow reconstruction from `1f5ef71c` is prepared; rerun exact-head local CI.
 15c. **NEXT simulator slice:** local WoWSims service using pinned Classic/TBC/WotLK `wowsimcli`, then candidate-item baseline-vs-swap simulation and GearAdvisor trade explanation.
 16. **DONE + green:** ERA-07 slice 3 PlayerbotFactory + AdventureStart/catch-up item policy is exact-head green at `e990dff5` on all four GitHub-hosted workflows.
 17. **DONE + green:** ERA-07 slice 4 Adventure Cache reward provenance is exact-head green at `e1a2e6fa`; pending caches survive provenance failure and created reward items are policy-gated.

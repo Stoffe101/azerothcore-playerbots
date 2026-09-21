@@ -320,3 +320,10 @@ GearAdvisor v0.3 / WoWSims integration: **IMPLEMENTED FOR FIRST BRIDGE SLICE / e
 - Pawn/static weights are explicitly not the final upgrade decision path.
 - unsupported/unvalidated era/spec models must return UNSUPPORTED/LIMITED rather than fabricated percentages.
 - canonical integration design: `docs/group-composer-v4/WOWSIMS_INTEGRATION.md`.
+
+
+### WoWSims bridge CI repair
+
+Exact head `97178c406f5a009b945b6950af3fd40d605990fc` is **FAILED / superseded** because the client-check workflow file was malformed during repository editing and GitHub could not create the validation job. Backend staging succeeded; heavy jobs from that SHA do not make it a valid checkpoint because the required client workflow failed before execution.
+
+Repair: rebuild `.github/workflows/stage-group-composer-v4-client.yml` from exact green parent `1f5ef71c`, reapply only the intended WoWSims assertions, and rerun via `[local-ci]`.

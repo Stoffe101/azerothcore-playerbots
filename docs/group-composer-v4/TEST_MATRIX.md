@@ -80,6 +80,7 @@ Status vocabulary:
 
 - PASS (CI `1f5ef71c`): GearAdvisor v0.2.1 narrow-screen anchoring/layout static contracts and both local heavy builds.
 - STATIC/CI: WoWSimsBridge parses as Lua 5.1 / Interface 30300.
+- TODO exact-head repair: client workflow itself parses/runs exactly once after `97178c40` malformed-workflow failure.
 - STATIC/CI: source manifest pins Classic, TBC, WotLK and exporter upstream commits.
 - STATIC/CI: GearAdvisor no longer calls `priorityText:SetText(profile.priority)`.
 - STATIC/CI: WoWSimsBridge exposes Classic/TBC/WotLK URLs plus character and bag export functions.

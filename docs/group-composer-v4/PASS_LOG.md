@@ -2,6 +2,24 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — WoWSims bridge client-workflow repair
+
+Status: **REPAIR PREPARED / exact-head local CI required**.
+
+Failure on `97178c406f5a009b945b6950af3fd40d605990fc`:
+- Stage Group Composer V4 backend: SUCCESS;
+- Group Composer client checks: workflow YAML malformed before a job was created;
+- therefore the exact SHA is not a valid green checkpoint regardless of heavy-job outcomes.
+
+Cause:
+- the repository editing layer treated the shell fragment `30300$'` as a JavaScript replacement token and duplicated trailing workflow content.
+
+Repair:
+- reconstruct the workflow from immutable green parent `1f5ef71c`;
+- apply WoWSims checks using literal-safe replacement;
+- confirm a single validation block and no duplicated addon assertions;
+- push with `[local-ci]`.
+
 ## 2026-09-21 — GearAdvisor v0.3 / WoWSims Bridge v0.1
 
 Status: **IMPLEMENTED FIRST BRIDGE SLICE / exact-head local CI required**.

@@ -97,3 +97,6 @@ Build a private WoW world that can be developed on WotLK 3.3.5a while delivering
 GearAdvisor v0.2.1 is **DONE + exact-head local-CI green at `1f5ef71cef6d1d18dc33e25a876f6e50b7d1caa5`** on `stoffes-pc`.
 
 The next client slice is **IN PROGRESS / local CI required**: GearAdvisor v0.3 removes static stat-priority text as an upgrade authority and integrates a new Interface 30300 `WoWSimsBridge`. WoWSims Classic/TBC/WotLK becomes the authoritative upgrade engine when the exact era/spec model is supported and validated. Unsupported models must say so rather than falling back to invented/Pawn weights. See `WOWSIMS_INTEGRATION.md`.
+
+
+WoWSims bridge CI note: exact head `97178c40` is **not green**. The client workflow YAML was malformed by the editing layer before a job could start; this did not establish an addon/runtime failure. A clean workflow reconstructed from the previously green `1f5ef71c` file is the current repair, and the next exact head must pass all four workflows on the intended local-CI route.

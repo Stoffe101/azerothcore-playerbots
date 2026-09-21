@@ -350,3 +350,5 @@ The full candidate list and non-era feature ideas live in `FEATURE_IDEAS.md`.
 7. **Fresh-realm acceptance matrix for Vanilla, TBC transition and WotLK transition.**
 
 This order makes leaks visible early and avoids burying era logic independently inside every subsystem.
+
+- WoWSims bridge CI repair does not change era behavior: `97178c40` failed workflow parsing before client validation, so no new fidelity claim is made until the repaired exact head is green.
