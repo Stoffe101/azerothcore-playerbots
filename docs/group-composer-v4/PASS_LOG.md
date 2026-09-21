@@ -35,6 +35,13 @@ Third exact SHA `365c194ee1f554f5066a7c450df5e7a8334b0a10`:
 - TBC then failed during protobuf generation because the Debian `protoc` install does not search `/usr/include` once an explicit proto path is supplied;
 - repair adds `-I=/usr/include` while preserving TBC's descriptor.proto Go-package mapping from the upstream makefile.
 
+
+Fourth exact SHA `72062c78925caae4457f860155e701ca1aaf3aac`:
+- Classic pristine CLI build + preset harvest succeeded again: **24 unique requests / 15 routes / 16 upstream test functions**;
+- TBC still stopped before compilation because `protobuf-compiler` on Debian Bookworm does not itself install the standard proto files when `--no-install-recommends` is used;
+- Debian packages `google/protobuf/descriptor.proto` in `libprotobuf-dev`, which `protobuf-compiler` only recommends;
+- repair explicitly installs `libprotobuf-dev`; the existing `-I=/usr/include` and TBC descriptor Go-package mapping remain unchanged.
+
 Design:
 - do not hand-copy upstream rotations/spec options/buff packages into Skrra;
 - build the exact pinned `wowsimcli` binaries first;

@@ -413,3 +413,6 @@ WoWSims preset harvester follow-up: `dcbc4201` proved protobuf generation + pris
 
 
 Preset-harvester progress: `365c194e` successfully completed the Vanilla engine build and harvested 24 unique Classic requests across 15 routes. TBC stopped before build because distro `protoc` needed `/usr/include` added explicitly for `google/protobuf/descriptor.proto`; the repair preserves the upstream descriptor mapping and only adds the missing include path.
+
+
+Preset-harvester dependency follow-up: `72062c78` reconfirmed the Classic 24-request/15-route harvest, then proved the missing TBC descriptor was a package-content issue rather than an include-path issue. Debian Bookworm ships the standard proto definitions in `libprotobuf-dev`; the builder now installs it explicitly because `--no-install-recommends` suppresses that recommended dependency.

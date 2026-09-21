@@ -1,7 +1,7 @@
 FROM golang:1.25.4-bookworm AS builder
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates git protobuf-compiler python3 \
+    && apt-get install -y --no-install-recommends ca-certificates git libprotobuf-dev protobuf-compiler python3 \
     && rm -rf /var/lib/apt/lists/* \
     && go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
 
