@@ -50,7 +50,7 @@ Runtime testing is unavailable, so architectural work continues in bounded exact
 
 ### NOW-04 — Client addon bundle + gearing guidance
 
-**Status: IN PROGRESS**
+**Status: DONE FOR IMPLEMENTATION / runtime acceptance TODO**
 
 Bounded client QoL pass requested during the era work:
 - package maintained Details-WotLK;

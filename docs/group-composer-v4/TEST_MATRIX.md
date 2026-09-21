@@ -110,9 +110,9 @@ Status vocabulary:
 
 ## Client addon bundle / GearAdvisor
 
-- STATIC/CI: `fetch-client-addons.sh` parses and contains exact pins for NoM0Re WeakAuras + maintained Details.
-- STATIC/CI: No Bunny67 WeakAuras fallback is packaged.
-- STATIC/CI: GearAdvisor parses under Lua 5.1 and includes all class/spec profile families.
+- PASS (CI `de842ba8`): `fetch-client-addons.sh` parses and contains exact pins for NoM0Re WeakAuras + maintained Details.
+- PASS (CI `de842ba8`): no Bunny67 WeakAuras fallback is packaged.
+- PASS (CI `de842ba8`): GearAdvisor parses under Lua 5.1 and includes all class/spec profile families.
 - TODO: generated client zip contains Details, WeakAuras/Options/model folders and GearAdvisor, but not ExtendedCharacterStats.
 - TODO: GearAdvisor opens to the right of CharacterFrame without covering paper-doll controls.
 - TODO: switching dual spec refreshes the detected spec/profile immediately.

@@ -73,7 +73,7 @@ This head includes runtime pass 3 plus ERA-01/ERA-02 containment, ERA-06 AH prof
 
 ### Client addon bundle / GearAdvisor pass
 
-Status: **IMPLEMENTED; exact-head GitHub-hosted CI required**.
+Status: **DONE + exact-head GitHub-hosted CI green at `de842ba842721f32d588ba5d9818b872f9a6c805`**.
 
 - `fetch-client-addons.sh` adds NoM0Re/WeakAuras-WotLK release `5.22.0-b3706bd4` with its published SHA-256.
 - The old Bunny67 WeakAuras 4.0.0 fallback is deliberately not used.

@@ -1,6 +1,6 @@
 # Client Addon Bundle
 
-_Status: live bundle contract for `fetch-client-addons.sh`._
+_Status: implementation exact-head GitHub-CI green at `de842ba842721f32d588ba5d9818b872f9a6c805`; in-game acceptance still TODO._
 
 ## Distribution model
 

@@ -75,7 +75,7 @@ Latest fully verified green implementation checkpoint:
 
 The documentation checkpoint `253c22880c98ca89ed1abec65b2fa2ef8a46020a` is also exact-head green. ERA-07 slice 2 promotes provenance from an AH-only consumer into central EraPolicy, regenerates all three era blocklists automatically during setup/update, fail-closes deterministic RaidRoster/Group Composer gear preparation when chronology is missing/stale, and extends `.era audit` to existing auction stock plus stored RNDbot equipment.
 
-Current client QoL pass: **IMPLEMENTED / exact-head GitHub CI required**. The distributed addon bundle adds the maintained NoM0Re WeakAuras 3.3.5a backport and maintained Details-WotLK fork, supersedes the old ExtendedCharacterStats bundle entry with the new GearAdvisor character-side panel, and pins external addon inputs for reproducible downloads. Because `stoffes-pc` is currently offline, this pass uses `[github-ci]`.
+Current client QoL pass: **DONE + exact-head GitHub-hosted CI green at `de842ba842721f32d588ba5d9818b872f9a6c805`**. The distributed addon bundle adds the maintained NoM0Re WeakAuras 3.3.5a backport and maintained Details-WotLK fork, supersedes the old ExtendedCharacterStats bundle entry with the new GearAdvisor character-side panel, and pins external addon inputs for reproducible downloads. Because `stoffes-pc` is currently offline, this pass uses `[github-ci]`.
 
 The peer policy is generic: the **lowest real human at any level** is the peer target. Status exposes `Lowest-human target Lv X · bots Lv A-B` so arbitrary mixed-level groups can be checked directly. Examples such as 80+14 or 80+23 are illustrative only.
 

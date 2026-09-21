@@ -4,7 +4,7 @@ Newest entries belong at the top of the dated section.
 
 ## 2026-09-21 — Client addon bundle + GearAdvisor
 
-Status: **IMPLEMENTED; exact-head GitHub-hosted CI required**.
+Status: **DONE + exact-head GitHub-hosted CI verified at `de842ba842721f32d588ba5d9818b872f9a6c805`**.
 
 Implemented:
 - added NoM0Re's actively maintained 3.3.5a WeakAuras backport, pinned to release `5.22.0-b3706bd4` and SHA-256 `83f62045...`;
@@ -24,7 +24,7 @@ Boundary:
 - WotLK stat priorities are the detailed profile set in this first version; Vanilla/TBC advanced spec priorities remain future work even though hard-cap baselines are era-aware;
 - runtime UI positioning and real-client stat values still need in-game validation.
 
-CI routing: user reported `stoffes-pc` is powered off, so this pass must use `[github-ci]`.
+CI: exact SHA `de842ba842721f32d588ba5d9818b872f9a6c805` passed client checks, backend staging, Integration and Group Composer V4 compile using the explicit `[github-ci]` route while `stoffes-pc` was offline.
 
 ## 2026-09-21 — ERA-07 slice 2: central item policy + stock/gear enforcement
 
