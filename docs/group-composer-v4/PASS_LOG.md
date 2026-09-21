@@ -3,6 +3,35 @@
 Newest entries belong at the top of the dated section.
 
 
+## 2026-09-21 — Authoritative WoWSims character snapshot
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+Previous checkpoint:
+- `aba336fd00fae61ac1b2e12af070eba1359b0917` is fully green on all four exact-SHA workflows;
+- Group Composer client checks: SUCCESS;
+- Stage Group Composer V4 backend: SUCCESS;
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`;
+- Integration build: SUCCESS on `stoffes-pc`.
+
+This pass:
+- serializes live worldserver character state into the 17-slot WoWSims ordering;
+- resolves socket enchantments to gem item IDs through DBC;
+- reconstructs the active talent string from server talent state;
+- includes role/tree/glyph/profession/era metadata;
+- adds `.wowsims snapshot` and `.wowsims validate` diagnostics;
+- adds `/v1/snapshot/validate` with era/class/level/talent/gear structural validation;
+- keeps every structurally available model at `AVAILABLE_UNVALIDATED` until mechanics/preset validation exists;
+- keeps full simulation off the synchronous diagnostic path.
+
+Next:
+- exact-head local CI;
+- real Docker runtime validation;
+- preset/support matrix validation;
+- asynchronous baseline/candidate request construction and GearAdvisor result transport.
+
+
+
 ## 2026-09-21 — WoWSims automatic backend service foundation
 
 Status: **IMPLEMENTED / exact-head local CI required**.

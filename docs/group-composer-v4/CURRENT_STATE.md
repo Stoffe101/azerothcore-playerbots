@@ -343,3 +343,21 @@ Current implementation adds the first server-side simulator service foundation:
 - setup/update are wired to configure/build the service.
 
 This is **not yet the final automatic GearAdvisor path**. The remaining adapter must construct a validated WoWSims request from authoritative server character state, perform the candidate-slot swap, call the service and send the result/explanation back to the 3.3.5a addon.
+
+
+### Authoritative WoWSims character snapshot
+
+The simulator-service foundation checkpoint `aba336fd00fae61ac1b2e12af070eba1359b0917` is **fully green on all four exact-SHA workflows**, including both heavy builds on `stoffes-pc`.
+
+The next integration slice is now implemented for CI validation:
+
+- worldserver builds the 17-slot WoWSims equipment snapshot from live server item instances, not client guesses;
+- permanent enchant IDs and socket enchantments are resolved back to gem item IDs through `SpellItemEnchantment.dbc`;
+- active talent ranks are reconstructed from the live Player talent map in DBC row/column order;
+- active role, dominant tree, glyph properties/spells, professions, race/class, level and live EraPolicy are included;
+- `.wowsims snapshot` provides a cheap in-game serialization diagnostic;
+- `.wowsims validate` posts the snapshot to the private `ac-wowsims` service;
+- the service rejects future-era classes, level-cap drift, malformed talents and non-17-slot gear payloads;
+- accepted models remain explicitly `AVAILABLE_UNVALIDATED`, so structural routing cannot accidentally become a fabricated upgrade verdict.
+
+This is still a diagnostic validation path. Full item simulation will use an asynchronous request path rather than blocking the world thread.

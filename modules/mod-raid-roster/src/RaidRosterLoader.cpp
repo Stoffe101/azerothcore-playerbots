@@ -18,6 +18,7 @@
 #include "RaidRosterConfig.h"
 #include "RaidRosterGuild.h"
 #include "SmartLootSystem.h"
+#include "WoWSimsCommand.h"
 #include "PlayerbotFactory.h"
 
 void AddAdventureStartScripts();
@@ -87,6 +88,7 @@ void Addmod_raid_rosterScripts()
     new AdventureGuideCommand();
     new EraAuditCommand();
     new RaidLeaderCommand();
+    new WoWSimsCommand();
     AddGroupComposerScripts();
     AddGroupComposerTitanRuneScripts();
     AddAdventureStartScripts();

@@ -31,9 +31,10 @@ if(TARGET modules)
   # The optional local raid-leader narration reuses the already-local Ollama bridge from
   # mod-playerbot-chatter. Both modules compile into AzerothCore's single modules target.
   set(_CHATTER_SRC "${CMAKE_CURRENT_LIST_DIR}/../mod-playerbot-chatter/src")
+  set(_CHATTER_DEPS "${CMAKE_CURRENT_LIST_DIR}/../mod-playerbot-chatter/deps")
   if(EXISTS "${_CHATTER_SRC}/PBChatterOllama.h")
-    target_include_directories(modules PRIVATE ${_CHATTER_SRC})
-    message(STATUS "[mod-raid-roster] local chatter/Ollama bridge available for grounded raid narration")
+    target_include_directories(modules PRIVATE ${_CHATTER_SRC} ${_CHATTER_DEPS})
+    message(STATUS "[mod-raid-roster] local chatter/Ollama + HTTP/JSON bridge available")
   else()
     message(WARNING "[mod-raid-roster] mod-playerbot-chatter not found; local raid narration will not compile")
   endif()

@@ -10,6 +10,16 @@
 RaidRoster.Enable = 1
 
 ########################################
+# WoWSims GearAdvisor integration
+########################################
+
+# Private Docker-network endpoint created by configure-wowsims-service.sh. This is used only for
+# bounded diagnostic validation in the current slice; automatic item comparison will use an
+# asynchronous request path so the world thread is never blocked by full simulations.
+RaidRoster.WoWSimsUrl = "http://ac-wowsims:8092"
+RaidRoster.WoWSimsTimeoutSeconds = 5
+
+########################################
 # ERA-07 central item provenance
 ########################################
 

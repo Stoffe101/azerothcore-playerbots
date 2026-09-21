@@ -373,3 +373,10 @@ Runtime evidence beats this ordering. A blocker discovered while testing may jum
 - **DONE + green:** 3.3.5a WoWSimsBridge export foundation and GearAdvisor v0.3 authority change at `c420b300`.
 - **IN PROGRESS:** private Docker-network WoWSims service with pinned Classic/TBC/WotLK CLI engines and baseline-vs-candidate comparison.
 - **NEXT:** authoritative worldserver request builder, support/validation matrix enforcement, candidate item swap, addon transport and human-readable cap/stat trade explanation.
+
+
+### WoWSims authoritative-state boundary
+
+- **DONE + green:** private pinned-engine service foundation at `aba336fd`.
+- **IN PROGRESS:** worldserver-owned character snapshot and structural model validation.
+- **NEXT:** per-era/spec validated preset matrix, RaidSimRequest construction, candidate slot mutation, asynchronous service queue and addon result/explanation protocol.

@@ -107,3 +107,10 @@ WoWSims bridge CI note: exact head `97178c40` is **not green**. The client workf
 WoWSimsBridge v0.1 / GearAdvisor v0.3 repair checkpoint `c420b300cf41455c7f20630b37fdbe37e4b744b4` is **fully green on all four exact-SHA workflows**.
 
 Current implementation slice: `wowsims-service/` packages the three pinned WoWSims CLIs behind a private Docker-network API with single-sim and baseline-vs-candidate comparison endpoints. This is backend plumbing only until the worldserver request builder and GearAdvisor transport are connected.
+
+
+### Authoritative WoWSims snapshot slice
+
+The private simulator service foundation is exact-head green at `aba336fd00fae61ac1b2e12af070eba1359b0917`.
+
+Current slice moves character truth to the worldserver. The server serializes live gear/enchant/gem/talent/glyph/profession/role/era state and the private service validates the snapshot without yet claiming that the model is simulation-authoritative. `.wowsims snapshot` and `.wowsims validate` are diagnostic commands for this boundary.

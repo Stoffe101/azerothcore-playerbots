@@ -53,6 +53,13 @@ jobs:
           grep -q 'ARG CLASSIC_COMMIT=7779ebbf79dc7f1341e6ab939b28a3402c9a730a' wowsims-service/Dockerfile
           grep -q 'ARG TBC_COMMIT=a4768c9d7ed51f4e49b8e90425f68ab47bde0cbc' wowsims-service/Dockerfile
           grep -q 'ARG WOTLK_COMMIT=563e4a08cb15729f1fdcbcf68e6d68224553bfef' wowsims-service/Dockerfile
+          grep -q '/v1/snapshot/validate' wowsims-service/app.py
+          grep -q 'BuildCharacterSnapshot' modules/mod-raid-roster/src/WoWSimsService.cpp
+          grep -q 'SOCK_ENCHANTMENT_SLOT_3' modules/mod-raid-roster/src/WoWSimsService.cpp
+          grep -q 'sSpellItemEnchantmentStore' modules/mod-raid-roster/src/WoWSimsService.cpp
+          grep -q 'BuildTalentString' modules/mod-raid-roster/src/WoWSimsService.cpp
+          grep -q 'RaidRoster.WoWSimsUrl' modules/mod-raid-roster/conf/mod_raid_roster.conf.dist
+          grep -q 'new WoWSimsCommand()' modules/mod-raid-roster/src/RaidRosterLoader.cpp
           grep -q 'SetItemPolicyPredicates' tools/apply-playerbot-era-item-policy.py
           grep -q 'IsExternalItemPolicyReady' tools/apply-playerbot-era-item-policy.py
           grep -q 'IsItemAllowedByExternalPolicy' tools/apply-playerbot-era-item-policy.py

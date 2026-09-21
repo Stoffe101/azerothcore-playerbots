@@ -288,3 +288,16 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - TODO runtime: build `ac-wowsims` on the server PC and require `GET /health` ready=true for all three engines.
 - TODO runtime: execute one valid RaidSimRequest per era.
 - TODO integration: worldserver builds equivalent baseline/candidate requests and GearAdvisor receives the returned result/explanation.
+
+
+### Authoritative WoWSims snapshot
+
+- PASS (CI `aba336fd`): simulator-service foundation passed all four exact-SHA workflows.
+- STATIC/CI: worldserver snapshot contains exactly 17 WoWSims equipment positions.
+- STATIC/CI: permanent enchants come from live Item state and socket enchantments resolve through `sSpellItemEnchantmentStore` to gem item IDs.
+- STATIC/CI: talent string is reconstructed from live Player talent state rather than trusting the addon export.
+- STATIC/UNIT: service rejects malformed gear count, future-era Death Knight snapshots and era level-cap violations.
+- STATIC/UNIT: accepted structural models return `AVAILABLE_UNVALIDATED`, never SIM-BACKED.
+- TODO runtime: `.wowsims snapshot` reports expected era/class/tree on a real character.
+- TODO runtime: `.wowsims validate` reaches `ac-wowsims` and returns the pinned engine/model route.
+- TODO integration: validated preset construction, asynchronous sim queue and GearAdvisor result transport.

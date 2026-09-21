@@ -90,6 +90,62 @@ class AppTests(unittest.TestCase):
         )
         self.assertFalse(runner.health()["ready"])
 
+    def _snapshot(self):
+        gear = [None] * 17
+        gear[0] = {
+            "slot": "HEAD",
+            "id": 40416,
+            "enchant": 3819,
+            "gems": [41398, 40058, 0],
+            "randomPropertyId": 0,
+            "suffixFactor": 0,
+        }
+        return {
+            "schema": 1,
+            "era": "WOTLK",
+            "realmLevelCap": 80,
+            "character": {
+                "guid": 1,
+                "name": "Tester",
+                "level": 80,
+                "classId": 8,
+                "class": "MAGE",
+                "raceId": 1,
+                "race": "HUMAN",
+                "role": "DPS",
+                "activeSpecSlot": 0,
+                "dominantTree": 0,
+                "treePoints": [57, 3, 11],
+                "talents": "23000513310033015032310250532-03-023303001",
+                "gear": gear,
+                "glyphs": [],
+                "professions": [],
+            },
+        }
+
+    def test_snapshot_validation_routes_model_without_claiming_authority(self):
+        out = app.validate_character_snapshot(self._snapshot())
+        self.assertTrue(out["valid"])
+        self.assertEqual(out["era"], "WOTLK")
+        self.assertEqual(out["character"]["spec"], "arcane")
+        self.assertEqual(out["support"]["status"], "AVAILABLE_UNVALIDATED")
+        self.assertIn("mage:arcane:dps", out["support"]["modelKey"])
+
+    def test_snapshot_rejects_future_era_class(self):
+        payload = self._snapshot()
+        payload["era"] = "VANILLA"
+        payload["character"]["level"] = 60
+        payload["character"]["classId"] = 6
+        payload["character"]["class"] = "DEATHKNIGHT"
+        with self.assertRaises(app.ServiceError):
+            app.validate_character_snapshot(payload)
+
+    def test_snapshot_rejects_wrong_gear_slot_count(self):
+        payload = self._snapshot()
+        payload["character"]["gear"] = payload["character"]["gear"][:-1]
+        with self.assertRaises(app.ServiceError):
+            app.validate_character_snapshot(payload)
+
     def test_load_manifest_rejects_missing_era(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "sources.json"

@@ -99,6 +99,136 @@ def extract_metric(result: dict[str, Any], metric: str) -> float:
         ) from exc
 
 
+ERA_LEVEL_CAPS = {
+    "VANILLA": 60,
+    "TBC": 70,
+    "WOTLK": 80,
+}
+
+CLASS_SPECS = {
+    1: ("WARRIOR", ("arms", "fury", "protection")),
+    2: ("PALADIN", ("holy", "protection", "retribution")),
+    3: ("HUNTER", ("beast_mastery", "marksman", "survival")),
+    4: ("ROGUE", ("assassination", "combat", "subtlety")),
+    5: ("PRIEST", ("discipline", "holy", "shadow")),
+    6: ("DEATHKNIGHT", ("blood", "frost", "unholy")),
+    7: ("SHAMAN", ("elemental", "enhancement", "restoration")),
+    8: ("MAGE", ("arcane", "fire", "frost")),
+    9: ("WARLOCK", ("affliction", "demonology", "destruction")),
+    11: ("DRUID", ("balance", "feral", "restoration")),
+}
+
+VALID_ROLES = {"TANK", "HEALER", "DPS"}
+
+
+def _require_int(value: Any, name: str, *, minimum: int = 0) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+        raise ServiceError(f"{name} must be an integer >= {minimum}")
+    return value
+
+
+def validate_character_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
+    if payload.get("schema") != SCHEMA_VERSION:
+        raise ServiceError(f"snapshot schema must be {SCHEMA_VERSION}")
+
+    era = normalize_era(payload.get("era"))
+    character = payload.get("character")
+    if not isinstance(character, dict):
+        raise ServiceError("character must be an object")
+
+    level = _require_int(character.get("level"), "character.level", minimum=1)
+    cap = ERA_LEVEL_CAPS[era]
+    if level > cap:
+        raise ServiceError(f"character.level {level} exceeds {era} cap {cap}")
+
+    class_id = _require_int(character.get("classId"), "character.classId", minimum=1)
+    class_info = CLASS_SPECS.get(class_id)
+    if class_info is None:
+        raise ServiceError(f"unsupported classId {class_id}")
+    class_name, specs = class_info
+
+    if class_id == 6 and era != "WOTLK":
+        raise ServiceError("Death Knight is unavailable before WOTLK")
+
+    tree = _require_int(character.get("dominantTree"), "character.dominantTree")
+    if tree >= len(specs):
+        raise ServiceError("character.dominantTree must be 0, 1 or 2")
+    spec = specs[tree]
+
+    role = character.get("role")
+    if role not in VALID_ROLES:
+        raise ServiceError("character.role must be TANK, HEALER or DPS")
+
+    points = character.get("treePoints")
+    if (
+        not isinstance(points, list)
+        or len(points) != 3
+        or any(isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in points)
+    ):
+        raise ServiceError("character.treePoints must contain exactly three non-negative integers")
+
+    talents = character.get("talents")
+    if not isinstance(talents, str) or len(talents.split("-")) != 3:
+        raise ServiceError("character.talents must be a three-tree talent string")
+    if any(part and not part.isdigit() for part in talents.split("-")):
+        raise ServiceError("character.talents may contain only ranks and '-' separators")
+
+    gear = character.get("gear")
+    if not isinstance(gear, list) or len(gear) != 17:
+        raise ServiceError("character.gear must contain exactly 17 WoWSims slots")
+    for index, item in enumerate(gear):
+        if item is None:
+            continue
+        if not isinstance(item, dict):
+            raise ServiceError(f"character.gear[{index}] must be null or an object")
+        _require_int(item.get("id"), f"character.gear[{index}].id", minimum=1)
+        _require_int(item.get("enchant", 0), f"character.gear[{index}].enchant")
+        gems = item.get("gems", [])
+        if (
+            not isinstance(gems, list)
+            or len(gems) != 3
+            or any(isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in gems)
+        ):
+            raise ServiceError(f"character.gear[{index}].gems must contain exactly three non-negative integers")
+
+    if class_id == 11 and spec == "feral":
+        semantic_model = "feral_tank_druid" if role == "TANK" else "feral_druid"
+    elif class_id == 6:
+        semantic_model = "tank_deathknight" if role == "TANK" else "deathknight"
+    elif class_id == 1 and spec == "protection":
+        semantic_model = "protection_warrior"
+    elif class_id == 2:
+        semantic_model = {
+            "holy": "holy_paladin",
+            "protection": "protection_paladin",
+            "retribution": "retribution_paladin",
+        }[spec]
+    elif class_id == 5:
+        semantic_model = "shadow_priest" if spec == "shadow" else "healing_priest"
+    elif class_id == 7:
+        semantic_model = f"{spec}_shaman"
+    else:
+        semantic_model = class_name.lower()
+
+    return {
+        "schema": SCHEMA_VERSION,
+        "valid": True,
+        "era": era,
+        "character": {
+            "level": level,
+            "classId": class_id,
+            "class": class_name,
+            "spec": spec,
+            "role": role,
+        },
+        "support": {
+            "status": "AVAILABLE_UNVALIDATED",
+            "modelKey": f"{era.lower()}:{semantic_model}:{spec}:{role.lower()}",
+            "reason": "Snapshot structure is valid, but this era/spec model is not authoritative until Skrra mechanics/preset validation is completed.",
+        },
+    }
+
+
 class SimRunner:
     def __init__(
         self,
@@ -312,6 +442,12 @@ class ApiHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         try:
             payload = self._read_json()
+            if self.path == "/v1/snapshot/validate":
+                response = validate_character_snapshot(payload)
+                response["engine"] = self.runner.engine_info(response["era"])
+                self._send_json(HTTPStatus.OK, response)
+                return
+
             if self.path == "/v1/sim":
                 era = normalize_era(payload.get("era"))
                 result = self.runner.simulate(era, payload.get("request"))

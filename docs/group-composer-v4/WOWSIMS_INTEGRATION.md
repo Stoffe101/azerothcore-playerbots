@@ -1,6 +1,6 @@
 # WoWSims Integration
 
-_Status: v0.2 automatic-backend foundation in progress; WoWSimsBridge v0.1 is green at `c420b300`, service slice exact-head CI required._
+_Status: v0.3 authoritative snapshot integration in progress; service foundation is green at `aba336fd`, snapshot slice exact-head local CI required._
 
 ## Decision
 
@@ -168,3 +168,23 @@ Automatic backend (future slice):
 - result returns to GearAdvisor;
 - hit/expertise/defense/ArP trade explanations match actual before/after state;
 - special-effect items are never described as if their result came only from raw visible stats.
+
+
+## Authoritative worldserver snapshot
+
+The automatic path must not trust client-exported combat state when the server already owns the truth. The worldserver snapshot therefore contains:
+
+- live EraPolicy token and realm cap;
+- character level, class, race and role;
+- active dual-spec slot, dominant tree and per-tree point totals;
+- a DBC-ordered active talent string;
+- the exact 17 WoWSims equipment positions;
+- permanent enchant IDs;
+- socket gem item IDs resolved from live socket enchantments through SpellItemEnchantment.dbc;
+- random-property/suffix metadata;
+- active glyph property + spell IDs;
+- learned primary professions and skill levels.
+
+The first endpoint, `POST /v1/snapshot/validate`, performs structural/era validation only. A valid snapshot returns `AVAILABLE_UNVALIDATED` plus a semantic model key. That status is deliberately weaker than SIM-BACKED. It means routing exists, not that Skrra/AzerothCore mechanics, buffs, rotation, encounter preset or spec options have been validated.
+
+The manual commands `.wowsims snapshot` and `.wowsims validate` exist to prove this boundary in game. Full baseline/candidate simulations must use an asynchronous queue or worker so the world thread is never held while `wowsimcli` runs.

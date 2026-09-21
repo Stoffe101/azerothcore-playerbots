@@ -34,7 +34,7 @@ RUN git init wotlk \
 
 FROM python:3.12-slim
 
-RUN useradd --system --uid 10001 --create-home --home-dir /nonexistent skrra
+RUN useradd --system --uid 10001 --no-create-home --home-dir /nonexistent skrra
 
 WORKDIR /app
 COPY app.py /app/app.py
