@@ -5,6 +5,7 @@
 #include "Bag.h"
 #include "Chat.h"
 #include "DatabaseEnv.h"
+#include "EraPolicy.h"
 #include "GameTime.h"
 #include "Guild.h"
 #include "Item.h"
@@ -118,6 +119,23 @@ void Reply(Player* player, std::string const& text)
 {
     if (player && player->GetSession())
         ChatHandler(player->GetSession()).SendSysMessage(text.c_str());
+}
+
+bool CheckAutomatedItemPolicy(Player* player, uint32 itemId, char const* action)
+{
+    if (!EraPolicy::ItemProvenanceReady())
+    {
+        Reply(player, std::string("[AI Guild] ") + action +
+            " is temporarily unavailable because item chronology is not ready. No item, stock, or money was changed.");
+        return false;
+    }
+    if (!EraPolicy::IsItemAllowed(itemId))
+    {
+        Reply(player, std::string("[AI Guild] ") + action +
+            " refused: that item is unavailable in the current realm era. No item, stock, or money was changed.");
+        return false;
+    }
+    return true;
 }
 
 void EnsureEconomy(uint32 guildId)
@@ -243,6 +261,8 @@ bool AppendItemMail(CharacterDatabaseTransaction const& trans, uint32 senderGuid
 {
     if (!trans || !proto || !targetGuid || !count)
         return false;
+    if (!EraPolicy::ItemProvenanceReady() || !EraPolicy::IsItemAllowed(proto->ItemId))
+        return false;
 
     count = ClampServiceCount(proto, count);
     if (!count)
@@ -308,7 +328,8 @@ void SetRequestStatus(uint64 requestId, char const* status)
 bool DeliverStockMail(uint32 guildId, uint32 senderGuid, uint32 targetGuid, ItemTemplate const* proto,
                       uint32 count, std::string const& subject, std::string const& body, uint64 requestId = 0)
 {
-    if (!guildId || !proto || !count || StockCount(guildId, proto->ItemId) < count)
+    if (!guildId || !proto || !count || !EraPolicy::ItemProvenanceReady() ||
+        !EraPolicy::IsItemAllowed(proto->ItemId) || StockCount(guildId, proto->ItemId) < count)
         return false;
 
     CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
@@ -387,6 +408,8 @@ uint64 RealMarketQuote(uint32 targetGuid, uint32 itemId, uint32 count)
 bool BuyRealAuction(PendingRequest const& request)
 {
     if (request.type != "buy" || !request.targetGuid || !request.itemId || !request.itemCount)
+        return false;
+    if (!EraPolicy::ItemProvenanceReady() || !EraPolicy::IsItemAllowed(request.itemId))
         return false;
 
     AuctionHouseObject* house = sAuctionMgr->GetAuctionsMapByHouseId(HouseIdForCharacter(request.targetGuid));
@@ -569,6 +592,8 @@ bool MoveWholeStackToStock(Player* bot, Item* item)
     uint8 const slot = item->GetSlot();
     if (!entry || !count)
         return false;
+    if (!EraPolicy::ItemProvenanceReady() || !EraPolicy::IsItemAllowed(entry))
+        return false;
 
     bot->DestroyItem(bag, slot, true);
     CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
@@ -718,6 +743,8 @@ bool ContributeSurplusFromBot(Player* bot)
 {
     if (!bot || !bot->GetGuildId() || bot->IsInCombat())
         return false;
+    if (!EraPolicy::ItemProvenanceReady())
+        return false;
 
     std::lock_guard<std::mutex> lock(g_serviceMutex);
     if (HasPendingTransaction(bot->GetGuildId()))
@@ -726,6 +753,8 @@ bool ContributeSurplusFromBot(Player* bot)
     for (Item* item : BagItems(bot))
     {
         if (!IsTradablePhysicalItem(item) || !IsEconomySurplus(item->GetTemplate()))
+            continue;
+        if (!EraPolicy::IsItemAllowed(item->GetEntry()))
             continue;
         if (RequestExists(bot->GetGuildId(), item->GetEntry()))
             continue;
@@ -740,6 +769,8 @@ bool ListSurplusOnAuction(Player* bot)
 {
     if (!bot || !bot->GetGuildId() || bot->IsInCombat())
         return false;
+    if (!EraPolicy::ItemProvenanceReady())
+        return false;
 
     std::lock_guard<std::mutex> lock(g_serviceMutex);
     if (HasPendingTransaction(bot->GetGuildId()))
@@ -749,6 +780,8 @@ bool ListSurplusOnAuction(Player* bot)
     for (Item* item : BagItems(bot))
     {
         if (!IsTradablePhysicalItem(item) || !IsEconomySurplus(item->GetTemplate()))
+            continue;
+        if (!EraPolicy::IsItemAllowed(item->GetEntry()))
             continue;
         if (RequestExists(bot->GetGuildId(), item->GetEntry()))
             continue;
@@ -983,6 +1016,10 @@ bool HandleGuildMessage(Player* player, Guild* guild, std::string const& message
         Reply(player, "[AI Guild] Invalid count.");
         return true;
     }
+
+    if ((command == "!deposit" || command == "!withdraw" || command == "!mail" || command == "!buy") &&
+        !CheckAutomatedItemPolicy(player, itemId, "Item service"))
+        return true;
 
     if (command == "!deposit")
     {

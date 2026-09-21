@@ -74,6 +74,13 @@ RAID_ROSTER_ERA = (ROOT / "modules/mod-raid-roster/src/RaidRosterEra.cpp").read_
 RAID_ROSTER_COMMAND = (ROOT / "modules/mod-raid-roster/src/RaidRosterCommand.cpp").read_text(encoding="utf-8")
 RAID_ROSTER_LOADER = (ROOT / "modules/mod-raid-roster/src/RaidRosterLoader.cpp").read_text(encoding="utf-8")
 ERA_AUDIT = (ROOT / "modules/mod-raid-roster/src/EraAuditCommand.cpp").read_text(encoding="utf-8")
+TITAN_SYSTEM = (ROOT / "modules/mod-titan-rune/src/TitanRuneSystem.cpp").read_text(encoding="utf-8")
+TITAN_PENDING_REWARDS = (ROOT / "modules/mod-titan-rune/src/TitanRunePendingRewards.cpp").read_text(encoding="utf-8")
+TITAN_GAMMA = (ROOT / "modules/mod-titan-rune/src/TitanRuneGamma.cpp").read_text(encoding="utf-8")
+TITAN_CMAKE = (ROOT / "modules/mod-titan-rune/mod-titan-rune.cmake").read_text(encoding="utf-8")
+AI_GUILD_SERVICES = (ROOT / "modules/mod-playerbot-chatter/src/PBAIGuildServices.cpp").read_text(encoding="utf-8")
+CHATTER_CMAKE = (ROOT / "modules/mod-playerbot-chatter/mod-playerbot-chatter.cmake").read_text(encoding="utf-8")
+ERA_OVERRIDES = (ROOT / "data/era-item-provenance/overrides.csv").read_text(encoding="utf-8")
 PROGRESSION_HISTORY = (ROOT / "modules/mod-raid-roster/src/AdventureProgressionHistory.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY_SQL = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_00_mod_adventure_progression_history.sql").read_text(encoding="utf-8")
 PROGRESSION_ACTIVITY_ID_MIGRATION = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_01_mod_adventure_progression_activity_id.sql").read_text(encoding="utf-8")
@@ -1481,3 +1488,63 @@ assert "EraPolicy::ItemProvenanceReady()" in ADVENTURE_CACHE
 assert "Your cache was not consumed." in ADVENTURE_CACHE
 assert "if (!EraPolicy::IsItemAllowed(itemId))" in ADVENTURE_CACHE
 assert ADVENTURE_CACHE.index("EraPolicy::ItemProvenanceReady()") < ADVENTURE_CACHE.index("ConsumePendingCache(guid)")
+
+
+# ERA-07 vendor/reward-helper slice: central provenance must gate every covered offer/create/store
+# boundary before currency, stock, treasury, inventory, or one-shot delivery state is consumed.
+assert 'central EraPolicy.h is required' in TITAN_CMAKE
+assert 'central EraPolicy.h is required' in CHATTER_CMAKE
+for source in (TITAN_SYSTEM, TITAN_PENDING_REWARDS, TITAN_GAMMA, AI_GUILD_SERVICES):
+    assert '#include "EraPolicy.h"' in source
+
+vendor_page = section(TITAN_SYSTEM, "void ShowVendorPage(", "bool BuyVendorItem(")
+assert "EraPolicy::ItemProvenanceReady()" in vendor_page
+assert "EraPolicy::IsItemAllowed(currency)" in vendor_page
+assert "EraPolicy::IsItemAllowed(items[i].itemEntry)" in vendor_page
+
+vendor_purchase = section(TITAN_SYSTEM, "bool BuyVendorItem(", "class TitanRuneWorldScript")
+assert vendor_purchase.index("EraPolicy::ItemProvenanceReady()") < vendor_purchase.index("player->AddItem")
+assert vendor_purchase.index("EraPolicy::IsItemAllowed(offer.itemEntry)") < vendor_purchase.index("player->AddItem")
+assert vendor_purchase.index("player->AddItem") < vendor_purchase.index("player->DestroyItemCount")
+
+currency_exchange = section(TITAN_SYSTEM, "else if (action == 30001)", "ShowVendorPage(player, creature")
+assert currency_exchange.index("EraPolicy::ItemProvenanceReady()") < currency_exchange.index("player->AddItem")
+assert currency_exchange.index("EraPolicy::IsItemAllowed(TitanRune::SIDEREAL_ESSENCE_ITEM)") < currency_exchange.index("player->AddItem")
+assert currency_exchange.index("player->AddItem") < currency_exchange.index("player->DestroyItemCount")
+
+pending_delivery = section(TITAN_PENDING_REWARDS, "bool DeliverReward(", "class TitanRunePendingRewardPlayerScript")
+assert pending_delivery.index("EraPolicy::ItemProvenanceReady()") < pending_delivery.index("player->AddItem")
+assert pending_delivery.index("EraPolicy::IsItemAllowed(itemEntry)") < pending_delivery.index("player->AddItem")
+assert pending_delivery.index("player->AddItem") < pending_delivery.index("delivered=1")
+assert "The reward remains pending." in pending_delivery
+
+gamma_signet = section(TITAN_GAMMA, "void EnsureGammaSignet(", "void GrantRally(")
+assert gamma_signet.index("EraPolicy::ItemProvenanceReady()") < gamma_signet.index("player->AddItem")
+assert gamma_signet.index("EraPolicy::IsItemAllowed(itemEntry)") < gamma_signet.index("player->AddItem")
+
+guild_mail = section(AI_GUILD_SERVICES, "bool AppendItemMail(", "uint64 CreateRequest(")
+assert guild_mail.index("EraPolicy::ItemProvenanceReady()") < guild_mail.index("Item::CreateItem")
+assert guild_mail.index("EraPolicy::IsItemAllowed(proto->ItemId)") < guild_mail.index("Item::CreateItem")
+
+guild_stock_delivery = section(AI_GUILD_SERVICES, "bool DeliverStockMail(", "uint32 CharacterAccountId(")
+assert guild_stock_delivery.index("EraPolicy::ItemProvenanceReady()") < guild_stock_delivery.index("AppendStockDebit")
+assert guild_stock_delivery.index("EraPolicy::IsItemAllowed(proto->ItemId)") < guild_stock_delivery.index("AppendStockDebit")
+
+guild_auction_buy = section(AI_GUILD_SERVICES, "bool BuyRealAuction(", "bool FulfillRequest(")
+assert guild_auction_buy.index("EraPolicy::ItemProvenanceReady()") < guild_auction_buy.index("AppendBankDebit")
+assert guild_auction_buy.index("EraPolicy::IsItemAllowed(request.itemId)") < guild_auction_buy.index("AppendBankDebit")
+
+guild_stock_store = section(AI_GUILD_SERVICES, "bool MoveWholeStackToStock(", "bool RequestExists(")
+assert guild_stock_store.index("EraPolicy::ItemProvenanceReady()") < guild_stock_store.index("bot->DestroyItem")
+assert guild_stock_store.index("EraPolicy::IsItemAllowed(entry)") < guild_stock_store.index("bot->DestroyItem")
+
+guild_auction_listing = section(AI_GUILD_SERVICES, "bool ListSurplusOnAuction(", "bool HandleGuildMessage(")
+assert guild_auction_listing.index("EraPolicy::ItemProvenanceReady()") < guild_auction_listing.index("bot->ModifyMoney")
+assert guild_auction_listing.index("EraPolicy::IsItemAllowed(item->GetEntry())") < guild_auction_listing.index("bot->ModifyMoney")
+
+assert "CheckAutomatedItemPolicy(player, itemId, \"Item service\")" in AI_GUILD_SERVICES
+for item_id in (900100, 900101, 900104, 900105):
+    assert f"{item_id},wotlk," in ERA_OVERRIDES
+
+for audit_section in ("AUTOMATED_VENDOR_CATALOG", "PENDING_ITEM_REWARDS", "AI_GUILD_ITEM_HELPERS"):
+    assert audit_section in ERA_AUDIT

@@ -3,6 +3,7 @@
 #include "Chat.h"
 #include "Creature.h"
 #include "DatabaseEnv.h"
+#include "EraPolicy.h"
 #include "Field.h"
 #include "ItemTemplate.h"
 #include "Map.h"
@@ -29,10 +30,27 @@ bool DeliverReward(Player* player, uint64 rewardId, uint32 itemEntry, uint32 cou
     if (!player || !count)
         return false;
 
+    if (!EraPolicy::ItemProvenanceReady())
+    {
+        if (notifyIfBlocked)
+            Notify(player,
+                "A pending Titan Rune reward is waiting because item chronology is unavailable. The reward remains pending.");
+        return false;
+    }
+
     ItemTemplate const* item = sObjectMgr->GetItemTemplate(itemEntry);
     if (!item)
     {
-        Notify(player, "A pending Titan Rune reward references a missing item template. The reward was kept pending for server repair.");
+        Notify(player,
+            "A pending Titan Rune reward references a missing item template. The reward was kept pending for server repair.");
+        return false;
+    }
+
+    if (!EraPolicy::IsItemAllowed(itemEntry))
+    {
+        if (notifyIfBlocked)
+            Notify(player,
+                "A pending Titan Rune reward is not available in the current realm era. The reward remains pending.");
         return false;
     }
 
