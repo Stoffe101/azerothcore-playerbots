@@ -16,6 +16,10 @@ BACKUP_SCRIPT = (ROOT / "backup.sh").read_text(encoding="utf-8")
 RESTORE_SCRIPT = (ROOT / "restore.sh").read_text(encoding="utf-8")
 ENV_EXAMPLE = (ROOT / ".env.example").read_text(encoding="utf-8")
 AHBOT_SCRIPT = (ROOT / "configure-ahbot.sh").read_text(encoding="utf-8")
+ERA_PROVENANCE_SCRIPT = (ROOT / "configure-era-item-provenance.sh").read_text(encoding="utf-8")
+SETUP_SCRIPT = (ROOT / "setup.sh").read_text(encoding="utf-8")
+UPDATE_SCRIPT = (ROOT / "update.sh").read_text(encoding="utf-8")
+RAID_CONF = (ROOT / "modules/mod-raid-roster/conf/mod_raid_roster.conf.dist").read_text(encoding="utf-8")
 DATA = (ROOT / "client-addons-src/GroupComposer/Data.lua").read_text(encoding="utf-8")
 RUNTIME = (ROOT / "client-addons-src/GroupComposer/RuntimeGuards.lua").read_text(encoding="utf-8")
 TOC = (ROOT / "client-addons-src/GroupComposer/GroupComposer.toc").read_text(encoding="utf-8")
@@ -1421,3 +1425,19 @@ assert '"AUCTION_PROFILE"' in ERA_AUDIT
 assert "AuctionHouseBot.EraProfile" in ERA_AUDIT
 assert "expectedProfile = EraPolicy::Key(era)" in ERA_AUDIT
 subprocess.run(["bash", "-n", str(ROOT / "configure-ahbot.sh")], check=True)
+
+
+# ERA-07 central provenance must not be AH-only. Fresh setup/update regenerate all three era
+# blocklists, EraPolicy consumes them, and automated roster/Composer gearing fails closed.
+assert "EraPolicy.ItemProvenance.DisabledVanillaItemIDs" in ERA_PROVENANCE_SCRIPT
+assert "EraPolicy.ItemProvenance.DisabledTbcItemIDs" in ERA_PROVENANCE_SCRIPT
+assert "EraPolicy.ItemProvenance.DisabledWotlkItemIDs" in ERA_PROVENANCE_SCRIPT
+assert "WorldItemFingerprint" in ERA_PROVENANCE_SCRIPT
+assert "configure-era-item-provenance.sh" in SETUP_SCRIPT
+assert "configure-era-item-provenance.sh" in UPDATE_SCRIPT
+assert "EraPolicy.ItemProvenance.Enable = 0" in RAID_CONF
+assert "bool IsItemAllowed(uint32 itemId);" in ERA_POLICY_H
+assert "ItemProvenanceReady()" in ERA_POLICY_CPP
+assert "EraPolicy::IsItemAllowed" in GEAR_CPP
+assert "AUCTION_STOCK" in ERA_AUDIT
+assert "BOT_EQUIPMENT" in ERA_AUDIT

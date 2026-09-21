@@ -76,6 +76,8 @@ Latest fully verified green implementation checkpoint:
 
 This checkpoint contains runtime pass 3 plus the current ERA-01/ERA-02 containment stack: central era policy, progression/starter/Titan boundaries, Map.dbc travel gates, Playerbots 60/70/80 runtime caps, non-destructive RNDbot quarantine, class/race/profession policy foundations, the read-only era audit, snapshot/rollback foundation, ERA-06 AH profiles and ERA-07 slice-1 provenance enforcement for new AHBot listings. Current Group Composer addon version is **0.15.3**.
 
+Current development pass: **ERA-07 slice 2 is implemented and awaiting exact-head local CI**. It promotes provenance from an AH-only consumer into central EraPolicy, regenerates the three era blocklists automatically during setup/update, fail-closes automated RaidRoster/Group Composer gear preparation when chronology is missing/stale, and extends `.era audit` to existing auction stock plus stored RNDbot equipment.
+
 The peer policy is generic: the **lowest real human at any level** is the peer target. Status exposes `Lowest-human target Lv X · bots Lv A-B` so arbitrary mixed-level groups can be checked directly. Examples such as 80+14 or 80+23 are illustrative only.
 
 All changed runtime behavior still requires in-game observation before the corresponding `TEST_MATRIX.md` rows become PASS.

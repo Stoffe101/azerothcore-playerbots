@@ -2,6 +2,29 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — ERA-07 slice 2: central item policy + stock/gear enforcement
+
+Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
+
+Implemented:
+- provenance generation moved behind `configure-era-item-provenance.sh`, independent of whether AHBot is enabled;
+- generator metadata now fingerprints the sorted live `item_template` ID set with deterministic FNV-1a/64;
+- the persistent RaidRoster config stores source metadata plus all three Vanilla/TBC/WotLK blocked-ID sets simultaneously;
+- `setup.sh` and `update.sh` regenerate central provenance against the live world DB and recreate worldserver so EraPolicy reads one immutable snapshot per process;
+- `configure-ahbot.sh` reuses the central generator instead of owning duplicate chronology generation;
+- EraPolicy validates source metadata, world item count/fingerprint, nested blocklist counts and live item existence before becoming ready;
+- `TryItemEra` / `IsItemAllowed` make the central policy reusable by every server-side item consumer;
+- RaidRoster/Group Composer synthetic gear preparation fails closed before stripping gear if provenance is unavailable, and excludes future/UNKNOWN items at candidate/equip boundaries;
+- `.era audit` scans current auction stock for future/UNKNOWN items and scans stored RNDbot equipped slots for the same leaks;
+- static contracts cover central script wiring, setup/update regeneration, policy API and audit/gear consumers.
+
+Boundary:
+- the stock/equipment scanner is read-only; it does not delete auctions or mutate contaminated stored gear;
+- this slice protects the deterministic RaidRoster/Group Composer gear path, not `EquipCatchup`, starter/catch-up packages, vendors/rewards, loot, crafting or every Playerbots randomization path;
+- provenance remains expansion-level chronology, not patch/phase-specific obtainability.
+
+CI: commit uses `[local-ci]`; all four exact-head workflows must complete successfully before slice 2 is called green.
+
 ## 2026-09-21 — ERA-07 slice 1: reproducible item provenance + AH enforcement
 
 Status: **DONE FOR SLICE 1 + exact-head local CI verified at `44adb851e37cd916c1e2ebbb5dd7ece1f2cef0fc`; ERA-07 overall remains IN PROGRESS**.

@@ -197,6 +197,12 @@ echo "==> Rebuilding & restarting"
 echo "    (recompiles only what changed; ac-db-import re-runs to apply new DB migrations)"
 docker compose up -d --build
 
+echo "==> Regenerating central ERA-07 item provenance policy"
+bash "$ROOT/configure-era-item-provenance.sh"
+# The policy is read into EraPolicy on worldserver startup, so recreate the world process after
+# regenerating the config. The DB/auth containers stay untouched.
+docker compose up -d --no-deps --force-recreate ac-worldserver
+
 echo "==> Pruning Docker build cache older than 7 days"
 docker builder prune -f --filter until=168h || echo "    (build-cache prune skipped)"
 

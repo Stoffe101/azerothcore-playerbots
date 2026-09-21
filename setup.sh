@@ -221,6 +221,8 @@ if [[ "$rc" -eq 0 ]]; then
   # A plain restart can retain a stale mount inode when extraction replaced a host-side DBC file.
   chmod +x "$ROOT/configure-living-world-bots.sh"
   "$ROOT/configure-living-world-bots.sh"
+  chmod +x "$ROOT/configure-era-item-provenance.sh"
+  "$ROOT/configure-era-item-provenance.sh"
   if [[ -d "$ROOT/azerothcore-wotlk" ]]; then
     (cd "$ROOT/azerothcore-wotlk" && docker compose up -d --no-deps --force-recreate ac-worldserver)
   fi

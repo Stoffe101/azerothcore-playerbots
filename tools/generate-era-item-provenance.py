@@ -228,6 +228,19 @@ def compact_ranges(ids: Iterable[int]) -> str:
     return ",".join(parts)
 
 
+def world_item_fingerprint(ids: Iterable[int]) -> str:
+    """Stable FNV-1a/64 fingerprint over sorted uint32 item IDs (little-endian bytes)."""
+    value = 14695981039346656037
+    prime = 1099511628211
+    for item_id in sorted(set(ids)):
+        if item_id < 0 or item_id > 0xFFFFFFFF:
+            raise ValueError(f"item id out of uint32 range: {item_id}")
+        for shift in (0, 8, 16, 24):
+            value ^= (item_id >> shift) & 0xFF
+            value = (value * prime) & 0xFFFFFFFFFFFFFFFF
+    return f"{value:016x}"
+
+
 def classify(
     world_ids: set[int],
     source_ids: dict[str, set[int]],
@@ -317,6 +330,7 @@ def write_outputs(
             for era in ERAS
         },
         "world_item_count": len(world_ids),
+        "world_item_fingerprint": world_item_fingerprint(world_ids),
         "classified_counts": era_counts,
         "override_count": override_count,
         "disabled_counts": disabled_counts,
@@ -408,6 +422,8 @@ def self_test() -> None:
         assert disabled_for("tbc", classified) == {4, 6}
         assert disabled_for("wotlk", classified) == {6}
         assert compact_ranges({1, 2, 3, 5, 7, 8}) == "1-3,5,7-8"
+        assert world_item_fingerprint(world) == world_item_fingerprint(reversed(sorted(world)))
+        assert world_item_fingerprint(world) == "6489bd86fccf7bad"
 
     print("ERA item provenance self-test passed.")
 

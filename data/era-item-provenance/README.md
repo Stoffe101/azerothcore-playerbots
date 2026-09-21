@@ -35,7 +35,7 @@ Allowed eras are `vanilla`, `tbc`, `wotlk`, and `unknown`.
 
 ## Runtime outputs
 
-`configure-ahbot.sh` exports the live world item IDs, runs `tools/generate-era-item-provenance.py`, and caches generated files under `.cache/era-item-provenance/`:
+`configure-era-item-provenance.sh` exports the live world item IDs, runs `tools/generate-era-item-provenance.py`, and caches generated files under `.cache/era-item-provenance/`. Fresh setup and every `./update.sh` run regenerate this central snapshot before the final worldserver restart. `configure-ahbot.sh` reuses the same generated output instead of owning a second chronology path:
 
 - `item-era.csv` - live-world provenance ledger;
 - `ah-disabled-vanilla.txt`;
@@ -43,6 +43,6 @@ Allowed eras are `vanilla`, `tbc`, `wotlk`, and `unknown`.
 - `ah-disabled-wotlk.txt`;
 - `metadata.json`.
 
-The AH-specific disabled files are compact comma/range lists. A small patch to the pinned `mod-ah-bot-plus` consumes them through `AuctionHouseBot.EraProvenanceDisabledItemIDs` without overwriting the operator's normal `DisabledCustomItemIDs`.
+The disabled files are compact comma/range lists. The central script writes **all three** lists plus the live item-count/fingerprint into `mod_raid_roster.conf`, where EraPolicy validates and selects the active list from the live realm era. A small patch to the pinned `mod-ah-bot-plus` separately consumes the current profile through `AuctionHouseBot.EraProvenanceDisabledItemIDs` without overwriting the operator's normal `DisabledCustomItemIDs`.
 
-This is ERA-07 slice 1. The same provenance policy still needs to be promoted into server-side bot gearing/preparation, starter/catch-up packages, existing-auction audits, vendors/rewards and other automated item sources before ERA-07 can become DONE.
+ERA-07 slice 2 makes deterministic RaidRoster/Group Composer gear preparation consume the central policy and extends `.era audit` to existing auction stock plus stored RNDbot equipped gear. Starter/catch-up gear, vendors/rewards, loot/crafting and other automated item paths still need promotion before ERA-07 can become DONE.

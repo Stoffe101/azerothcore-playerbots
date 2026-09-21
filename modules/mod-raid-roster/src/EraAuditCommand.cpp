@@ -300,25 +300,126 @@ bool EraAuditCommand::HandleAudit(ChatHandler* handler)
                 ", equipUseCap=" + std::to_string(configuredCap) + " expected=" + std::to_string(cap) +
                 ", gems=" + (gemWeight ? "on" : "off") + " expected=" + (gemExpected ? "on" : "off") +
                 ", glyphs=" + (glyphWeight ? "on" : "off") + " expected=" + (glyphExpected ? "on" : "off"));
-        std::string const provenanceProfile =
-            sConfigMgr->GetOption<std::string>("AuctionHouseBot.EraProvenanceProfile", "unset");
-        std::string const provenanceSource =
-            sConfigMgr->GetOption<std::string>("AuctionHouseBot.EraProvenanceSourceSet", "unset");
-        uint32 const provenanceWorldItems =
-            sConfigMgr->GetOption<uint32>("AuctionHouseBot.EraProvenanceWorldItemCount", 0);
-        uint32 const provenanceUnknown =
-            sConfigMgr->GetOption<uint32>("AuctionHouseBot.EraProvenanceUnknownCount", 0);
-        uint32 const provenanceDisabled =
-            sConfigMgr->GetOption<uint32>("AuctionHouseBot.EraProvenanceDisabledCount", 0);
-        bool const provenanceReady = provenanceProfile == expectedProfile && provenanceSource != "unset" && provenanceWorldItems > 0;
+    }
+
+    bool const provenanceReady = EraPolicy::ItemProvenanceReady();
+    uint32 const provenanceUnknown = EraPolicy::ItemProvenanceUnknownCount();
+    report(
+        !provenanceReady ? AuditState::Fail : (provenanceUnknown ? AuditState::Warn : AuditState::Pass),
+        "AUCTION_PROVENANCE",
+        std::string("source=") + EraPolicy::ItemProvenanceSourceSet() +
+            ", worldItems=" + std::to_string(EraPolicy::ItemProvenanceWorldItemCount()) +
+            ", fingerprint=" + std::to_string(EraPolicy::ItemProvenanceWorldFingerprint()) +
+            ", blockedForRealm=" + std::to_string(EraPolicy::ItemProvenanceBlockedCount(era)) +
+            ", unknownBlocked=" + std::to_string(provenanceUnknown) +
+            (provenanceReady ? "" : ", error=" + std::string(EraPolicy::ItemProvenanceError())));
+
+    if (!provenanceReady)
+    {
+        report(AuditState::Fail, "AUCTION_STOCK", "not scanned because central item provenance is unavailable");
+        report(AuditState::Fail, "BOT_EQUIPMENT", "not scanned because central item provenance is unavailable");
+    }
+    else
+    {
+        uint64 auctionCount = 0;
+        uint64 futureAuctions = 0;
+        uint64 unknownAuctions = 0;
+        std::vector<std::string> auctionExamples;
+        if (QueryResult result = CharacterDatabase.Query(
+                "SELECT ii.itemEntry, COUNT(*) FROM auctionhouse ah "
+                "JOIN item_instance ii ON ii.guid = ah.itemguid GROUP BY ii.itemEntry"))
+        {
+            do
+            {
+                Field* fields = result->Fetch();
+                uint32 const itemId = fields[0].Get<uint32>();
+                uint64 const count = fields[1].Get<uint64>();
+                auctionCount += count;
+
+                EraPolicy::Era itemEra;
+                if (!EraPolicy::TryItemEra(itemId, itemEra))
+                {
+                    unknownAuctions += count;
+                    if (auctionExamples.size() < 5)
+                        auctionExamples.push_back(
+                            "item=" + std::to_string(itemId) + "(x" + std::to_string(count) + ",UNKNOWN)");
+                    continue;
+                }
+
+                if (!EraPolicy::IsEraReleased(itemEra))
+                {
+                    futureAuctions += count;
+                    if (auctionExamples.size() < 5)
+                        auctionExamples.push_back(
+                            "item=" + std::to_string(itemId) + "(x" + std::to_string(count) +
+                            "," + EraPolicy::Name(itemEra) + ")");
+                }
+            } while (result->NextRow());
+        }
+
         report(
-            !provenanceReady ? AuditState::Fail : (provenanceUnknown ? AuditState::Warn : AuditState::Pass),
-            "AUCTION_PROVENANCE",
-            "profile=" + provenanceProfile + " expected=" + expectedProfile +
-                ", source=" + provenanceSource +
-                ", worldItems=" + std::to_string(provenanceWorldItems) +
-                ", blockedForEra=" + std::to_string(provenanceDisabled) +
-                ", unknownBlocked=" + std::to_string(provenanceUnknown));
+            futureAuctions || unknownAuctions ? AuditState::Fail : AuditState::Pass,
+            "AUCTION_STOCK",
+            "auctions=" + std::to_string(auctionCount) +
+                ", futureEra=" + std::to_string(futureAuctions) +
+                ", unknown=" + std::to_string(unknownAuctions) +
+                (auctionExamples.empty() ? "" : ", examples=" + JoinExamples(auctionExamples)));
+
+        if (accountList.empty())
+        {
+            report(AuditState::Warn, "BOT_EQUIPMENT", "random-bot account pool is empty/not loaded");
+        }
+        else
+        {
+            uint64 equippedCount = 0;
+            uint64 futureEquipped = 0;
+            uint64 unknownEquipped = 0;
+            std::vector<std::string> gearExamples;
+            if (QueryResult result = CharacterDatabase.Query(
+                    "SELECT ii.itemEntry, COUNT(*) FROM character_inventory ci "
+                    "JOIN characters c ON c.guid = ci.guid "
+                    "JOIN item_instance ii ON ii.guid = ci.item "
+                    "WHERE c.account IN ({}) AND ci.bag = 0 AND ci.slot < {} "
+                    "GROUP BY ii.itemEntry",
+                    accountList,
+                    uint32(EQUIPMENT_SLOT_END)))
+            {
+                do
+                {
+                    Field* fields = result->Fetch();
+                    uint32 const itemId = fields[0].Get<uint32>();
+                    uint64 const count = fields[1].Get<uint64>();
+                    equippedCount += count;
+
+                    EraPolicy::Era itemEra;
+                    if (!EraPolicy::TryItemEra(itemId, itemEra))
+                    {
+                        unknownEquipped += count;
+                        if (gearExamples.size() < 5)
+                            gearExamples.push_back(
+                                "item=" + std::to_string(itemId) + "(x" + std::to_string(count) + ",UNKNOWN)");
+                        continue;
+                    }
+
+                    if (!EraPolicy::IsEraReleased(itemEra))
+                    {
+                        futureEquipped += count;
+                        if (gearExamples.size() < 5)
+                            gearExamples.push_back(
+                                "item=" + std::to_string(itemId) + "(x" + std::to_string(count) +
+                                "," + EraPolicy::Name(itemEra) + ")");
+                    }
+                } while (result->NextRow());
+            }
+
+            report(
+                futureEquipped || unknownEquipped ? AuditState::Fail : AuditState::Pass,
+                "BOT_EQUIPMENT",
+                "storedEquipped=" + std::to_string(equippedCount) +
+                    ", futureEra=" + std::to_string(futureEquipped) +
+                    ", unknown=" + std::to_string(unknownEquipped) +
+                    (gearExamples.empty() ? "" : ", examples=" + JoinExamples(gearExamples)));
+        }
     }
 
     AuditState const summary = failures ? AuditState::Fail : (warnings ? AuditState::Warn : AuditState::Pass);

@@ -78,7 +78,8 @@ Status vocabulary:
 
 ## Auction House era profiles / ERA-07 provenance
 
-- STATIC/CI: `configure-ahbot.sh` parses with `bash -n`.
+- STATIC/CI: `configure-era-item-provenance.sh` and `configure-ahbot.sh` parse with `bash -n`.
+- STATIC/CI: setup/update both invoke the central provenance generator, and server contracts require EraPolicy + gear/audit consumers.
 - PASS (CI `44adb851`): ERA-07 generator self-test passes and the pinned source manifest parses as JSON.
 - PASS (CI `44adb851`): AHBot wrapper patch consumes `AuctionHouseBot.EraProvenanceDisabledItemIDs` separately from operator custom IDs.
 - TODO: first provenance generation downloads/verifies the three exact pinned Git blobs and later runs use the verified cache.
@@ -92,7 +93,10 @@ Status vocabulary:
 - TODO: WotLK profile uses cap 80, Gems ON, Glyphs ON and Wrath boost IDs.
 - TODO: applying Vanilla/TBC after WotLK removes script-owned Wrath boost IDs.
 - TODO: `.era audit` FAILs when enabled AH profile disagrees with live era and PASSes when aligned.
-- TODO: existing auction stock is scanned against generated provenance before friends-realm launch/transition.
+- IMPLEMENTED / runtime TODO: `.era audit` scans existing auction stock and FAILs on future-era or UNKNOWN listings.
+- IMPLEMENTED / runtime TODO: `.era audit` scans stored RNDbot equipment slots and FAILs on future-era or UNKNOWN gear.
+- IMPLEMENTED / runtime TODO: deterministic RaidRoster/Group Composer gear preparation never selects a future-era/UNKNOWN item and refuses to strip a bot when central provenance is unavailable.
+- TODO: central provenance generation reports the live item count/fingerprint and survives a normal `./update.sh` restart with `AUCTION_PROVENANCE` ready.
 
 ## Snapshot / rollback safety
 

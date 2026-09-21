@@ -43,6 +43,16 @@ uint16 RealmProfessionSkillCap();
 bool TryMapEra(uint32 mapId, Era& era);
 bool IsMapAllowed(uint32 mapId);
 
+bool ItemProvenanceReady();
+char const* ItemProvenanceSourceSet();
+char const* ItemProvenanceError();
+uint32 ItemProvenanceWorldItemCount();
+uint32 ItemProvenanceUnknownCount();
+uint32 ItemProvenanceBlockedCount(Era era);
+uint64 ItemProvenanceWorldFingerprint();
+bool TryItemEra(uint32 itemId, Era& era);
+bool IsItemAllowed(uint32 itemId);
+
 char const* Name(Era era);
 char const* Token(Era era);
 char const* Key(Era era);

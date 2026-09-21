@@ -75,15 +75,16 @@ They are the dependency spine for most other approved era work. First define one
 - [ ] **ERA-02 — Era Integrity scanner — IN PROGRESS**
   - GM-only read-only `.era audit` scaffold is implemented for cap drift, RNDbot quarantine, map gates and future Composer-map leakage.
   - PASS/WARN/FAIL sections for bots, AH, gear, vendors, professions, travel/maps, Composer catalog, classes/races, PvP/systems and automated rewards.
-  - Current sections include caps, RNDbot quarantine, maps, future Composer-map leakage, active bot classes/races/professions, AH profile drift and ERA-07 provenance profile/coverage. Existing-auction item scans, equipped gear, vendors/PvP/geography/rewards remain TODO.
+  - Current sections include caps, RNDbot quarantine, maps, future Composer-map leakage, active bot classes/races/professions, AH profile drift and ERA-07 provenance profile/coverage. Slice 2 adds existing-auction stock plus stored RNDbot equipped-gear scans; vendors/PvP/geography/rewards remain TODO.
 
 - [ ] **ERA-03 — Strict bot era rules — PARTIAL**
   - Existing foundation: Composer anti-boost and bot-to-master progression sync.
   - Bot progression sync is now bounded by the central live EraPolicy so dirty/future progression cannot be copied into earlier-era bots.
   - Composer now derives its bot peer band from the lowest real human (+/-3), clamps it to the activity floor and live realm cap, and revalidates that band at planning/preparation/assembly boundaries.
   - Runtime Playerbots max-level/brackets now follow the central 60/70/80 era cap; Composer candidates and automated RaidRoster gear prep reject over-cap bots.
-  - RNDbot pre-login/active-population quarantine is implemented in slice 4b. Guild/persistent-bot policy and future-era gear provenance remain TODO.
-  - Reject future-era equipped gear, enchants, gems, glyphs, consumables, recipes and automated preparation.
+  - RNDbot pre-login/active-population quarantine is implemented in slice 4b.
+  - ERA-07 slice 2 gates deterministic RaidRoster/Group Composer synthetic gear selection against central item provenance and audits stored RNDbot equipped gear; it does not mutate contaminated stored gear.
+  - Guild/persistent-bot policy plus future-era enchants/gems/glyphs/consumables/recipes and other Playerbots randomization paths remain TODO.
 
 - [ ] **ERA-04 — Bots progress with the world — TODO**
   - Expansion release raises what existing bots may grow into.
@@ -102,11 +103,10 @@ They are the dependency spine for most other approved era work. First define one
   - The old unconditional Wrath consumable boosts are now WotLK-profile-only; fresh configuration defaults to Vanilla. Full legal-stock provenance remains ERA-07.
 
 - [ ] **ERA-07 — Item expansion-provenance filtering — IN PROGRESS**
-  - Slice 1 is exact-head local-CI green at `44adb851`: it pins exact CMaNGOS Classic/TBC/WotLK DB commits + Git blob SHAs and deterministically classifies every live AzerothCore item ID by earliest historical database presence.
-  - Required level, item level and raw item-ID thresholds are not used as chronology.
-  - UNKNOWN IDs fail closed for AH automation; explicit overrides are the review ledger.
-  - New AHBot seller listings consume the generated era blocklist through a dedicated config key; `.era audit` reports provenance profile/coverage.
-  - Still TODO: existing-auction scans, bot gearing/prep, starter/catch-up, vendors/rewards and promotion into the central server item policy.
+  - Slice 1 is exact-head local-CI green at `44adb851`: exact pinned Classic/TBC/WotLK DB identity determines earliest expansion without level/item-ID chronology guesses.
+  - Slice 2 promotes the generated chronology into central EraPolicy, stores all three blocklists together, fingerprints the live world item set, regenerates on setup/update, audits existing auctions + stored RNDbot equipment and gates deterministic RaidRoster/Group Composer gear prep. Exact-head local CI is required for this slice.
+  - UNKNOWN IDs fail closed for protected automation; explicit overrides are the review ledger.
+  - Still TODO after slice 2: runtime provenance generation evidence, `EquipCatchup`, starter/catch-up packages, vendors/rewards, loot/crafting and remaining automated item paths.
 
 - [ ] **ERA-08 — Profession progression — PARTIAL**
   - Central EraPolicy now defines Vanilla 300, TBC 375, WotLK 450 and audit detects over-cap active RNDbot profession skills.

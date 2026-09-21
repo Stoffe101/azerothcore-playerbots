@@ -1,6 +1,9 @@
 #include "EraPolicy.h"
 
+#include "Config.h"
 #include "DBCStores.h"
+#include "ItemTemplate.h"
+#include "ObjectMgr.h"
 #include "IndividualProgression.h"
 #include "Log.h"
 #include "PlayerbotAIConfig.h"
@@ -9,7 +12,11 @@
 
 #include <algorithm>
 #include <cctype>
+#include <limits>
+#include <sstream>
 #include <string>
+#include <unordered_set>
+#include <vector>
 
 namespace
 {
@@ -25,6 +32,251 @@ std::string Normalize(std::string_view value)
         return static_cast<char>(std::tolower(c));
     });
     return normalized;
+}
+
+std::string Trim(std::string value)
+{
+    auto const notSpace = [](unsigned char c) { return !std::isspace(c); };
+    value.erase(value.begin(), std::find_if(value.begin(), value.end(), notSpace));
+    value.erase(std::find_if(value.rbegin(), value.rend(), notSpace).base(), value.end());
+    return value;
+}
+
+bool ParseUint32(std::string const& value, uint32& out)
+{
+    try
+    {
+        size_t used = 0;
+        unsigned long parsed = std::stoul(value, &used, 10);
+        if (used != value.size() || parsed > std::numeric_limits<uint32>::max())
+            return false;
+        out = static_cast<uint32>(parsed);
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+bool ParseHex64(std::string const& value, uint64& out)
+{
+    try
+    {
+        size_t used = 0;
+        unsigned long long parsed = std::stoull(value, &used, 16);
+        if (used != value.size())
+            return false;
+        out = static_cast<uint64>(parsed);
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+bool ParseItemIdList(std::string const& value, std::unordered_set<uint32>& out, std::string& error)
+{
+    std::stringstream stream(value);
+    std::string token;
+    while (std::getline(stream, token, ','))
+    {
+        token = Trim(token);
+        if (token.empty())
+            continue;
+
+        size_t const dash = token.find('-');
+        if (dash == std::string::npos)
+        {
+            uint32 itemId = 0;
+            if (!ParseUint32(token, itemId))
+            {
+                error = "invalid item id token '" + token + "'";
+                return false;
+            }
+            out.insert(itemId);
+            continue;
+        }
+
+        if (token.find('-', dash + 1) != std::string::npos)
+        {
+            error = "invalid item id range '" + token + "'";
+            return false;
+        }
+
+        uint32 first = 0;
+        uint32 last = 0;
+        if (!ParseUint32(Trim(token.substr(0, dash)), first) ||
+            !ParseUint32(Trim(token.substr(dash + 1)), last) ||
+            last < first)
+        {
+            error = "invalid item id range '" + token + "'";
+            return false;
+        }
+
+        for (uint64 itemId = first; itemId <= uint64(last); ++itemId)
+            out.insert(static_cast<uint32>(itemId));
+    }
+    return true;
+}
+
+uint64 FingerprintItemIds(std::vector<uint32> ids)
+{
+    std::sort(ids.begin(), ids.end());
+    ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+
+    uint64 hash = 14695981039346656037ULL;
+    constexpr uint64 prime = 1099511628211ULL;
+    for (uint32 itemId : ids)
+    {
+        for (uint8 shift = 0; shift < 32; shift += 8)
+        {
+            hash ^= uint8((itemId >> shift) & 0xFFu);
+            hash *= prime;
+        }
+    }
+    return hash;
+}
+
+struct ItemProvenanceCache
+{
+    bool enabled = false;
+    bool ready = false;
+    std::string sourceSet;
+    std::string error;
+    uint32 worldItemCount = 0;
+    uint32 unknownCount = 0;
+    uint64 worldFingerprint = 0;
+    std::unordered_set<uint32> disabledVanilla;
+    std::unordered_set<uint32> disabledTbc;
+    std::unordered_set<uint32> disabledWotlk;
+};
+
+ItemProvenanceCache BuildItemProvenanceCache()
+{
+    ItemProvenanceCache cache;
+
+    std::vector<uint32> liveItemIds;
+    liveItemIds.reserve(sObjectMgr->GetItemTemplateStore()->size());
+    for (auto const& [itemId, item] : *sObjectMgr->GetItemTemplateStore())
+    {
+        (void)item;
+        liveItemIds.push_back(itemId);
+    }
+    cache.worldItemCount = uint32(liveItemIds.size());
+    cache.worldFingerprint = FingerprintItemIds(liveItemIds);
+
+    cache.enabled = sConfigMgr->GetOption<bool>("EraPolicy.ItemProvenance.Enable", false);
+    if (!cache.enabled)
+    {
+        cache.error = "central item provenance is disabled";
+        return cache;
+    }
+
+    cache.sourceSet = sConfigMgr->GetOption<std::string>("EraPolicy.ItemProvenance.SourceSet", "");
+    uint32 const configuredCount =
+        sConfigMgr->GetOption<uint32>("EraPolicy.ItemProvenance.WorldItemCount", 0);
+    std::string const configuredFingerprintText =
+        sConfigMgr->GetOption<std::string>("EraPolicy.ItemProvenance.WorldItemFingerprint", "");
+    cache.unknownCount =
+        sConfigMgr->GetOption<uint32>("EraPolicy.ItemProvenance.UnknownCount", 0);
+    uint32 const configuredVanillaBlocked =
+        sConfigMgr->GetOption<uint32>("EraPolicy.ItemProvenance.DisabledVanillaCount", 0);
+    uint32 const configuredTbcBlocked =
+        sConfigMgr->GetOption<uint32>("EraPolicy.ItemProvenance.DisabledTbcCount", 0);
+    uint32 const configuredWotlkBlocked =
+        sConfigMgr->GetOption<uint32>("EraPolicy.ItemProvenance.DisabledWotlkCount", 0);
+
+    uint64 configuredFingerprint = 0;
+    if (cache.sourceSet.empty() || configuredCount == 0 || configuredFingerprintText.empty() ||
+        !ParseHex64(configuredFingerprintText, configuredFingerprint))
+    {
+        cache.error = "central item provenance metadata is incomplete";
+        return cache;
+    }
+
+    if (!ParseItemIdList(
+            sConfigMgr->GetOption<std::string>("EraPolicy.ItemProvenance.DisabledVanillaItemIDs", ""),
+            cache.disabledVanilla,
+            cache.error) ||
+        !ParseItemIdList(
+            sConfigMgr->GetOption<std::string>("EraPolicy.ItemProvenance.DisabledTbcItemIDs", ""),
+            cache.disabledTbc,
+            cache.error) ||
+        !ParseItemIdList(
+            sConfigMgr->GetOption<std::string>("EraPolicy.ItemProvenance.DisabledWotlkItemIDs", ""),
+            cache.disabledWotlk,
+            cache.error))
+    {
+        return cache;
+    }
+
+    if (configuredCount != cache.worldItemCount || configuredFingerprint != cache.worldFingerprint)
+    {
+        std::ostringstream detail;
+        detail << "live item_template drift (configured count/fingerprint=" << configuredCount << "/"
+               << configuredFingerprintText << ", live=" << cache.worldItemCount << "/";
+        detail << std::hex << cache.worldFingerprint << ")";
+        cache.error = detail.str();
+        return cache;
+    }
+
+    if (configuredVanillaBlocked != cache.disabledVanilla.size() ||
+        configuredTbcBlocked != cache.disabledTbc.size() ||
+        configuredWotlkBlocked != cache.disabledWotlk.size() ||
+        cache.unknownCount != cache.disabledWotlk.size())
+    {
+        cache.error = "central item provenance blocklist counts do not match generated metadata";
+        return cache;
+    }
+
+    for (uint32 itemId : cache.disabledTbc)
+    {
+        if (!cache.disabledVanilla.count(itemId))
+        {
+            cache.error = "TBC blocklist is not a subset of the Vanilla blocklist";
+            return cache;
+        }
+    }
+    for (uint32 itemId : cache.disabledWotlk)
+    {
+        if (!cache.disabledTbc.count(itemId))
+        {
+            cache.error = "WotLK/UNKNOWN blocklist is not a subset of the TBC blocklist";
+            return cache;
+        }
+    }
+
+    for (uint32 itemId : cache.disabledVanilla)
+    {
+        if (!sObjectMgr->GetItemTemplate(itemId))
+        {
+            cache.error = "central item provenance references an item missing from live item_template";
+            return cache;
+        }
+    }
+
+    cache.ready = true;
+    LOG_INFO(
+        "server.loading",
+        "[EraPolicy] Item provenance ready: source={} liveItems={} vanillaBlocked={} tbcBlocked={} "
+        "wotlkUnknownBlocked={} unknown={}.",
+        cache.sourceSet,
+        cache.worldItemCount,
+        uint32(cache.disabledVanilla.size()),
+        uint32(cache.disabledTbc.size()),
+        uint32(cache.disabledWotlk.size()),
+        cache.unknownCount);
+    return cache;
+}
+
+ItemProvenanceCache const& GetItemProvenanceCache()
+{
+    // Generated config is applied before worldserver startup by setup/update. A restart is the
+    // reload boundary, which keeps every item consumer on the same immutable provenance snapshot.
+    static ItemProvenanceCache const cache = BuildItemProvenanceCache();
+    return cache;
 }
 }
 
@@ -263,6 +515,79 @@ bool IsMapAllowed(uint32 mapId)
 {
     Era era;
     return TryMapEra(mapId, era) && IsEraReleased(era);
+}
+
+bool ItemProvenanceReady()
+{
+    return GetItemProvenanceCache().ready;
+}
+
+char const* ItemProvenanceSourceSet()
+{
+    return GetItemProvenanceCache().sourceSet.c_str();
+}
+
+char const* ItemProvenanceError()
+{
+    return GetItemProvenanceCache().error.c_str();
+}
+
+uint32 ItemProvenanceWorldItemCount()
+{
+    return GetItemProvenanceCache().worldItemCount;
+}
+
+uint32 ItemProvenanceUnknownCount()
+{
+    return GetItemProvenanceCache().unknownCount;
+}
+
+uint32 ItemProvenanceBlockedCount(Era era)
+{
+    ItemProvenanceCache const& cache = GetItemProvenanceCache();
+    switch (era)
+    {
+        case Era::Vanilla: return uint32(cache.disabledVanilla.size());
+        case Era::Tbc: return uint32(cache.disabledTbc.size());
+        case Era::Wotlk: return uint32(cache.disabledWotlk.size());
+    }
+    return 0;
+}
+
+uint64 ItemProvenanceWorldFingerprint()
+{
+    return GetItemProvenanceCache().worldFingerprint;
+}
+
+bool TryItemEra(uint32 itemId, Era& era)
+{
+    ItemProvenanceCache const& cache = GetItemProvenanceCache();
+    if (!cache.ready || !sObjectMgr->GetItemTemplate(itemId))
+        return false;
+
+    // The generated lists are nested:
+    // Vanilla blocks TBC+WotLK+UNKNOWN, TBC blocks WotLK+UNKNOWN, WotLK blocks UNKNOWN.
+    if (cache.disabledWotlk.count(itemId))
+        return false;
+    if (cache.disabledTbc.count(itemId))
+    {
+        era = Era::Wotlk;
+        return true;
+    }
+    if (cache.disabledVanilla.count(itemId))
+    {
+        era = Era::Tbc;
+        return true;
+    }
+
+    era = Era::Vanilla;
+    return true;
+}
+
+bool IsItemAllowed(uint32 itemId)
+{
+    Era itemEra;
+    return TryItemEra(itemId, itemEra) && IsEraReleased(itemEra);
 }
 
 char const* Name(Era era)

@@ -9,11 +9,7 @@ AC_DIR="$ROOT/azerothcore-wotlk"
 ENV_ROOT="$ROOT/.env"
 ENV_LIVE="$AC_DIR/.env"
 AH_CONF="$AC_DIR/env/dist/etc/modules/mod_ahbot.conf"
-PROVENANCE_TOOL="$ROOT/tools/generate-era-item-provenance.py"
-PROVENANCE_SOURCES="$ROOT/data/era-item-provenance/sources.json"
-PROVENANCE_OVERRIDES="$ROOT/data/era-item-provenance/overrides.csv"
-PROVENANCE_CACHE="$ROOT/.cache/era-item-provenance"
-PROVENANCE_OUT="$PROVENANCE_CACHE/generated"
+PROVENANCE_OUT="$ROOT/.cache/era-item-provenance/generated"
 
 name="${1:-}"
 if [[ ! "$name" =~ ^[A-Za-z][A-Za-z]{1,11}$ ]]; then
@@ -100,34 +96,26 @@ persist_env() {
   done
 }
 
-[[ -f "$PROVENANCE_TOOL" ]] || { echo "Missing $PROVENANCE_TOOL." >&2; exit 1; }
-[[ -f "$PROVENANCE_SOURCES" ]] || { echo "Missing $PROVENANCE_SOURCES." >&2; exit 1; }
-[[ -f "$PROVENANCE_OVERRIDES" ]] || { echo "Missing $PROVENANCE_OVERRIDES." >&2; exit 1; }
-command -v python3 >/dev/null 2>&1 || { echo "python3 is required for ERA-07 item provenance." >&2; exit 1; }
-
-mkdir -p "$PROVENANCE_CACHE" "$PROVENANCE_OUT"
-world_item_ids="$(mktemp)"
-cleanup_world_item_ids() { rm -f "$world_item_ids"; }
-trap cleanup_world_item_ids EXIT
-mysql_q "SELECT entry FROM acore_world.item_template ORDER BY entry;" > "$world_item_ids"
-[[ -s "$world_item_ids" ]] || { echo "Could not read acore_world.item_template for provenance generation." >&2; exit 1; }
-python3 "$PROVENANCE_TOOL" \
-  --sources "$PROVENANCE_SOURCES" \
-  --overrides "$PROVENANCE_OVERRIDES" \
-  --world-item-ids "$world_item_ids" \
-  --cache-dir "$PROVENANCE_CACHE/sources" \
-  --out-dir "$PROVENANCE_OUT"
-cleanup_world_item_ids
-trap - EXIT
+[[ -x "$ROOT/configure-era-item-provenance.sh" ]] || {
+  echo "Missing executable $ROOT/configure-era-item-provenance.sh." >&2
+  exit 1
+}
+"$ROOT/configure-era-item-provenance.sh"
 
 provenance_disabled="$(tr -d '\r\n' < "$PROVENANCE_OUT/ah-disabled-${profile}.txt")"
-read -r provenance_source_set provenance_world_count provenance_unknown_count provenance_disabled_count < <(
+read -r provenance_source_set provenance_world_count provenance_world_fingerprint provenance_unknown_count provenance_disabled_count < <(
   python3 - "$PROVENANCE_OUT/metadata.json" "$profile" <<'PY'
 import json
 import sys
 meta = json.load(open(sys.argv[1], encoding="utf-8"))
 profile = sys.argv[2]
-print(meta["source_set"], meta["world_item_count"], meta["classified_counts"]["unknown"], meta["disabled_counts"][profile])
+print(
+    meta["source_set"],
+    meta["world_item_count"],
+    meta["world_item_fingerprint"],
+    meta["classified_counts"]["unknown"],
+    meta["disabled_counts"][profile],
+)
 PY
 )
 
@@ -138,6 +126,7 @@ set_conf "AuctionHouseBot.GUIDs" "$guid" "$AH_CONF"
 set_conf "AuctionHouseBot.EraProvenanceProfile" "$profile" "$AH_CONF"
 set_conf "AuctionHouseBot.EraProvenanceSourceSet" "$provenance_source_set" "$AH_CONF"
 set_conf "AuctionHouseBot.EraProvenanceWorldItemCount" "$provenance_world_count" "$AH_CONF"
+set_conf "AuctionHouseBot.EraProvenanceWorldItemFingerprint" "$provenance_world_fingerprint" "$AH_CONF"
 set_conf "AuctionHouseBot.EraProvenanceUnknownCount" "$provenance_unknown_count" "$AH_CONF"
 set_conf "AuctionHouseBot.EraProvenanceDisabledCount" "$provenance_disabled_count" "$AH_CONF"
 set_conf "AuctionHouseBot.EraProvenanceDisabledItemIDs" "$provenance_disabled" "$AH_CONF"

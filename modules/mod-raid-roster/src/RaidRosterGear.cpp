@@ -228,6 +228,9 @@ bool MeetsLevelRequirement(GearIndex const& idx, uint32 entry, uint8 level)
 // destination, which naturally fills finger2/trinket2/offhand on the second call.
 bool EquipEntry(Player* bot, uint32 entry)
 {
+    if (!EraPolicy::IsItemAllowed(entry))
+        return false;
+
     uint16 dest = 0;
     if (bot->CanEquipNewItem(NULL_SLOT, dest, entry, false) != EQUIP_ERR_OK)
         return false;
@@ -263,6 +266,8 @@ std::vector<std::pair<float, uint32>> RankedCandidates(
             : v.end();
         for (auto itr = lo; itr != hi; ++itr)
         {
+            if (!EraPolicy::IsItemAllowed(itr->second))
+                continue;
             ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itr->second);
             if (!proto || !(proto->AllowableClass & classMask))
                 continue;
@@ -326,6 +331,8 @@ bool PickSet(Player* bot, StatsWeightCalculator& calc, int32 target, ChosenSet& 
         cand.setId = setId;
         for (uint32 entry : info.pieces)
         {
+            if (!EraPolicy::IsItemAllowed(entry))
+                continue;
             ItemTemplate const* proto = sObjectMgr->GetItemTemplate(entry);
             if (!proto || !(proto->AllowableClass & classMask))
                 continue;
@@ -409,6 +416,19 @@ bool EquipForSpec(Player* bot, Player* master, int specTab, uint16 minimumItemLe
 {
     if (!bot || !master)
         return false;
+
+    // Gate BEFORE the strip. If chronology metadata is missing/stale, fail closed instead of
+    // synthesizing gear from the WotLK item pool and contaminating an earlier-era realm.
+    if (!EraPolicy::ItemProvenanceReady())
+    {
+        LOG_ERROR(
+            "playerbots",
+            "[RaidRoster] Refusing automated gear for {}: ERA-07 provenance unavailable ({}).",
+            bot->GetName(),
+            EraPolicy::ItemProvenanceError());
+        return false;
+    }
+
     // Gate BEFORE the strip — never leave a bot naked because it couldn't be geared.
     if (!bot->IsInWorld() || bot->GetLevel() < 5)
     {

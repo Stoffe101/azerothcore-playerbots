@@ -229,7 +229,7 @@ Status: **PARTIAL / IN PROGRESS**.
 
 ## ERA-07 item expansion provenance
 
-Status: **IN PROGRESS — slice 1 DONE + exact-head local CI verified at `44adb851e37cd916c1e2ebbb5dd7ece1f2cef0fc`**.
+Status: **IN PROGRESS — slice 1 DONE/green; slice 2 IMPLEMENTED and exact-head local CI required**.
 
 - A deterministic generator compares exact pinned CMaNGOS Classic/TBC/WotLK `item_template` identities and classifies the live AzerothCore world item IDs by earliest database era.
 - Source commits, compressed dump byte sizes and Git blob SHAs are pinned in `data/era-item-provenance/sources.json`; downloaded dumps live only in the ignored cache.
@@ -240,3 +240,14 @@ Status: **IN PROGRESS — slice 1 DONE + exact-head local CI verified at `44adb8
 - `.era audit` reports provenance profile/source/live-item coverage and WARNs when UNKNOWN IDs remain blocked.
 - This slice protects **new automated AH listings only**. Existing auctions, bot gear/prep, starter/catch-up, vendors/rewards and other item-producing systems remain later ERA-07/ERA-02 work.
 - Exact-SHA CI evidence for slice 1: client checks **SUCCESS**, backend staging **SUCCESS**, Integration **SUCCESS** on `stoffes-pc`, Group Composer V4 compile **SUCCESS** on `stoffes-pc`.
+
+Slice 2 implementation:
+- new `configure-era-item-provenance.sh` owns generation independently of AHBot and writes **all three** Vanilla/TBC/WotLK blocklists into the persistent RaidRoster config;
+- setup/update regenerate the central snapshot from the live `item_template` set and restart/recreate worldserver so every consumer sees the same chronology;
+- the generator now fingerprints the exact live world item-ID set; EraPolicy verifies count + fingerprint before trusting any blocklist;
+- EraPolicy exposes central item provenance readiness, earliest-era lookup and `IsItemAllowed(itemId)`; UNKNOWN or stale/unavailable provenance fails closed;
+- automated `RaidRosterGear::EquipForSpec`, including Group Composer full preparation, refuses to strip/regear when provenance is unavailable and dynamically excludes future/UNKNOWN candidates;
+- `.era audit` now scans **existing auction stock** and stored RNDbot equipped items against the same central policy;
+- `EquipCatchup`, starter/catch-up packages, vendors/rewards and other item-producing paths are intentionally still outside this slice and remain TODO.
+
+Do not mark slice 2 green until all four workflows succeed for its exact `[local-ci]` SHA.

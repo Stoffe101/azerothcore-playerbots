@@ -54,8 +54,9 @@ ERA-01 is now **IN PROGRESS** while P0 runtime evidence is blocked.
 10. **IN PROGRESS:** FEATURE-19 snapshot/rollback foundation records DB/config/Git/migrations with dev-vs-friends and code-SHA restore guards.
 11. Runtime-test snapshot/restore on the dev realm before wiring it into expansion transition.
 12. **DONE foundation / PARTIAL feature:** ERA-06 AH profiles provide Vanilla/TBC/WotLK category + level containment.
-13. **DONE slice 1 / ERA-07 still IN PROGRESS:** reproducible earliest-era provenance from pinned Classic/TBC/WotLK DB snapshots now gates new AHBot listings and is exact-head local-CI green at `44adb851`. **NEXT:** extend the same policy to existing-auction audits and server-side bot gear/prep before moving into starter/catch-up/vendor/reward consumers.
-14. Then follow the dependency order in `MASTER_ROADMAP.md`.
+13. **DONE slice 1 / ERA-07 still IN PROGRESS:** reproducible earliest-era provenance gates new AHBot listings and is green at `44adb851`.
+14. **CURRENT slice 2:** promote provenance into central EraPolicy, regenerate it automatically on setup/update, audit existing auctions + stored RNDbot equipment, and gate deterministic RaidRoster/Group Composer gear prep. Exact-head local CI required.
+15. **NEXT after slice 2 is green/runtime-generated:** extend item provenance into `EquipCatchup`, starter/catch-up packages, vendors/rewards and the remaining automated item paths; then continue the dependency order in `MASTER_ROADMAP.md`.
 
 Why: one authoritative era source prevents forty independent gates from drifting, and the audit tells us where WotLK/TBC leakage actually exists before we patch systems blindly.
 
