@@ -2,6 +2,28 @@
 
 _Last rewritten: 2026-09-21_
 
+
+## Current integrated ERA-07 vendor/reward candidate
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+Codex implemented the bounded automated vendor/reward-helper slice at source SHA `9499939ed190af2d68989d69a99f7a58468be042`; it was integrated onto the newer WoWSims line by merge `304aee8d759e52aa231705a91cc92417e43c206c`.
+
+Covered boundaries:
+- Titan Rune Sidereal/Scourgestone scripted vendor visibility and purchases;
+- Scourgestone -> Sidereal exchange;
+- durable pending Titan Rune encounter rewards;
+- automatic Gamma signet grants;
+- AI Guild conserved-stock mail, stock conservation, automated real-AH buying and surplus listing;
+- player-facing AI Guild deposit/withdraw/mail/buy helpers;
+- central provenance overrides for custom Titan Rune currencies/signets;
+- new `.era audit` sections for vendor catalogs, pending rewards, AI Guild stock and queued automated purchases.
+
+All covered paths fail closed before spending currency or mutating protected item/stock/treasury/request/delivery state when provenance is unavailable or the item is future/UNKNOWN. Codex's focused Python/codestyle/self-tests passed before integration; no full C++ build was performed on that source commit.
+
+Still outside this slice: `TitanRuneLoot.cpp` protocol loot injection, AI Guild recipe discovery / `TryCraftQueuedFromBot`, ordinary loot/crafting/recipes, ArenaRoster PvP gear generation, core-wide quest/NPC/vendor cleanup, and broader Titan Rune spawn/map lifecycle containment. ERA-07 and ERA-13 therefore remain PARTIAL/IN PROGRESS.
+
+
 ## Product status
 
 Group Composer V4 is a **feature-complete candidate under real in-game validation**. Core product work is already present; current development is driven by observed runtime failures, usability problems and validation gaps rather than speculative feature expansion.

@@ -69,7 +69,9 @@ ERA-01 is now **IN PROGRESS** while P0 runtime evidence is blocked.
 15j. **NEXT:** server-authoritative bag candidate enumeration, canonical preset policy for ambiguous routes, then asynchronous compare transport.
 16. **DONE + green:** ERA-07 slice 3 PlayerbotFactory + AdventureStart/catch-up item policy is exact-head green at `e990dff5` on all four GitHub-hosted workflows.
 17. **DONE + green:** ERA-07 slice 4 Adventure Cache reward provenance is exact-head green at `e1a2e6fa`; pending caches survive provenance failure and created reward items are policy-gated.
-18. **NEXT ERA-07:** automated vendors/reward helpers, then loot/crafting/recipes and remaining non-PlayerbotFactory item sources. Runtime-generate the central snapshot on the dev realm and inspect `.era audit` when the server PC is available again.
+18. **IMPLEMENTED / exact-head local CI required:** ERA-07 automated vendor/reward-helper slice from Codex source `9499939`, integrated at `304aee8d`. Titan Rune vendors/exchange/pending rewards/Gamma signets and AI Guild stock/AH/item-service helpers now fail closed on unavailable/future/UNKNOWN provenance; audit coverage and four reviewed Titan Rune overrides are included.
+19. **NEXT ERA-07:** protocol loot injection, AI Guild recipe discovery / profession crafting, ordinary loot/crafting/recipes and remaining non-PlayerbotFactory item sources. Runtime-generate the central snapshot on the dev realm and inspect the expanded `.era audit` sections.
+20. **NEXT ERA-13 containment:** broader quest/NPC/vendor cleanup plus Titan Rune NPC spawning/map lifecycle after item-source provenance work is proven.
 
 Why: one authoritative era source prevents forty independent gates from drifting, and the audit tells us where WotLK/TBC leakage actually exists before we patch systems blindly.
 
