@@ -941,6 +941,11 @@ Decision made here:
 ` sequence and corrupted the YAML block;
 - this is a workflow-file generation failure, not a Lua/TypeScript/runtime failure;
 - repair reconstructs the workflow from exact-green parent `998d297a` and reapplies only the intended layout assertions using literal fixed-string greps.
+
+Second visual SHA `643c1e1b5b0db894f0a157ae537eed1e312b125e`:
+- client workflow definition was repaired and GitHub created the validation job normally;
+- backend focused checks then failed on the existing `test_server_contract.py` assertion that still required the old Activity Browser `86px` row stride;
+- repair updates the contract to the intentional `96px` stride and adds assertions for the new 88px Activity cards, 28px status region, 228px Recommendation cards and 236px Recommendation stride.
 - GearAdvisor v0.3.1 expands bounded era/guidance/result areas and reduces header competition;
 - no-icon button labels are horizontally bounded inside their controls;
 - Activity Browser cards reserve explicit title/detail/two-line status regions;

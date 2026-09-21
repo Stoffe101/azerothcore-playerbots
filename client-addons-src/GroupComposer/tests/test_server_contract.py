@@ -980,7 +980,9 @@ assert '"FAVORITES"' in ACTIVITY_BROWSER and '"RECENT"' in ACTIVITY_BROWSER
 assert 'toggleFavorite' in MODEL and 'recentActivityIds' in MODEL
 assert 'function P.ToggleFavorite' in profiles_text and 'function P.MarkRecent' in profiles_text
 assert 'P.MarkRecent(GC:GetConfig().mode, GC:GetConfig().activity)' in CORE
-assert 'const column = i % 2;' in ACTIVITY_BROWSER and 'Math.ceil(items.length / 2) * 86' in ACTIVITY_BROWSER
+assert 'const column = i % 2;' in ACTIVITY_BROWSER and 'Math.ceil(items.length / 2) * 96' in ACTIVITY_BROWSER
+assert 'height: 88' in ACTIVITY_BROWSER and 'tag.SetHeight(28)' in ACTIVITY_BROWSER
+assert 'panel.frame.SetSize(1228, 228)' in RECOMMENDATIONS_PAGE and 'rows.length * 236' in RECOMMENDATIONS_PAGE
 
 
 # Post-assembly lifecycle and member rationale contracts.
