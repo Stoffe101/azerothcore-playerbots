@@ -229,7 +229,7 @@ Status: **PARTIAL / IN PROGRESS**.
 
 ## ERA-07 item expansion provenance
 
-Status: **IN PROGRESS — slice 1 DONE/green; slice 2 IMPLEMENTED and exact-head local CI required**.
+Status: **IN PROGRESS — slices 1 and 2 DONE; slice 2 exact-head local-CI green at `e96d009552b01a84d7e70f4a8956b33b34900843`**.
 
 - A deterministic generator compares exact pinned CMaNGOS Classic/TBC/WotLK `item_template` identities and classifies the live AzerothCore world item IDs by earliest database era.
 - Source commits, compressed dump byte sizes and Git blob SHAs are pinned in `data/era-item-provenance/sources.json`; downloaded dumps live only in the ignored cache.
@@ -250,4 +250,4 @@ Slice 2 implementation:
 - `.era audit` now scans **existing auction stock** and stored RNDbot equipped items against the same central policy;
 - `EquipCatchup`, starter/catch-up packages, vendors/rewards and other item-producing paths are intentionally still outside this slice and remain TODO.
 
-Do not mark slice 2 green until all four workflows succeed for its exact `[local-ci]` SHA.
+Slice 2 exact-SHA CI: client checks **SUCCESS**, backend staging **SUCCESS**, Integration **SUCCESS** on `stoffes-pc`, Group Composer V4 compile **SUCCESS** on `stoffes-pc`.

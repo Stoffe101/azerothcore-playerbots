@@ -86,7 +86,7 @@ Downgrading a live friends realm is unsupported. Dev/test tooling may simulate e
 - Composer understands activity eras, but its **presentation, templates, subgroup optimization and class availability** still need explicit per-era behavior.
 - ERA-06 now has explicit Vanilla/TBC/WotLK AH profiles with category and 60/70/80 use/equip containment.
 - ERA-07 slice 1 adds deterministic item chronology from exact pinned CMaNGOS Classic/TBC/WotLK database identities and feeds future/unknown IDs into a dedicated AHBot disabled list.
-- ERA-07 slice 2 promotes that chronology into central EraPolicy: all three era blocklists coexist, setup/update regenerate a live-world fingerprinted snapshot, deterministic RaidRoster/Group Composer gear prep consumes it, and the integrity scanner checks existing auctions + stored RNDbot equipment.
+- ERA-07 slice 2 is exact-head local-CI green at `e96d009`: all three era blocklists coexist in central EraPolicy, setup/update regenerate a live-world fingerprinted snapshot, deterministic RaidRoster/Group Composer gear prep consumes it, and the integrity scanner checks existing auctions + stored RNDbot equipment.
 - The historical database comparison is a chronology floor, not phase/obtainability proof. UNKNOWN items fail closed for protected automation and explicit overrides record reviewed anomalies.
 - Catch-up/starter gear, vendors/rewards, loot/crafting and broader Playerbots item creation still need the central policy.
 - Full world-system fidelity for professions, vendors, future maps/transport, race/class availability and expansion-only systems is not yet centrally enforced.

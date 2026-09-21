@@ -4,7 +4,7 @@ Newest entries belong at the top of the dated section.
 
 ## 2026-09-21 — ERA-07 slice 2: central item policy + stock/gear enforcement
 
-Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
+Status: **DONE FOR SLICE 2 + exact-head local CI verified at `e96d009552b01a84d7e70f4a8956b33b34900843`; ERA-07 overall remains IN PROGRESS**.
 
 Implemented:
 - provenance generation moved behind `configure-era-item-provenance.sh`, independent of whether AHBot is enabled;
@@ -23,7 +23,7 @@ Boundary:
 - this slice protects the deterministic RaidRoster/Group Composer gear path, not `EquipCatchup`, starter/catch-up packages, vendors/rewards, loot, crafting or every Playerbots randomization path;
 - provenance remains expansion-level chronology, not patch/phase-specific obtainability.
 
-CI: commit uses `[local-ci]`; all four exact-head workflows must complete successfully before slice 2 is called green.
+CI: exact SHA `e96d009552b01a84d7e70f4a8956b33b34900843` passed client checks, backend staging, Integration and Group Composer V4 compile. Both heavy workflows completed successfully on `stoffes-pc`.
 
 ## 2026-09-21 — ERA-07 slice 1: reproducible item provenance + AH enforcement
 

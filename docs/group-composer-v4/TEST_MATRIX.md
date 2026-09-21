@@ -93,9 +93,9 @@ Status vocabulary:
 - TODO: WotLK profile uses cap 80, Gems ON, Glyphs ON and Wrath boost IDs.
 - TODO: applying Vanilla/TBC after WotLK removes script-owned Wrath boost IDs.
 - TODO: `.era audit` FAILs when enabled AH profile disagrees with live era and PASSes when aligned.
-- IMPLEMENTED / runtime TODO: `.era audit` scans existing auction stock and FAILs on future-era or UNKNOWN listings.
-- IMPLEMENTED / runtime TODO: `.era audit` scans stored RNDbot equipment slots and FAILs on future-era or UNKNOWN gear.
-- IMPLEMENTED / runtime TODO: deterministic RaidRoster/Group Composer gear preparation never selects a future-era/UNKNOWN item and refuses to strip a bot when central provenance is unavailable.
+- PASS (CI `e96d009`) / runtime TODO: `.era audit` scans existing auction stock and FAILs on future-era or UNKNOWN listings.
+- PASS (CI `e96d009`) / runtime TODO: `.era audit` scans stored RNDbot equipment slots and FAILs on future-era or UNKNOWN gear.
+- PASS (CI `e96d009`) / runtime TODO: deterministic RaidRoster/Group Composer gear preparation never selects a future-era/UNKNOWN item and refuses to strip a bot when central provenance is unavailable.
 - TODO: central provenance generation reports the live item count/fingerprint and survives a normal `./update.sh` restart with `AUCTION_PROVENANCE` ready.
 
 ## Snapshot / rollback safety

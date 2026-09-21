@@ -104,7 +104,7 @@ They are the dependency spine for most other approved era work. First define one
 
 - [ ] **ERA-07 — Item expansion-provenance filtering — IN PROGRESS**
   - Slice 1 is exact-head local-CI green at `44adb851`: exact pinned Classic/TBC/WotLK DB identity determines earliest expansion without level/item-ID chronology guesses.
-  - Slice 2 promotes the generated chronology into central EraPolicy, stores all three blocklists together, fingerprints the live world item set, regenerates on setup/update, audits existing auctions + stored RNDbot equipment and gates deterministic RaidRoster/Group Composer gear prep. Exact-head local CI is required for this slice.
+  - Slice 2 is exact-head local-CI green at `e96d009`: generated chronology is central EraPolicy state, all three blocklists coexist, the live world item set is fingerprinted, setup/update regenerate it, existing auctions + stored RNDbot equipment are audited, and deterministic RaidRoster/Group Composer gear prep is gated.
   - UNKNOWN IDs fail closed for protected automation; explicit overrides are the review ledger.
   - Still TODO after slice 2: runtime provenance generation evidence, `EquipCatchup`, starter/catch-up packages, vendors/rewards, loot/crafting and remaining automated item paths.
 
