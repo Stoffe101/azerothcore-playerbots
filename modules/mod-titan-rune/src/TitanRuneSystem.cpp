@@ -1,4 +1,5 @@
 #include "TitanRuneSystem.h"
+#include "EraPolicy.h"
 #include "InstanceSaveMgr.h"
 #include "InstanceScript.h"
 
@@ -277,33 +278,59 @@ void ShowVendorPage(Player* player, Creature* creature, uint8 vendor, uint32 pag
         return;
 
     ClearGossipMenuFor(player);
+    if (!EraPolicy::ItemProvenanceReady())
+    {
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT,
+            "Rewards are temporarily unavailable because item chronology is not ready.",
+            GOSSIP_SENDER_MAIN, 90000);
+        SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+        return;
+    }
+
     std::vector<VendorItem> const& items = g_vendorItems[vendor];
     uint32 currency = CurrencyForVendor(vendor);
+    if (!EraPolicy::IsItemAllowed(currency))
+    {
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT,
+            "No rewards from this vendor are available in the current realm era.",
+            GOSSIP_SENDER_MAIN, 90000);
+        SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+        return;
+    }
+
+    std::vector<uint32> visibleIndices;
+    visibleIndices.reserve(items.size());
+    for (uint32 i = 0; i < items.size(); ++i)
+        if (EraPolicy::IsItemAllowed(items[i].itemEntry))
+            visibleIndices.push_back(i);
+
     uint32 balance = player->GetItemCount(currency, false);
 
     std::string header = std::string("You have ") + std::to_string(balance) + " " + CurrencyName(vendor) + ".";
     AddGossipItemFor(player, GOSSIP_ICON_CHAT, header, GOSSIP_SENDER_MAIN, 90000);
 
     uint32 begin = page * PAGE_SIZE;
-    if (begin >= items.size() && page > 0)
+    if (begin >= visibleIndices.size() && page > 0)
     {
         page = 0;
         begin = 0;
     }
-    uint32 end = std::min<uint32>(begin + PAGE_SIZE, items.size());
+    uint32 end = std::min<uint32>(begin + PAGE_SIZE, visibleIndices.size());
     for (uint32 i = begin; i < end; ++i)
     {
-        ItemTemplate const* proto = sObjectMgr->GetItemTemplate(items[i].itemEntry);
+        uint32 const itemIndex = visibleIndices[i];
+        ItemTemplate const* proto = sObjectMgr->GetItemTemplate(items[itemIndex].itemEntry);
         if (!proto)
             continue;
-        std::string label = std::to_string(items[i].cost) + " " + CurrencyName(vendor) + " - " + proto->Name1;
-        AddGossipItemFor(player, GOSSIP_ICON_VENDOR, label, GOSSIP_SENDER_MAIN, 10000 + uint32(vendor) * 1000 + i);
+        std::string label = std::to_string(items[itemIndex].cost) + " " + CurrencyName(vendor) + " - " + proto->Name1;
+        AddGossipItemFor(player, GOSSIP_ICON_VENDOR, label, GOSSIP_SENDER_MAIN,
+            10000 + uint32(vendor) * 1000 + itemIndex);
     }
 
     if (page > 0)
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, "< Previous page", GOSSIP_SENDER_MAIN,
             20000 + uint32(vendor) * 1000 + (page - 1));
-    if (end < items.size())
+    if (end < visibleIndices.size())
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Next page >", GOSSIP_SENDER_MAIN,
             20000 + uint32(vendor) * 1000 + (page + 1));
 
@@ -321,6 +348,19 @@ bool BuyVendorItem(Player* player, uint8 vendor, uint32 index)
 
     VendorItem const& offer = g_vendorItems[vendor][index];
     uint32 currency = CurrencyForVendor(vendor);
+    if (!EraPolicy::ItemProvenanceReady())
+    {
+        Notify(player, std::string("Purchase refused: item chronology is unavailable. No ") +
+            CurrencyName(vendor) + " was spent.");
+        return false;
+    }
+    if (!EraPolicy::IsItemAllowed(currency) || !EraPolicy::IsItemAllowed(offer.itemEntry))
+    {
+        Notify(player, std::string("Purchase refused: that reward is unavailable in the current realm era. No ") +
+            CurrencyName(vendor) + " was spent.");
+        return false;
+    }
+
     if (player->GetItemCount(currency, false) < offer.cost)
     {
         Notify(player, std::string("You need ") + std::to_string(offer.cost) + " " + CurrencyName(vendor) + ".");
@@ -592,7 +632,14 @@ public:
             return (ShowVendorPage(player, creature, VENDOR_SCOURGESTONE, action - 22000), true);
         else if (action == 30001)
         {
-            if (player->GetItemCount(TitanRune::SCOURGESTONE_ITEM, false) >= 1 && player->AddItem(TitanRune::SIDEREAL_ESSENCE_ITEM, 1))
+            if (!EraPolicy::ItemProvenanceReady())
+                Notify(player, "Exchange refused: item chronology is unavailable. No Scourgestone was spent.");
+            else if (!EraPolicy::IsItemAllowed(TitanRune::SCOURGESTONE_ITEM) ||
+                !EraPolicy::IsItemAllowed(TitanRune::SIDEREAL_ESSENCE_ITEM))
+                Notify(player,
+                    "Exchange refused: this currency is unavailable in the current realm era. No Scourgestone was spent.");
+            else if (player->GetItemCount(TitanRune::SCOURGESTONE_ITEM, false) >= 1 &&
+                player->AddItem(TitanRune::SIDEREAL_ESSENCE_ITEM, 1))
             {
                 player->DestroyItemCount(TitanRune::SCOURGESTONE_ITEM, 1, true);
                 Notify(player, "Exchanged 1 Defiler's Scourgestone for 1 Sidereal Essence.");

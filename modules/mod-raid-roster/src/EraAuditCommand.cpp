@@ -318,6 +318,12 @@ bool EraAuditCommand::HandleAudit(ChatHandler* handler)
     {
         report(AuditState::Fail, "AUCTION_STOCK", "not scanned because central item provenance is unavailable");
         report(AuditState::Fail, "BOT_EQUIPMENT", "not scanned because central item provenance is unavailable");
+        report(AuditState::Fail, "AUTOMATED_VENDOR_CATALOG",
+            "not scanned because central item provenance is unavailable");
+        report(AuditState::Fail, "PENDING_ITEM_REWARDS",
+            "not scanned because central item provenance is unavailable");
+        report(AuditState::Fail, "AI_GUILD_ITEM_HELPERS",
+            "not scanned because central item provenance is unavailable");
     }
     else
     {
@@ -420,6 +426,108 @@ bool EraAuditCommand::HandleAudit(ChatHandler* handler)
                     ", unknown=" + std::to_string(unknownEquipped) +
                     (gearExamples.empty() ? "" : ", examples=" + JoinExamples(gearExamples)));
         }
+
+        auto classifyAutomatedItem = [&](char const* source, uint32 itemId, uint64 count,
+                                         uint64& total, uint64& future, uint64& unknown,
+                                         std::vector<std::string>& examples)
+        {
+            total += count;
+            EraPolicy::Era itemEra;
+            if (!EraPolicy::TryItemEra(itemId, itemEra))
+            {
+                unknown += count;
+                if (examples.size() < 5)
+                    examples.push_back(std::string(source) + ":item=" + std::to_string(itemId) +
+                        "(x" + std::to_string(count) + ",UNKNOWN)");
+                return;
+            }
+            if (!EraPolicy::IsEraReleased(itemEra))
+            {
+                future += count;
+                if (examples.size() < 5)
+                    examples.push_back(std::string(source) + ":item=" + std::to_string(itemId) +
+                        "(x" + std::to_string(count) + "," + EraPolicy::Name(itemEra) + ")");
+            }
+        };
+
+        uint64 vendorItems = 0;
+        uint64 futureVendorItems = 0;
+        uint64 unknownVendorItems = 0;
+        std::vector<std::string> vendorExamples;
+        if (QueryResult result = WorldDatabase.Query(
+                "SELECT item_entry, COUNT(*) FROM mod_titan_rune_vendor_items GROUP BY item_entry"))
+        {
+            do
+            {
+                Field* fields = result->Fetch();
+                classifyAutomatedItem("vendor", fields[0].Get<uint32>(), fields[1].Get<uint64>(),
+                    vendorItems, futureVendorItems, unknownVendorItems, vendorExamples);
+            } while (result->NextRow());
+        }
+        report(
+            unknownVendorItems ? AuditState::Warn : AuditState::Pass,
+            "AUTOMATED_VENDOR_CATALOG",
+            "definitions=" + std::to_string(vendorItems) +
+                ", eligible=" + std::to_string(vendorItems - futureVendorItems - unknownVendorItems) +
+                ", futureBlocked=" + std::to_string(futureVendorItems) +
+                ", unknownBlocked=" + std::to_string(unknownVendorItems) +
+                (vendorExamples.empty() ? "" : ", examples=" + JoinExamples(vendorExamples)));
+
+        uint64 pendingRewards = 0;
+        uint64 futurePendingRewards = 0;
+        uint64 unknownPendingRewards = 0;
+        std::vector<std::string> pendingExamples;
+        if (QueryResult result = CharacterDatabase.Query(
+                "SELECT item_entry, SUM(item_count) FROM mod_titan_rune_player_rewards "
+                "WHERE delivered=0 GROUP BY item_entry"))
+        {
+            do
+            {
+                Field* fields = result->Fetch();
+                classifyAutomatedItem("pending", fields[0].Get<uint32>(), fields[1].Get<uint64>(),
+                    pendingRewards, futurePendingRewards, unknownPendingRewards, pendingExamples);
+            } while (result->NextRow());
+        }
+        report(
+            futurePendingRewards || unknownPendingRewards ? AuditState::Warn : AuditState::Pass,
+            "PENDING_ITEM_REWARDS",
+            "pending=" + std::to_string(pendingRewards) +
+                ", futureQuarantined=" + std::to_string(futurePendingRewards) +
+                ", unknownQuarantined=" + std::to_string(unknownPendingRewards) +
+                (pendingExamples.empty() ? "" : ", examples=" + JoinExamples(pendingExamples)));
+
+        uint64 guildHelperItems = 0;
+        uint64 futureGuildHelperItems = 0;
+        uint64 unknownGuildHelperItems = 0;
+        std::vector<std::string> guildHelperExamples;
+        if (QueryResult result = CharacterDatabase.Query(
+                "SELECT item_id, SUM(item_count) FROM mod_ai_guild_stock GROUP BY item_id"))
+        {
+            do
+            {
+                Field* fields = result->Fetch();
+                classifyAutomatedItem("stock", fields[0].Get<uint32>(), fields[1].Get<uint64>(),
+                    guildHelperItems, futureGuildHelperItems, unknownGuildHelperItems, guildHelperExamples);
+            } while (result->NextRow());
+        }
+        if (QueryResult result = CharacterDatabase.Query(
+                "SELECT item_id, SUM(item_count) FROM mod_ai_guild_request "
+                "WHERE request_type='buy' AND status='queued' GROUP BY item_id"))
+        {
+            do
+            {
+                Field* fields = result->Fetch();
+                classifyAutomatedItem("queued-buy", fields[0].Get<uint32>(), fields[1].Get<uint64>(),
+                    guildHelperItems, futureGuildHelperItems, unknownGuildHelperItems, guildHelperExamples);
+            } while (result->NextRow());
+        }
+        report(
+            futureGuildHelperItems || unknownGuildHelperItems ? AuditState::Warn : AuditState::Pass,
+            "AI_GUILD_ITEM_HELPERS",
+            "stockAndQueuedBuyItems=" + std::to_string(guildHelperItems) +
+                ", futureQuarantined=" + std::to_string(futureGuildHelperItems) +
+                ", unknownQuarantined=" + std::to_string(unknownGuildHelperItems) +
+                (guildHelperExamples.empty() ? "" : ", examples=" + JoinExamples(guildHelperExamples)));
     }
 
     AuditState const summary = failures ? AuditState::Fail : (warnings ? AuditState::Warn : AuditState::Pass);

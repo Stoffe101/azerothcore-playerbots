@@ -21,6 +21,14 @@ if(TARGET modules)
   # cpp-httplib is header-only and vendored in src/.
   target_include_directories(modules PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
 
+  # AI guild stock/mail/AH automation consumes the central ERA-07 item chronology.
+  set(_ERA_POLICY_SRC "${CMAKE_CURRENT_LIST_DIR}/../mod-raid-roster/src")
+  if(EXISTS "${_ERA_POLICY_SRC}/EraPolicy.h")
+    target_include_directories(modules PRIVATE ${_ERA_POLICY_SRC})
+  else()
+    message(FATAL_ERROR "[mod-playerbot-chatter] central EraPolicy.h is required")
+  endif()
+
   # Chatter/guild autonomy deliberately calls public Playerbots APIs. Do not rely on incidental
   # include-directory leakage from module load order: expose the exact pinned header families we use.
   set(_PB_SRC "${CMAKE_CURRENT_LIST_DIR}/../mod-playerbots/src")

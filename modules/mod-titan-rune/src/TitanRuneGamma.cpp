@@ -2,6 +2,7 @@
 
 #include "Chat.h"
 #include "Creature.h"
+#include "EraPolicy.h"
 #include "Group.h"
 #include "Item.h"
 #include "Map.h"
@@ -199,6 +200,8 @@ void EnsureGammaSignet(Player* player)
 
     uint32 const itemEntry = SignetEntryFor(player);
     if (player->GetItemCount(itemEntry, false) > 0)
+        return;
+    if (!EraPolicy::ItemProvenanceReady() || !EraPolicy::IsItemAllowed(itemEntry))
         return;
 
     uint32 const key = PlayerKey(player);
