@@ -630,7 +630,7 @@ func TestOther(t *testing.T) { if true { t.Log("x") } }
     else:
         raise AssertionError("unresolved preset variants must fail closed")
 
-    print("WoWSims preset harvester self-test passed.")    print("WoWSims preset harvester self-test passed.")
+    print("WoWSims preset harvester self-test passed.")
 
 
 def main() -> None:

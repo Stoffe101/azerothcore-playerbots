@@ -2,6 +2,10 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — Preset harvester self-test cleanup
+
+Candidate `1d9faccf4fe95cf3ffb503d667cdbb3d24e90d1b`: **FAILED / superseded** in focused backend checks because one duplicated self-test print remained in `harvest_presets.py`. A broader duplicate-fragment scan found no analogous residue in `app.py` or the service tests. The next repair removes that final artifact without changing preset policy.
+
 ## 2026-09-21 — Preset repair duplicate-definition cleanup
 
 Candidate `671c8ef317b16fb784b74cd367084e649e60063f`: **FAILED / superseded** in focused backend checks. A second malformed duplicate function-name fragment remained in `app.py`; proactive inspection also found the analogous `resolve_route` fragment in `harvest_presets.py` before that file reached execution. The next repair removes both editing artifacts without changing preset-selection policy.
