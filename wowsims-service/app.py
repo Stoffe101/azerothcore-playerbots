@@ -74,6 +74,91 @@ def load_manifest(path: str | os.PathLike[str] | None = None) -> dict[str, Any]:
     return data
 
 
+def load_model_support(
+    path: str | os.PathLike[str] | None = None,
+    manifest: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    catalog_path = Path(
+        path
+        or os.environ.get("WOWSIMS_MODEL_SUPPORT")
+        or Path(__file__).with_name("model-support.json")
+    )
+    try:
+        data = json.loads(catalog_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"failed to load WoWSims model catalog {catalog_path}: {exc}") from exc
+
+    eras = data.get("eras")
+    if data.get("schema") != SCHEMA_VERSION or not isinstance(eras, dict):
+        raise RuntimeError("WoWSims model catalog is invalid")
+
+    for era in ERA_TO_BINARY:
+        entry = eras.get(era)
+        if not isinstance(entry, dict):
+            raise RuntimeError(f"WoWSims model catalog is missing {era}")
+        fields = entry.get("proto_spec_fields")
+        routes = entry.get("routes")
+        if not isinstance(fields, list) or not fields or len(fields) != len(set(fields)):
+            raise RuntimeError(f"WoWSims model catalog has invalid proto fields for {era}")
+        if not isinstance(routes, list) or not routes:
+            raise RuntimeError(f"WoWSims model catalog has no routes for {era}")
+        if manifest is not None:
+            engine = manifest["engines"][era]
+            if entry.get("repository") != engine.get("repository") or entry.get("commit") != engine.get("commit"):
+                raise RuntimeError(f"WoWSims model catalog pin mismatch for {era}")
+
+        expanded: set[tuple[int, int, str]] = set()
+        field_set = set(fields)
+        for route in routes:
+            class_id = route.get("classId")
+            trees = route.get("trees")
+            roles = route.get("roles")
+            proto_field = route.get("protoSpecField")
+            if not isinstance(class_id, int) or not isinstance(trees, list) or not isinstance(roles, list):
+                raise RuntimeError(f"WoWSims model catalog has malformed route for {era}")
+            if proto_field not in field_set:
+                raise RuntimeError(f"WoWSims model catalog route uses unknown proto field {proto_field!r} for {era}")
+            for tree in trees:
+                for role in roles:
+                    key = (class_id, tree, role)
+                    if key in expanded:
+                        raise RuntimeError(f"WoWSims model catalog has duplicate route {key!r} for {era}")
+                    expanded.add(key)
+    return data
+
+
+def resolve_model(
+    catalog: dict[str, Any],
+    era: str,
+    class_id: int,
+    tree: int,
+    role: str,
+) -> dict[str, Any] | None:
+    entry = catalog["eras"][era]
+    for route in entry["routes"]:
+        if (
+            route.get("classId") == class_id
+            and tree in route.get("trees", [])
+            and role in route.get("roles", [])
+        ):
+            return route
+    return None
+
+
+def model_catalog_summary(catalog: dict[str, Any]) -> dict[str, Any]:
+    eras: dict[str, Any] = {}
+    for era, entry in catalog["eras"].items():
+        expanded = sum(len(route["trees"]) * len(route["roles"]) for route in entry["routes"])
+        eras[era] = {
+            "repository": entry["repository"],
+            "commit": entry["commit"],
+            "apiProto": entry["api_proto"],
+            "protoSpecCount": len(entry["proto_spec_fields"]),
+            "expandedRouteCount": expanded,
+        }
+    return {"schema": SCHEMA_VERSION, "eras": eras}
+
+
 def normalize_era(value: Any) -> str:
     if not isinstance(value, str):
         raise ServiceError("era must be one of VANILLA, TBC or WOTLK")
@@ -127,7 +212,10 @@ def _require_int(value: Any, name: str, *, minimum: int = 0) -> int:
     return value
 
 
-def validate_character_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
+def validate_character_snapshot(
+    payload: dict[str, Any],
+    model_support: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if payload.get("schema") != SCHEMA_VERSION:
         raise ServiceError(f"snapshot schema must be {SCHEMA_VERSION}")
 
@@ -191,24 +279,23 @@ def validate_character_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
         ):
             raise ServiceError(f"character.gear[{index}].gems must contain exactly three non-negative integers")
 
-    if class_id == 11 and spec == "feral":
-        semantic_model = "feral_tank_druid" if role == "TANK" else "feral_druid"
-    elif class_id == 6:
-        semantic_model = "tank_deathknight" if role == "TANK" else "deathknight"
-    elif class_id == 1 and spec == "protection":
-        semantic_model = "protection_warrior"
-    elif class_id == 2:
-        semantic_model = {
-            "holy": "holy_paladin",
-            "protection": "protection_paladin",
-            "retribution": "retribution_paladin",
-        }[spec]
-    elif class_id == 5:
-        semantic_model = "shadow_priest" if spec == "shadow" else "healing_priest"
-    elif class_id == 7:
-        semantic_model = f"{spec}_shaman"
+    catalog = model_support or load_model_support()
+    route = resolve_model(catalog, era, class_id, tree, role)
+    if route is None:
+        support = {
+            "status": "UNSUPPORTED",
+            "modelKey": f"{era.lower()}:unsupported:{spec}:{role.lower()}",
+            "reason": "The pinned WoWSims engine has no catalogued route for this class/tree/role combination.",
+        }
     else:
-        semantic_model = class_name.lower()
+        proto_field = route["protoSpecField"]
+        support = {
+            "status": route["status"],
+            "modelKey": f"{era.lower()}:{proto_field}:{spec}:{role.lower()}",
+            "protoSpecField": proto_field,
+            "apiProtoBlob": catalog["eras"][era]["api_proto"]["blob"],
+            "reason": "Pinned engine model exists, but Skrra mechanics/preset validation is still required before this route is authoritative.",
+        }
 
     return {
         "schema": SCHEMA_VERSION,
@@ -221,11 +308,7 @@ def validate_character_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
             "spec": spec,
             "role": role,
         },
-        "support": {
-            "status": "AVAILABLE_UNVALIDATED",
-            "modelKey": f"{era.lower()}:{semantic_model}:{spec}:{role.lower()}",
-            "reason": "Snapshot structure is valid, but this era/spec model is not authoritative until Skrra mechanics/preset validation is completed.",
-        },
+        "support": support,
     }
 
 
@@ -238,6 +321,7 @@ class SimRunner:
         binaries: dict[str, str] | None = None,
     ) -> None:
         self.manifest = manifest
+        self.model_support = load_model_support(manifest=manifest)
         self.timeout_seconds = timeout_seconds or _env_float(
             "WOWSIMS_TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS
         )
@@ -269,7 +353,11 @@ class SimRunner:
             "schema": SCHEMA_VERSION,
             "ready": ready,
             "engines": engines,
+            "models": model_catalog_summary(self.model_support),
         }
+
+    def validate_snapshot(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return validate_character_snapshot(payload, self.model_support)
 
     def simulate(self, era: str, request: dict[str, Any]) -> dict[str, Any]:
         era = normalize_era(era)
@@ -432,18 +520,21 @@ class ApiHandler(BaseHTTPRequestHandler):
         return payload
 
     def do_GET(self) -> None:
-        if self.path != "/health":
-            self._send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})
+        if self.path == "/health":
+            health = self.runner.health()
+            status = HTTPStatus.OK if health["ready"] else HTTPStatus.SERVICE_UNAVAILABLE
+            self._send_json(status, health)
             return
-        health = self.runner.health()
-        status = HTTPStatus.OK if health["ready"] else HTTPStatus.SERVICE_UNAVAILABLE
-        self._send_json(status, health)
+        if self.path == "/v1/models":
+            self._send_json(HTTPStatus.OK, model_catalog_summary(self.runner.model_support))
+            return
+        self._send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})
 
     def do_POST(self) -> None:
         try:
             payload = self._read_json()
             if self.path == "/v1/snapshot/validate":
-                response = validate_character_snapshot(payload)
+                response = self.runner.validate_snapshot(payload)
                 response["engine"] = self.runner.engine_info(response["era"])
                 self._send_json(HTTPStatus.OK, response)
                 return

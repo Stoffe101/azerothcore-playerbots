@@ -39,6 +39,7 @@ RUN useradd --system --uid 10001 --no-create-home --home-dir /nonexistent skrra
 WORKDIR /app
 COPY app.py /app/app.py
 COPY sources.json /app/sources.json
+COPY model-support.json /app/model-support.json
 COPY --from=builder /out/wowsimcli-classic /usr/local/bin/wowsimcli-classic
 COPY --from=builder /out/wowsimcli-tbc /usr/local/bin/wowsimcli-tbc
 COPY --from=builder /out/wowsimcli-wotlk /usr/local/bin/wowsimcli-wotlk

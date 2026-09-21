@@ -361,3 +361,24 @@ The next integration slice is now implemented for CI validation:
 - accepted models remain explicitly `AVAILABLE_UNVALIDATED`, so structural routing cannot accidentally become a fabricated upgrade verdict.
 
 This is still a diagnostic validation path. Full item simulation will use an asynchronous request path rather than blocking the world thread.
+
+
+### Pinned WoWSims model coverage catalog
+
+The authoritative worldserver snapshot checkpoint `0e4fadb25c06462fb485831bb0875b07979b0ff4` is **fully green** on all four exact-SHA workflows:
+
+- Group Composer client checks: SUCCESS;
+- Stage Group Composer V4 backend: SUCCESS;
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`;
+- Integration build: SUCCESS on `stoffes-pc`.
+
+Current implementation makes model routing data-driven:
+
+- `data/wowsims/model-support.json` records the exact pinned repo/commit and `proto/api.proto` Git blob for Classic, TBC and WotLK;
+- the catalog records every proto spec field exposed by those pinned engines and the class/tree/role routes we may use;
+- `tools/verify-wowsims-model-support.py` rejects pin drift, unknown proto fields, duplicate expanded routes and pre-WotLK Death Knight routes;
+- the private service exposes `GET /v1/models` for diagnostics;
+- snapshot validation now returns `UNSUPPORTED` when no catalog route exists instead of inventing a nearby model;
+- catalogued routes return `ENGINE_PRESENT_UNVALIDATED`, deliberately weaker than SIM-BACKED.
+
+The next step is a pinned preset contract for buffs/debuffs/consumes/rotation/encounter defaults, followed by actual RaidSimRequest construction and candidate slot mutation.

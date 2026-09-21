@@ -114,3 +114,10 @@ Current implementation slice: `wowsims-service/` packages the three pinned WoWSi
 The private simulator service foundation is exact-head green at `aba336fd00fae61ac1b2e12af070eba1359b0917`.
 
 Current slice moves character truth to the worldserver. The server serializes live gear/enchant/gem/talent/glyph/profession/role/era state and the private service validates the snapshot without yet claiming that the model is simulation-authoritative. `.wowsims snapshot` and `.wowsims validate` are diagnostic commands for this boundary.
+
+
+### Pinned WoWSims model catalog
+
+Authoritative snapshot checkpoint `0e4fadb25c06462fb485831bb0875b07979b0ff4` is **fully green on all four exact-SHA workflows**.
+
+Current slice replaces ad-hoc model naming with `data/wowsims/model-support.json`. Each Vanilla/TBC/WotLK route is tied to the exact pinned engine commit and exact `proto/api.proto` Git blob. Engine presence is still labeled `ENGINE_PRESENT_UNVALIDATED`; a route does not become SIM-BACKED until Skrra preset/mechanics validation is completed.

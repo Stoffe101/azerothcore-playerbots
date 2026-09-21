@@ -43,8 +43,11 @@ jobs:
           grep -q 'EraProvenanceDisabledItemIDs' patches/0043-ahbot-era-provenance-filter.patch
           python3 -m py_compile tools/apply-playerbot-era-item-policy.py
           python3 -m py_compile wowsims-service/app.py
+          python3 -m py_compile tools/verify-wowsims-model-support.py
+          python3 tools/verify-wowsims-model-support.py
           python3 -m unittest discover -s wowsims-service/tests -v
           cmp data/wowsims/sources.json wowsims-service/sources.json
+          cmp data/wowsims/model-support.json wowsims-service/model-support.json
           bash -n configure-wowsims-service.sh
           WOWSIMS_RENDER="$(./configure-wowsims-service.sh --render)"
           grep -q 'ac-wowsims:' <<< "$WOWSIMS_RENDER"
@@ -54,6 +57,9 @@ jobs:
           grep -q 'ARG TBC_COMMIT=a4768c9d7ed51f4e49b8e90425f68ab47bde0cbc' wowsims-service/Dockerfile
           grep -q 'ARG WOTLK_COMMIT=563e4a08cb15729f1fdcbcf68e6d68224553bfef' wowsims-service/Dockerfile
           grep -q '/v1/snapshot/validate' wowsims-service/app.py
+          grep -q '/v1/models' wowsims-service/app.py
+          grep -q 'ENGINE_PRESENT_UNVALIDATED' data/wowsims/model-support.json
+          grep -q '076c8773ab4c93ed8b2876a3c55f94267bbf1e85' data/wowsims/model-support.json
           grep -q 'BuildCharacterSnapshot' modules/mod-raid-roster/src/WoWSimsService.cpp
           grep -q 'SOCK_ENCHANTMENT_SLOT_3' modules/mod-raid-roster/src/WoWSimsService.cpp
           grep -q 'sSpellItemEnchantmentStore' modules/mod-raid-roster/src/WoWSimsService.cpp

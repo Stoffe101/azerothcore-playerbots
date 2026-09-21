@@ -13,9 +13,18 @@ import app
 
 MANIFEST = {
     "engines": {
-        "VANILLA": {"repository": "wowsims/classic", "commit": "classic-pin"},
-        "TBC": {"repository": "wowsims/tbc-new", "commit": "tbc-pin"},
-        "WOTLK": {"repository": "wowsims/wotlk", "commit": "wotlk-pin"},
+        "VANILLA": {
+            "repository": "wowsims/classic",
+            "commit": "7779ebbf79dc7f1341e6ab939b28a3402c9a730a",
+        },
+        "TBC": {
+            "repository": "wowsims/tbc-new",
+            "commit": "a4768c9d7ed51f4e49b8e90425f68ab47bde0cbc",
+        },
+        "WOTLK": {
+            "repository": "wowsims/wotlk",
+            "commit": "563e4a08cb15729f1fdcbcf68e6d68224553bfef",
+        },
     }
 }
 
@@ -46,7 +55,10 @@ class AppTests(unittest.TestCase):
         self.assertEqual(simulate.call_count, 2)
         self.assertEqual(out["delta"], 82.0)
         self.assertAlmostEqual(out["deltaPercent"], 82.0 / 5040.0 * 100.0)
-        self.assertEqual(out["engine"]["commit"], "wotlk-pin")
+        self.assertEqual(
+            out["engine"]["commit"],
+            "563e4a08cb15729f1fdcbcf68e6d68224553bfef",
+        )
 
     def test_simulate_uses_fixed_binary_without_shell(self):
         with tempfile.TemporaryDirectory() as tmp:

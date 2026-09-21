@@ -1,0 +1,778 @@
+{
+  "schema": 1,
+  "generated_at": "2026-09-21",
+  "policy": {
+    "route_status": "ENGINE_PRESENT_UNVALIDATED",
+    "authoritative_status": "SIM_BACKED_VALIDATED",
+    "note": "A route only proves that the pinned engine exposes the proto spec. Skrra must separately validate presets/mechanics before sim results become authoritative."
+  },
+  "eras": {
+    "VANILLA": {
+      "repository": "wowsims/classic",
+      "commit": "7779ebbf79dc7f1341e6ab939b28a3402c9a730a",
+      "api_proto": {
+        "path": "proto/api.proto",
+        "blob": "0fca23db26134172bf3dd27334414e890b2cef9f"
+      },
+      "proto_spec_fields": [
+        "balance_druid",
+        "feral_druid",
+        "feral_tank_druid",
+        "restoration_druid",
+        "hunter",
+        "mage",
+        "retribution_paladin",
+        "protection_paladin",
+        "holy_paladin",
+        "healing_priest",
+        "shadow_priest",
+        "rogue",
+        "elemental_shaman",
+        "enhancement_shaman",
+        "restoration_shaman",
+        "warden_shaman",
+        "warlock",
+        "warrior",
+        "tank_warrior"
+      ],
+      "routes": [
+        {
+          "classId": 11,
+          "trees": [
+            0
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "balance_druid",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 11,
+          "trees": [
+            1
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "feral_druid",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 11,
+          "trees": [
+            1
+          ],
+          "roles": [
+            "TANK"
+          ],
+          "protoSpecField": "feral_tank_druid",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 11,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "HEALER"
+          ],
+          "protoSpecField": "restoration_druid",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 3,
+          "trees": [
+            0,
+            1,
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "hunter",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 8,
+          "trees": [
+            0,
+            1,
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "mage",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 2,
+          "trees": [
+            0
+          ],
+          "roles": [
+            "HEALER"
+          ],
+          "protoSpecField": "holy_paladin",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 2,
+          "trees": [
+            1
+          ],
+          "roles": [
+            "TANK"
+          ],
+          "protoSpecField": "protection_paladin",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 2,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "retribution_paladin",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 5,
+          "trees": [
+            0,
+            1
+          ],
+          "roles": [
+            "HEALER"
+          ],
+          "protoSpecField": "healing_priest",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 5,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "shadow_priest",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 4,
+          "trees": [
+            0,
+            1,
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "rogue",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 7,
+          "trees": [
+            0
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "elemental_shaman",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 7,
+          "trees": [
+            1
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "enhancement_shaman",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 7,
+          "trees": [
+            1
+          ],
+          "roles": [
+            "TANK"
+          ],
+          "protoSpecField": "warden_shaman",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 7,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "HEALER"
+          ],
+          "protoSpecField": "restoration_shaman",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 9,
+          "trees": [
+            0,
+            1,
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "warlock",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 1,
+          "trees": [
+            0,
+            1
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "warrior",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 1,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "TANK"
+          ],
+          "protoSpecField": "tank_warrior",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        }
+      ]
+    },
+    "TBC": {
+      "repository": "wowsims/tbc-new",
+      "commit": "a4768c9d7ed51f4e49b8e90425f68ab47bde0cbc",
+      "api_proto": {
+        "path": "proto/api.proto",
+        "blob": "fbbdc01984da63ef55aa766a0fbe9d9687494117"
+      },
+      "proto_spec_fields": [
+        "balance_druid",
+        "feral_cat_druid",
+        "feral_bear_druid",
+        "restoration_druid",
+        "hunter",
+        "mage",
+        "holy_paladin",
+        "protection_paladin",
+        "retribution_paladin",
+        "dps_priest",
+        "healer_priest",
+        "rogue",
+        "elemental_shaman",
+        "enhancement_shaman",
+        "restoration_shaman",
+        "warlock",
+        "dps_warrior",
+        "protection_warrior"
+      ],
+      "routes": [
+        {
+          "classId": 11,
+          "trees": [
+            0
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "balance_druid",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 11,
+          "trees": [
+            1
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "feral_cat_druid",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 11,
+          "trees": [
+            1
+          ],
+          "roles": [
+            "TANK"
+          ],
+          "protoSpecField": "feral_bear_druid",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 11,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "HEALER"
+          ],
+          "protoSpecField": "restoration_druid",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 3,
+          "trees": [
+            0,
+            1,
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "hunter",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 8,
+          "trees": [
+            0,
+            1,
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "mage",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 2,
+          "trees": [
+            0
+          ],
+          "roles": [
+            "HEALER"
+          ],
+          "protoSpecField": "holy_paladin",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 2,
+          "trees": [
+            1
+          ],
+          "roles": [
+            "TANK"
+          ],
+          "protoSpecField": "protection_paladin",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 2,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "retribution_paladin",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 5,
+          "trees": [
+            0,
+            1
+          ],
+          "roles": [
+            "HEALER"
+          ],
+          "protoSpecField": "healer_priest",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 5,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "dps_priest",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 4,
+          "trees": [
+            0,
+            1,
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "rogue",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 7,
+          "trees": [
+            0
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "elemental_shaman",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 7,
+          "trees": [
+            1
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "enhancement_shaman",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 7,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "HEALER"
+          ],
+          "protoSpecField": "restoration_shaman",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 9,
+          "trees": [
+            0,
+            1,
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "warlock",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 1,
+          "trees": [
+            0,
+            1
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "dps_warrior",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 1,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "TANK"
+          ],
+          "protoSpecField": "protection_warrior",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        }
+      ]
+    },
+    "WOTLK": {
+      "repository": "wowsims/wotlk",
+      "commit": "563e4a08cb15729f1fdcbcf68e6d68224553bfef",
+      "api_proto": {
+        "path": "proto/api.proto",
+        "blob": "076c8773ab4c93ed8b2876a3c55f94267bbf1e85"
+      },
+      "proto_spec_fields": [
+        "balance_druid",
+        "feral_druid",
+        "feral_tank_druid",
+        "restoration_druid",
+        "hunter",
+        "mage",
+        "retribution_paladin",
+        "protection_paladin",
+        "holy_paladin",
+        "healing_priest",
+        "shadow_priest",
+        "smite_priest",
+        "rogue",
+        "elemental_shaman",
+        "enhancement_shaman",
+        "restoration_shaman",
+        "warlock",
+        "warrior",
+        "protection_warrior",
+        "deathknight",
+        "tank_deathknight"
+      ],
+      "routes": [
+        {
+          "classId": 11,
+          "trees": [
+            0
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "balance_druid",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 11,
+          "trees": [
+            1
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "feral_druid",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 11,
+          "trees": [
+            1
+          ],
+          "roles": [
+            "TANK"
+          ],
+          "protoSpecField": "feral_tank_druid",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 11,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "HEALER"
+          ],
+          "protoSpecField": "restoration_druid",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 3,
+          "trees": [
+            0,
+            1,
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "hunter",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 8,
+          "trees": [
+            0,
+            1,
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "mage",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 2,
+          "trees": [
+            0
+          ],
+          "roles": [
+            "HEALER"
+          ],
+          "protoSpecField": "holy_paladin",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 2,
+          "trees": [
+            1
+          ],
+          "roles": [
+            "TANK"
+          ],
+          "protoSpecField": "protection_paladin",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 2,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "retribution_paladin",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 5,
+          "trees": [
+            0,
+            1
+          ],
+          "roles": [
+            "HEALER"
+          ],
+          "protoSpecField": "healing_priest",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 5,
+          "trees": [
+            0,
+            1
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "smite_priest",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 5,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "shadow_priest",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 4,
+          "trees": [
+            0,
+            1,
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "rogue",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 7,
+          "trees": [
+            0
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "elemental_shaman",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 7,
+          "trees": [
+            1
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "enhancement_shaman",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 7,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "HEALER"
+          ],
+          "protoSpecField": "restoration_shaman",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 9,
+          "trees": [
+            0,
+            1,
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "warlock",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 1,
+          "trees": [
+            0,
+            1
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "warrior",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 1,
+          "trees": [
+            2
+          ],
+          "roles": [
+            "TANK"
+          ],
+          "protoSpecField": "protection_warrior",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 6,
+          "trees": [
+            0,
+            1,
+            2
+          ],
+          "roles": [
+            "DPS"
+          ],
+          "protoSpecField": "deathknight",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        },
+        {
+          "classId": 6,
+          "trees": [
+            0,
+            1,
+            2
+          ],
+          "roles": [
+            "TANK"
+          ],
+          "protoSpecField": "tank_deathknight",
+          "status": "ENGINE_PRESENT_UNVALIDATED"
+        }
+      ]
+    }
+  }
+}

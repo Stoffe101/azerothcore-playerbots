@@ -188,3 +188,22 @@ The automatic path must not trust client-exported combat state when the server a
 The first endpoint, `POST /v1/snapshot/validate`, performs structural/era validation only. A valid snapshot returns `AVAILABLE_UNVALIDATED` plus a semantic model key. That status is deliberately weaker than SIM-BACKED. It means routing exists, not that Skrra/AzerothCore mechanics, buffs, rotation, encounter preset or spec options have been validated.
 
 The manual commands `.wowsims snapshot` and `.wowsims validate` exist to prove this boundary in game. Full baseline/candidate simulations must use an asynchronous queue or worker so the world thread is never held while `wowsimcli` runs.
+
+
+## Pinned model coverage catalog
+
+Model availability is now separate from model validation.
+
+`data/wowsims/model-support.json` records, per era:
+
+- exact WoWSims repository + engine commit;
+- exact `proto/api.proto` Git blob identity;
+- every spec field exposed by the pinned `Player.spec` oneof;
+- allowed Skrra class/tree/role routes into those fields;
+- validation status for each route.
+
+Current status is `ENGINE_PRESENT_UNVALIDATED` for every catalogued route. This means the engine actually exposes the model, but Skrra has not yet validated the required preset assumptions. An uncatalogued class/tree/role combination returns `UNSUPPORTED`.
+
+The catalog intentionally captures differences between engine families instead of pretending their proto names are interchangeable. Examples include Classic `tank_warrior`, TBC `dps_warrior`, WotLK `protection_warrior`, Classic `warden_shaman`, TBC `feral_cat_druid` / `feral_bear_druid`, and WotLK `deathknight` / `tank_deathknight`.
+
+`GET /v1/models` exposes the pinned catalog summary for diagnostics. The next layer must pin the non-character inputs that addon import intentionally does not provide: rotation, spec options, raid/party buffs, debuffs, consumes, encounter target/duration and simulation options.

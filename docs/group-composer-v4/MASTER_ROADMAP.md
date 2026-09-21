@@ -378,5 +378,6 @@ Runtime evidence beats this ordering. A blocker discovered while testing may jum
 ### WoWSims authoritative-state boundary
 
 - **DONE + green:** private pinned-engine service foundation at `aba336fd`.
-- **IN PROGRESS:** worldserver-owned character snapshot and structural model validation.
-- **NEXT:** per-era/spec validated preset matrix, RaidSimRequest construction, candidate slot mutation, asynchronous service queue and addon result/explanation protocol.
+- **DONE + green:** worldserver-owned character snapshot and structural model validation at `0e4fadb2`.
+- **IN PROGRESS:** exact pinned per-era model coverage catalog and route enforcement.
+- **NEXT:** per-era/spec preset matrix, RaidSimRequest construction, candidate slot mutation, asynchronous service queue and addon result/explanation protocol.

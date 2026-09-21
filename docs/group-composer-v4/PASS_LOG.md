@@ -3,6 +3,32 @@
 Newest entries belong at the top of the dated section.
 
 
+## 2026-09-21 — Pinned WoWSims model catalog
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+Previous checkpoint:
+- `0e4fadb25c06462fb485831bb0875b07979b0ff4` is fully green on all four exact-SHA workflows;
+- authoritative worldserver snapshot + structural service validation compiled successfully in the exact pinned stack.
+
+This pass:
+- adds `data/wowsims/model-support.json` and an identical image-local catalog;
+- pins each era to the exact engine commit and exact `proto/api.proto` Git blob;
+- catalogs exposed proto spec fields for Vanilla, TBC and WotLK;
+- maps class/tree/role combinations only where a real pinned engine model exists;
+- returns `UNSUPPORTED` for uncatalogued combinations rather than substituting a different model;
+- keeps all currently routed models at `ENGINE_PRESENT_UNVALIDATED`;
+- adds `GET /v1/models` and catalog details to health output;
+- adds a verifier for pin drift, duplicate routes, unknown proto fields and pre-WotLK DK leakage.
+
+Next:
+- exact-head local CI;
+- pinned preset contract for rotation/buffs/debuffs/consumes/encounter defaults;
+- RaidSimRequest construction;
+- candidate slot mutation and asynchronous simulation transport.
+
+
+
 ## 2026-09-21 — Authoritative WoWSims character snapshot
 
 Status: **IMPLEMENTED / exact-head local CI required**.

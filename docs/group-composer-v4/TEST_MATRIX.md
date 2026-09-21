@@ -301,3 +301,17 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - TODO runtime: `.wowsims snapshot` reports expected era/class/tree on a real character.
 - TODO runtime: `.wowsims validate` reaches `ac-wowsims` and returns the pinned engine/model route.
 - TODO integration: validated preset construction, asynchronous sim queue and GearAdvisor result transport.
+
+
+### Pinned WoWSims model catalog
+
+- PASS (CI `0e4fadb2`): authoritative worldserver snapshot + structural validation passed all four exact-SHA workflows.
+- STATIC: model catalog repo/commit pins must equal `data/wowsims/sources.json`.
+- STATIC: catalog stores the exact pinned `proto/api.proto` Git blob for each era.
+- STATIC: every route's `protoSpecField` must exist in that era's catalogued proto field set.
+- STATIC: expanded class/tree/role routes must be unique.
+- STATIC: no Death Knight route may exist before WotLK.
+- UNIT: Vanilla Enhancement Tank resolves only to the Classic `warden_shaman` engine model.
+- UNIT: TBC Protection Warrior resolves to `protection_warrior`.
+- UNIT: an uncatalogued role/spec combination returns `UNSUPPORTED`, never a substituted model.
+- TODO: preset validation must promote individual routes from ENGINE_PRESENT_UNVALIDATED before automatic sim authority is enabled.
