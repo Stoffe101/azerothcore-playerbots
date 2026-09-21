@@ -73,6 +73,8 @@ jobs:
           grep -q '/v1/models' wowsims-service/app.py
           grep -q '/v1/presets' wowsims-service/app.py
           grep -q 'SKRRA_WOWSIM_DUMP_DIR' wowsims-service/harvest_presets.py
+          grep -q 'equivalent-after-authoritative-overlay' wowsims-service/harvest_presets.py
+          grep -q 'canonicalRouteCount' wowsims-service/app.py
           grep -q 'WOWSIMS_REQUIRE_PRESETS=1' wowsims-service/Dockerfile
           grep -q 'protobuf-compiler' wowsims-service/Dockerfile
           grep -q 'protoc-gen-go@v1.36.10' wowsims-service/Dockerfile
@@ -142,7 +144,7 @@ jobs:
           fi
           IMAGE="skrra-wowsims-ci:${GITHUB_SHA}"
           docker build --progress=plain -t "$IMAGE" ./wowsims-service
-          docker run --rm "$IMAGE" python -c 'import app; m=app.load_manifest(); r=app.SimRunner(m); h=r.health(); assert h["ready"]; assert all(v["ready"] for v in h["presets"]["eras"].values()); print(h["presets"])'
+          docker run --rm "$IMAGE" python -c 'import app; m=app.load_manifest(); r=app.SimRunner(m); h=r.health(); assert h["ready"]; assert all(v["ready"] and v["canonicalRouteCount"] == v["routeCount"] for v in h["presets"]["eras"].values()); print(h["presets"])'
 
       - name: Commit generated backend changes
         run: |

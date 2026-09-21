@@ -397,3 +397,12 @@ Runtime evidence beats this ordering. A blocker discovered while testing may jum
 - current slice moves bag-candidate discovery to authoritative worldserver Item objects;
 - service validates one-slot swap manifests and fingerprints without sim execution;
 - ambiguous preset resolution + async execution remain the next WoWSims milestones.
+
+
+### 2026-09-21 WoWSims canonical-preset slice
+- Sim Bags manifest checkpoint `52ac5255` is exact-head green;
+- current slice defines canonical preset selection without arbitrary source ordering;
+- character fields that the worldserver always overwrites are removed before comparing harvested preset assumptions;
+- multi-candidate routes auto-resolve only when all surviving assumptions are equivalent;
+- non-equivalent routes fail closed at image build rather than selecting silently;
+- next simulator milestone remains asynchronous compare execution and result transport.

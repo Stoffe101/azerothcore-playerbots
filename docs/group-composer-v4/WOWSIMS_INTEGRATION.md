@@ -315,3 +315,17 @@ The client is not trusted to describe candidate item state. The worldserver now 
 The endpoint returns `BAG_CANDIDATES_BUILT_UNVALIDATED`. It does not invoke `wowsimcli` and cannot produce SIM-BACKED authority.
 
 This makes the future GearAdvisor "Sim Bags" action a request to the server, not a client-side item-parser authority. The next architecture gate is preset disambiguation followed by an asynchronous simulation queue whose completion is drained back onto the world thread.
+
+
+## Canonical preset selection
+
+Automatic simulation must not depend on generated array order or an arbitrary upstream test filename. The canonical policy compares the simulator-owned assumptions of every harvested request for a route after removing only fields that the authoritative AzerothCore snapshot always replaces: player name, race, class, equipment, talents, professions and glyphs.
+
+- singleton route: canonical directly;
+- multi-preset route with one surviving assumptions fingerprint: requests are equivalent after authoritative overlay, so the lowest pinned request SHA is used as a deterministic representative;
+- multi-preset route with more than one surviving assumptions fingerprint: harvest/image build fails closed and reports the conflicting source/request/assumption hashes;
+- service loading requires exactly one canonical request for every route;
+- explicit `presetSha256` remains a diagnostic override, but normal baseline/candidate/Sim Bags construction uses the canonical request automatically;
+- this policy does not claim mechanics correctness and does not promote `ENGINE_PRESENT_UNVALIDATED` to `SIM-BACKED`.
+
+Rotation/APL, spec options, consumes, raid/party buffs, debuffs, encounter and simulation options remain simulator-owned assumptions. Differences in any of them therefore block automatic canonicalization.

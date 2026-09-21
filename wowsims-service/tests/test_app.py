@@ -220,6 +220,7 @@ class AppTests(unittest.TestCase):
             summary = app.preset_catalog_summary(catalog)
         self.assertTrue(summary["eras"]["WOTLK"]["ready"])
         self.assertEqual(summary["eras"]["WOTLK"]["requestCount"], 1)
+        self.assertEqual(summary["eras"]["WOTLK"]["canonicalRouteCount"], 1)
 
     def test_preset_catalog_rejects_pin_drift(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -240,7 +241,7 @@ class AppTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 app.load_preset_catalog(root, manifest=MANIFEST, required=False)
 
-    def _preset_catalog(self, root, era, route_key, requests):
+    def _preset_catalog(self, root, era, route_key, requests, canonical_index=0):
         route_entries = []
         era_dir = Path(root) / era
         request_dir = era_dir / "requests"
@@ -258,6 +259,9 @@ class AppTests(unittest.TestCase):
                     "sha256": digest,
                     "source": f"unit-{index}",
                     "protoSpecField": "mage",
+                    "canonical": index == canonical_index,
+                    "selectionMethod": "unit-test-policy" if index == canonical_index else None,
+                    "assumptionsSha256": digest,
                 }
             )
         return {
@@ -348,30 +352,26 @@ class AppTests(unittest.TestCase):
         self.assertEqual(out["request"]["encounter"], {"duration": 180})
         self.assertEqual(out["request"]["simOptions"], {"iterations": 1000})
 
-    def test_build_baseline_request_requires_explicit_choice_for_ambiguous_route(self):
+    def test_build_baseline_request_uses_canonical_choice_for_ambiguous_route(self):
         snapshot = self._snapshot()
         preset = self._wotlk_preset()
         alternate = self._wotlk_preset()
         alternate["encounter"] = {"duration": 240}
         with tempfile.TemporaryDirectory() as tmp:
-            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [preset, alternate])
-            with self.assertRaisesRegex(app.ServiceError, "presetSha256 is required"):
-                app.build_baseline_request(
-                    snapshot,
-                    app.load_model_support(manifest=MANIFEST),
-                    catalog,
-                    {},
-                )
-            selected = catalog["eras"]["WOTLK"]["routes"]["8:0:DPS"][1]["sha256"]
-            out = app.build_baseline_request(
-                snapshot,
-                app.load_model_support(manifest=MANIFEST),
-                catalog,
-                {},
-                preset_sha256=selected,
+            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [preset, alternate], canonical_index=1)
+            out = app.build_baseline_request(snapshot, app.load_model_support(manifest=MANIFEST), catalog, {})
+            explicit = catalog["eras"]["WOTLK"]["routes"]["8:0:DPS"][0]["sha256"]
+            overridden = app.build_baseline_request(
+                snapshot, app.load_model_support(manifest=MANIFEST), catalog, {}, preset_sha256=explicit
             )
-        self.assertEqual(out["preset"]["sha256"], selected)
         self.assertEqual(out["request"]["encounter"]["duration"], 240)
+        self.assertTrue(out["preset"]["canonical"])
+        self.assertEqual(out["preset"]["selection"], "canonical")
+        self.assertEqual(out["preset"]["selectionMethod"], "unit-test-policy")
+        self.assertEqual(overridden["request"]["encounter"]["duration"], 180)
+        self.assertEqual(overridden["preset"]["selection"], "explicit")
+        self.assertFalse(overridden["preset"]["canonical"])
+
 
     def test_build_baseline_request_rejects_preset_checksum_drift(self):
         snapshot = self._snapshot()

@@ -389,3 +389,16 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - STATIC: `.wowsims bags` calls the private bag-candidate endpoint and does not simulate.
 - TODO runtime: run `.wowsims bags` with rings, trinkets, 1H/2H weapons and era-blocked items in bags and inspect candidate/swap counters.
 - TODO runtime: verify non-Titan-Grip 2H + occupied offhand is counted as multi-slot-blocked.
+
+
+### Canonical WoWSims preset selection
+
+- STATIC/SELF-TEST: character-owned overlay fields do not change the preset-assumptions fingerprint.
+- STATIC/SELF-TEST: encounter and other simulator-owned assumption changes do change the fingerprint.
+- STATIC/SELF-TEST: equivalent multi-preset routes choose one deterministic canonical request.
+- STATIC/SELF-TEST: non-equivalent multi-preset routes fail closed rather than choosing by source/file order.
+- UNIT: default baseline construction uses the route's canonical preset even when multiple requests exist.
+- UNIT: explicit preset SHA remains available for diagnostics and is marked as an explicit selection.
+- REAL-IMAGE CI: every harvested Vanilla/TBC/WotLK route must report exactly one canonical request; canonicalRouteCount must equal routeCount for every era.
+- TODO runtime: build `.wowsims request` / `.wowsims bags` for at least one formerly multi-preset route and verify the returned preset reports canonical selection.
+- TODO: canonical selection alone does not promote a route to SIM-BACKED; mechanics/meta-gem/result validation remains required.

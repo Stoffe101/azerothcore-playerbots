@@ -482,7 +482,7 @@ Future “Sim Bags” candidate capture should stay server-authoritative: read t
 
 ### Server-authoritative Sim Bags candidate enumeration
 
-Current bounded slice: **IMPLEMENTED / exact-head local CI required**.
+Status: **DONE + exact-head local-CI green at `52ac52552ff0a2c0920b391961887f52dd9ee7b6`**.
 
 - `8d3ff2be...` is fully green and is the prerequisite candidate-isolation checkpoint.
 - worldserver scans the player's actual backpack and equipped bag contents, not addon-exported item strings;
@@ -495,3 +495,19 @@ Current bounded slice: **IMPLEMENTED / exact-head local CI required**.
 - status remains `BAG_CANDIDATES_BUILT_UNVALIDATED`. No `wowsimcli` execution occurs.
 
 Next after this slice is green: canonical preset selection for ambiguous routes, then asynchronous compare execution/result transport. Automatic addon-triggered simulation remains intentionally disabled until those boundaries are proven.
+
+
+### Canonical WoWSims preset-selection boundary
+
+Current slice: **IMPLEMENTED / exact-head local CI required**.
+
+- each harvested request receives an assumptions fingerprint after removing only the first player's fields that AzerothCore always overwrites: name, race, class, equipment, talents, professions and glyphs;
+- a route with one request is canonical by construction;
+- a route with multiple requests is auto-resolved only if all surviving simulator assumptions are byte-canonical equivalent;
+- equivalent routes choose the lowest pinned request SHA solely as a deterministic representative because the final overlaid request is identical;
+- if candidates still disagree on simulator-owned assumptions, harvesting fails closed and prints the source/request/assumption hashes instead of making an arbitrary choice;
+- runtime catalog loading requires exactly one canonical request per route and health exposes canonical-route coverage;
+- explicit preset SHA remains available as a diagnostic override, but normal request/bag-manifest construction uses the canonical preset automatically;
+- model status remains ENGINE_PRESENT_UNVALIDATED. Canonical selection does not promote a route to SIM-BACKED.
+
+Next: asynchronous baseline/candidate simulation execution and result transport, still off the AzerothCore world thread.

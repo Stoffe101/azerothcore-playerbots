@@ -162,7 +162,7 @@ Only build these if testing shows they add real value:
 ### WoWSims immediate lane
 
 - DONE + exact-head green: candidate isolation / GearAdvisor v0.3.2 at `8d3ff2be`.
-- CURRENT / local CI: server-authoritative Sim Bags candidate enumeration and service-side manifest/fingerprint validation.
-- NEXT: resolve canonical preset policy for routes with multiple harvested presets.
+- DONE + exact-head green: server-authoritative Sim Bags candidate enumeration at `52ac5255`.
+- CURRENT / local CI: canonical preset selection by authoritative-overlay equivalence; genuinely different simulator assumptions fail closed.
 - NEXT: asynchronous baseline/candidate simulation queue off the world thread.
 - NEXT: return confidence/result/explanation to GearAdvisor and wire explicit Sim Bags UI action.

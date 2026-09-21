@@ -9,6 +9,7 @@ without executing the simulation itself.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import os
@@ -270,6 +271,57 @@ def find_player(request: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]
     return raid, players[0]
 
 
+AUTHORITATIVE_OVERLAY_PLAYER_FIELDS = frozenset({
+    "name", "race", "class", "equipment", "talentsString",
+    "profession1", "profession2", "glyphs",
+})
+
+
+def preset_assumptions_sha256(request: dict[str, Any]) -> str:
+    """Fingerprint only preset-owned assumptions that survive server overlay."""
+    normalized = copy.deepcopy(request)
+    _, player = find_player(normalized)
+    for field in AUTHORITATIVE_OVERLAY_PLAYER_FIELDS:
+        player.pop(field, None)
+    canonical = json.dumps(normalized, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def assign_canonical_presets(routes: dict[str, list[dict[str, Any]]], era: str) -> None:
+    """Choose a canonical request only when upstream candidates are safely equivalent."""
+    unresolved: dict[str, list[dict[str, str]]] = {}
+    for route_key, entries in routes.items():
+        for entry in entries:
+            entry["canonical"] = False
+
+        if len(entries) == 1:
+            entries[0]["canonical"] = True
+            entries[0]["selectionMethod"] = "single-engine-native-preset"
+            continue
+
+        assumption_hashes = {str(entry.get("assumptionsSha256", "")) for entry in entries}
+        if len(assumption_hashes) != 1:
+            unresolved[route_key] = [
+                {
+                    "source": str(entry.get("source", "")),
+                    "sha256": str(entry.get("sha256", "")),
+                    "assumptionsSha256": str(entry.get("assumptionsSha256", "")),
+                }
+                for entry in entries
+            ]
+            continue
+
+        selected = min(entries, key=lambda entry: str(entry["sha256"]))
+        selected["canonical"] = True
+        selected["selectionMethod"] = "equivalent-after-authoritative-overlay"
+
+    if unresolved:
+        raise RuntimeError(
+            f"{era} has non-equivalent preset candidates requiring explicit policy: "
+            + json.dumps(unresolved, sort_keys=True)
+        )
+
+
 def resolve_route(catalog: dict[str, Any], era: str, request: dict[str, Any]) -> dict[str, Any]:
     raid, player = find_player(request)
     talents = player.get("talentsString", "")
@@ -360,6 +412,7 @@ def build_index(
                 **route,
                 "file": f"requests/{dest_name}",
                 "sha256": digest,
+                "assumptionsSha256": preset_assumptions_sha256(request),
                 "source": str(source_file.relative_to(raw_output)),
             }
         )
@@ -371,11 +424,15 @@ def build_index(
             f"{era} produced {len(unclassified)} unclassified presets: {unclassified[:5]}"
         )
 
+    assign_canonical_presets(routes, era)
+
     index = {
         "schema": 1,
         "era": era,
         "engineCommit": commit,
         "source": "pinned upstream FullCharacterTestSuiteGenerator Average RaidSimRequest",
+        "canonicalPolicy": "authoritative-overlay-equivalence-v1",
+        "canonicalRouteCount": len(routes),
         "routes": {key: routes[key] for key in sorted(routes)},
         "routeCount": len(routes),
         "requestCount": sum(len(values) for values in routes.values()),
@@ -466,6 +523,38 @@ func TestOther(t *testing.T) { if true { t.Log("x") } }
     }
     route = resolve_route(catalog, "WOTLK", request)
     assert route["classId"] == 8 and route["tree"] == 0 and route["role"] == "DPS"
+
+    equivalent = copy.deepcopy(request)
+    _, equivalent_player = find_player(equivalent)
+    equivalent_player["name"] = "Different upstream fixture"
+    equivalent_player["race"] = "RaceGnome"
+    equivalent_player["equipment"] = {"items": [{"id": 12345}]}
+    equivalent_player["talentsString"] = "different-talents-that-server-overwrites"
+    assert preset_assumptions_sha256(equivalent) == preset_assumptions_sha256(request)
+
+    distinct = copy.deepcopy(request)
+    distinct["encounter"] = {"duration": 240}
+    assert preset_assumptions_sha256(distinct) != preset_assumptions_sha256(request)
+
+    same = preset_assumptions_sha256(request)
+    canonical_routes = {"8:0:DPS": [
+        {"sha256": "b" * 64, "source": "b", "assumptionsSha256": same},
+        {"sha256": "a" * 64, "source": "a", "assumptionsSha256": same},
+    ]}
+    assign_canonical_presets(canonical_routes, "WOTLK")
+    assert canonical_routes["8:0:DPS"][1]["canonical"] is True
+    assert canonical_routes["8:0:DPS"][1]["selectionMethod"] == "equivalent-after-authoritative-overlay"
+
+    try:
+        assign_canonical_presets({"8:0:DPS": [
+            {"sha256": "a" * 64, "source": "a", "assumptionsSha256": "1" * 64},
+            {"sha256": "b" * 64, "source": "b", "assumptionsSha256": "2" * 64},
+        ]}, "WOTLK")
+    except RuntimeError as exc:
+        assert "non-equivalent preset candidates" in str(exc)
+    else:
+        raise AssertionError("non-equivalent presets must fail closed")
+
     print("WoWSims preset harvester self-test passed.")
 
 

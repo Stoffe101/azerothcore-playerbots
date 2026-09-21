@@ -175,3 +175,10 @@ Exact SHA `8d3ff2bea0f73092aeecac9653ae767cbc58a568` is fully exact-head local-C
 - Integration build: SUCCESS on `stoffes-pc`.
 
 This locks one-slot candidate request isolation, WotLK random-property fail-closed behavior and GearAdvisor v0.3.2 row alignment at the source/CI level. Real-client visual acceptance remains TODO.
+
+
+### Sim Bags checkpoint + canonical preset selection
+
+Exact SHA `52ac52552ff0a2c0920b391961887f52dd9ee7b6` is fully exact-head local-CI green on all four required workflows, including Integration on `stoffes-pc`. It locks the server-authoritative bag candidate manifest without executing simulations.
+
+Current bounded slice: **IMPLEMENTED / exact-head local CI required**. The preset harvester now fingerprints only simulator assumptions that survive AzerothCore's authoritative character overlay. Single-preset routes are canonical directly; multi-preset routes auto-resolve only when every candidate is equivalent after removing server-owned character fields. Any remaining difference in rotation/APL, spec options, consumes, buffs/debuffs, encounter or sim assumptions fails the real image build instead of choosing arbitrarily. The service then selects exactly one canonical preset by default while retaining explicit SHA selection for diagnostics. Next after this boundary is green: asynchronous baseline/candidate compare execution off the world thread.

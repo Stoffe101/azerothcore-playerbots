@@ -2,12 +2,25 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — Canonical WoWSims preset selection
+
+Current slice: **IMPLEMENTED / exact-head local CI required**.
+- fingerprints simulator-owned preset assumptions after stripping only server-authoritative character fields;
+- automatically canonicalizes singleton routes;
+- auto-resolves duplicate routes only when the remaining simulator assumptions are equivalent;
+- chooses the lowest pinned request SHA only as a deterministic representative of equivalent requests;
+- fails the harvest/build on any genuinely non-equivalent multi-preset route;
+- service catalog requires exactly one canonical preset per route and exposes canonical-route coverage;
+- default request and Sim Bags manifest construction no longer require a manual preset SHA for safely-equivalent ambiguous routes;
+- explicit preset SHA remains a diagnostic override;
+- no simulation is executed and no model is promoted to SIM-BACKED in this slice.
+
 
 ## 2026-09-21 — Candidate isolation green + server-authoritative Sim Bags manifest
 
 Prerequisite SHA `8d3ff2bea0f73092aeecac9653ae767cbc58a568`: **DONE + exact-head local-CI green** on all four required workflows.
 
-Current slice: **IMPLEMENTED / exact-head local CI required**.
+Sim Bags implementation SHA `52ac52552ff0a2c0920b391961887f52dd9ee7b6`: **DONE + exact-head local-CI green** on all four required workflows.
 - scans real server-owned bag Item objects;
 - ERA-07 provenance must be ready and each item must be allowed in the live era;
 - AzerothCore equip rules determine actual replacement slots;

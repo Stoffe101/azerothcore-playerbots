@@ -188,7 +188,9 @@ def load_preset_catalog(
             catalog["eras"][era] = {
                 "ready": False,
                 "routeCount": 0,
+                "canonicalRouteCount": 0,
                 "requestCount": 0,
+                "canonicalPolicy": None,
                 "routes": {},
             }
             continue
@@ -207,6 +209,7 @@ def load_preset_catalog(
             raise RuntimeError(f"WoWSims preset index has no routes for {era}")
 
         request_count = 0
+        canonical_route_count = 0
         for route_key, entries in routes.items():
             if not isinstance(route_key, str) or not isinstance(entries, list) or not entries:
                 raise RuntimeError(f"WoWSims preset index has malformed route for {era}")
@@ -218,10 +221,24 @@ def load_preset_catalog(
                     raise RuntimeError(f"WoWSims preset request is missing: {request_file}")
                 request_count += 1
 
+            canonical = [entry for entry in entries if entry.get("canonical") is True]
+            if not canonical and len(entries) == 1:
+                entries[0]["canonical"] = True
+                entries[0].setdefault("selectionMethod", "single-engine-native-preset")
+                canonical = [entries[0]]
+            if len(canonical) != 1:
+                raise RuntimeError(
+                    f"WoWSims preset route {era}/{route_key} must have exactly one canonical request"
+                )
+            canonical[0].setdefault("selectionMethod", "single-engine-native-preset")
+            canonical_route_count += 1
+
         catalog["eras"][era] = {
             "ready": True,
             "routeCount": int(index.get("routeCount", len(routes))),
+            "canonicalRouteCount": canonical_route_count,
             "requestCount": int(index.get("requestCount", request_count)),
+            "canonicalPolicy": index.get("canonicalPolicy", "singleton-only-v0"),
             "routes": routes,
         }
     return catalog
@@ -235,7 +252,9 @@ def preset_catalog_summary(catalog: dict[str, Any]) -> dict[str, Any]:
             era: {
                 "ready": bool(entry.get("ready", False)),
                 "routeCount": int(entry.get("routeCount", 0)),
+                "canonicalRouteCount": int(entry.get("canonicalRouteCount", 0)),
                 "requestCount": int(entry.get("requestCount", 0)),
+                "canonicalPolicy": entry.get("canonicalPolicy"),
                 "routeKeys": sorted(entry.get("routes", {}).keys()),
             }
             for era, entry in catalog["eras"].items()
@@ -354,13 +373,13 @@ def _select_preset(
     if not entries:
         raise ServiceError(f"no engine-native preset exists for {era} route {route_key}")
     if preset_sha256 is None:
-        if len(entries) != 1:
-            choices = ",".join(str(entry.get("sha256", "")) for entry in entries)
+        canonical = [entry for entry in entries if entry.get("canonical") is True]
+        if len(canonical) != 1:
             raise ServiceError(
-                f"{era} route {route_key} has {len(entries)} preset candidates; "
-                f"presetSha256 is required ({choices})"
+                f"{era} route {route_key} has no unique canonical preset",
+                HTTPStatus.INTERNAL_SERVER_ERROR,
             )
-        selected = entries[0]
+        selected = canonical[0]
     else:
         matches = [entry for entry in entries if entry.get("sha256") == preset_sha256]
         if len(matches) != 1:
@@ -569,6 +588,10 @@ def build_baseline_request(
             "sha256": preset["sha256"],
             "source": preset.get("source"),
             "protoSpecField": preset.get("protoSpecField"),
+            "canonical": bool(preset.get("canonical", False)),
+            "selectionMethod": preset.get("selectionMethod"),
+            "assumptionsSha256": preset.get("assumptionsSha256"),
+            "selection": "explicit" if preset_sha256 is not None else "canonical",
         },
         "request": request,
     }
