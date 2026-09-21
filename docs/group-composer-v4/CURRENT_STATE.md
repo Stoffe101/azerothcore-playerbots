@@ -407,3 +407,6 @@ This still does not promote any route to SIM-BACKED. The next slice must apply a
 ### WoWSims real-image build prerequisite repair
 
 The first engine-native preset SHA `2027a2d2` intentionally failed the new real Docker gate before harvesting. A pristine pinned Classic checkout does not contain generated Go protobuf files, so direct `go build` is invalid. The repair now generates protobufs from the pinned source and builds each CLI with upstream `with_db` release semantics; TBC keeps its explicit descriptor.proto mapping. No model has been promoted to SIM-BACKED from this failure.
+
+
+WoWSims preset harvester follow-up: `dcbc4201` proved protobuf generation + pristine Classic CLI build are correct, then failed because discovery included underscore-prefixed disabled legacy packages that normal Go traversal ignores. The harvester now mirrors Go directory-ignore rules instead of maintaining a spec blacklist.

@@ -320,6 +320,7 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 ### Engine-native WoWSims preset harvesting
 
 - STATIC/UNIT: `harvest_presets.py --self-test` covers Go test-function discovery and model-route classification.
+- STATIC/UNIT: discovery ignores underscore-prefixed/dot-prefixed package directories, matching Go traversal and excluding upstream disabled legacy specs.
 - STATIC: WotLK single-generator and Vanilla/TBC generator-slice `RunTestSuite` signatures are instrumented separately.
 - CONTRACT: pristine pinned `wowsimcli` binaries are compiled before upstream test-harness instrumentation.
 - CONTRACT: only upstream full-character `Average` RaidSimRequests are harvested.

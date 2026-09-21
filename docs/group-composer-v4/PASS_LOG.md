@@ -5,7 +5,7 @@ Newest entries belong at the top of the dated section.
 
 ## 2026-09-21 — Engine-native WoWSims preset harvester
 
-Status: **IMPLEMENTED / repair in progress after real-image gate exposed upstream build prerequisites**.
+Status: **IMPLEMENTED / repair in progress after real-image gate exposed upstream source-layout edge cases**.
 
 First exact SHA `2027a2d2544efe2e2e62880a6e998a7f5c7df57b`:
 - Group Composer client checks: SUCCESS;
@@ -20,6 +20,13 @@ Repair:
 - preserve TBC's required descriptor.proto mapping;
 - build all three CLIs with upstream `with_db` release semantics;
 - rerun the real image/harvest gate on a fresh `[local-ci]` SHA.
+
+
+Second exact SHA `dcbc42012a71b061e8222a8fd100a5a9a77c8b23`:
+- protobuf generation and pristine Classic `wowsimcli --tags=with_db` build both succeeded;
+- harvesting then attempted `sim/druid/_restoration`, an underscore-prefixed legacy/disabled package that Go's normal package traversal ignores;
+- that package intentionally contains stale code and does not compile against the active Classic core;
+- repair changes discovery to mirror Go's directory-ignore rules for components beginning `_` or `.`, with a self-test proving disabled packages are skipped.
 
 Design:
 - do not hand-copy upstream rotations/spec options/buff packages into Skrra;

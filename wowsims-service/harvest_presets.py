@@ -197,7 +197,13 @@ def find_function_body(text: str, start: int) -> str:
 
 def discover_suite_tests(source: Path) -> dict[Path, list[str]]:
     grouped: dict[Path, list[str]] = {}
-    for path in sorted((source / "sim").rglob("*_test.go")):
+    sim_root = source / "sim"
+    for path in sorted(sim_root.rglob("*_test.go")):
+        relative = path.relative_to(sim_root)
+        # Match Go package traversal: directories beginning '_' or '.' are ignored.
+        # WoWSims keeps some intentionally disabled/stale spec implementations there.
+        if any(part.startswith(("_", ".")) for part in relative.parts[:-1]):
+            continue
         text = path.read_text(encoding="utf-8")
         names: list[str] = []
         for match in TEST_FUNC_RE.finditer(text):
@@ -418,6 +424,12 @@ func TestOther(t *testing.T) { if true { t.Log("x") } }
         test_file = root / "sim" / "mage" / "mage_test.go"
         test_file.parent.mkdir(parents=True)
         test_file.write_text(synthetic, encoding="utf-8")
+        disabled = root / "sim" / "_disabled" / "disabled_test.go"
+        disabled.parent.mkdir(parents=True)
+        disabled.write_text(
+            'package disabled\nimport "testing"\nfunc TestDisabled(t *testing.T) { core.RunTestSuite(t, t.Name(), thing) }\n',
+            encoding="utf-8",
+        )
         found = discover_suite_tests(root)
         assert list(found.values()) == [["TestArcane"]]
 
