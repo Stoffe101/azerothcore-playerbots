@@ -50,7 +50,7 @@ Runtime testing is unavailable, so architectural work continues in bounded exact
 
 ### NOW-04 — Client addon bundle + gearing guidance
 
-**Status: GearAdvisor v0.2.1 DONE + local-CI green; WoWSims integration IN PROGRESS**
+**Status: WoWSims preset layer DONE + local-CI green at `998d297a`; simulation adapter + client visual acceptance IN PROGRESS**
 
 Bounded client QoL work:
 - maintained Details-WotLK and NoM0Re WeakAuras are bundled;
@@ -62,7 +62,7 @@ Bounded client QoL work:
 - GearAdvisor will explain simulated cap/stat trades rather than merely warn about losing hit/expertise/etc.;
 - unsupported/unvalidated era/spec models must not receive fabricated percentages.
 
-Next simulator work: local pinned `wowsimcli` service + candidate request/response + explanation layer. Real-client UI/export acceptance remains required.
+Preset harvesting is now real-image verified. Next simulator work is authoritative snapshot overlay, baseline/candidate request construction, asynchronous compare transport and explanation. GearAdvisor v0.3.1 / Group Composer layout-safety acceptance remains required on the real 3.3.5a client.
 
 
 ### NEXT-01 — ERA-01 + ERA-02
@@ -380,5 +380,5 @@ Runtime evidence beats this ordering. A blocker discovered while testing may jum
 - **DONE + green:** private pinned-engine service foundation at `aba336fd`.
 - **DONE + green:** worldserver-owned character snapshot and structural model validation at `0e4fadb2`.
 - **DONE + green:** pinned per-era model coverage catalog repair at `7c959151`.
-- **IN PROGRESS:** engine-native preset harvesting from pinned upstream full-character Average RaidSimRequests.
-- **NEXT:** authoritative snapshot overlay, baseline RaidSimRequest construction, candidate slot mutation, asynchronous service queue and addon result/explanation protocol.
+- **DONE + green:** engine-native preset harvesting at `998d297a` (Vanilla 24/15 routes, TBC 15/15, WotLK 37/33).
+- **IN PROGRESS:** authoritative snapshot overlay, baseline RaidSimRequest construction, candidate slot mutation, asynchronous service queue and addon result/explanation protocol.

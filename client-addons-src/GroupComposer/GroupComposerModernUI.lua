@@ -477,10 +477,17 @@ function ____exports.createButton(self, parent, options)
         label:SetJustifyH("LEFT")
     else
         label:SetPoint(
-            "CENTER",
+            "LEFT",
             frame,
-            "CENTER",
-            0,
+            "LEFT",
+            8,
+            0
+        )
+        label:SetPoint(
+            "RIGHT",
+            frame,
+            "RIGHT",
+            -8,
             0
         )
         label:SetJustifyH("CENTER")
@@ -4722,7 +4729,7 @@ function ____exports.createActivityBrowser(self, parent)
                     local button = ButtonUI:createButton(scroll.content, {
                         text = "",
                         width = 426,
-                        height = 78,
+                        height = 88,
                         accent = theme.colors.primary,
                         flat = true
                     })
@@ -4740,27 +4747,31 @@ function ____exports.createActivityBrowser(self, parent)
                         button.frame,
                         "TOPLEFT",
                         66,
-                        -12
+                        -11
                     )
-                    title:SetWidth(300)
+                    title:SetWidth(278)
+                    title:SetHeight(18)
                     local detail = Native:createText(button.frame, "", "GameFontHighlightSmall", theme.colors.muted)
                     detail:SetPoint(
                         "TOPLEFT",
                         button.frame,
                         "TOPLEFT",
                         66,
-                        -35
+                        -34
                     )
                     detail:SetWidth(300)
+                    detail:SetHeight(16)
                     local tag = Native:createText(button.frame, "", "GameFontNormalSmall", theme.colors.primary)
                     tag:SetPoint(
                         "TOPLEFT",
                         button.frame,
                         "TOPLEFT",
                         66,
-                        -55
+                        -54
                     )
-                    tag:SetWidth(260)
+                    tag:SetWidth(340)
+                    tag:SetHeight(28)
+                    tag:SetJustifyV("TOP")
                     local favorite = ButtonUI:createButton(button.frame, {
                         text = "Fav",
                         width = 44,
@@ -4796,7 +4807,7 @@ function ____exports.createActivityBrowser(self, parent)
                     scroll.content,
                     "TOPLEFT",
                     column * 436,
-                    -(row * 86)
+                    -(row * 96)
                 )
                 local access = Model:activityEligibility(
                     item.id,
@@ -4862,7 +4873,7 @@ function ____exports.createActivityBrowser(self, parent)
         end
         scroll:setContentHeight(math.max(
             470,
-            math.ceil(#items / 2) * 86
+            math.ceil(#items / 2) * 96
         ))
     end
     Model:composer():RegisterCallback(
@@ -6042,7 +6053,9 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
         0,
         -6
     )
-    subtitle:SetWidth(1080)
+    subtitle:SetWidth(900)
+    subtitle:SetHeight(32)
+    subtitle:SetJustifyV("TOP")
     local realmText = Native:createText(root.frame, "", "GameFontHighlight", theme.colors.primary)
     realmText:SetPoint(
         "TOPRIGHT",
@@ -6091,7 +6104,7 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                 local card = cards[i + 1]
                 if card == nil then
                     local panel = Native:createPanel(scroll.content, theme.colors.surfaceRaised, theme.colors.border)
-                    panel.frame:SetSize(1228, 216)
+                    panel.frame:SetSize(1228, 228)
                     local iconBadge = Native:createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_Map_01", 50, theme.colors.primary)
                     iconBadge.frame:SetPoint(
                         "LEFT",
@@ -6108,7 +6121,8 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                         82,
                         -16
                     )
-                    cardTitle:SetWidth(520)
+                    cardTitle:SetWidth(510)
+                    cardTitle:SetHeight(20)
                     local meta = Native:createText(panel.frame, "", "GameFontNormalSmall", theme.colors.primary)
                     meta:SetPoint(
                         "TOPLEFT",
@@ -6117,7 +6131,8 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                         0,
                         -5
                     )
-                    meta:SetWidth(520)
+                    meta:SetWidth(510)
+                    meta:SetHeight(18)
                     local reason = Native:createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted)
                     reason:SetPoint(
                         "TOPLEFT",
@@ -6126,8 +6141,8 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                         620,
                         -18
                     )
-                    reason:SetWidth(420)
-                    reason:SetHeight(58)
+                    reason:SetWidth(390)
+                    reason:SetHeight(66)
                     reason:SetJustifyV("TOP")
                     local readiness = Native:createText(panel.frame, "", "GameFontNormalSmall", theme.colors.primary)
                     readiness:SetPoint(
@@ -6135,10 +6150,10 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                         panel.frame,
                         "TOPLEFT",
                         620,
-                        -84
+                        -92
                     )
-                    readiness:SetWidth(420)
-                    readiness:SetHeight(116)
+                    readiness:SetWidth(390)
+                    readiness:SetHeight(118)
                     readiness:SetJustifyV("TOP")
                     local use = ButtonUI:createButton(panel.frame, {
                         text = "Configure",
@@ -6174,7 +6189,7 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                     scroll.content,
                     "TOPLEFT",
                     0,
-                    -(i * 224)
+                    -(i * 236)
                 )
                 card.iconBadge.icon:SetTexture(Model:activityIconFor(item.id, item.mode))
                 card.iconBadge.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
@@ -6220,7 +6235,7 @@ function ____exports.createRecommendationsPage(self, parent, onConfigure)
                 i = i + 1
             end
         end
-        scroll:setContentHeight(math.max(690, #rows * 224))
+        scroll:setContentHeight(math.max(690, #rows * 236))
     end
     Model:composer():RegisterCallback(
         "JOURNEY_CHANGED",

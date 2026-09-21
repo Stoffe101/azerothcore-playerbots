@@ -330,3 +330,17 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - RUNTIME-BUILD: when simulator inputs change, Stage backend must build the real `wowsims-service` image and require preset readiness for VANILLA, TBC and WOTLK.
 - TODO integration: replace template character fields with authoritative worldserver snapshot state and produce a baseline RaidSimRequest.
 - TODO integration: mutate one candidate equipment slot, run baseline/candidate through the same preset and return the exact delta.
+
+
+### Addon layout-safety follow-up
+
+- PASS (CI base `998d297a`): WoWSims preset image harvest is exact-head green for all three eras.
+- STATIC: GearAdvisor v0.3.1 uses a 638px panel, a 34px era notice region and a 72px explanation/result region.
+- STATIC: no-icon Group Composer buttons anchor labels to both left and right insets.
+- STATIC: Activity Browser cards use 88px card height / 96px row stride and a 28px two-line status region.
+- STATIC: Recommendations use 228px cards / 236px stride and keep reason/readiness copy narrower than the action column.
+- STATIC: equivalent geometry exists in checked-in `GroupComposerModernUI.lua`.
+- TODO runtime: GearAdvisor class/spec, mode toggle, close button and top info line do not overlap at normal and narrow UI scales.
+- TODO runtime: long era warnings and sim explanations stay inside GearAdvisor without touching stats/footer/WoWSims button.
+- TODO runtime: Activity Browser locked reasons/support labels remain inside their cards and never overlap Favorites or the next row.
+- TODO runtime: Recommended Activity reason/readiness copy never overlaps Configure/View Unlocks or adjacent cards.

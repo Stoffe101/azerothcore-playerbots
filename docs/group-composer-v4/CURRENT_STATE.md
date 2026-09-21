@@ -416,3 +416,18 @@ Preset-harvester progress: `365c194e` successfully completed the Vanilla engine 
 
 
 Preset-harvester dependency follow-up: `72062c78` reconfirmed the Classic 24-request/15-route harvest, then proved the missing TBC descriptor was a package-content issue rather than an include-path issue. Debian Bookworm ships the standard proto definitions in `libprotobuf-dev`; the builder now installs it explicitly because `--no-install-recommends` suppresses that recommended dependency.
+
+
+### WoWSims preset harvesting green + addon layout safety
+
+Exact SHA `998d297a7f38e941740c41bdc972842157de0e97` is fully green on all four workflows. Its real Docker build harvested 24 Vanilla requests across 15 routes, 15 TBC requests across 15 routes, and 37 WotLK requests across 33 routes. All three preset catalogs report ready.
+
+Current client layout-safety work:
+- GearAdvisor is bumped to v0.3.1 and gains extra vertical space for simulation guidance, realm-era warnings and returned explanations;
+- the header separates class/spec from role/ilvl/era so variant controls do not compete with long spec labels;
+- generic no-icon Group Composer buttons now bind labels between left/right insets rather than using a single unbounded center anchor;
+- Activity Browser cards gain taller bounded title/detail/status regions and a two-line support/status area;
+- Recommended Activities gains bounded title/meta/reason/readiness areas and a reserved right-side action column;
+- the TypeScript source and checked-in `GroupComposerModernUI.lua` contain the same geometry changes.
+
+This pass still requires exact-head CI and real-client screenshot/runtime acceptance before its visual rows become PASS.

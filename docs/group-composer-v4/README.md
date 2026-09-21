@@ -128,3 +128,17 @@ Current slice replaces ad-hoc model naming with `data/wowsims/model-support.json
 Model-catalog repair checkpoint `7c9591511ff25839812bfc99e78cf8cec4f5e9bd` is **fully green on all four exact-SHA workflows** and is the stable base for this slice.
 
 The next layer harvests the pinned engines' own `FullCharacterTestSuiteGenerator` **Average** `RaidSimRequest` objects instead of manually recreating rotations, consumes, raid buffs, debuffs, encounter defaults and spec options. The production `wowsimcli` binaries are built before the temporary test-harness instrumentation, so the shipped CLIs remain exact upstream builds from the pinned commits.
+
+
+### WoWSims preset checkpoint and addon layout-safety pass
+
+Engine-native preset harvesting is **DONE + exact-head local-CI green at `998d297a7f38e941740c41bdc972842157de0e97`**. All four workflows succeeded, including both heavy jobs on `stoffes-pc`.
+
+The real service image harvested:
+- Vanilla: **24 requests / 15 routes**;
+- TBC: **15 requests / 15 routes**;
+- WotLK: **37 requests / 33 routes**.
+
+These are reproducible engine-native preset candidates, not automatic SIM-BACKED approval. The next simulation slice overlays the authoritative worldserver snapshot onto a selected preset and constructs equivalent baseline/candidate requests.
+
+Current client follow-up is a layout-safety pass: GearAdvisor v0.3.1 gets larger bounded era/simulation explanation regions, Group Composer buttons receive bounded labels, Activity Browser cards receive explicit two-line status space, and Recommendations reserve separate copy/action columns. TypeScript source and `GroupComposerModernUI.lua` move together. Real 3.3.5a visual acceptance remains required.

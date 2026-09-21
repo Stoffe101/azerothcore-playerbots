@@ -1,6 +1,6 @@
 # WoWSims Integration
 
-_Status: v0.3 authoritative snapshot integration in progress; service foundation is green at `aba336fd`, snapshot slice exact-head local CI required._
+_Status: preset harvesting is exact-head green at `998d297a`; authoritative snapshot-to-preset baseline/candidate construction is next._
 
 ## Decision
 
@@ -222,3 +222,14 @@ Every output is classified against `model-support.json` using the actual proto o
 Models with no upstream RaidSimRequest remain without a preset. A concrete example is the pinned TBC healer-priest test, which is stats-only; Skrra will not manufacture a healing rotation for it.
 
 The generated per-era `preset-index.json` records route coverage plus SHA-256 for each raw request. Health and `GET /v1/presets` expose that coverage. Automatic GearAdvisor results remain blocked until authoritative character fields are applied to one of these presets and the route is validated against Skrra/AzerothCore behavior.
+
+
+## Verified preset coverage checkpoint
+
+Exact SHA `998d297a7f38e941740c41bdc972842157de0e97` passed all four workflows. Its real service-image build produced ready preset catalogs for all three engines:
+
+- Vanilla: 24 unique requests across 15 routes;
+- TBC: 15 unique requests across 15 routes;
+- WotLK: 37 unique requests across 33 routes.
+
+Coverage means an engine-native request fixture exists for that route. It does **not** promote that route to SIM-BACKED. The next adapter must copy authoritative server-owned character state into the selected preset, preserve the preset's non-character assumptions, build baseline/candidate requests that differ only in the intended item slot, and then validate the result against Skrra/AzerothCore behavior.

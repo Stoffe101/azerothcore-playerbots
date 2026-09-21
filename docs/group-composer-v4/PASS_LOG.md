@@ -3,6 +3,35 @@
 Newest entries belong at the top of the dated section.
 
 
+## 2026-09-21 — WoWSims preset green checkpoint + addon layout safety
+
+Preset status: **DONE + exact-head local-CI green at `998d297a7f38e941740c41bdc972842157de0e97`**.
+
+Exact-head proof:
+- Group Composer client checks: SUCCESS;
+- Stage Group Composer V4 backend: SUCCESS;
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`;
+- Integration build: SUCCESS on `stoffes-pc`.
+
+Real image coverage:
+- Vanilla: 24 unique requests / 15 routes / 16 upstream test functions;
+- TBC: 15 unique requests / 15 routes / 19 upstream test functions;
+- WotLK: 37 unique requests / 33 routes / 37 upstream test functions.
+
+Current visual follow-up: **IMPLEMENTED / exact-head local CI required**.
+- GearAdvisor v0.3.1 expands bounded era/guidance/result areas and reduces header competition;
+- no-icon button labels are horizontally bounded inside their controls;
+- Activity Browser cards reserve explicit title/detail/two-line status regions;
+- Recommendations reserve action-button space and bound reason/readiness copy;
+- TypeScript and generated Group Composer Lua are updated together;
+- real 3.3.5a screenshot acceptance remains TODO.
+
+Next:
+- exact-head CI for the visual pass;
+- in-game visual acceptance at normal and narrow UI sizes;
+- authoritative snapshot overlay -> baseline RaidSimRequest -> candidate slot mutation -> asynchronous comparison.
+
+
 ## 2026-09-21 — Engine-native WoWSims preset harvester
 
 Status: **IMPLEMENTED / repair in progress after real-image gate exposed upstream source-layout edge cases**.

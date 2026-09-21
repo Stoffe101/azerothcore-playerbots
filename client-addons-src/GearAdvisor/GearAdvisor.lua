@@ -5,7 +5,7 @@ DB.variants = DB.variants or {}
 
 local ADDON = "GearAdvisor"
 local PANEL_WIDTH = 390
-local PANEL_HEIGHT = 574
+local PANEL_HEIGHT = 638
 
 local CLASS_SPECS = {
     WARRIOR = { "Arms", "Fury", "Protection" },
@@ -651,26 +651,26 @@ priorityTitle:SetText("STAT PRIORITY")
 local priorityText = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 priorityText:SetPoint("TOPLEFT", 24, -237)
 priorityText:SetWidth(342)
-priorityText:SetHeight(42)
+priorityText:SetHeight(52)
 priorityText:SetJustifyH("LEFT")
 priorityText:SetJustifyV("TOP")
 
 local eraNotice = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-eraNotice:SetPoint("TOPLEFT", 24, -280)
+eraNotice:SetPoint("TOPLEFT", 24, -294)
 eraNotice:SetWidth(342)
-eraNotice:SetHeight(18)
+eraNotice:SetHeight(34)
 eraNotice:SetJustifyH("LEFT")
 
-CreateDivider(panel, -303)
+CreateDivider(panel, -335)
 
 local currentTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-currentTitle:SetPoint("TOPLEFT", 20, -316)
+currentTitle:SetPoint("TOPLEFT", 20, -348)
 currentTitle:SetText("YOUR KEY STATS")
 
 local statRows = {}
 for i = 1, 7 do
     local label = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    label:SetPoint("TOPLEFT", 24, -338 - (i - 1) * 18)
+    label:SetPoint("TOPLEFT", 24, -370 - (i - 1) * 18)
     label:SetWidth(182)
     label:SetJustifyH("LEFT")
 
@@ -681,16 +681,16 @@ for i = 1, 7 do
     statRows[i] = { label = label, value = value }
 end
 
-CreateDivider(panel, -467)
+CreateDivider(panel, -499)
 
 local notesTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-notesTitle:SetPoint("TOPLEFT", 20, -480)
+notesTitle:SetPoint("TOPLEFT", 20, -512)
 notesTitle:SetText("WHY / WHAT NEXT")
 
 local notesText = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-notesText:SetPoint("TOPLEFT", 24, -500)
+notesText:SetPoint("TOPLEFT", 24, -532)
 notesText:SetWidth(342)
-notesText:SetHeight(48)
+notesText:SetHeight(72)
 notesText:SetJustifyH("LEFT")
 notesText:SetJustifyV("TOP")
 
@@ -698,7 +698,7 @@ local footer = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 footer:SetPoint("BOTTOMLEFT", 20, 10)
 footer:SetPoint("BOTTOMRIGHT", -112, 10)
 footer:SetJustifyH("LEFT")
-footer:SetText("WoWSims-backed upgrades | hover caps for details | /ga toggles")
+footer:SetText("Sim-backed upgrades · hover caps · /ga")
 
 local simButton = CreateFrame("Button", "GearAdvisor335SimButton", panel, "UIPanelButtonTemplate")
 simButton:SetWidth(88)
@@ -721,7 +721,7 @@ end)
 simButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
 local modeButton = CreateFrame("Button", "GearAdvisor335ModeButton", panel, "UIPanelButtonTemplate")
-modeButton:SetWidth(116)
+modeButton:SetWidth(104)
 modeButton:SetHeight(22)
 modeButton:SetPoint("TOPRIGHT", -32, -17)
 modeButton:Hide()
@@ -798,8 +798,8 @@ local function Update()
     else
         specLine:SetTextColor(1, 1, 1)
     end
-    specLine:SetText(className .. " | " .. specName .. " | " .. profile.role)
-    ilvlLine:SetText("Equipped iLvl  |cffffffff" .. Number(EquippedItemLevel(), 1) .. "|r     Realm  |cffffffff" .. era .. "|r  (" .. eraSource .. ")")
+    specLine:SetText(className .. " | " .. specName)
+    ilvlLine:SetText(profile.role .. "  ·  Equipped iLvl |cffffffff" .. Number(EquippedItemLevel(), 1) .. "|r  ·  Realm |cffffffff" .. era .. "|r (" .. eraSource .. ")")
 
     priorityTitle:SetText("SIMULATION & STAT GUIDANCE")
     if WoWSimsBridge then
@@ -811,7 +811,7 @@ local function Update()
 
     if variant then
         modeButton:Show()
-        modeButton:SetText("Mode: " .. variant.selected)
+        modeButton:SetText(variant.selected)
         modeButton:SetScript("OnClick", function()
             local names = {}
             for name in pairs(variant.root.variants) do names[#names + 1] = name end

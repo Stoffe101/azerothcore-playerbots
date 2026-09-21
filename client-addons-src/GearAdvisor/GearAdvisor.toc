@@ -3,7 +3,7 @@
 ## Notes: Era-aware PvE caps/current stats with WoWSims-backed upgrade simulation for the Skrra 3.3.5a realm.
 ## Author: Skrra server project
 ## OptionalDeps: GroupComposer, WoWSimsBridge
-## Version: 0.3.0
+## Version: 0.3.1
 ## SavedVariablesPerCharacter: GearAdvisor335DB
 
 GearAdvisor.lua

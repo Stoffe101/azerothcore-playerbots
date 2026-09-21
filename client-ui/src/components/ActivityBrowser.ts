@@ -168,16 +168,16 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
             let card = cards[i];
             if (card === undefined) {
                 const button = ButtonUI.createButton(scroll.content, {
-                    text: "", width: 426, height: 78, accent: theme.colors.primary, flat: true,
+                    text: "", width: 426, height: 88, accent: theme.colors.primary, flat: true,
                 });
                 const iconBadge = Native.createFramedIcon(button.frame, "Interface\\Icons\\INV_Misc_QuestionMark", 42, theme.colors.borderStrong);
                 iconBadge.frame.SetPoint("LEFT", button.frame, "LEFT", 12, 0);
                 const title = Native.createText(button.frame, "", "GameFontNormal");
-                title.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -12); title.SetWidth(300);
+                title.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -11); title.SetWidth(278); title.SetHeight(18);
                 const detail = Native.createText(button.frame, "", "GameFontHighlightSmall", theme.colors.muted);
-                detail.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -35); detail.SetWidth(300);
+                detail.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -34); detail.SetWidth(300); detail.SetHeight(16);
                 const tag = Native.createText(button.frame, "", "GameFontNormalSmall", theme.colors.primary);
-                tag.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -55); tag.SetWidth(260);
+                tag.SetPoint("TOPLEFT", button.frame, "TOPLEFT", 66, -54); tag.SetWidth(340); tag.SetHeight(28); tag.SetJustifyV("TOP");
                 const favorite = ButtonUI.createButton(button.frame, {
                     text: "Fav", width: 44, height: 30, accent: theme.colors.warning, flat: true,
                 });
@@ -192,7 +192,7 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
             const column = i % 2;
             const row = Math.floor(i / 2);
             card.button.frame.ClearAllPoints();
-            card.button.frame.SetPoint("TOPLEFT", scroll.content, "TOPLEFT", column * 436, -(row * 86));
+            card.button.frame.SetPoint("TOPLEFT", scroll.content, "TOPLEFT", column * 436, -(row * 96));
             const access = Model.activityEligibility(item.id, mode());
             const selected = String(Model.config().activity) === item.id;
             card.button.setSelected(selected);
@@ -240,7 +240,7 @@ export function createActivityBrowser(parent: WoWFrame): ActivityBrowser {
             });
             card.button.frame.Show();
         }
-        scroll.setContentHeight(Math.max(470, Math.ceil(items.length / 2) * 86));
+        scroll.setContentHeight(Math.max(470, Math.ceil(items.length / 2) * 96));
     }
 
     Model.composer().RegisterCallback("ACTIVITIES_CHANGED", () => {

@@ -37,7 +37,7 @@ export function createRecommendationsPage(parent: WoWFrame, onConfigure: () => v
         "Suggestions come from the live realm era, your level, progression gates and activities you have not cleared yet.",
         "GameFontHighlightSmall", theme.colors.muted);
     subtitle.SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6);
-    subtitle.SetWidth(1080);
+    subtitle.SetWidth(900); subtitle.SetHeight(32); subtitle.SetJustifyV("TOP");
 
     const realmText = Native.createText(root.frame, "", "GameFontHighlight", theme.colors.primary);
     realmText.SetPoint("TOPRIGHT", root.frame, "TOPRIGHT", -24, -28);
@@ -65,24 +65,24 @@ export function createRecommendationsPage(parent: WoWFrame, onConfigure: () => v
             let card = cards[i];
             if (card === undefined) {
                 const panel = Native.createPanel(scroll.content, theme.colors.surfaceRaised, theme.colors.border);
-                panel.frame.SetSize(1228, 216);
+                panel.frame.SetSize(1228, 228);
                 const iconBadge = Native.createFramedIcon(panel.frame, "Interface\\Icons\\INV_Misc_Map_01", 50, theme.colors.primary);
                 iconBadge.frame.SetPoint("LEFT", panel.frame, "LEFT", 16, 0);
                 const cardTitle = Native.createText(panel.frame, "", "GameFontNormal");
                 cardTitle.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 82, -16);
-                cardTitle.SetWidth(520);
+                cardTitle.SetWidth(510); cardTitle.SetHeight(20);
                 const meta = Native.createText(panel.frame, "", "GameFontNormalSmall", theme.colors.primary);
                 meta.SetPoint("TOPLEFT", cardTitle, "BOTTOMLEFT", 0, -5);
-                meta.SetWidth(520);
+                meta.SetWidth(510); meta.SetHeight(18);
                 const reason = Native.createText(panel.frame, "", "GameFontHighlightSmall", theme.colors.muted);
                 reason.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 620, -18);
-                reason.SetWidth(420);
-                reason.SetHeight(58);
+                reason.SetWidth(390);
+                reason.SetHeight(66);
                 reason.SetJustifyV("TOP");
                 const readiness = Native.createText(panel.frame, "", "GameFontNormalSmall", theme.colors.primary);
-                readiness.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 620, -84);
-                readiness.SetWidth(420);
-                readiness.SetHeight(116);
+                readiness.SetPoint("TOPLEFT", panel.frame, "TOPLEFT", 620, -92);
+                readiness.SetWidth(390);
+                readiness.SetHeight(118);
                 readiness.SetJustifyV("TOP");
                 const use = ButtonUI.createButton(panel.frame, {
                     text: "Configure", width: 150, height: 38, accent: theme.colors.success, emphasis: true,
@@ -96,7 +96,7 @@ export function createRecommendationsPage(parent: WoWFrame, onConfigure: () => v
 
             const item = rows[i];
             card.panel.frame.ClearAllPoints();
-            card.panel.frame.SetPoint("TOPLEFT", scroll.content, "TOPLEFT", 0, -(i * 224));
+            card.panel.frame.SetPoint("TOPLEFT", scroll.content, "TOPLEFT", 0, -(i * 236));
             card.iconBadge.icon.SetTexture(Model.activityIconFor(item.id, item.mode));
             card.iconBadge.icon.SetTexCoord(0.08, 0.92, 0.08, 0.92);
             card.title.SetText(item.label);
@@ -141,7 +141,7 @@ export function createRecommendationsPage(parent: WoWFrame, onConfigure: () => v
             card.panel.frame.Show();
         }
 
-        scroll.setContentHeight(Math.max(690, rows.length * 224));
+        scroll.setContentHeight(Math.max(690, rows.length * 236));
     }
 
     Model.composer().RegisterCallback("JOURNEY_CHANGED", () => {

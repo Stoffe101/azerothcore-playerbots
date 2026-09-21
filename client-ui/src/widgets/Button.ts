@@ -55,7 +55,8 @@ export function createButton(parent: WoWFrame, options: ButtonOptions): UIButton
         label.SetPoint("RIGHT", frame, "RIGHT", -8, 0);
         label.SetJustifyH("LEFT");
     } else {
-        label.SetPoint("CENTER", frame, "CENTER", 0, 0);
+        label.SetPoint("LEFT", frame, "LEFT", 8, 0);
+        label.SetPoint("RIGHT", frame, "RIGHT", -8, 0);
         label.SetJustifyH("CENTER");
     }
 

@@ -1,6 +1,6 @@
 # Client Addon Bundle
 
-_Status: implementation exact-head GitHub-CI green at `de842ba842721f32d588ba5d9818b872f9a6c805`; in-game acceptance still TODO._
+_Status: bundle foundation is green; GearAdvisor v0.3.1 / Group Composer layout-safety follow-up is in exact-head local-CI validation; in-game acceptance still TODO._
 
 ## Distribution model
 
@@ -74,6 +74,20 @@ The former `ExtendedCharacterStats` source remains for history but is skipped fr
 See `WOWSIMS_INTEGRATION.md` for the backend and confidence contract.
 
 
+
+## Layout-safety follow-up
+
+The current client pass treats text geometry as a contract rather than relying on ideal short strings:
+
+- GearAdvisor v0.3.1 is taller and reserves larger fixed regions for era guidance and simulation explanations;
+- class/spec stays in the top identity line while role/ilvl/era moves to the secondary line;
+- Feral/DK variant buttons use shorter labels;
+- no-icon Group Composer button labels are constrained between horizontal insets;
+- Activity Browser title/detail/status areas have explicit heights, with two lines reserved for support/lock state;
+- Recommended Activities separates descriptive copy from the action-button column and increases card/row height;
+- the TypeScript authoring source and generated Lua bundle are kept synchronized in the same commit.
+
+
 ## Runtime acceptance
 
 Before calling the pass accepted in game:
@@ -92,4 +106,8 @@ Before calling the pass accepted in game:
 13. run `/wsim bags` and verify equippable bag items are accepted by WoWSims batch/top-gear import;
 14. compare exported item IDs/enchants/gems/talents/professions against the live character;
 15. confirm Vanilla never routes to TBC/WotLK and TBC never routes to WotLK;
-16. confirm GearAdvisor no longer presents a static stat-priority ranking as the reason an item is better.
+16. confirm GearAdvisor no longer presents a static stat-priority ranking as the reason an item is better;
+17. verify long class/spec/mode labels do not collide with the close button or each other;
+18. verify era guidance and long simulation explanations stay inside their reserved regions;
+19. verify Activity Browser lock/support text never touches Favorites or the next row;
+20. verify Recommended Activity reason/readiness text stays clear of Configure/View Unlocks at normal and narrow scales.
