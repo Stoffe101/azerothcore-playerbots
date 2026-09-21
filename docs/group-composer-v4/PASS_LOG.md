@@ -946,6 +946,12 @@ Second visual SHA `643c1e1b5b0db894f0a157ae537eed1e312b125e`:
 - client workflow definition was repaired and GitHub created the validation job normally;
 - backend focused checks then failed on the existing `test_server_contract.py` assertion that still required the old Activity Browser `86px` row stride;
 - repair updates the contract to the intentional `96px` stride and adds assertions for the new 88px Activity cards, 28px status region, 228px Recommendation cards and 236px Recommendation stride.
+
+Third visual SHA `c919e16e208fa240ad4a1edba2487f61fb37b3a8`:
+- both client and backend checks reached the contract suite;
+- two later Recommendation assertions still required the old 216px card / 224px stride;
+- the complete stale-geometry scan found no other old values from this pass;
+- repair updates those final assertions to 228px / 236px.
 - GearAdvisor v0.3.1 expands bounded era/guidance/result areas and reduces header competition;
 - no-icon button labels are horizontally bounded inside their controls;
 - Activity Browser cards reserve explicit title/detail/two-line status regions;

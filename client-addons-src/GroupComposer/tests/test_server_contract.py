@@ -1216,8 +1216,8 @@ assert 'sLFGMgr->InitializeLockedDungeons(player, group);' in SERVER
 assert 'GetState(group->GetGUID()) != lfg::LFG_STATE_ROLECHECK' in SERVER
 assert 'Queueing the assembled party through Blizzard Dungeon Finder' in SERVER
 assert 'height: 108' in SELECTOR and 'specs.SetHeight(46)' in SELECTOR
-assert 'panel.frame.SetSize(1228, 216)' in RECOMMENDATIONS_PAGE
-assert 'rows.length * 224' in RECOMMENDATIONS_PAGE
+assert 'panel.frame.SetSize(1228, 228)' in RECOMMENDATIONS_PAGE
+assert 'rows.length * 236' in RECOMMENDATIONS_PAGE
 assert 'createUnlockRequirementsModal(modal.frame)' in ACTIVITY_BROWSER
 assert 'Model.relevantEraForPlayer(mode())' in ACTIVITY_BROWSER
 assert 'Model.relevantEraForPlayer("RAID")' in PROGRESSION_PAGE
