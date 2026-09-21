@@ -196,3 +196,18 @@ The repaired policy keeps those meanings separate:
 - every route must be selectable by one of these explicit policies in the real Docker-image gate.
 
 This remains preset selection only. No route becomes SIM-BACKED and no simulation is executed by this slice.
+
+
+## Current ERA-07 automated vendor/reward integration candidate
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+- Codex source commit: `9499939ed190af2d68989d69a99f7a58468be042` (`feat: extend ERA-07 to automated vendor rewards`), based on green WoWSims checkpoint `52ac5255...`.
+- Integrated onto the newer WoWSims development line by merge commit `304aee8d759e52aa231705a91cc92417e43c206c`; none of the active WoWSims/GearAdvisor implementation files were replaced.
+- Titan Rune Sidereal/Scourgestone vendor display, purchases and currency exchange now require ready/allowed central item provenance before currency can be spent.
+- Pending Titan Rune rewards remain pending when provenance is unavailable or the item is not yet allowed; Gamma signets use the same fail-closed rule.
+- AI Guild stock mail, conservation, automated AH buy/list flows and player-facing stock helpers now fail closed before item/stock/treasury/request-state mutation.
+- Four reviewed custom Titan Rune currency/signet IDs are classified as WotLK in the central provenance override ledger.
+- `.era audit` now inspects automated vendor catalogs, pending Titan rewards, AI Guild stock and queued automated purchases.
+- Static/local checks passed on the Codex commit, but the integrated docs-synchronized head still requires the four exact-SHA workflows and runtime acceptance.
+- ERA-07 and ERA-13 remain **PARTIAL / IN PROGRESS**. Protocol loot injection, AI Guild profession crafting/recipe discovery, ordinary loot/crafting/recipes, ArenaRoster PvP gear generation, broader quest/NPC/vendor cleanup and Titan Rune world-spawn/map lifecycle remain future slices.
