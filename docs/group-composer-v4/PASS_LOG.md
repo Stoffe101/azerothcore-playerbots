@@ -2,6 +2,27 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — ERA-07 slice 3 final: post-patch PlayerbotFactory item policy
+
+Status: **DONE + exact-head GitHub-hosted CI verified at `e990dff5cd6e8c7fa317d4b94840320eb6b73adb`**.
+
+Final resolution:
+- retired the order-fragile static `0044-playerbot-era-item-policy-hook.patch`;
+- added strict `tools/apply-playerbot-era-item-policy.py`;
+- setup, update, Integration and Group Composer compile invoke it after the complete wrapper + EraTalents patch stack;
+- it inserts the PlayerbotFactory item-policy callback API, fail-closed readiness boundary and generated-item vetoes into the final assembled source;
+- the transformer fails loudly on source-shape drift instead of guessing at patch hunks;
+- AdventureStart and catch-up preserve player state/claimability when provenance is unavailable;
+- central provenance is authoritative; older item/level heuristics may remain only as conservative extra restrictions.
+
+CI: client checks SUCCESS, backend staging SUCCESS, Integration SUCCESS, Group Composer V4 compile SUCCESS on exact SHA `e990dff5...`, using explicit GitHub-hosted routing while `stoffes-pc` was offline.
+
+## 2026-09-21 — ERA-07 slice 4: Adventure Cache reward provenance
+
+Status: **IN PROGRESS**.
+
+Prepared implementation gates direct Adventure Cache gear/potion rewards through central provenance and checks readiness before consuming the pending cache, so a stale provenance snapshot cannot eat the player's one-shot reward.
+
 ## 2026-09-21 — ERA-07 slice 3 repair: replace fragile 0044 with post-patch transformer
 
 Status: **IMPLEMENTATION PREPARED; exact-head GitHub-hosted CI required**.

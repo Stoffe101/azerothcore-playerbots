@@ -265,22 +265,28 @@ Slice 2 implementation:
 
 Slice 2 exact-SHA CI: client checks **SUCCESS**, backend staging **SUCCESS**, Integration **SUCCESS** on `stoffes-pc`, Group Composer V4 compile **SUCCESS** on `stoffes-pc`.
 
-Slice 3 implementation status: **IN PROGRESS — static patch approach abandoned; strict post-patch transformer prepared for exact-head GitHub CI**.
+Slice 3 implementation status: **DONE + exact-head GitHub-hosted CI green at `e990dff5cd6e8c7fa317d4b94840320eb6b73adb`**.
 
 - PlayerbotFactory receives narrow external item-policy callbacks without a direct dependency on mod-raid-roster.
 - RaidRoster registers `EraPolicy::ItemProvenanceReady` + `EraPolicy::IsItemAllowed` as those callbacks.
 - `tools/apply-playerbot-era-item-policy.py` runs after all wrapper patches and EraTalents in fresh setup, update, Integration CI and Group Composer compile CI.
-- The transformer uses strict semantic markers and aborts if the assembled PlayerbotFactory shape is not the expected pinned integration tree; it is idempotent when already applied.
+- The transformer uses strict semantic markers and aborts if the fully assembled PlayerbotFactory shape drifts; static patch `0044` is retired.
 - AutoGear/InitEquipment fails before second-chance equipment destruction when provenance is unavailable/stale.
 - Start-outfit candidates, PvP trinkets, normal equipment candidates, bags, ammo, potions, food, generic factory-stored items and gem-item candidates are vetoed by central item provenance.
-- Existing EraTalents/Playerbots item-ID or RequiredLevel heuristics are **not** treated as chronology truth. They remain temporarily as extra conservative restrictions where present; central provenance is the authoritative allow layer.
+- Existing EraTalents/Playerbots item-ID or RequiredLevel heuristics are not chronology truth. They remain only as extra conservative restrictions where present.
 - AdventureStart refuses item-producing profiles before progression/level/starter-state mutation when central provenance is unavailable.
 - Explicit AdventureStart supply grants call `EraPolicy::IsItemAllowed`.
 - `.catchup` refuses before progression unlock or one-time claim mutation when provenance is unavailable, and `EquipCatchup` has a defensive readiness guard.
-- Static `0044-playerbot-era-item-policy-hook.patch` is retired because it collided first with EraTalents and then with the fully assembled PlayerbotFactory source.
-- Boundary: item provenance does **not** prove enchant-spell chronology. Vendors/rewards, ordinary loot/crafting/recipes and non-PlayerbotFactory item producers remain later ERA-07 work.
+- Item provenance does not yet prove enchant-spell chronology.
 
-CI history for this slice:
-- `c685274a`: fast checks passed; both heavy jobs failed because 0044 ran before EraTalents.
-- `89367cc`: deferred ordering reached EraTalents successfully, but static 0044 still failed against the fully patched PlayerbotFactory; fast checks also exposed a brittle prose assertion.
-- `e6a2e474`: repaired only that brittle assertion and is superseded by the source-transformer repair; it is not a green implementation checkpoint.
+Exact-head `e990dff5` CI: client checks **SUCCESS**, backend staging **SUCCESS**, Integration **SUCCESS**, Group Composer V4 compile **SUCCESS**, all using GitHub-hosted CI while `stoffes-pc` is offline.
+
+### ERA-07 slice 4 — Adventure Cache direct rewards
+
+Status: **IN PROGRESS**.
+
+- Adventure Cache is a custom item-producing reward path outside PlayerbotFactory.
+- Cache opening will check `EraPolicy::ItemProvenanceReady()` before consuming the pending one-shot reward.
+- Spec-aware cache gear candidates and direct potion/gear storage will call `EraPolicy::IsItemAllowed`.
+- If provenance is stale/unavailable, the pending cache remains intact for retry after repair.
+- Ordinary vendors/rewards, loot/crafting/recipes and other non-PlayerbotFactory item sources remain later work.

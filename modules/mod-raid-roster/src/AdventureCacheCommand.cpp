@@ -1,6 +1,7 @@
 #include "AdventureCacheCommand.h"
 
 #include "AdventureProgressionStore.h"
+#include "EraPolicy.h"
 #include "RaidRosterConfig.h"
 #include "AiFactory.h"
 #include "Item.h"
@@ -33,6 +34,8 @@ bool IsCachePlayer(Player* player)
 bool TryGiveItem(Player* player, uint32 itemId, uint32 count)
 {
     if (!player || !itemId || !count)
+        return false;
+    if (!EraPolicy::IsItemAllowed(itemId))
         return false;
 
     ItemPosCountVec dest;
@@ -108,6 +111,9 @@ uint32 PickSpecAwareGear(Player* player, uint32 quality)
         eligible.reserve(scored.size());
         for (uint32 itemId : scored)
         {
+            if (!EraPolicy::IsItemAllowed(itemId))
+                continue;
+
             ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
             if (!proto || proto->ItemLevel > itemLevelCap)
                 continue;
@@ -168,6 +174,16 @@ bool AdventureCacheCommand::HandleOpen(ChatHandler* handler)
     if (!g_AdventureProgressionCachesEnable)
     {
         handler->SendSysMessage("Adventure progression caches are disabled.");
+        return true;
+    }
+
+    // Preserve the one-shot reward when chronology is missing/stale. A repaired provenance
+    // snapshot must let the player retry instead of silently losing the pending cache.
+    if (!EraPolicy::ItemProvenanceReady())
+    {
+        handler->PSendSysMessage(
+            "Adventure Cache is temporarily unavailable: item provenance is not ready ({}). Your cache was not consumed.",
+            EraPolicy::ItemProvenanceError());
         return true;
     }
 

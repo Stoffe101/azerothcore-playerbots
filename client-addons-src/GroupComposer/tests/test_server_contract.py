@@ -67,6 +67,7 @@ ERA_POLICY_CPP = (ROOT / "modules/mod-raid-roster/src/EraPolicy.cpp").read_text(
 ADMIN_PANEL_EXPANSION_H = (ROOT / "modules/mod-admin-panel/src/AdminPanelExpansion.h").read_text(encoding="utf-8")
 ADMIN_PANEL_EXPANSION_CPP = (ROOT / "modules/mod-admin-panel/src/AdminPanelExpansion.cpp").read_text(encoding="utf-8")
 ADVENTURE_CATCHUP = (ROOT / "modules/mod-raid-roster/src/AdventureCatchupCommand.cpp").read_text(encoding="utf-8")
+ADVENTURE_CACHE = (ROOT / "modules/mod-raid-roster/src/AdventureCacheCommand.cpp").read_text(encoding="utf-8")
 ADVENTURE_CONTROL = (ROOT / "modules/mod-raid-roster/src/AdventureControlCommand.cpp").read_text(encoding="utf-8")
 GROUP_COMPOSER_TITAN = (ROOT / "modules/mod-raid-roster/src/GroupComposerTitanRune.cpp").read_text(encoding="utf-8")
 RAID_ROSTER_ERA = (ROOT / "modules/mod-raid-roster/src/RaidRosterEra.cpp").read_text(encoding="utf-8")
@@ -1469,3 +1470,12 @@ for patch_host in (SETUP_SCRIPT, UPDATE_SCRIPT, INTEGRATION_WORKFLOW, COMPILE_WO
     assert 'apply-playerbot-era-item-policy.py' in patch_host
     assert 'deferred_item_policy_patch' not in patch_host
     assert '0044-playerbot-era-item-policy-hook.patch' not in patch_host
+
+
+# ERA-07 slice 4: Adventure Cache is a direct item-producing reward path. It must not consume
+# the pending one-shot reward while chronology is unavailable, and every created item is gated.
+assert '#include "EraPolicy.h"' in ADVENTURE_CACHE
+assert "EraPolicy::ItemProvenanceReady()" in ADVENTURE_CACHE
+assert "Your cache was not consumed." in ADVENTURE_CACHE
+assert "if (!EraPolicy::IsItemAllowed(itemId))" in ADVENTURE_CACHE
+assert ADVENTURE_CACHE.index("EraPolicy::ItemProvenanceReady()") < ADVENTURE_CACHE.index("ConsumePendingCache(guid)")

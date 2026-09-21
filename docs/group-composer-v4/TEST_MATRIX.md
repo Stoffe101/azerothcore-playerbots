@@ -78,11 +78,11 @@ Status vocabulary:
 
 ## ERA-07 starter/catch-up / PlayerbotFactory provenance
 
-- STATIC/CI: `tools/apply-playerbot-era-item-policy.py` Python-compiles and contains readiness + item-allowed callback insertion contracts.
-- STATIC/CI: setup, update, Integration and Group Composer compile invoke the transformer **after** EraTalents.
-- STATIC/CI: assembly paths contain no deferred-0044 mechanism; the static 0044 patch is retired.
-- STATIC/CI: RaidRoster registers `EraPolicy::ItemProvenanceReady` and `EraPolicy::IsItemAllowed` with PlayerbotFactory.
-- STATIC/CI: AdventureStart and catch-up fail before destructive/one-time state mutation when provenance is unavailable.
+- PASS (CI `e990dff5`): post-patch transformer Python-compiles and inserts readiness + item-allowed callback contracts after EraTalents.
+- PASS (CI `e990dff5`): setup, update, Integration and Group Composer compile use the transformer after the full patch stack.
+- PASS (CI `e990dff5`): static 0044/deferred-patch machinery is retired.
+- PASS (CI `e990dff5`): RaidRoster registers `EraPolicy::ItemProvenanceReady` and `EraPolicy::IsItemAllowed` with PlayerbotFactory.
+- PASS (CI `e990dff5`) / runtime TODO: AdventureStart and catch-up fail before destructive/one-time state mutation when provenance is unavailable.
 - TODO: Vanilla starter/factory generation never creates TBC/WotLK/UNKNOWN items.
 - TODO: TBC starter/factory generation never creates WotLK/UNKNOWN items.
 - TODO: WotLK factory generation still blocks UNKNOWN items.
@@ -90,7 +90,15 @@ Status vocabulary:
 - TODO: catch-up package after provenance repair can be retried successfully.
 - TODO: raid-ready AdventureStart with stale provenance does not level/progress/mark starter state or strip existing gear.
 - TODO: factory-generated ammo/potions/food/reagents/gems used by protected flows obey central item provenance.
-- TODO: audit remaining legacy factory heuristics separately; they may restrict more than provenance but must never be treated as proof of chronology.
+- TODO: audit remaining legacy factory heuristics separately; they may restrict more than provenance but must never be treated as chronology proof.
+
+## ERA-07 Adventure Cache reward provenance
+
+- STATIC/CI: cache open checks provenance readiness before consuming the pending cache.
+- STATIC/CI: cache gear candidates and direct item storage call `EraPolicy::IsItemAllowed`.
+- TODO: with provenance unavailable, `.cache open` leaves pending cache unchanged.
+- TODO: after provenance repair, the same pending cache can be opened.
+- TODO: Vanilla/TBC/WotLK cache rewards never create future/UNKNOWN gear or potions.
 
 ## Auction House era profiles / ERA-07 provenance
 

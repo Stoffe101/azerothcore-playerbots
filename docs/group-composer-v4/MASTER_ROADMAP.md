@@ -118,7 +118,8 @@ They are the dependency spine for most other approved era work. First define one
 - [ ] **ERA-07 — Item expansion-provenance filtering — IN PROGRESS**
   - Slice 1 is exact-head local-CI green at `44adb851`: exact pinned Classic/TBC/WotLK DB identity determines earliest expansion without level/item-ID chronology guesses.
   - Slice 2 is exact-head local-CI green at `e96d009`: generated chronology is central EraPolicy state, all three blocklists coexist, the live world item set is fingerprinted, setup/update regenerate it, existing auctions + stored RNDbot equipment are audited, and deterministic RaidRoster/Group Composer gear prep is gated.
-  - Slice 3 repair is IN PROGRESS: static 0044 proved too fragile across multiple PlayerbotFactory patch stacks. The replacement is a strict post-patch transformer invoked after EraTalents by setup/update and both heavy workflows; exact-head GitHub CI must prove it before slice 3 can be called green.
+  - Slice 3 is exact-head GitHub-CI green at `e990dff5`: PlayerbotFactory item generation uses central readiness/allow callbacks applied through a strict post-patch transformer, and AdventureStart/catch-up fail before destructive/one-time state changes.
+  - Slice 4 is IN PROGRESS: Adventure Cache direct gear/potion rewards are being gated through the same central provenance while preserving pending rewards on provenance failure.
   - UNKNOWN IDs fail closed for protected automation; explicit overrides are the review ledger.
   - Still TODO after slice 3: runtime provenance generation evidence, vendors/rewards, loot/crafting/recipes, enchant-spell chronology and remaining non-PlayerbotFactory item paths.
 
