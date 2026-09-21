@@ -455,3 +455,26 @@ Known follow-up:
 - validate meta-gem activation semantics where needed;
 - add candidate-slot mutation and prove baseline/candidate differ only in the intended slot;
 - move actual simulator execution/result delivery to the asynchronous queue path.
+
+
+### Exact-green baseline request checkpoint
+
+`f3e17eb7dec14e5dcb272c77c981bef798aa320d` is fully green:
+- Group Composer client checks: SUCCESS;
+- Stage Group Composer V4 backend: SUCCESS, including the real three-engine Docker image and pinned WotLK glyph map;
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`;
+- Integration build: SUCCESS on `stoffes-pc`.
+
+### Current candidate request + addon alignment slice
+
+The next exact-head candidate:
+- builds baseline/candidate RaidSimRequest pairs from one authoritative snapshot and one exact pinned preset;
+- changes exactly one caller-selected equipment slot;
+- computes recursive request difference paths and rejects any difference outside that slot;
+- rejects no-op candidates and slot indexes outside 0-16;
+- explicitly rejects nonzero WotLK random-property state because the pinned WotLK ItemSpec cannot encode it;
+- remains diagnostic/unvalidated and does not execute WoWSims;
+- GearAdvisor advances to v0.3.2 and fixes the seven key-stat values that were still anchored 32px above their labels;
+- footer wording changes from “Sim-backed upgrades” to “WoWSims upgrade authority” until automatic result transport is truly live.
+
+Future “Sim Bags” candidate capture should stay server-authoritative: read the actual bag `Item` objects in worldserver and derive candidate state there rather than trusting client-parsed enchant/gem/suffix data.

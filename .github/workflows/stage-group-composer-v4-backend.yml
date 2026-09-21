@@ -61,6 +61,9 @@ jobs:
           grep -q 'ARG WOTLK_COMMIT=563e4a08cb15729f1fdcbcf68e6d68224553bfef' wowsims-service/Dockerfile
           grep -q '/v1/snapshot/validate' wowsims-service/app.py
           grep -q '/v1/snapshot/request' wowsims-service/app.py
+          grep -q '/v1/snapshot/candidate-request' wowsims-service/app.py
+          grep -q 'CANDIDATE_REQUEST_BUILT_UNVALIDATED' wowsims-service/app.py
+          grep -q 'candidate mutation changed data outside the intended equipment slot' wowsims-service/app.py
           grep -q 'REQUEST_BUILT_UNVALIDATED' wowsims-service/app.py
           grep -q 'WOWSIMS_REQUIRE_GLYPH_MAP=1' wowsims-service/Dockerfile
           grep -q 'wotlk-glyph-id-map.json' wowsims-service/Dockerfile

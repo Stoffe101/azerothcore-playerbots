@@ -269,3 +269,30 @@ Before any route becomes authoritative:
 - assert baseline/candidate requests are otherwise equivalent;
 - run the comparison asynchronously so the world thread is never blocked;
 - validate model mechanics against Skrra/AzerothCore and only then promote confidence to SIM-BACKED.
+
+
+## Candidate request isolation
+
+Baseline request construction is exact-head green at `f3e17eb7dec14e5dcb272c77c981bef798aa320d`.
+
+The next boundary is `POST /v1/snapshot/candidate-request`.
+
+Input:
+- authoritative snapshot;
+- exact candidate item object;
+- explicit WoWSims equipment `slotIndex` 0-16;
+- optional exact `presetSha256`.
+
+Behavior:
+1. build the baseline through the same snapshot/preset path;
+2. deep-copy the baseline request;
+3. translate the candidate with the same era item rules;
+4. replace only `raid.parties[0].players[0].equipment.items[slotIndex]`;
+5. recursively compare the complete requests;
+6. fail if there is no difference or if any changed path exists outside the intended slot.
+
+Output status is `CANDIDATE_REQUEST_BUILT_UNVALIDATED`. This endpoint does **not** call `wowsimcli`.
+
+WotLK random-property state is explicitly rejected because the pinned WotLK `ItemSpec` has no random suffix/property field. Classic/TBC continue to accept only AzerothCore negative random-property IDs as suffix IDs.
+
+For the eventual player-facing “Sim Bags” flow, candidate state should be captured from server-owned `Item` objects. The addon should request a scan/action; it should not be the authority for candidate enchant/gem/suffix state.

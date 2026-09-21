@@ -382,3 +382,11 @@ Runtime evidence beats this ordering. A blocker discovered while testing may jum
 - **DONE + green:** pinned per-era model coverage catalog repair at `7c959151`.
 - **DONE + green:** engine-native preset harvesting at `998d297a` (Vanilla 24/15 routes, TBC 15/15, WotLK 37/33).
 - **IN PROGRESS:** authoritative snapshot overlay, baseline RaidSimRequest construction, candidate slot mutation, asynchronous service queue and addon result/explanation protocol.
+
+
+### 2026-09-21 WoWSims candidate isolation follow-up
+- baseline authoritative request builder is exact-head green at `f3e17eb7`;
+- candidate request builder is the current local-CI slice with exact one-slot structural diff enforcement;
+- automatic simulation remains disabled at this boundary;
+- server-authoritative bag enumeration is the intended source for future “Sim Bags” candidate state;
+- GearAdvisor v0.3.2 fixes the key-stat label/value row alignment before runtime visual acceptance.

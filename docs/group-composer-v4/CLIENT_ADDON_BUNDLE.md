@@ -1,6 +1,6 @@
 # Client Addon Bundle
 
-_Status: GearAdvisor v0.3.1 / Group Composer layout-safety source contracts are exact-head green at `c9690919`; real-client visual acceptance is still TODO._
+_Status: Group Composer layout safety is exact-head green at `c9690919`; GearAdvisor v0.3.2 row-alignment repair is the current exact-head candidate; real-client visual acceptance is still TODO._
 
 ## Distribution model
 
@@ -111,3 +111,10 @@ Before calling the pass accepted in game:
 18. verify era guidance and long simulation explanations stay inside their reserved regions;
 19. verify Activity Browser lock/support text never touches Favorites or the next row;
 20. verify Recommended Activity reason/readiness text stays clear of Configure/View Unlocks at normal and narrow scales.
+
+
+## GearAdvisor v0.3.2 alignment repair
+
+A post-CI source audit found that v0.3.1 moved the seven key-stat labels to the new vertical region but left the right-aligned values at the old Y origin. v0.3.2 makes both sides use `-370 - (i - 1) * 18`, preventing values from appearing about 32px above their labels.
+
+The footer now says “WoWSims upgrade authority” instead of “Sim-backed upgrades” because automatic candidate result transport is not yet enabled.

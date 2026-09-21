@@ -153,3 +153,15 @@ Exact SHA `c9690919ab40c8d40c3af20fdb2e5847ca59bbf3` is **fully exact-head local
 - Integration build: SUCCESS on `stoffes-pc`.
 
 This locks the static/client contract for GearAdvisor v0.3.1 and the Group Composer text-bound changes. Real 3.3.5a visual/runtime acceptance is still required before calling the UI visually accepted.
+
+
+### Baseline request green + candidate isolation follow-up
+
+Exact SHA `f3e17eb7dec14e5dcb272c77c981bef798aa320d` is **fully exact-head local-CI green** on client checks, backend staging, Group Composer compile and Integration. It establishes authoritative snapshot -> pinned preset -> baseline RaidSimRequest construction without running the simulator.
+
+The next candidate keeps simulation disabled and adds:
+- `POST /v1/snapshot/candidate-request`;
+- one explicit equipment-slot mutation;
+- recursive proof that no request data outside that slot changed;
+- fail-closed handling for no-op swaps, invalid slots and unrepresentable WotLK random-property state;
+- GearAdvisor v0.3.2 key-stat row alignment repair.

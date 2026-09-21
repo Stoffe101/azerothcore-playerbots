@@ -3,6 +3,30 @@
 Newest entries belong at the top of the dated section.
 
 
+## 2026-09-21 — Baseline request green; candidate isolation + GearAdvisor v0.3.2
+
+Baseline SHA `f3e17eb7dec14e5dcb272c77c981bef798aa320d`: **DONE + exact-head local-CI green**.
+- Group Composer client checks: SUCCESS;
+- Stage Group Composer V4 backend: SUCCESS;
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`;
+- Integration build: SUCCESS on `stoffes-pc`.
+
+The baseline builder now has full exact-SHA proof, including the actual service image with all three pinned simulator engines and the pinned WotLK glyph map.
+
+Current candidate slice: **IMPLEMENTED / exact-head local CI required**.
+- adds `POST /v1/snapshot/candidate-request`;
+- builds candidate from the exact same baseline snapshot/preset;
+- allows exactly one equipment-slot mutation;
+- recursively proves no other request fields changed;
+- rejects no-op candidates / bad slot indexes;
+- rejects WotLK random-property state that its pinned ItemSpec cannot represent;
+- still does not run the simulator.
+
+Addon repair:
+- GearAdvisor v0.3.2 aligns all seven key-stat values with their labels at the same Y origin;
+- footer no longer claims “Sim-backed upgrades” before automatic sim transport exists.
+
+
 ## 2026-09-21 — Addon layout green + authoritative WoWSims request builder
 
 Addon layout checkpoint: **DONE + exact-head local-CI green at `c9690919ab40c8d40c3af20fdb2e5847ca59bbf3`**.

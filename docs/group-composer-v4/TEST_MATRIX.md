@@ -361,3 +361,16 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - TODO runtime: build a request for a real single-preset route and inspect gear/talents/race/professions/glyphs against the live character.
 - TODO runtime: choose explicit preset IDs for ambiguous routes before automatic simulation.
 - TODO: meta-gem enabled/disabled semantics must be verified for TBC/WotLK before affected routes become authoritative.
+
+
+### Candidate request isolation + GearAdvisor v0.3.2
+
+- PASS: baseline authoritative request builder exact-head green at `f3e17eb7dec14e5dcb272c77c981bef798aa320d`.
+- UNIT: candidate builder accepts only slotIndex 0-16.
+- UNIT: baseline/candidate pair must have at least one difference.
+- UNIT: every recursive diff path must live under the selected `raid.parties.0.players.0.equipment.items.<slot>` subtree.
+- UNIT: replacing only that selected-slot object makes the full requests structurally equivalent.
+- UNIT: nonzero WotLK random-property state is rejected because pinned WotLK ItemSpec has no suffix/property field.
+- STATIC: GearAdvisor v0.3.2 anchors both key-stat labels and values at `-370 - (i - 1) * 18`.
+- TODO runtime: verify all seven key-stat rows visually align on 3.3.5a at normal/narrow UI scale.
+- TODO next: server-authoritative inventory enumeration must feed candidate objects without trusting client-exported item state.

@@ -387,6 +387,92 @@ class AppTests(unittest.TestCase):
                     {},
                 )
 
+    def test_candidate_request_changes_only_selected_equipment_slot(self):
+        snapshot = self._snapshot()
+        preset = self._wotlk_preset()
+        candidate = {
+            "id": 40562,
+            "enchant": 3819,
+            "gems": [41398, 40058, 0],
+            "randomPropertyId": 0,
+            "suffixFactor": 0,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [preset])
+            out = app.build_candidate_request(
+                snapshot,
+                candidate,
+                0,
+                app.load_model_support(manifest=MANIFEST),
+                catalog,
+                {},
+            )
+
+        self.assertEqual(out["status"], "CANDIDATE_REQUEST_BUILT_UNVALIDATED")
+        self.assertEqual(out["slotIndex"], 0)
+        self.assertTrue(out["changedPaths"])
+        self.assertTrue(
+            all(
+                path == "raid.parties.0.players.0.equipment.items.0"
+                or path.startswith("raid.parties.0.players.0.equipment.items.0.")
+                for path in out["changedPaths"]
+            )
+        )
+        baseline = out["baselineRequest"]
+        changed = out["candidateRequest"]
+        self.assertEqual(
+            baseline["raid"]["parties"][0]["players"][0]["equipment"]["items"][0]["id"],
+            40416,
+        )
+        self.assertEqual(
+            changed["raid"]["parties"][0]["players"][0]["equipment"]["items"][0]["id"],
+            40562,
+        )
+        baseline_copy = json.loads(json.dumps(baseline))
+        baseline_copy["raid"]["parties"][0]["players"][0]["equipment"]["items"][0] = (
+            changed["raid"]["parties"][0]["players"][0]["equipment"]["items"][0]
+        )
+        self.assertEqual(baseline_copy, changed)
+
+    def test_candidate_request_rejects_noop_and_invalid_slot(self):
+        snapshot = self._snapshot()
+        preset = self._wotlk_preset()
+        current = dict(snapshot["character"]["gear"][0])
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [preset])
+            with self.assertRaisesRegex(app.ServiceError, "no request change"):
+                app.build_candidate_request(
+                    snapshot,
+                    current,
+                    0,
+                    app.load_model_support(manifest=MANIFEST),
+                    catalog,
+                    {},
+                )
+            with self.assertRaisesRegex(app.ServiceError, "slotIndex"):
+                app.build_candidate_request(
+                    snapshot,
+                    current,
+                    17,
+                    app.load_model_support(manifest=MANIFEST),
+                    catalog,
+                    {},
+                )
+
+    def test_wotlk_random_property_state_fails_closed(self):
+        snapshot = self._snapshot()
+        snapshot["character"]["gear"][0]["randomPropertyId"] = -1979
+        preset = self._wotlk_preset()
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [preset])
+            with self.assertRaisesRegex(app.ServiceError, "pinned WotLK ItemSpec"):
+                app.build_baseline_request(
+                    snapshot,
+                    app.load_model_support(manifest=MANIFEST),
+                    catalog,
+                    {},
+                )
+
     def test_classic_equipment_maps_suffix_only_and_rejects_random_property(self):
         gear = self._snapshot()["character"]["gear"]
         gear[0]["randomPropertyId"] = -1979

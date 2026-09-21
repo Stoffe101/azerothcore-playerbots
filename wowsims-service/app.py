@@ -402,36 +402,56 @@ def _request_player(request: dict[str, Any]) -> dict[str, Any]:
     return player
 
 
+def _item_spec_from_snapshot(era: str, item: dict[str, Any], label: str) -> dict[str, Any]:
+    _require_int(item.get("id"), f"{label}.id", minimum=1)
+    enchant = _require_int(item.get("enchant", 0), f"{label}.enchant")
+    gems = item.get("gems", [])
+    if (
+        not isinstance(gems, list)
+        or len(gems) != 3
+        or any(isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in gems)
+    ):
+        raise ServiceError(f"{label}.gems must contain exactly three non-negative integers")
+
+    random_property_id = item.get("randomPropertyId", 0)
+    if isinstance(random_property_id, bool) or not isinstance(random_property_id, int):
+        raise ServiceError(f"{label}.randomPropertyId must be an integer")
+
+    spec: dict[str, Any] = {"id": item["id"]}
+    if enchant:
+        spec["enchant"] = enchant
+
+    if era in {"TBC", "WOTLK"}:
+        sim_gems = list(gems)
+        while sim_gems and sim_gems[-1] == 0:
+            sim_gems.pop()
+        if sim_gems:
+            spec["gems"] = sim_gems
+
+    if era in {"VANILLA", "TBC"}:
+        if random_property_id > 0:
+            raise ServiceError(
+                f"{label} uses random property {random_property_id}; "
+                "automatic WoWSims mapping currently supports suffix IDs only"
+            )
+        if random_property_id < 0:
+            spec["randomSuffix"] = -random_property_id
+    elif random_property_id != 0:
+        raise ServiceError(
+            f"{label} uses random property {random_property_id}, but the pinned WotLK ItemSpec "
+            "does not represent random suffix/property state"
+        )
+
+    return spec
+
+
 def _equipment_from_snapshot(era: str, gear: list[Any]) -> dict[str, Any]:
     items: list[dict[str, Any]] = []
     for index, item in enumerate(gear):
         if item is None:
             items.append({})
             continue
-        spec: dict[str, Any] = {
-            "id": item["id"],
-        }
-        enchant = item.get("enchant", 0)
-        if enchant:
-            spec["enchant"] = enchant
-        if era in {"TBC", "WOTLK"}:
-            gems = list(item.get("gems", []))
-            while gems and gems[-1] == 0:
-                gems.pop()
-            if gems:
-                spec["gems"] = gems
-        if era in {"VANILLA", "TBC"}:
-            random_property_id = item.get("randomPropertyId", 0)
-            if isinstance(random_property_id, bool) or not isinstance(random_property_id, int):
-                raise ServiceError(f"character.gear[{index}].randomPropertyId must be an integer")
-            if random_property_id > 0:
-                raise ServiceError(
-                    f"character.gear[{index}] uses random property {random_property_id}; "
-                    "automatic WoWSims mapping currently supports suffix IDs only"
-                )
-            if random_property_id < 0:
-                spec["randomSuffix"] = -random_property_id
-        items.append(spec)
+        items.append(_item_spec_from_snapshot(era, item, f"character.gear[{index}]"))
     return {"items": items}
 
 
@@ -551,6 +571,92 @@ def build_baseline_request(
             "protoSpecField": preset.get("protoSpecField"),
         },
         "request": request,
+    }
+
+
+def _difference_paths(left: Any, right: Any, path: str = "") -> list[str]:
+    if type(left) is not type(right):
+        return [path or "$"]
+    if isinstance(left, dict):
+        paths: list[str] = []
+        keys = sorted(set(left) | set(right))
+        for key in keys:
+            child = f"{path}.{key}" if path else str(key)
+            if key not in left or key not in right:
+                paths.append(child)
+            else:
+                paths.extend(_difference_paths(left[key], right[key], child))
+        return paths
+    if isinstance(left, list):
+        paths: list[str] = []
+        if len(left) != len(right):
+            paths.append((path or "$") + ".length")
+        for index in range(min(len(left), len(right))):
+            child = f"{path}.{index}" if path else str(index)
+            paths.extend(_difference_paths(left[index], right[index], child))
+        return paths
+    return [] if left == right else [path or "$"]
+
+
+def build_candidate_request(
+    snapshot: dict[str, Any],
+    candidate: dict[str, Any],
+    slot_index: int,
+    model_support: dict[str, Any],
+    preset_catalog: dict[str, Any],
+    glyph_spell_map: dict[int, int],
+    *,
+    preset_sha256: str | None = None,
+) -> dict[str, Any]:
+    if isinstance(slot_index, bool) or not isinstance(slot_index, int) or not 0 <= slot_index < 17:
+        raise ServiceError("slotIndex must be an integer from 0 through 16")
+    if not isinstance(candidate, dict):
+        raise ServiceError("candidate must be an item object")
+
+    baseline = build_baseline_request(
+        snapshot,
+        model_support,
+        preset_catalog,
+        glyph_spell_map,
+        preset_sha256=preset_sha256,
+    )
+    era = baseline["era"]
+    candidate_item = _item_spec_from_snapshot(era, candidate, "candidate")
+
+    candidate_request = copy.deepcopy(baseline["request"])
+    player = _request_player(candidate_request)
+    equipment = player.get("equipment")
+    if not isinstance(equipment, dict):
+        raise ServiceError("baseline preset equipment is invalid", HTTPStatus.INTERNAL_SERVER_ERROR)
+    items = equipment.get("items")
+    if not isinstance(items, list) or len(items) != 17:
+        raise ServiceError(
+            "baseline request must contain exactly 17 equipment items",
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+        )
+
+    items[slot_index] = candidate_item
+    diff_paths = _difference_paths(baseline["request"], candidate_request)
+    prefix = f"raid.parties.0.players.0.equipment.items.{slot_index}"
+    if not diff_paths:
+        raise ServiceError("candidate produces no request change")
+    if any(path != prefix and not path.startswith(prefix + ".") for path in diff_paths):
+        raise ServiceError(
+            "candidate mutation changed data outside the intended equipment slot",
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+        )
+
+    return {
+        "schema": SCHEMA_VERSION,
+        "status": "CANDIDATE_REQUEST_BUILT_UNVALIDATED",
+        "era": era,
+        "routeKey": baseline["routeKey"],
+        "support": baseline["support"],
+        "preset": baseline["preset"],
+        "slotIndex": slot_index,
+        "changedPaths": diff_paths,
+        "baselineRequest": baseline["request"],
+        "candidateRequest": candidate_request,
     }
 
 
@@ -771,6 +877,24 @@ class SimRunner:
             preset_sha256=preset_sha256,
         )
 
+    def build_candidate_request(
+        self,
+        snapshot: dict[str, Any],
+        candidate: dict[str, Any],
+        slot_index: int,
+        *,
+        preset_sha256: str | None = None,
+    ) -> dict[str, Any]:
+        return build_candidate_request(
+            snapshot,
+            candidate,
+            slot_index,
+            self.model_support,
+            self.preset_catalog,
+            self.glyph_spell_map,
+            preset_sha256=preset_sha256,
+        )
+
     def simulate(self, era: str, request: dict[str, Any]) -> dict[str, Any]:
         era = normalize_era(era)
         if not isinstance(request, dict):
@@ -963,6 +1087,27 @@ class ApiHandler(BaseHTTPRequestHandler):
                     raise ServiceError("presetSha256 must be a string")
                 response = self.runner.build_snapshot_request(
                     snapshot,
+                    preset_sha256=preset_sha256,
+                )
+                response["engine"] = self.runner.engine_info(response["era"])
+                self._send_json(HTTPStatus.OK, response)
+                return
+
+            if self.path == "/v1/snapshot/candidate-request":
+                snapshot = payload.get("snapshot")
+                candidate = payload.get("candidate")
+                slot_index = payload.get("slotIndex")
+                if not isinstance(snapshot, dict):
+                    raise ServiceError("snapshot must be an object")
+                if not isinstance(candidate, dict):
+                    raise ServiceError("candidate must be an item object")
+                preset_sha256 = payload.get("presetSha256")
+                if preset_sha256 is not None and not isinstance(preset_sha256, str):
+                    raise ServiceError("presetSha256 must be a string")
+                response = self.runner.build_candidate_request(
+                    snapshot,
+                    candidate,
+                    slot_index,
                     preset_sha256=preset_sha256,
                 )
                 response["engine"] = self.runner.engine_info(response["era"])

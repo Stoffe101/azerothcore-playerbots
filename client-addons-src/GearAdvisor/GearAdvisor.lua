@@ -675,7 +675,7 @@ for i = 1, 7 do
     label:SetJustifyH("LEFT")
 
     local value = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    value:SetPoint("TOPRIGHT", -24, -338 - (i - 1) * 18)
+    value:SetPoint("TOPRIGHT", -24, -370 - (i - 1) * 18)
     value:SetWidth(150)
     value:SetJustifyH("RIGHT")
     statRows[i] = { label = label, value = value }
@@ -698,7 +698,7 @@ local footer = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 footer:SetPoint("BOTTOMLEFT", 20, 10)
 footer:SetPoint("BOTTOMRIGHT", -112, 10)
 footer:SetJustifyH("LEFT")
-footer:SetText("Sim-backed upgrades · hover caps · /ga")
+footer:SetText("WoWSims upgrade authority · hover caps · /ga")
 
 local simButton = CreateFrame("Button", "GearAdvisor335SimButton", panel, "UIPanelButtonTemplate")
 simButton:SetWidth(88)
