@@ -5,7 +5,13 @@ Newest entries belong at the top of the dated section.
 
 ## 2026-09-21 — Pinned WoWSims model catalog
 
-Status: **IMPLEMENTED / exact-head local CI required**.
+Status: **IMPLEMENTED / repair CI in progress**.
+
+First catalog SHA `965231186fc504a726062c3029b1a5208034c2a8`:
+- model-support verifier passed: Vanilla 19 proto models, TBC 18, WotLK 21, 93 expanded character routes;
+- Stage backend then failed on one stale unit-test assertion still expecting the superseded label `AVAILABLE_UNVALIDATED`;
+- failure is test-fixture drift, not a catalog/runtime failure;
+- repair updates that assertion to `ENGINE_PRESENT_UNVALIDATED` and adds the intended era-specific/unsupported/pin-drift tests.
 
 Previous checkpoint:
 - `0e4fadb25c06462fb485831bb0875b07979b0ff4` is fully green on all four exact-SHA workflows;
@@ -31,7 +37,7 @@ Next:
 
 ## 2026-09-21 — Authoritative WoWSims character snapshot
 
-Status: **IMPLEMENTED / exact-head local CI required**.
+Status: **DONE + exact-head local-CI green at `0e4fadb25c06462fb485831bb0875b07979b0ff4`**.
 
 Previous checkpoint:
 - `aba336fd00fae61ac1b2e12af070eba1359b0917` is fully green on all four exact-SHA workflows;

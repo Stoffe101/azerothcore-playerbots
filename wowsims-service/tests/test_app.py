@@ -140,8 +140,47 @@ class AppTests(unittest.TestCase):
         self.assertTrue(out["valid"])
         self.assertEqual(out["era"], "WOTLK")
         self.assertEqual(out["character"]["spec"], "arcane")
-        self.assertEqual(out["support"]["status"], "AVAILABLE_UNVALIDATED")
+        self.assertEqual(out["support"]["status"], "ENGINE_PRESENT_UNVALIDATED")
+        self.assertEqual(out["support"]["protoSpecField"], "mage")
         self.assertIn("mage:arcane:dps", out["support"]["modelKey"])
+
+    def test_catalog_routes_are_era_specific(self):
+        vanilla = self._snapshot()
+        vanilla["era"] = "VANILLA"
+        vanilla["character"]["level"] = 60
+        vanilla["character"]["classId"] = 7
+        vanilla["character"]["class"] = "SHAMAN"
+        vanilla["character"]["dominantTree"] = 1
+        vanilla["character"]["treePoints"] = [0, 51, 0]
+        vanilla["character"]["role"] = "TANK"
+        out = app.validate_character_snapshot(vanilla)
+        self.assertEqual(out["support"]["protoSpecField"], "warden_shaman")
+
+        tbc = self._snapshot()
+        tbc["era"] = "TBC"
+        tbc["character"]["level"] = 70
+        tbc["character"]["classId"] = 1
+        tbc["character"]["class"] = "WARRIOR"
+        tbc["character"]["dominantTree"] = 2
+        tbc["character"]["treePoints"] = [0, 0, 41]
+        tbc["character"]["role"] = "TANK"
+        out = app.validate_character_snapshot(tbc)
+        self.assertEqual(out["support"]["protoSpecField"], "protection_warrior")
+
+    def test_catalog_returns_unsupported_instead_of_inventing_model(self):
+        payload = self._snapshot()
+        payload["character"]["role"] = "TANK"
+        out = app.validate_character_snapshot(payload)
+        self.assertTrue(out["valid"])
+        self.assertEqual(out["support"]["status"], "UNSUPPORTED")
+        self.assertNotIn("protoSpecField", out["support"])
+
+    def test_model_catalog_pins_match_engine_manifest(self):
+        support = app.load_model_support(manifest=MANIFEST)
+        self.assertEqual(
+            support["eras"]["WOTLK"]["commit"],
+            MANIFEST["engines"]["WOTLK"]["commit"],
+        )
 
     def test_snapshot_rejects_future_era_class(self):
         payload = self._snapshot()
