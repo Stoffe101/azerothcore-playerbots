@@ -262,6 +262,9 @@ class AppTests(unittest.TestCase):
                     "canonical": index == canonical_index,
                     "selectionMethod": "unit-test-policy" if index == canonical_index else None,
                     "assumptionsSha256": digest,
+                    "talentsString": request["raid"]["parties"][0]["players"][0].get("talentsString", ""),
+                    "phase": None,
+                    "variantCanonical": index == canonical_index,
                 }
             )
         return {
@@ -438,6 +441,7 @@ class AppTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [preset])
             catalog["eras"]["WOTLK"]["routes"]["8:0:DPS"][0]["sha256"] = "0" * 64
+            catalog["eras"]["WOTLK"]["routePolicies"]["8:0:DPS"]["selectedSha256"] = "0" * 64
             with self.assertRaisesRegex(app.ServiceError, "checksum mismatch"):
                 app.build_baseline_request(
                     snapshot,

@@ -2,6 +2,10 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — Preset policy fixture repair
+
+Candidate `d24e5a3bb8e2733ecb8dcd7f00b55c71b8bc1ff8`: **FAILED / superseded** in focused backend unit tests. Syntax/self-tests passed. Two service tests exposed stale fixture assumptions: generated unit catalog entries did not carry preset talent strings for closest-build selection, and the checksum-drift test changed the entry SHA without updating its static selection pointer. The next repair updates only those fixtures; production selection code is unchanged.
+
 ## 2026-09-21 — Preset harvester self-test cleanup
 
 Candidate `1d9faccf4fe95cf3ffb503d667cdbb3d24e90d1b`: **FAILED / superseded** in focused backend checks because one duplicated self-test print remained in `harvest_presets.py`. A broader duplicate-fragment scan found no analogous residue in `app.py` or the service tests. The next repair removes that final artifact without changing preset policy.
