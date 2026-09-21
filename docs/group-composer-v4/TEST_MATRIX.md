@@ -79,8 +79,8 @@ Status vocabulary:
 ## Auction House era profiles / ERA-07 provenance
 
 - STATIC/CI: `configure-ahbot.sh` parses with `bash -n`.
-- STATIC/CI: ERA-07 generator self-test passes and the pinned source manifest parses as JSON.
-- STATIC/CI: AHBot wrapper patch consumes `AuctionHouseBot.EraProvenanceDisabledItemIDs` separately from operator custom IDs.
+- PASS (CI `44adb851`): ERA-07 generator self-test passes and the pinned source manifest parses as JSON.
+- PASS (CI `44adb851`): AHBot wrapper patch consumes `AuctionHouseBot.EraProvenanceDisabledItemIDs` separately from operator custom IDs.
 - TODO: first provenance generation downloads/verifies the three exact pinned Git blobs and later runs use the verified cache.
 - TODO: generated manifest covers every live `acore_world.item_template` entry as Vanilla/TBC/WotLK/UNKNOWN.
 - TODO: UNKNOWN items are present in every generated AH blocklist until explicitly overridden.

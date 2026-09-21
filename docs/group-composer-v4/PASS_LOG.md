@@ -4,7 +4,7 @@ Newest entries belong at the top of the dated section.
 
 ## 2026-09-21 — ERA-07 slice 1: reproducible item provenance + AH enforcement
 
-Status: **IMPLEMENTATION PUSHED; exact-head local CI required**.
+Status: **DONE FOR SLICE 1 + exact-head local CI verified at `44adb851e37cd916c1e2ebbb5dd7ece1f2cef0fc`; ERA-07 overall remains IN PROGRESS**.
 
 Implemented:
 - new `tools/generate-era-item-provenance.py` with a deterministic self-test;
@@ -24,7 +24,7 @@ Boundary:
 - bot gearing/prep, starter/catch-up, vendors/rewards and other automated item paths still need the same central provenance policy;
 - UNKNOWNs are safe from AH automation but remain review work, therefore ERA-07 stays IN PROGRESS.
 
-CI: this commit uses `[local-ci]`; do not call the slice green until client checks, backend staging, Group Composer compile and Integration all succeed for the exact SHA.
+CI: exact SHA `44adb851e37cd916c1e2ebbb5dd7ece1f2cef0fc` passed client checks, backend staging, Integration and Group Composer V4 compile. Both heavy workflows completed successfully on `stoffes-pc`.
 
 ## 2026-09-21 — RNDbot quarantine patch format repair (final)
 

@@ -64,17 +64,17 @@ This checkpoint records all 40 user-approved roadmap items with stable IDs/statu
 
 ## Current verified implementation checkpoint
 
-Latest fully verified green branch head:
+Latest fully verified green implementation checkpoint:
 
-- `1e6f01f25cd63184618abd202cbd2cd0a677a189`
-- Commit: `fix: repair RNDbot quarantine patch hunk counts [local-ci]`
+- `44adb851e37cd916c1e2ebbb5dd7ece1f2cef0fc`
+- Commit: `feat: add ERA-07 item provenance AH gate [local-ci]`
 - Group Composer client checks: **SUCCESS**
 - Stage Group Composer V4 backend: **SUCCESS**
 - Group Composer V4 compile: **SUCCESS** on `stoffes-pc`
 - Integration build: **SUCCESS** on `stoffes-pc`
 - Both local builds retained the Ubuntu 26.04 Clang 18 -> GCC 15 libstdc++ workaround.
 
-This checkpoint contains runtime pass 3 plus the current ERA-01/ERA-02 containment stack: central era policy, progression/starter/Titan boundaries, Map.dbc travel gates, Playerbots 60/70/80 runtime caps, non-destructive RNDbot quarantine, class/race/profession policy foundations, the read-only era audit, snapshot/rollback foundation and ERA-06 AH profiles. Current Group Composer addon version is **0.15.3**.
+This checkpoint contains runtime pass 3 plus the current ERA-01/ERA-02 containment stack: central era policy, progression/starter/Titan boundaries, Map.dbc travel gates, Playerbots 60/70/80 runtime caps, non-destructive RNDbot quarantine, class/race/profession policy foundations, the read-only era audit, snapshot/rollback foundation, ERA-06 AH profiles and ERA-07 slice-1 provenance enforcement for new AHBot listings. Current Group Composer addon version is **0.15.3**.
 
 The peer policy is generic: the **lowest real human at any level** is the peer target. Status exposes `Lowest-human target Lv X · bots Lv A-B` so arbitrary mixed-level groups can be checked directly. Examples such as 80+14 or 80+23 are illustrative only.
 

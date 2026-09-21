@@ -65,11 +65,11 @@ Verified green checkpoint after this pass: `3b548b3d29539a1ae0816d10db0e943546d3
 
 ## Latest green development pass
 
-Latest fully verified green checkpoint: `1e6f01f25cd63184618abd202cbd2cd0a677a189`
+Latest fully verified green implementation checkpoint: `44adb851e37cd916c1e2ebbb5dd7ece1f2cef0fc`
 
 Exact-head CI: client checks **SUCCESS**, backend staging **SUCCESS**, Group Composer compile **SUCCESS** on `stoffes-pc`, Integration **SUCCESS** on `stoffes-pc`. Both heavy workflows retained the Clang 18 -> GCC 15 libstdc++ workaround.
 
-This head includes runtime pass 3 plus ERA-01 map/travel containment, Playerbots 60/70/80 runtime caps, non-destructive RNDbot quarantine, ERA-02 class/race/profession and AH-profile audit coverage, FEATURE-19 snapshot/rollback foundations, and ERA-06 AH profiles. Current Group Composer version is **0.15.3**.
+This head includes runtime pass 3 plus ERA-01 map/travel containment, Playerbots 60/70/80 runtime caps, non-destructive RNDbot quarantine, ERA-02 class/race/profession/AH provenance audit coverage, FEATURE-19 snapshot/rollback foundations, ERA-06 AH profiles, and ERA-07 slice-1 provenance enforcement for new AHBot listings. Current Group Composer version is **0.15.3**.
 
 ### Runtime pass 3 implementation
 
@@ -229,7 +229,7 @@ Status: **PARTIAL / IN PROGRESS**.
 
 ## ERA-07 item expansion provenance
 
-Status: **IN PROGRESS — slice 1 implementation in this pass**.
+Status: **IN PROGRESS — slice 1 DONE + exact-head local CI verified at `44adb851e37cd916c1e2ebbb5dd7ece1f2cef0fc`**.
 
 - A deterministic generator compares exact pinned CMaNGOS Classic/TBC/WotLK `item_template` identities and classifies the live AzerothCore world item IDs by earliest database era.
 - Source commits, compressed dump byte sizes and Git blob SHAs are pinned in `data/era-item-provenance/sources.json`; downloaded dumps live only in the ignored cache.
@@ -239,3 +239,4 @@ Status: **IN PROGRESS — slice 1 implementation in this pass**.
 - Patch `0043-ahbot-era-provenance-filter.patch` makes the pinned AH bot consume the dedicated provenance blocklist without overwriting operator `DisabledCustomItemIDs`.
 - `.era audit` reports provenance profile/source/live-item coverage and WARNs when UNKNOWN IDs remain blocked.
 - This slice protects **new automated AH listings only**. Existing auctions, bot gear/prep, starter/catch-up, vendors/rewards and other item-producing systems remain later ERA-07/ERA-02 work.
+- Exact-SHA CI evidence for slice 1: client checks **SUCCESS**, backend staging **SUCCESS**, Integration **SUCCESS** on `stoffes-pc`, Group Composer V4 compile **SUCCESS** on `stoffes-pc`.

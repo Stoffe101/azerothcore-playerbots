@@ -102,7 +102,7 @@ They are the dependency spine for most other approved era work. First define one
   - The old unconditional Wrath consumable boosts are now WotLK-profile-only; fresh configuration defaults to Vanilla. Full legal-stock provenance remains ERA-07.
 
 - [ ] **ERA-07 — Item expansion-provenance filtering — IN PROGRESS**
-  - Slice 1 pins exact CMaNGOS Classic/TBC/WotLK DB commits + Git blob SHAs and deterministically classifies every live AzerothCore item ID by earliest historical database presence.
+  - Slice 1 is exact-head local-CI green at `44adb851`: it pins exact CMaNGOS Classic/TBC/WotLK DB commits + Git blob SHAs and deterministically classifies every live AzerothCore item ID by earliest historical database presence.
   - Required level, item level and raw item-ID thresholds are not used as chronology.
   - UNKNOWN IDs fail closed for AH automation; explicit overrides are the review ledger.
   - New AHBot seller listings consume the generated era blocklist through a dedicated config key; `.era audit` reports provenance profile/coverage.
