@@ -2,6 +2,19 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — WotLK Fire/Frostfire preset discriminator repair
+
+Candidate `4cfc5adbd5c2851c0d19d81f1e49db3c1e5c3280`: **FAILED / superseded** because the real WoWSims image gate reached a same-talent WotLK Mage ambiguity that earlier focused tests could not expose.
+
+- Client checks: SUCCESS.
+- Stage focused source/unit checks: SUCCESS.
+- Real Classic and TBC harvests: SUCCESS.
+- Real WotLK harvest: FAIL-CLOSED on `TestFire` vs `TestFrostFire`.
+- Both upstream fixtures intentionally use the exact same talent string, but they use different rotations/gear and, critically, different authoritative major glyph sets: Fireball vs Frostfire.
+- The repair does not select by filename or array order. The harvester records pinned glyph item IDs and dynamic preset selection uses authoritative live talents first, then the live glyph set mapped through the pinned WotLK glyph map.
+- Distinct same-talent glyph variants remain preserved; any tie after talent + glyph comparison still fails closed.
+- Async Sim Bags queue implementation itself had already passed focused service tests; this repair is confined to the preset-policy boundary plus its tests/docs.
+
 ## 2026-09-21 — WoWSims asynchronous Sim Bags comparison
 
 Current slice: **IMPLEMENTED / exact-head local CI required**.

@@ -237,7 +237,11 @@ def load_preset_catalog(
                 entries[0].setdefault("selectionMethod", "single-engine-native-preset")
                 policy = {"type": "static", "selectedSha256": entries[0]["sha256"]}
                 route_policies[route_key] = policy
-            if not isinstance(policy, dict) or policy.get("type") not in {"static", "closest-live-talents"}:
+            if not isinstance(policy, dict) or policy.get("type") not in {
+                "static",
+                "closest-live-talents",
+                "closest-live-character",
+            }:
                 raise RuntimeError(f"WoWSims preset route {era}/{route_key} has no valid selection policy")
 
             if policy["type"] == "static":
@@ -253,6 +257,16 @@ def load_preset_catalog(
                     raise RuntimeError(f"WoWSims preset route {era}/{route_key} has invalid talent variants")
                 if any(not entry.get("talentsString") for entry in variants):
                     raise RuntimeError(f"WoWSims preset route {era}/{route_key} talent variant is missing talents")
+                if policy["type"] == "closest-live-character":
+                    for entry in variants:
+                        glyph_ids = entry.get("glyphItemIds", [])
+                        if (
+                            not isinstance(glyph_ids, list)
+                            or any(isinstance(value, bool) or not isinstance(value, int) or value <= 0 for value in glyph_ids)
+                        ):
+                            raise RuntimeError(
+                                f"WoWSims preset route {era}/{route_key} has invalid glyph variant metadata"
+                            )
                 for entry in variants:
                     entry["variantCanonical"] = True
                 dynamic_route_count += 1
@@ -408,6 +422,7 @@ def _select_preset(
     era: str,
     route_key: str,
     snapshot: dict[str, Any],
+    glyph_spell_map: dict[int, int],
     preset_sha256: str | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     era_entry = preset_catalog["eras"].get(era, {})
@@ -420,23 +435,44 @@ def _select_preset(
             raise ServiceError(f"{era} route {route_key} has no preset selection policy", HTTPStatus.INTERNAL_SERVER_ERROR)
         if policy.get("type") == "static":
             matches = [entry for entry in entries if entry.get("sha256") == policy.get("selectedSha256")]
-        elif policy.get("type") == "closest-live-talents":
+        elif policy.get("type") in {"closest-live-talents", "closest-live-character"}:
             live_talents = snapshot.get("character", {}).get("talents")
             if not isinstance(live_talents, str) or not live_talents:
                 raise ServiceError("character.talents is required for preset variant selection")
             allowed = set(policy.get("variantSha256") or [])
             variants = [entry for entry in entries if entry.get("sha256") in allowed]
-            scored = [
-                (_talent_distance(live_talents, str(entry.get("talentsString", ""))), entry)
-                for entry in variants
-            ]
-            if not scored:
-                raise ServiceError(f"{era} route {route_key} has no usable talent variants", HTTPStatus.INTERNAL_SERVER_ERROR)
-            best_distance = min(score for score, _ in scored)
-            matches = [entry for score, entry in scored if score == best_distance]
+            if not variants:
+                raise ServiceError(f"{era} route {route_key} has no usable preset variants", HTTPStatus.INTERNAL_SERVER_ERROR)
+
+            live_glyph_ids: set[int] = set()
+            if policy.get("type") == "closest-live-character" and era == "WOTLK":
+                live_glyphs = _glyphs_from_snapshot(
+                    snapshot.get("character", {}).get("glyphs", []),
+                    glyph_spell_map,
+                )
+                live_glyph_ids = {int(value) for value in live_glyphs.values() if int(value) > 0}
+
+            scored: list[tuple[tuple[int, int], dict[str, Any]]] = []
+            for entry in variants:
+                talent_distance = _talent_distance(
+                    live_talents,
+                    str(entry.get("talentsString", "")),
+                )
+                glyph_distance = 0
+                if policy.get("type") == "closest-live-character":
+                    preset_glyph_ids = {
+                        int(value)
+                        for value in entry.get("glyphItemIds", [])
+                        if isinstance(value, int) and not isinstance(value, bool) and value > 0
+                    }
+                    glyph_distance = len(live_glyph_ids.symmetric_difference(preset_glyph_ids))
+                scored.append(((talent_distance, glyph_distance), entry))
+
+            best_score = min(score for score, _ in scored)
+            matches = [entry for score, entry in scored if score == best_score]
             if len(matches) != 1:
                 raise ServiceError(
-                    f"{era} route {route_key} has a tied closest-talent preset variant",
+                    f"{era} route {route_key} has a tied closest-character preset variant",
                     HTTPStatus.UNPROCESSABLE_ENTITY,
                 )
         else:
@@ -612,7 +648,14 @@ def build_baseline_request(
     era = validation["era"]
     character = snapshot["character"]
     route_key = _preset_route_key(snapshot)
-    preset, raw_request = _select_preset(preset_catalog, era, route_key, snapshot, preset_sha256)
+    preset, raw_request = _select_preset(
+        preset_catalog,
+        era,
+        route_key,
+        snapshot,
+        glyph_spell_map,
+        preset_sha256,
+    )
     request = copy.deepcopy(raw_request)
     player = _request_player(request)
 

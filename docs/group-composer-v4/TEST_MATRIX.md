@@ -448,3 +448,13 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - TODO runtime: exercise a healer route and verify HPS routing.
 - TODO: tank authority remains blocked until the chosen survivability metric/model is documented and validated.
 - TODO: results remain UNVALIDATED until per-route Skrra/AzerothCore mechanics acceptance promotes them.
+
+
+### WotLK same-talent preset variants
+
+- REAL-IMAGE evidence from failed `4cfc5adb`: pinned Mage Fire and Frostfire presets share talents but have different simulator-owned assumptions.
+- STATIC/SELF-TEST: distinct same-talent non-equivalent presets with unique glyph signatures are preserved as dynamic variants.
+- UNIT: live glyph item set uniquely selects the matching same-talent variant.
+- UNIT: same-talent variants still fail closed when talent + glyph scoring remains tied.
+- REAL-IMAGE TODO: WotLK harvest completes with Fire/Frostfire represented by an authoritative-character selection policy.
+- TODO runtime: exercise a Fireball-glyphed and Frostfire-glyphed Mage snapshot and verify the expected pinned source is selected.

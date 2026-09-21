@@ -367,3 +367,19 @@ The first execution slice therefore uses this contract:
 The service remains the only process that launches the pinned `wowsimcli` binaries. The worldserver worker merely waits on private-network HTTP away from the game loop.
 
 This slice is deliberately not the final GearAdvisor feature. It proves scheduling, isolation and batch execution. The next layer must transport structured result/confidence/explanation data into GearAdvisor and provide an explicit Sim Bags action. No route becomes SIM-BACKED until its mechanics and assumptions are validated against the Skrra/AzerothCore server.
+
+
+### Authoritative glyph variant discriminator
+
+The WotLK real-image gate exposed a route that talents cannot identify by themselves: pinned upstream Mage `TestFire` and `TestFrostFire` use the same talent string but different simulator assumptions. They are not interchangeable presets.
+
+The upstream fixtures also provide an authoritative character-level discriminator:
+- Fire uses the Fireball major glyph;
+- Frostfire uses the Frostfire major glyph;
+- both otherwise share relevant Fire-model options/consumes.
+
+Skrra therefore does not hardcode one fixture as preferred. Harvested variant metadata now retains the preset glyph item set. Dynamic selection compares:
+1. distance from the live server-owned talent string;
+2. symmetric-difference distance from the live server-owned glyph set after the existing pinned WotLK spell->item translation.
+
+A unique best pair selects the variant. A tie fails closed. This policy also continues to handle routes whose variants are distinguished by talents alone. Filename/source order is never a selection signal.

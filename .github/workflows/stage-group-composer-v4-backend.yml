@@ -77,6 +77,8 @@ jobs:
           grep -q '/v1/presets' wowsims-service/app.py
           grep -q 'SKRRA_WOWSIM_DUMP_DIR' wowsims-service/harvest_presets.py
           grep -q 'equivalent-after-authoritative-overlay' wowsims-service/harvest_presets.py
+          grep -q 'distinct-authoritative-glyph-variant' wowsims-service/harvest_presets.py
+          grep -q 'closest-live-character' wowsims-service/app.py
           grep -q 'selectableRouteCount' wowsims-service/app.py
           grep -q 'WOWSIMS_REQUIRE_PRESETS=1' wowsims-service/Dockerfile
           grep -q 'protobuf-compiler' wowsims-service/Dockerfile

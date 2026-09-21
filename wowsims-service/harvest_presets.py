@@ -292,6 +292,25 @@ def source_phase(source: str) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def preset_glyph_item_ids(request: dict[str, Any]) -> list[int]:
+    """Return the pinned preset's non-zero glyph item IDs for variant selection."""
+    _, player = find_player(request)
+    glyphs = player.get("glyphs")
+    if not isinstance(glyphs, dict):
+        return []
+    values = {
+        int(value)
+        for value in glyphs.values()
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0
+    }
+    return sorted(values)
+
+
+def glyph_distinguishes(entries: list[dict[str, Any]]) -> bool:
+    signatures = [tuple(entry.get("glyphItemIds") or []) for entry in entries]
+    return bool(signatures) and all(signatures) and len(set(signatures)) == len(signatures)
+
+
 def assign_preset_policies(
     routes: dict[str, list[dict[str, Any]]], era: str
 ) -> dict[str, dict[str, Any]]:
@@ -310,49 +329,54 @@ def assign_preset_policies(
         variants: list[dict[str, Any]] = []
         route_failed = False
         for talents, group in talent_groups.items():
+            group_variants: list[tuple[dict[str, Any], str]] = []
             if len(group) == 1:
-                selected = group[0]
-                method = "single-engine-native-preset"
+                group_variants.append((group[0], "single-engine-native-preset"))
             else:
                 assumption_hashes = {str(entry.get("assumptionsSha256", "")) for entry in group}
                 if len(assumption_hashes) == 1:
                     max_phase = max(int(entry.get("phase") or -1) for entry in group)
                     latest = [entry for entry in group if int(entry.get("phase") or -1) == max_phase]
                     selected = min(latest, key=lambda entry: str(entry["sha256"]))
-                    method = "equivalent-after-authoritative-overlay"
+                    group_variants.append((selected, "equivalent-after-authoritative-overlay"))
                 else:
                     phased = [entry for entry in group if isinstance(entry.get("phase"), int)]
-                    if not phased:
-                        unresolved[f"{route_key}:{talents}"] = [
-                            {
-                                "source": str(entry.get("source", "")),
-                                "sha256": str(entry.get("sha256", "")),
-                                "assumptionsSha256": str(entry.get("assumptionsSha256", "")),
-                            }
-                            for entry in group
-                        ]
-                        route_failed = True
-                        continue
-                    latest_phase = max(int(entry["phase"]) for entry in phased)
-                    latest = [entry for entry in phased if int(entry["phase"]) == latest_phase]
-                    latest_hashes = {str(entry.get("assumptionsSha256", "")) for entry in latest}
-                    if len(latest_hashes) != 1:
-                        unresolved[f"{route_key}:{talents}"] = [
-                            {
-                                "source": str(entry.get("source", "")),
-                                "sha256": str(entry.get("sha256", "")),
-                                "assumptionsSha256": str(entry.get("assumptionsSha256", "")),
-                            }
-                            for entry in latest
-                        ]
-                        route_failed = True
-                        continue
-                    selected = min(latest, key=lambda entry: str(entry["sha256"]))
-                    method = "latest-upstream-phase"
+                    candidates = group
+                    method = "distinct-authoritative-glyph-variant"
+                    if phased:
+                        latest_phase = max(int(entry["phase"]) for entry in phased)
+                        candidates = [entry for entry in phased if int(entry["phase"]) == latest_phase]
+                        latest_hashes = {str(entry.get("assumptionsSha256", "")) for entry in candidates}
+                        if len(latest_hashes) == 1:
+                            selected = min(candidates, key=lambda entry: str(entry["sha256"]))
+                            group_variants.append((selected, "latest-upstream-phase"))
+                            candidates = []
+                        else:
+                            method = "latest-phase-glyph-variant"
 
-            selected["variantCanonical"] = True
-            selected["selectionMethod"] = method
-            variants.append(selected)
+                    if candidates:
+                        if glyph_distinguishes(candidates):
+                            group_variants.extend(
+                                (entry, method)
+                                for entry in sorted(candidates, key=lambda entry: str(entry["sha256"]))
+                            )
+                        else:
+                            unresolved[f"{route_key}:{talents}"] = [
+                                {
+                                    "source": str(entry.get("source", "")),
+                                    "sha256": str(entry.get("sha256", "")),
+                                    "assumptionsSha256": str(entry.get("assumptionsSha256", "")),
+                                    "glyphItemIds": ",".join(str(value) for value in entry.get("glyphItemIds", [])),
+                                }
+                                for entry in candidates
+                            ]
+                            route_failed = True
+                            continue
+
+            for selected, method in group_variants:
+                selected["variantCanonical"] = True
+                selected["selectionMethod"] = method
+                variants.append(selected)
 
         if route_failed:
             continue
@@ -364,7 +388,7 @@ def assign_preset_policies(
             }
         else:
             policies[route_key] = {
-                "type": "closest-live-talents",
+                "type": "closest-live-character",
                 "variantSha256": sorted(str(entry["sha256"]) for entry in variants),
             }
 
@@ -470,6 +494,7 @@ def build_index(
                 "sha256": digest,
                 "assumptionsSha256": preset_assumptions_sha256(request),
                 "talentsString": str(preset_player.get("talentsString", "")),
+                "glyphItemIds": preset_glyph_item_ids(request),
                 "phase": source_phase(source),
                 "source": source,
             }
@@ -489,7 +514,7 @@ def build_index(
         "era": era,
         "engineCommit": commit,
         "source": "pinned upstream FullCharacterTestSuiteGenerator Average RaidSimRequest",
-        "canonicalPolicy": "talent-variant-latest-phase-v1",
+        "canonicalPolicy": "talent-glyph-variant-latest-phase-v2",
         "selectableRouteCount": len(route_policies),
         "dynamicRouteCount": sum(1 for policy in route_policies.values() if policy["type"] != "static"),
         "routePolicies": {key: route_policies[key] for key in sorted(route_policies)},
@@ -610,7 +635,7 @@ func TestOther(t *testing.T) { if true { t.Log("x") } }
         {"sha256": "b" * 64, "source": "sword", "phase": 5, "talentsString": "333-444", "assumptionsSha256": "2" * 64},
     ]}
     policies = assign_preset_policies(variant_routes, "VANILLA")
-    assert policies["4:1:DPS"]["type"] == "closest-live-talents"
+    assert policies["4:1:DPS"]["type"] == "closest-live-character"
 
     phase_routes = {"7:0:DPS": [
         {"sha256": "a" * 64, "source": "x__Phase1-Average__x", "phase": 1, "talentsString": "same", "assumptionsSha256": "1" * 64},
@@ -620,10 +645,18 @@ func TestOther(t *testing.T) { if true { t.Log("x") } }
     assert policies["7:0:DPS"]["selectedSha256"] == "b" * 64
     assert phase_routes["7:0:DPS"][1]["selectionMethod"] == "latest-upstream-phase"
 
+    glyph_routes = {"8:1:DPS": [
+        {"sha256": "a" * 64, "source": "fire", "phase": None, "talentsString": "same", "glyphItemIds": [1, 2, 3], "assumptionsSha256": "1" * 64},
+        {"sha256": "b" * 64, "source": "frostfire", "phase": None, "talentsString": "same", "glyphItemIds": [2, 3, 4], "assumptionsSha256": "2" * 64},
+    ]}
+    policies = assign_preset_policies(glyph_routes, "WOTLK")
+    assert policies["8:1:DPS"]["type"] == "closest-live-character"
+    assert all(entry["variantCanonical"] for entry in glyph_routes["8:1:DPS"])
+
     try:
         assign_preset_policies({"8:0:DPS": [
-            {"sha256": "a" * 64, "source": "a", "phase": None, "talentsString": "same", "assumptionsSha256": "1" * 64},
-            {"sha256": "b" * 64, "source": "b", "phase": None, "talentsString": "same", "assumptionsSha256": "2" * 64},
+            {"sha256": "a" * 64, "source": "a", "phase": None, "talentsString": "same", "glyphItemIds": [], "assumptionsSha256": "1" * 64},
+            {"sha256": "b" * 64, "source": "b", "phase": None, "talentsString": "same", "glyphItemIds": [], "assumptionsSha256": "2" * 64},
         ]}, "WOTLK")
     except RuntimeError as exc:
         assert "non-equivalent preset variants" in str(exc)

@@ -253,6 +253,15 @@ class AppTests(unittest.TestCase):
                 json.dumps(request, indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
             )
+            preset_player = request["raid"]["parties"][0]["players"][0]
+            preset_glyphs = preset_player.get("glyphs", {})
+            glyph_item_ids = sorted(
+                {
+                    int(value)
+                    for value in preset_glyphs.values()
+                    if isinstance(value, int) and not isinstance(value, bool) and value > 0
+                }
+            ) if isinstance(preset_glyphs, dict) else []
             route_entries.append(
                 {
                     "file": f"requests/{filename}",
@@ -262,7 +271,8 @@ class AppTests(unittest.TestCase):
                     "canonical": index == canonical_index,
                     "selectionMethod": "unit-test-policy" if index == canonical_index else None,
                     "assumptionsSha256": digest,
-                    "talentsString": request["raid"]["parties"][0]["players"][0].get("talentsString", ""),
+                    "talentsString": preset_player.get("talentsString", ""),
+                    "glyphItemIds": glyph_item_ids,
                     "phase": None,
                     "variantCanonical": index == canonical_index,
                 }
@@ -426,7 +436,70 @@ class AppTests(unittest.TestCase):
                 "type": "closest-live-talents",
                 "variantSha256": [entry["sha256"] for entry in entries],
             }
-            with self.assertRaisesRegex(app.ServiceError, "tied closest-talent"):
+            with self.assertRaisesRegex(app.ServiceError, "tied closest-character"):
+                app.build_baseline_request(
+                    snapshot,
+                    app.load_model_support(manifest=MANIFEST),
+                    catalog,
+                    {},
+                )
+
+
+    def test_build_baseline_request_uses_glyphs_for_same_talent_variants(self):
+        snapshot = self._snapshot()
+        snapshot["character"]["glyphs"] = [
+            {"slot": 0, "spellId": 1001, "typeFlags": 0},
+            {"slot": 1, "spellId": 1002, "typeFlags": 0},
+            {"slot": 2, "spellId": 1003, "typeFlags": 0},
+        ]
+        first = self._wotlk_preset()
+        second = self._wotlk_preset()
+        first_player = first["raid"]["parties"][0]["players"][0]
+        second_player = second["raid"]["parties"][0]["players"][0]
+        first_player["talentsString"] = snapshot["character"]["talents"]
+        second_player["talentsString"] = snapshot["character"]["talents"]
+        first_player["glyphs"] = {"major1": 111, "major2": 222, "major3": 333}
+        second_player["glyphs"] = {"major1": 444, "major2": 222, "major3": 333}
+        first["encounter"] = {"duration": 120}
+        second["encounter"] = {"duration": 240}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [first, second])
+            entries = catalog["eras"]["WOTLK"]["routes"]["8:0:DPS"]
+            for entry in entries:
+                entry["variantCanonical"] = True
+            catalog["eras"]["WOTLK"]["routePolicies"]["8:0:DPS"] = {
+                "type": "closest-live-character",
+                "variantSha256": [entry["sha256"] for entry in entries],
+            }
+            out = app.build_baseline_request(
+                snapshot,
+                app.load_model_support(manifest=MANIFEST),
+                catalog,
+                {1001: 444, 1002: 222, 1003: 333},
+            )
+
+        self.assertEqual(out["request"]["encounter"]["duration"], 240)
+        self.assertEqual(out["preset"]["selection"], "closest-live-character")
+
+
+    def test_build_baseline_request_rejects_tied_same_talent_and_glyph_variants(self):
+        snapshot = self._snapshot()
+        first = self._wotlk_preset()
+        second = self._wotlk_preset()
+        first["raid"]["parties"][0]["players"][0]["talentsString"] = snapshot["character"]["talents"]
+        second["raid"]["parties"][0]["players"][0]["talentsString"] = snapshot["character"]["talents"]
+        first["raid"]["parties"][0]["players"][0]["glyphs"] = {"major1": 111}
+        second["raid"]["parties"][0]["players"][0]["glyphs"] = {"major1": 222}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [first, second])
+            entries = catalog["eras"]["WOTLK"]["routes"]["8:0:DPS"]
+            catalog["eras"]["WOTLK"]["routePolicies"]["8:0:DPS"] = {
+                "type": "closest-live-character",
+                "variantSha256": [entry["sha256"] for entry in entries],
+            }
+            with self.assertRaisesRegex(app.ServiceError, "tied closest-character"):
                 app.build_baseline_request(
                     snapshot,
                     app.load_model_support(manifest=MANIFEST),

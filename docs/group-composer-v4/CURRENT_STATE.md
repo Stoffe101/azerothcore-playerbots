@@ -578,3 +578,21 @@ The next bounded WoWSims layer moves expensive comparison execution completely o
 - shutdown joins the worker cleanly and discards queued work.
 
 The next slice after this is green is result/confidence/explanation transport into GearAdvisor plus an explicit client Sim Bags action. Runtime model/mechanics validation remains required before any player-facing result may be called SIM-BACKED.
+
+
+### WotLK same-talent preset discriminator repair
+
+The first async candidate `4cfc5adb...` forced a real service-image rebuild and exposed a previously unproven WotLK preset ambiguity. Upstream `TestFire` and `TestFrostFire` share the exact same Mage talent string, so talent distance alone is insufficient. The pinned upstream fixtures differ in their major glyph set: Fire uses Glyph of Fireball while Frostfire uses Glyph of Frostfire.
+
+Current repair: **IMPLEMENTED / exact-head local CI required**.
+
+- harvested entries now retain sorted non-zero glyph item IDs from the pinned request;
+- multi-variant routes use `closest-live-character` selection;
+- selection score is ordered by live talent distance and then authoritative live glyph-set distance;
+- live WotLK glyph spell IDs are translated through the existing pinned WoWSims spell->item map before comparison;
+- different same-talent glyph variants remain valid candidates instead of being collapsed;
+- ties after both authoritative discriminators still return an error;
+- routes that cannot be distinguished from authoritative character state still fail the real image build rather than receiving a guessed default;
+- canonical policy version advances to `talent-glyph-variant-latest-phase-v2`.
+
+This is still preset routing only. It does not make Fire/Frostfire mechanics SIM-BACKED.
