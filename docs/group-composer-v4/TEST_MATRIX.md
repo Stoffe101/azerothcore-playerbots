@@ -118,6 +118,21 @@ Status vocabulary:
 - TODO: after provenance repair, the same pending cache can be opened.
 - TODO: Vanilla/TBC/WotLK cache rewards never create future/UNKNOWN gear or potions.
 
+## ERA-07 automated vendor/reward helpers
+
+- STATIC PASS on Codex source `9499939`: server contract asserts fail-closed ordering before currency, stock, treasury, inventory and one-shot delivery mutations.
+- STATIC PASS on Codex source `9499939`: Titan bridge contract, provenance generator self-test, Python compile, AzerothCore C++ codestyle and `git diff --check` all passed.
+- STATIC: Titan Rune and AI Guild modules declare the central EraPolicy dependency.
+- STATIC: custom IDs 900100, 900101, 900104 and 900105 are reviewed WotLK provenance overrides.
+- TODO exact-head CI: Group Composer client checks, backend staging, Group Composer V4 compile and Integration build must succeed on the docs-synchronized integrated commit.
+- TODO runtime: regenerated provenance classifies all four custom Titan IDs as WotLK.
+- TODO runtime: Vanilla/TBC expose no Titan rewards and refuse exchange/purchase without consuming currency.
+- TODO runtime: WotLK Titan vendors, exchange, pending reward delivery and Gamma signets still work normally.
+- TODO runtime: unavailable/stale provenance preserves currency, pending rewards, AI Guild stock, treasury, inventory and queued request state.
+- TODO runtime: exercise AI Guild stock mail, conservation, real-AH buy/list, deposit, withdraw, mail and buy helpers in each era.
+- TODO runtime: `.era audit` reports automated vendor catalog, pending reward and AI Guild item-helper sections correctly, with unavailable provenance as FAIL and quarantined persistent blocked state as WARN.
+- TODO later: `TitanRuneLoot.cpp`, recipe discovery/profession crafting, ordinary loot/crafting/recipes, ArenaRoster PvP gear and broader ERA-13 containment.
+
 ## Auction House era profiles / ERA-07 provenance
 
 - STATIC/CI: `configure-era-item-provenance.sh` and `configure-ahbot.sh` parse with `bash -n`.
