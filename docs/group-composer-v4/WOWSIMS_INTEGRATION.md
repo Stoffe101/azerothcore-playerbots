@@ -329,3 +329,18 @@ Automatic simulation must not depend on generated array order or an arbitrary up
 - this policy does not claim mechanics correctness and does not promote `ENGINE_PRESENT_UNVALIDATED` to `SIM-BACKED`.
 
 Rotation/APL, spec options, consumes, raid/party buffs, debuffs, encounter and simulation options remain simulator-owned assumptions. Differences in any of them therefore block automatic canonicalization.
+
+
+## Preset variants after real-image validation
+
+The first overlay-equivalence-only canonical policy at `4ba6b74d` was intentionally rejected by the real Classic image because a class/tree/role route can contain more than one legitimate simulator model.
+
+The refined contract is:
+1. retain upstream talent strings and phase metadata in the harvested index;
+2. group candidates by talent build;
+3. within one talent build, collapse truly equivalent requests and otherwise select the latest pinned upstream phase when the difference is a phase family;
+4. if a route contains multiple talent builds, preserve one representative per build and select the unique closest build from the authoritative live talent string;
+5. reject equal-distance ties or unresolved same-build differences;
+6. expose route selection policy in the catalog/health response and require full selectable-route coverage in the real image.
+
+This deliberately preserves Combat Rogue Daggers vs Sinister Strike while allowing Classic Elemental to use the latest phase assumptions available in the exact pinned engine. The realm does not currently emulate every Classic patch phase separately, so latest-upstream-phase is the explicit policy for same-build phase families.

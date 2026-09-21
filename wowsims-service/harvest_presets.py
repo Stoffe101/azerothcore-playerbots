@@ -287,42 +287,96 @@ def preset_assumptions_sha256(request: dict[str, Any]) -> str:
     return hashlib.sha256(canonical).hexdigest()
 
 
-def assign_canonical_presets(routes: dict[str, list[dict[str, Any]]], era: str) -> None:
-    """Choose a canonical request only when upstream candidates are safely equivalent."""
+def source_phase(source: str) -> int | None:
+    match = re.search(r"(?:^|__)Phase(\d+)-Average(?:__|$)", source)
+    return int(match.group(1)) if match else None
+
+
+def assign_preset_policies(
+    routes: dict[str, list[dict[str, Any]]], era: str
+) -> dict[str, dict[str, Any]]:
     unresolved: dict[str, list[dict[str, str]]] = {}
+    policies: dict[str, dict[str, Any]] = {}
+
     for route_key, entries in routes.items():
         for entry in entries:
             entry["canonical"] = False
+            entry["variantCanonical"] = False
 
-        if len(entries) == 1:
-            entries[0]["canonical"] = True
-            entries[0]["selectionMethod"] = "single-engine-native-preset"
+        talent_groups: dict[str, list[dict[str, Any]]] = {}
+        for entry in entries:
+            talent_groups.setdefault(str(entry.get("talentsString", "")), []).append(entry)
+
+        variants: list[dict[str, Any]] = []
+        route_failed = False
+        for talents, group in talent_groups.items():
+            if len(group) == 1:
+                selected = group[0]
+                method = "single-engine-native-preset"
+            else:
+                assumption_hashes = {str(entry.get("assumptionsSha256", "")) for entry in group}
+                if len(assumption_hashes) == 1:
+                    max_phase = max(int(entry.get("phase") or -1) for entry in group)
+                    latest = [entry for entry in group if int(entry.get("phase") or -1) == max_phase]
+                    selected = min(latest, key=lambda entry: str(entry["sha256"]))
+                    method = "equivalent-after-authoritative-overlay"
+                else:
+                    phased = [entry for entry in group if isinstance(entry.get("phase"), int)]
+                    if not phased:
+                        unresolved[f"{route_key}:{talents}"] = [
+                            {
+                                "source": str(entry.get("source", "")),
+                                "sha256": str(entry.get("sha256", "")),
+                                "assumptionsSha256": str(entry.get("assumptionsSha256", "")),
+                            }
+                            for entry in group
+                        ]
+                        route_failed = True
+                        continue
+                    latest_phase = max(int(entry["phase"]) for entry in phased)
+                    latest = [entry for entry in phased if int(entry["phase"]) == latest_phase]
+                    latest_hashes = {str(entry.get("assumptionsSha256", "")) for entry in latest}
+                    if len(latest_hashes) != 1:
+                        unresolved[f"{route_key}:{talents}"] = [
+                            {
+                                "source": str(entry.get("source", "")),
+                                "sha256": str(entry.get("sha256", "")),
+                                "assumptionsSha256": str(entry.get("assumptionsSha256", "")),
+                            }
+                            for entry in latest
+                        ]
+                        route_failed = True
+                        continue
+                    selected = min(latest, key=lambda entry: str(entry["sha256"]))
+                    method = "latest-upstream-phase"
+
+            selected["variantCanonical"] = True
+            selected["selectionMethod"] = method
+            variants.append(selected)
+
+        if route_failed:
             continue
-
-        assumption_hashes = {str(entry.get("assumptionsSha256", "")) for entry in entries}
-        if len(assumption_hashes) != 1:
-            unresolved[route_key] = [
-                {
-                    "source": str(entry.get("source", "")),
-                    "sha256": str(entry.get("sha256", "")),
-                    "assumptionsSha256": str(entry.get("assumptionsSha256", "")),
-                }
-                for entry in entries
-            ]
-            continue
-
-        selected = min(entries, key=lambda entry: str(entry["sha256"]))
-        selected["canonical"] = True
-        selected["selectionMethod"] = "equivalent-after-authoritative-overlay"
+        if len(variants) == 1:
+            variants[0]["canonical"] = True
+            policies[route_key] = {
+                "type": "static",
+                "selectedSha256": variants[0]["sha256"],
+            }
+        else:
+            policies[route_key] = {
+                "type": "closest-live-talents",
+                "variantSha256": sorted(str(entry["sha256"]) for entry in variants),
+            }
 
     if unresolved:
         raise RuntimeError(
-            f"{era} has non-equivalent preset candidates requiring explicit policy: "
+            f"{era} has non-equivalent preset variants requiring explicit policy: "
             + json.dumps(unresolved, sort_keys=True)
         )
+    return policies
 
 
-def resolve_route(catalog: dict[str, Any], era: str, request: dict[str, Any]) -> dict[str, Any]:
+def resolve_routedef resolve_route(catalog: dict[str, Any], era: str, request: dict[str, Any]) -> dict[str, Any]:
     raid, player = find_player(request)
     talents = player.get("talentsString", "")
     if not isinstance(talents, str) or not talents:
@@ -407,13 +461,17 @@ def build_index(
             json.dumps(request, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+        source = str(source_file.relative_to(raw_output))
+        _, preset_player = find_player(request)
         routes.setdefault(route_key, []).append(
             {
                 **route,
                 "file": f"requests/{dest_name}",
                 "sha256": digest,
                 "assumptionsSha256": preset_assumptions_sha256(request),
-                "source": str(source_file.relative_to(raw_output)),
+                "talentsString": str(preset_player.get("talentsString", "")),
+                "phase": source_phase(source),
+                "source": source,
             }
         )
 
@@ -424,15 +482,17 @@ def build_index(
             f"{era} produced {len(unclassified)} unclassified presets: {unclassified[:5]}"
         )
 
-    assign_canonical_presets(routes, era)
+    route_policies = assign_preset_policies(routes, era)
 
     index = {
         "schema": 1,
         "era": era,
         "engineCommit": commit,
         "source": "pinned upstream FullCharacterTestSuiteGenerator Average RaidSimRequest",
-        "canonicalPolicy": "authoritative-overlay-equivalence-v1",
-        "canonicalRouteCount": len(routes),
+        "canonicalPolicy": "talent-variant-latest-phase-v1",
+        "selectableRouteCount": len(route_policies),
+        "dynamicRouteCount": sum(1 for policy in route_policies.values() if policy["type"] != "static"),
+        "routePolicies": {key: route_policies[key] for key in sorted(route_policies)},
         "routes": {key: routes[key] for key in sorted(routes)},
         "routeCount": len(routes),
         "requestCount": sum(len(values) for values in routes.values()),
@@ -538,24 +598,39 @@ func TestOther(t *testing.T) { if true { t.Log("x") } }
 
     same = preset_assumptions_sha256(request)
     canonical_routes = {"8:0:DPS": [
-        {"sha256": "b" * 64, "source": "b", "assumptionsSha256": same},
-        {"sha256": "a" * 64, "source": "a", "assumptionsSha256": same},
+        {"sha256": "b" * 64, "source": "x__Phase5-Average__x", "phase": 5, "talentsString": "same", "assumptionsSha256": same},
+        {"sha256": "a" * 64, "source": "x__Phase6-Average__x", "phase": 6, "talentsString": "same", "assumptionsSha256": same},
     ]}
-    assign_canonical_presets(canonical_routes, "WOTLK")
-    assert canonical_routes["8:0:DPS"][1]["canonical"] is True
-    assert canonical_routes["8:0:DPS"][1]["selectionMethod"] == "equivalent-after-authoritative-overlay"
+    policies = assign_preset_policies(canonical_routes, "WOTLK")
+    assert policies["8:0:DPS"]["type"] == "static"
+    assert canonical_routes["8:0:DPS"][1]["variantCanonical"] is True
+
+    variant_routes = {"4:1:DPS": [
+        {"sha256": "a" * 64, "source": "dagger", "phase": 5, "talentsString": "111-222", "assumptionsSha256": "1" * 64},
+        {"sha256": "b" * 64, "source": "sword", "phase": 5, "talentsString": "333-444", "assumptionsSha256": "2" * 64},
+    ]}
+    policies = assign_preset_policies(variant_routes, "VANILLA")
+    assert policies["4:1:DPS"]["type"] == "closest-live-talents"
+
+    phase_routes = {"7:0:DPS": [
+        {"sha256": "a" * 64, "source": "x__Phase1-Average__x", "phase": 1, "talentsString": "same", "assumptionsSha256": "1" * 64},
+        {"sha256": "b" * 64, "source": "x__Phase6-Average__x", "phase": 6, "talentsString": "same", "assumptionsSha256": "2" * 64},
+    ]}
+    policies = assign_preset_policies(phase_routes, "VANILLA")
+    assert policies["7:0:DPS"]["selectedSha256"] == "b" * 64
+    assert phase_routes["7:0:DPS"][1]["selectionMethod"] == "latest-upstream-phase"
 
     try:
-        assign_canonical_presets({"8:0:DPS": [
-            {"sha256": "a" * 64, "source": "a", "assumptionsSha256": "1" * 64},
-            {"sha256": "b" * 64, "source": "b", "assumptionsSha256": "2" * 64},
+        assign_preset_policies({"8:0:DPS": [
+            {"sha256": "a" * 64, "source": "a", "phase": None, "talentsString": "same", "assumptionsSha256": "1" * 64},
+            {"sha256": "b" * 64, "source": "b", "phase": None, "talentsString": "same", "assumptionsSha256": "2" * 64},
         ]}, "WOTLK")
     except RuntimeError as exc:
-        assert "non-equivalent preset candidates" in str(exc)
+        assert "non-equivalent preset variants" in str(exc)
     else:
-        raise AssertionError("non-equivalent presets must fail closed")
+        raise AssertionError("unresolved preset variants must fail closed")
 
-    print("WoWSims preset harvester self-test passed.")
+    print("WoWSims preset harvester self-test passed.")    print("WoWSims preset harvester self-test passed.")
 
 
 def main() -> None:

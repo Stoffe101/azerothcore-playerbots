@@ -511,3 +511,23 @@ Current slice: **IMPLEMENTED / exact-head local CI required**.
 - model status remains ENGINE_PRESENT_UNVALIDATED. Canonical selection does not promote a route to SIM-BACKED.
 
 Next: asynchronous baseline/candidate simulation execution and result transport, still off the AzerothCore world thread.
+
+
+### Canonical preset repair — real-image findings
+
+`4ba6b74d8eeef844c53398c6ab3f44a9d089b862` must **not** be called green. Stage Group Composer V4 backend failed while building the real pinned Classic image after focused source/unit checks had passed.
+
+The failure proved that "one canonical request per route by overlay-equivalence only" was too coarse:
+- Vanilla Combat Rogue route `4:1:DPS` contains distinct Daggers and Sinister Strike talent/APL builds;
+- Vanilla Elemental Shaman route `7:0:DPS` contains phase-specific suites whose consumes change across Classic phases.
+
+Current repair policy:
+- harvested entries retain their upstream talent string and parsed phase;
+- entries are grouped by talent build inside a class/tree/role route;
+- for one talent build with phase-specific differences, the latest upstream phase is the representative because this realm currently gates at expansion level rather than emulating every Classic patch phase;
+- multiple distinct talent builds remain selectable variants;
+- the service compares the authoritative live talent string to the pinned variant talent strings and requires one unique closest match;
+- a distance tie, missing policy, unresolved same-build ambiguity or malformed index fails closed;
+- health exposes selectable-route and dynamic-route counts, and real-image CI requires every harvested route to have an explicit selection policy.
+
+No simulator execution or SIM-BACKED promotion is part of this repair.

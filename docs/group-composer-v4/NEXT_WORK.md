@@ -163,6 +163,6 @@ Only build these if testing shows they add real value:
 
 - DONE + exact-head green: candidate isolation / GearAdvisor v0.3.2 at `8d3ff2be`.
 - DONE + exact-head green: server-authoritative Sim Bags candidate enumeration at `52ac5255`.
-- CURRENT / local CI: canonical preset selection by authoritative-overlay equivalence; genuinely different simulator assumptions fail closed.
+- CURRENT / local CI: canonical preset repair using explicit talent variants + latest upstream phase; tied/unresolved selections fail closed.
 - NEXT: asynchronous baseline/candidate simulation queue off the world thread.
 - NEXT: return confidence/result/explanation to GearAdvisor and wire explicit Sim Bags UI action.

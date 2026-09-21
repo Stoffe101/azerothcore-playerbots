@@ -402,3 +402,14 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - REAL-IMAGE CI: every harvested Vanilla/TBC/WotLK route must report exactly one canonical request; canonicalRouteCount must equal routeCount for every era.
 - TODO runtime: build `.wowsims request` / `.wowsims bags` for at least one formerly multi-preset route and verify the returned preset reports canonical selection.
 - TODO: canonical selection alone does not promote a route to SIM-BACKED; mechanics/meta-gem/result validation remains required.
+
+
+### Canonical preset repair acceptance
+- REAL-IMAGE regression from `4ba6b74d`: Vanilla Combat Rogue Daggers and Sinister Strike must not be collapsed as equivalent.
+- REAL-IMAGE regression from `4ba6b74d`: Vanilla Elemental phase-specific consumes must not be ignored.
+- STATIC/SELF-TEST: same-talent phase variants select the latest available upstream phase.
+- STATIC/SELF-TEST: distinct talent builds produce a dynamic closest-live-talents policy.
+- UNIT: authoritative live talents select the unique closest pinned variant.
+- UNIT: equal-distance variant selection fails closed.
+- REAL-IMAGE CI: every route has an explicit static or closest-live-talents policy and selectableRouteCount equals routeCount for Vanilla, TBC and WotLK.
+- TODO runtime: inspect at least one dynamic route result in-game before any SIM-BACKED promotion.

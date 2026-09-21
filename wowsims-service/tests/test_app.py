@@ -220,7 +220,7 @@ class AppTests(unittest.TestCase):
             summary = app.preset_catalog_summary(catalog)
         self.assertTrue(summary["eras"]["WOTLK"]["ready"])
         self.assertEqual(summary["eras"]["WOTLK"]["requestCount"], 1)
-        self.assertEqual(summary["eras"]["WOTLK"]["canonicalRouteCount"], 1)
+        self.assertEqual(summary["eras"]["WOTLK"]["selectableRouteCount"], 1)
 
     def test_preset_catalog_rejects_pin_drift(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -275,7 +275,16 @@ class AppTests(unittest.TestCase):
         } | {
             "eras": {
                 key: (
-                    {"ready": True, "routes": {route_key: route_entries}}
+                    {
+                        "ready": True,
+                        "routes": {route_key: route_entries},
+                        "routePolicies": {
+                            route_key: {
+                                "type": "static",
+                                "selectedSha256": route_entries[canonical_index]["sha256"],
+                            }
+                        },
+                    }
                     if key == era
                     else {"ready": False, "routes": {}}
                 )
@@ -366,11 +375,61 @@ class AppTests(unittest.TestCase):
             )
         self.assertEqual(out["request"]["encounter"]["duration"], 240)
         self.assertTrue(out["preset"]["canonical"])
-        self.assertEqual(out["preset"]["selection"], "canonical")
+        self.assertEqual(out["preset"]["selection"], "static")
         self.assertEqual(out["preset"]["selectionMethod"], "unit-test-policy")
         self.assertEqual(overridden["request"]["encounter"]["duration"], 180)
         self.assertEqual(overridden["preset"]["selection"], "explicit")
         self.assertFalse(overridden["preset"]["canonical"])
+
+
+    def test_build_baseline_request_selects_closest_talent_variant(self):
+        snapshot = self._snapshot()
+        first = self._wotlk_preset()
+        second = self._wotlk_preset()
+        first["raid"]["parties"][0]["players"][0]["talentsString"] = "50000-00000-00000"
+        second["raid"]["parties"][0]["players"][0]["talentsString"] = snapshot["character"]["talents"]
+        first["encounter"] = {"duration": 120}
+        second["encounter"] = {"duration": 240}
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [first, second])
+            entries = catalog["eras"]["WOTLK"]["routes"]["8:0:DPS"]
+            for entry in entries:
+                entry["variantCanonical"] = True
+            catalog["eras"]["WOTLK"]["routePolicies"]["8:0:DPS"] = {
+                "type": "closest-live-talents",
+                "variantSha256": [entry["sha256"] for entry in entries],
+            }
+            out = app.build_baseline_request(
+                snapshot,
+                app.load_model_support(manifest=MANIFEST),
+                catalog,
+                {},
+            )
+        self.assertEqual(out["request"]["encounter"]["duration"], 240)
+        self.assertEqual(out["preset"]["selection"], "closest-live-talents")
+
+
+    def test_build_baseline_request_rejects_tied_talent_variant(self):
+        snapshot = self._snapshot()
+        first = self._wotlk_preset()
+        second = self._wotlk_preset()
+        first["raid"]["parties"][0]["players"][0]["talentsString"] = "10000-00000-00000"
+        second["raid"]["parties"][0]["players"][0]["talentsString"] = "01000-00000-00000"
+        snapshot["character"]["talents"] = "00000-00000-00000"
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = self._preset_catalog(tmp, "WOTLK", "8:0:DPS", [first, second])
+            entries = catalog["eras"]["WOTLK"]["routes"]["8:0:DPS"]
+            catalog["eras"]["WOTLK"]["routePolicies"]["8:0:DPS"] = {
+                "type": "closest-live-talents",
+                "variantSha256": [entry["sha256"] for entry in entries],
+            }
+            with self.assertRaisesRegex(app.ServiceError, "tied closest-talent"):
+                app.build_baseline_request(
+                    snapshot,
+                    app.load_model_support(manifest=MANIFEST),
+                    catalog,
+                    {},
+                )
 
 
     def test_build_baseline_request_rejects_preset_checksum_drift(self):

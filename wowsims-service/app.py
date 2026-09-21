@@ -188,9 +188,11 @@ def load_preset_catalog(
             catalog["eras"][era] = {
                 "ready": False,
                 "routeCount": 0,
-                "canonicalRouteCount": 0,
+                "selectableRouteCount": 0,
+                "dynamicRouteCount": 0,
                 "requestCount": 0,
                 "canonicalPolicy": None,
+                "routePolicies": {},
                 "routes": {},
             }
             continue
@@ -208,8 +210,15 @@ def load_preset_catalog(
         if not isinstance(routes, dict) or not routes:
             raise RuntimeError(f"WoWSims preset index has no routes for {era}")
 
+        route_policies = index.get("routePolicies")
+        if route_policies is None:
+            route_policies = {}
+        if not isinstance(route_policies, dict):
+            raise RuntimeError(f"WoWSims preset index has malformed routePolicies for {era}")
+
         request_count = 0
-        canonical_route_count = 0
+        selectable_route_count = 0
+        dynamic_route_count = 0
         for route_key, entries in routes.items():
             if not isinstance(route_key, str) or not isinstance(entries, list) or not entries:
                 raise RuntimeError(f"WoWSims preset index has malformed route for {era}")
@@ -221,27 +230,48 @@ def load_preset_catalog(
                     raise RuntimeError(f"WoWSims preset request is missing: {request_file}")
                 request_count += 1
 
-            canonical = [entry for entry in entries if entry.get("canonical") is True]
-            if not canonical and len(entries) == 1:
+            policy = route_policies.get(route_key)
+            if policy is None and len(entries) == 1:
                 entries[0]["canonical"] = True
+                entries[0]["variantCanonical"] = True
                 entries[0].setdefault("selectionMethod", "single-engine-native-preset")
-                canonical = [entries[0]]
-            if len(canonical) != 1:
-                raise RuntimeError(
-                    f"WoWSims preset route {era}/{route_key} must have exactly one canonical request"
-                )
-            canonical[0].setdefault("selectionMethod", "single-engine-native-preset")
-            canonical_route_count += 1
+                policy = {"type": "static", "selectedSha256": entries[0]["sha256"]}
+                route_policies[route_key] = policy
+            if not isinstance(policy, dict) or policy.get("type") not in {"static", "closest-live-talents"}:
+                raise RuntimeError(f"WoWSims preset route {era}/{route_key} has no valid selection policy")
+
+            if policy["type"] == "static":
+                selected = [entry for entry in entries if entry.get("sha256") == policy.get("selectedSha256")]
+                if len(selected) != 1:
+                    raise RuntimeError(f"WoWSims preset route {era}/{route_key} has invalid static selection")
+                selected[0]["canonical"] = True
+                selected[0]["variantCanonical"] = True
+            else:
+                allowed = set(policy.get("variantSha256") or [])
+                variants = [entry for entry in entries if entry.get("sha256") in allowed]
+                if len(variants) < 2 or len(variants) != len(allowed):
+                    raise RuntimeError(f"WoWSims preset route {era}/{route_key} has invalid talent variants")
+                if any(not entry.get("talentsString") for entry in variants):
+                    raise RuntimeError(f"WoWSims preset route {era}/{route_key} talent variant is missing talents")
+                for entry in variants:
+                    entry["variantCanonical"] = True
+                dynamic_route_count += 1
+            selectable_route_count += 1
 
         catalog["eras"][era] = {
             "ready": True,
             "routeCount": int(index.get("routeCount", len(routes))),
-            "canonicalRouteCount": canonical_route_count,
+            "selectableRouteCount": selectable_route_count,
+            "dynamicRouteCount": dynamic_route_count,
             "requestCount": int(index.get("requestCount", request_count)),
             "canonicalPolicy": index.get("canonicalPolicy", "singleton-only-v0"),
+            "routePolicies": route_policies,
             "routes": routes,
         }
     return catalog
+
+
+def preset_catalog_summary    return catalog
 
 
 def preset_catalog_summary(catalog: dict[str, Any]) -> dict[str, Any]:
@@ -252,7 +282,8 @@ def preset_catalog_summary(catalog: dict[str, Any]) -> dict[str, Any]:
             era: {
                 "ready": bool(entry.get("ready", False)),
                 "routeCount": int(entry.get("routeCount", 0)),
-                "canonicalRouteCount": int(entry.get("canonicalRouteCount", 0)),
+                "selectableRouteCount": int(entry.get("selectableRouteCount", 0)),
+                "dynamicRouteCount": int(entry.get("dynamicRouteCount", 0)),
                 "requestCount": int(entry.get("requestCount", 0)),
                 "canonicalPolicy": entry.get("canonicalPolicy"),
                 "routeKeys": sorted(entry.get("routes", {}).keys()),
@@ -362,10 +393,24 @@ def _preset_route_key(snapshot: dict[str, Any]) -> str:
     return f'{character["classId"]}:{character["dominantTree"]}:{character["role"]}'
 
 
+def _talent_distance(left: str, right: str) -> int:
+    left_trees = (left.split("-") + ["", ""])[:3]
+    right_trees = (right.split("-") + ["", ""])[:3]
+    distance = 0
+    for left_tree, right_tree in zip(left_trees, right_trees):
+        width = max(len(left_tree), len(right_tree))
+        for index in range(width):
+            left_rank = int(left_tree[index]) if index < len(left_tree) and left_tree[index].isdigit() else 0
+            right_rank = int(right_tree[index]) if index < len(right_tree) and right_tree[index].isdigit() else 0
+            distance += abs(left_rank - right_rank)
+    return distance
+
+
 def _select_preset(
     preset_catalog: dict[str, Any],
     era: str,
     route_key: str,
+    snapshot: dict[str, Any],
     preset_sha256: str | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     era_entry = preset_catalog["eras"].get(era, {})
@@ -373,13 +418,35 @@ def _select_preset(
     if not entries:
         raise ServiceError(f"no engine-native preset exists for {era} route {route_key}")
     if preset_sha256 is None:
-        canonical = [entry for entry in entries if entry.get("canonical") is True]
-        if len(canonical) != 1:
-            raise ServiceError(
-                f"{era} route {route_key} has no unique canonical preset",
-                HTTPStatus.INTERNAL_SERVER_ERROR,
-            )
-        selected = canonical[0]
+        policy = era_entry.get("routePolicies", {}).get(route_key)
+        if not isinstance(policy, dict):
+            raise ServiceError(f"{era} route {route_key} has no preset selection policy", HTTPStatus.INTERNAL_SERVER_ERROR)
+        if policy.get("type") == "static":
+            matches = [entry for entry in entries if entry.get("sha256") == policy.get("selectedSha256")]
+        elif policy.get("type") == "closest-live-talents":
+            live_talents = snapshot.get("character", {}).get("talents")
+            if not isinstance(live_talents, str) or not live_talents:
+                raise ServiceError("character.talents is required for preset variant selection")
+            allowed = set(policy.get("variantSha256") or [])
+            variants = [entry for entry in entries if entry.get("sha256") in allowed]
+            scored = [
+                (_talent_distance(live_talents, str(entry.get("talentsString", ""))), entry)
+                for entry in variants
+            ]
+            if not scored:
+                raise ServiceError(f"{era} route {route_key} has no usable talent variants", HTTPStatus.INTERNAL_SERVER_ERROR)
+            best_distance = min(score for score, _ in scored)
+            matches = [entry for score, entry in scored if score == best_distance]
+            if len(matches) != 1:
+                raise ServiceError(
+                    f"{era} route {route_key} has a tied closest-talent preset variant",
+                    HTTPStatus.UNPROCESSABLE_ENTITY,
+                )
+        else:
+            raise ServiceError(f"{era} route {route_key} has an unsupported preset policy", HTTPStatus.INTERNAL_SERVER_ERROR)
+        if len(matches) != 1:
+            raise ServiceError(f"{era} route {route_key} did not resolve one preset", HTTPStatus.INTERNAL_SERVER_ERROR)
+        selected = matches[0]
     else:
         matches = [entry for entry in entries if entry.get("sha256") == preset_sha256]
         if len(matches) != 1:
@@ -409,7 +476,7 @@ def _select_preset(
     return selected, request
 
 
-def _request_player(request: dict[str, Any]) -> dict[str, Any]:
+def _request_playerdef _request_player(request: dict[str, Any]) -> dict[str, Any]:
     try:
         parties = request["raid"]["parties"]
         players = parties[0]["players"]
@@ -548,7 +615,7 @@ def build_baseline_request(
     era = validation["era"]
     character = snapshot["character"]
     route_key = _preset_route_key(snapshot)
-    preset, raw_request = _select_preset(preset_catalog, era, route_key, preset_sha256)
+    preset, raw_request = _select_preset(preset_catalog, era, route_key, snapshot, preset_sha256)
     request = copy.deepcopy(raw_request)
     player = _request_player(request)
 
@@ -591,7 +658,7 @@ def build_baseline_request(
             "canonical": bool(preset.get("canonical", False)),
             "selectionMethod": preset.get("selectionMethod"),
             "assumptionsSha256": preset.get("assumptionsSha256"),
-            "selection": "explicit" if preset_sha256 is not None else "canonical",
+            "selection": "explicit" if preset_sha256 is not None else preset_catalog["eras"][era]["routePolicies"][route_key]["type"],
         },
         "request": request,
     }

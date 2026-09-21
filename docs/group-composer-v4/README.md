@@ -182,3 +182,17 @@ This locks one-slot candidate request isolation, WotLK random-property fail-clos
 Exact SHA `52ac52552ff0a2c0920b391961887f52dd9ee7b6` is fully exact-head local-CI green on all four required workflows, including Integration on `stoffes-pc`. It locks the server-authoritative bag candidate manifest without executing simulations.
 
 Current bounded slice: **IMPLEMENTED / exact-head local CI required**. The preset harvester now fingerprints only simulator assumptions that survive AzerothCore's authoritative character overlay. Single-preset routes are canonical directly; multi-preset routes auto-resolve only when every candidate is equivalent after removing server-owned character fields. Any remaining difference in rotation/APL, spec options, consumes, buffs/debuffs, encounter or sim assumptions fails the real image build instead of choosing arbitrarily. The service then selects exactly one canonical preset by default while retaining explicit SHA selection for diagnostics. Next after this boundary is green: asynchronous baseline/candidate compare execution off the world thread.
+
+
+### Canonical preset repair after real-image evidence
+
+Candidate `4ba6b74d8eeef844c53398c6ab3f44a9d089b862` is **FAILED / superseded**. Client checks passed and the focused backend checks passed, but the real pinned Classic image correctly rejected two kinds of non-equivalent Vanilla presets: phase-specific Elemental Shaman suites and Combat Rogue Daggers vs Sinister Strike builds.
+
+The repaired policy keeps those meanings separate:
+- same-talent phase variants select the latest upstream phase represented by the pinned engine;
+- distinct upstream talent builds remain distinct route variants and the authoritative live talent string selects the unique closest build;
+- equal-distance talent matches fail closed rather than selecting arbitrarily;
+- identical post-overlay variants may still collapse deterministically;
+- every route must be selectable by one of these explicit policies in the real Docker-image gate.
+
+This remains preset selection only. No route becomes SIM-BACKED and no simulation is executed by this slice.

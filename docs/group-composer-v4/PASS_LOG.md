@@ -2,6 +2,16 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — Canonical preset real-image repair
+
+Candidate `4ba6b74d8eeef844c53398c6ab3f44a9d089b862`: **FAILED / superseded**.
+- Group Composer client checks: SUCCESS.
+- backend focused source/unit checks: SUCCESS.
+- Stage Group Composer V4 backend: FAILURE during the real Classic WoWSims image build.
+- The failure was policy evidence, not a compiler regression: Combat Rogue exposes separate Daggers/Sinister Strike builds and Elemental Shaman exposes phase-specific consume assumptions.
+- Repair preserves distinct talent builds, selects the unique closest live-talent variant, chooses the latest upstream phase within a same-talent phase family, and keeps unresolved/tied cases fail-closed.
+- No simulation execution or SIM-BACKED promotion is introduced.
+
 ## 2026-09-21 — Canonical WoWSims preset selection
 
 Current slice: **IMPLEMENTED / exact-head local CI required**.

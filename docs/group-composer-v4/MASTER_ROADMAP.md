@@ -406,3 +406,11 @@ Runtime evidence beats this ordering. A blocker discovered while testing may jum
 - multi-candidate routes auto-resolve only when all surviving assumptions are equivalent;
 - non-equivalent routes fail closed at image build rather than selecting silently;
 - next simulator milestone remains asynchronous compare execution and result transport.
+
+
+### 2026-09-21 WoWSims preset-policy repair
+- candidate `4ba6b74d` is failed/superseded after the real Classic image exposed legitimate non-equivalent route variants;
+- phase families within one talent build select the latest pinned upstream phase;
+- distinct talent builds remain runtime-selectable by unique closest live talents;
+- unresolved/tied cases fail closed;
+- real-image CI must report selectableRouteCount == routeCount for every era before the slice can be green.
