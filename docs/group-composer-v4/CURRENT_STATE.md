@@ -84,7 +84,7 @@ Status: **DONE + exact-head GitHub-hosted CI green at `de842ba842721f32d588ba5d9
 - GearAdvisor reads the server-reported realm era from Group Composer when available and uses era-aware baseline hit/defense rules. Advanced priority prose is presently WotLK-oriented; full Vanilla/TBC priority profiles remain future polish.
 - The superseded `ExtendedCharacterStats` source is retained for history but skipped by the distributed bundle, preventing duplicate character-side panels.
 
-GearAdvisor v0.2.0 polish status: **IMPLEMENTATION PREPARED / exact-head CI required**.
+GearAdvisor v0.2.0 polish status: **DONE + exact-head GitHub-hosted CI green at `6d472bc0b594e401816925c7f9552a3e60b1d848`**.
 - Panel grows from 352x506 to 390x574 and uses a cleaner native tooltip-style border/background with section dividers.
 - Detected talent-tree icon appears in the header; class/spec/role identity is class-colored.
 - Cap rows are true two-column rows rather than one long FontString, preventing rating/shortfall text from colliding with the cap label.
@@ -303,3 +303,10 @@ Status: **DONE + exact-head GitHub-hosted CI green at `e1a2e6fa89e375290247b4209
 - If provenance is stale/unavailable, the pending cache remains intact for retry after repair.
 - Exact-head CI: client checks SUCCESS, backend staging SUCCESS, Group Composer V4 compile SUCCESS, Integration SUCCESS.
 - Ordinary vendors/rewards, loot/crafting/recipes and other non-PlayerbotFactory item sources remain later work.
+
+
+GearAdvisor v0.2.1 follow-up: **IMPLEMENTED / exact-head local CI required**.
+- narrow-resolution anchoring now measures usable space on both sides of CharacterFrame;
+- when neither side can fully fit the 390px panel, it chooses the side with more space and relies on screen clamping only for the small remainder;
+- this prevents the old right-overflow check from choosing a catastrophically worse left-side overlap on 768px-class layouts;
+- runtime visual acceptance remains TODO.

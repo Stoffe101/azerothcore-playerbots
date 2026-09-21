@@ -727,9 +727,19 @@ local function Anchor()
     panel:ClearAllPoints()
     if CharacterFrame then
         local screenWidth = UIParent and UIParent:GetWidth()
+        local frameLeft = CharacterFrame:GetLeft()
         local frameRight = CharacterFrame:GetRight()
-        if screenWidth and frameRight and (frameRight + PANEL_WIDTH + 8 > screenWidth) then
-            panel:SetPoint("TOPRIGHT", CharacterFrame, "TOPLEFT", 6, -7)
+        if screenWidth and frameLeft and frameRight then
+            local rightSpace = math.max(0, screenWidth - frameRight)
+            local leftSpace = math.max(0, frameLeft)
+            -- Prefer the normal right side whenever it fits. If neither side fully fits,
+            -- choose the side with more usable space and let SetClampedToScreen handle
+            -- the small remainder instead of flipping into a much larger overlap.
+            if rightSpace >= PANEL_WIDTH + 8 or rightSpace >= leftSpace then
+                panel:SetPoint("TOPLEFT", CharacterFrame, "TOPRIGHT", -6, -7)
+            else
+                panel:SetPoint("TOPRIGHT", CharacterFrame, "TOPLEFT", 6, -7)
+            end
         else
             panel:SetPoint("TOPLEFT", CharacterFrame, "TOPRIGHT", -6, -7)
         end

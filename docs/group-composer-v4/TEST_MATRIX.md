@@ -137,9 +137,10 @@ Status vocabulary:
 - PASS (CI `de842ba8`): `fetch-client-addons.sh` parses and contains exact pins for NoM0Re WeakAuras + maintained Details.
 - PASS (CI `de842ba8`): no Bunny67 WeakAuras fallback is packaged.
 - PASS (CI `de842ba8`): GearAdvisor parses under Lua 5.1 and includes all class/spec profile families.
-- STATIC/CI TODO for v0.2.0: widened 390px panel, screen clamping, cap tooltips/two-column rows, seven key-stat rows, WotLK-reference warning and Arms 1260 ArP baseline are all asserted by client CI.
+- PASS (CI `6d472bc0`): v0.2.0 widened 390px panel, screen clamping, cap tooltips/two-column rows, seven key-stat rows, WotLK-reference warning and Arms 1260 ArP baseline are asserted by client CI.
+- STATIC/CI v0.2.1: side selection compares right/left usable space before choosing an anchor; exact-head local CI required.
 - TODO: generated client zip contains Details, WeakAuras/Options/model folders and GearAdvisor, but not ExtendedCharacterStats.
-- TODO: GearAdvisor opens beside CharacterFrame without covering paper-doll/header controls; when right-side space is insufficient it flips left and remains on-screen.
+- TODO: GearAdvisor opens beside CharacterFrame without covering paper-doll/header controls; test wide, ~800px and 768px-class layouts/UI scales to confirm it chooses the side with more usable space and remains on-screen.
 - TODO: switching dual spec refreshes the detected spec/profile immediately.
 - TODO: MM Hunter shows ranged-hit target/shortfall, equipped ilvl and the MM priority profile.
 - TODO: Feral Cat/Bear mode toggle changes guidance without changing the player's talents; Cat key stats include melee hit and the row layout remains aligned.

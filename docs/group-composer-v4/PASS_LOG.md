@@ -2,6 +2,20 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — GearAdvisor v0.2.1 narrow-screen anchoring follow-up
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+v0.2.0 exact SHA `6d472bc0b594e401816925c7f9552a3e60b1d848` passed client checks, backend staging, Group Composer compile and Integration on GitHub-hosted CI.
+
+Follow-up:
+- compare real left/right usable UI space before selecting the companion-panel side;
+- prefer the normal right side when it fits;
+- if neither side fully fits, choose whichever side has more space and let `SetClampedToScreen` absorb only the small remainder;
+- prevents a narrow 768px-class layout from flipping a nearly-fitting right panel into a huge left overlap.
+
+CI routing: **`[local-ci]` on `stoffes-pc`**, per the user's current instruction.
+
 ## 2026-09-21 — GearAdvisor v0.2.0 visual/data polish
 
 Status: **IMPLEMENTATION PREPARED; exact-head CI + real-client UI acceptance required**.

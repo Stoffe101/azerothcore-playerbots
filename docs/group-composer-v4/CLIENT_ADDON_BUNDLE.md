@@ -45,7 +45,7 @@ Purpose:
 - keep long cap/status values aligned in separate label/value columns;
 - expose cap-specific explanations and current/target detail on hover;
 - show the detected spec icon and class-colored identity line;
-- anchor to the opposite side of CharacterFrame automatically when the preferred right-side panel would run off-screen.
+- choose the CharacterFrame side with enough/more usable screen space, preferring the normal right side and using screen clamping only for a small remainder.
 
 Profile coverage:
 - all ten WotLK classes;
@@ -69,7 +69,7 @@ The former `ExtendedCharacterStats` source remains in Git history/source for ref
 Before calling the pass accepted in game:
 1. build/download the generated zip;
 2. verify WeakAuras, Details and GearAdvisor load on 3.3.5a without Lua errors;
-3. open CharacterFrame and confirm GearAdvisor sits beside it without overlap; at a narrow resolution/UI scale confirm it flips to the left instead of leaving the screen;
+3. open CharacterFrame and confirm GearAdvisor sits beside it without overlap; at narrow resolutions/UI scales verify it compares both sides and chooses the side with more usable space instead of blindly flipping left;
 4. test at least one caster, healer, melee, tank and hunter profile;
 5. switch dual spec and verify immediate profile refresh;
 6. compare displayed hit/expertise/defense values to the stock character sheet / known gear totals;

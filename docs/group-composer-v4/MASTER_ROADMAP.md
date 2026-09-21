@@ -49,6 +49,7 @@ These are bounded security/QoL changes that do not invalidate the pending P0 run
 Runtime testing is unavailable, so architectural work continues in bounded exact-CI slices. The first slice establishes the canonical EraPolicy and migrates Adventure Catalog/Admin expansion control. Subsequent slices migrate remaining consumers without mixing every world system into one commit.
 
 ### NOW-04 — Client addon bundle + gearing guidance
+GearAdvisor v0.2.0 is CI green; v0.2.1 narrow-screen anchoring polish is in exact-head local-CI validation.
 
 **Status: v0.1.0 DONE + green; v0.2.0 polish PREPARED / exact-head CI + runtime acceptance TODO**
 

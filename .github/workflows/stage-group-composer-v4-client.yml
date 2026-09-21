@@ -37,6 +37,7 @@ jobs:
           grep -q 'Equipped iLvl' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'PANEL_WIDTH = 390' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'SetClampedToScreen' client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q 'rightSpace >= PANEL_WIDTH + 8 or rightSpace >= leftSpace' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'hover caps for details' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'WOTLK REFERENCE' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'for i = 1, 7 do' client-addons-src/GearAdvisor/GearAdvisor.lua
