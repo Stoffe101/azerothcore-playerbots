@@ -313,8 +313,12 @@ cat <<EOF
                     release 5.22.0-b3706bd4. Includes the main/options/model
                     folders shipped by that release.
    - GearAdvisor  : our character-sheet companion: equipped ilvl, detected
-                    class/spec/role, era-aware PvE caps, stat priorities and
-                    "need +X" guidance. Feral and DK role variants are switchable.
+                    class/spec/role, era-valid mechanical caps/current stats,
+                    and WoWSims-backed upgrade guidance. Static weight rankings
+                    are intentionally not the upgrade authority.
+   - WoWSimsBridge : our Interface 30300 exporter for the correct Vanilla/TBC/
+                    WotLK WoWSims engine. /wsim exports the character; /wsim
+                    bags exports equippable bag items for batch/top-gear sims.
    - WDM          : World Dungeon Maps -- pairs with the .MPQ data patch so the
                     DEFAULT map (M) shows dungeon layouts with your position,
                     like a normal zone. Copy WDM, !Astrolabe and LibMapData-1.0;

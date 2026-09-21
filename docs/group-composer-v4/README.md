@@ -92,6 +92,8 @@ The earlier one-shot per-account **Vanilla-fresh next-character override** remai
 Build a private WoW world that can be developed on WotLK 3.3.5a while delivering a deliberate Vanilla → TBC → WotLK journey, populated by persistent Playerbots, with Group Composer making parties/raids easy enough that friends can choose an activity and play without GM-command babysitting.
 
 
-### GearAdvisor v0.2.1 follow-up
+### GearAdvisor v0.2.1 / WoWSims v0.3 direction
 
-**IN PROGRESS / local CI requested.** v0.2.0 passed all four workflows on GitHub-hosted CI at `6d472bc0`, but active validation now returns to `stoffes-pc`. v0.2.1 fixes narrow-screen side selection so the advisor compares left/right usable space and avoids flipping into the worse overlap when neither side perfectly fits.
+GearAdvisor v0.2.1 is **DONE + exact-head local-CI green at `1f5ef71cef6d1d18dc33e25a876f6e50b7d1caa5`** on `stoffes-pc`.
+
+The next client slice is **IN PROGRESS / local CI required**: GearAdvisor v0.3 removes static stat-priority text as an upgrade authority and integrates a new Interface 30300 `WoWSimsBridge`. WoWSims Classic/TBC/WotLK becomes the authoritative upgrade engine when the exact era/spec model is supported and validated. Unsupported models must say so rather than falling back to invented/Pawn weights. See `WOWSIMS_INTEGRATION.md`.

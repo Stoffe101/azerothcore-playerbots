@@ -305,8 +305,18 @@ Status: **DONE + exact-head GitHub-hosted CI green at `e1a2e6fa89e375290247b4209
 - Ordinary vendors/rewards, loot/crafting/recipes and other non-PlayerbotFactory item sources remain later work.
 
 
-GearAdvisor v0.2.1 follow-up: **IMPLEMENTED / exact-head local CI required**.
-- narrow-resolution anchoring now measures usable space on both sides of CharacterFrame;
-- when neither side can fully fit the 390px panel, it chooses the side with more space and relies on screen clamping only for the small remainder;
-- this prevents the old right-overflow check from choosing a catastrophically worse left-side overlap on 768px-class layouts;
+GearAdvisor v0.2.1 follow-up: **DONE + exact-head local-CI green at `1f5ef71cef6d1d18dc33e25a876f6e50b7d1caa5`**.
+- narrow-resolution anchoring measures usable space on both sides of CharacterFrame;
+- when neither side fully fits the 390px panel, it chooses the side with more space and relies on screen clamping only for the small remainder;
 - runtime visual acceptance remains TODO.
+
+GearAdvisor v0.3 / WoWSims integration: **IMPLEMENTED FOR FIRST BRIDGE SLICE / exact-head local CI required**.
+- `WoWSimsBridge` is a new Interface 30300 addon packaged from `client-addons-src/`.
+- server-reported era routes exports to Vanilla `wowsims/classic`, TBC `wowsims/tbc-new`, or WotLK `wowsims/wotlk`; level fallback is labeled.
+- character export includes gear IDs/enchants, TBC/WotLK gems, Vanilla/TBC random suffix, talents, professions and WotLK glyphs.
+- bag export supports WoWSims batch/top-gear workflows.
+- GearAdvisor no longer displays `profile.priority` as upgrade authority; it keeps era-valid mechanical caps/current stats and links directly to WoWSims Bridge.
+- the future automatic backend will run pinned `wowsimcli` baseline/candidate requests and return sim-backed trade explanations.
+- Pawn/static weights are explicitly not the final upgrade decision path.
+- unsupported/unvalidated era/spec models must return UNSUPPORTED/LIMITED rather than fabricated percentages.
+- canonical integration design: `docs/group-composer-v4/WOWSIMS_INTEGRATION.md`.

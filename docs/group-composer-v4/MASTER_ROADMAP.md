@@ -49,19 +49,21 @@ These are bounded security/QoL changes that do not invalidate the pending P0 run
 Runtime testing is unavailable, so architectural work continues in bounded exact-CI slices. The first slice establishes the canonical EraPolicy and migrates Adventure Catalog/Admin expansion control. Subsequent slices migrate remaining consumers without mixing every world system into one commit.
 
 ### NOW-04 — Client addon bundle + gearing guidance
-GearAdvisor v0.2.0 is CI green; v0.2.1 narrow-screen anchoring polish is in exact-head local-CI validation.
 
-**Status: v0.1.0 DONE + green; v0.2.0 polish PREPARED / exact-head CI + runtime acceptance TODO**
+**Status: GearAdvisor v0.2.1 DONE + local-CI green; WoWSims integration IN PROGRESS**
 
-Bounded client QoL pass requested during the era work:
-- package maintained Details-WotLK;
-- package NoM0Re's maintained 3.3.5a WeakAuras backport instead of the old WA 4.0 fallback;
-- replace the distributed raw ExtendedCharacterStats panel with GearAdvisor beside the Character frame;
-- GearAdvisor covers every WotLK talent tree with ilvl, hard caps, current key stats and spec/role priority guidance;
-- v0.2.0 polish adds spec icon, aligned cap columns/tooltips, seven-stat capacity, screen-aware anchoring and explicit non-WotLK priority warning;
-- keep era fidelity explicit: baseline caps may follow realm era now, while full Vanilla/TBC spec-weight profiles are not claimed complete.
+Bounded client QoL work:
+- maintained Details-WotLK and NoM0Re WeakAuras are bundled;
+- GearAdvisor replaces the duplicate raw ExtendedCharacterStats panel;
+- v0.2.1 layout/anchoring is exact-head local-CI green at `1f5ef71c`;
+- v0.3 removes static priority text as item-upgrade authority;
+- new Interface 30300 WoWSimsBridge exports the correct live-era character/bags to WoWSims Classic/TBC/WotLK;
+- pinned WoWSims engines become the future baseline/candidate simulation authority;
+- GearAdvisor will explain simulated cap/stat trades rather than merely warn about losing hit/expertise/etc.;
+- unsupported/unvalidated era/spec models must not receive fabricated percentages.
 
-This pass does not reorder the accepted 40 ERA/FEATURE items; after it is green, work returns to ERA-07's remaining automated item consumers.
+Next simulator work: local pinned `wowsimcli` service + candidate request/response + explanation layer. Real-client UI/export acceptance remains required.
+
 
 ### NEXT-01 — ERA-01 + ERA-02
 

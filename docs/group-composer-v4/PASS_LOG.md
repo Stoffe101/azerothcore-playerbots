@@ -2,6 +2,35 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-21 — GearAdvisor v0.3 / WoWSims Bridge v0.1
+
+Status: **IMPLEMENTED FIRST BRIDGE SLICE / exact-head local CI required**.
+
+Decision:
+- WoWSims replaces Pawn/static stat weights as the authoritative upgrade engine.
+- GearAdvisor must explain *why* a simulated swap wins/loses, including cap crossings and stat trade-offs.
+- no supported sim/model means no fabricated upgrade percentage.
+
+Implemented:
+- new `client-addons-src/WoWSimsBridge` targeting Interface 30300;
+- server-era routing to Classic/TBC/WotLK WoWSims families;
+- WoWSims-compatible character JSON export for gear/talents/professions/glyphs;
+- equippable bag export for batch/top-gear workflows;
+- GearAdvisor v0.3 hides static `profile.priority` output and exposes a WoWSims button;
+- GearAdvisor has a result API ready for future baseline/candidate metric + explanation payloads;
+- exact upstream engine/exporter commits pinned in `data/wowsims/sources.json`;
+- `WOWSIMS_INTEGRATION.md` documents the sim-backed explanation/confidence contract.
+
+Prior checkpoint:
+- GearAdvisor v0.2.1 exact SHA `1f5ef71cef6d1d18dc33e25a876f6e50b7d1caa5` passed all four workflows on `stoffes-pc`.
+
+Next:
+- validate bridge JSON/imports in the actual 3.3.5a client;
+- build the local server simulation service around pinned `wowsimcli` engines;
+- implement candidate-item request/response and plain-language stat/cap trade explanations.
+
+CI routing: **`[local-ci]` on `stoffes-pc`**.
+
 ## 2026-09-21 — GearAdvisor v0.2.1 narrow-screen anchoring follow-up
 
 Status: **IMPLEMENTED / exact-head local CI required**.

@@ -29,40 +29,50 @@ Pinned commit:
 
 It is a multi-folder package. The main Details addon plus its shipped companion plugins are bundled using the existing TOC-discovery rule.
 
-## GearAdvisor
+## GearAdvisor + WoWSims
 
-Local addon: `client-addons-src/GearAdvisor`.
+Local addons:
+- `client-addons-src/GearAdvisor`
+- `client-addons-src/WoWSimsBridge`
 
-Purpose:
-- attach a separate panel to the right side of the stock Character window;
-- display equipped average item level;
-- auto-detect class and dominant talent tree;
-- show role-aware gearing guidance;
-- distinguish hard caps/targets from ordinary stat priority;
-- show current relevant character stats;
-- show remaining shortfall such as hit/expertise/defense;
-- refresh on equipment/talent/stat changes.
-- keep long cap/status values aligned in separate label/value columns;
-- expose cap-specific explanations and current/target detail on hover;
-- show the detected spec icon and class-colored identity line;
-- choose the CharacterFrame side with enough/more usable screen space, preferring the normal right side and using screen clamping only for a small remainder.
+GearAdvisor purpose:
+- companion panel beside the stock Character window;
+- equipped average item level;
+- auto-detected class/talent tree/role mode;
+- current relevant stats;
+- era-valid mechanical caps/shortfalls;
+- WoWSims-backed simulation result/explanation.
 
-Profile coverage:
-- all ten WotLK classes;
-- every talent tree;
-- Feral has Cat DPS / Bear Tank variants;
-- Death Knight Blood/Frost/Unholy can switch DPS/Tank guidance;
-- v0.2.0 expands key-stat rows where the profile needs a seventh metric (for example Feral Cat hit, Enhancement haste and Rogue haste);
-- Arms uses a 1260 Armor Penetration rating boss reference for the Battle Stance baseline instead of presenting the generic 1400 rating number as universally correct.
+**Static stat-priority strings are no longer the upgrade authority in v0.3.** They are not rendered as the answer to “is this item better?”
 
-Era behavior:
-- baseline physical hit, spell hit and tank defense targets change by realm era;
-- WotLK Armor Penetration hard-cap guidance is hidden outside WotLK;
-- the server-reported Group Composer era wins when available;
-- detailed stat-priority text remains WotLK-focused, and v0.2.0 now says so visibly in the panel on Vanilla/TBC instead of letting a Wrath priority look era-authentic;
-- full Vanilla/TBC spec-weight fidelity remains a future research pass.
+WoWSimsBridge v0.1:
+- Interface 30300;
+- reads Group Composer's server era when available;
+- routes Vanilla -> WoWSims Classic, TBC -> WoWSims TBC, WotLK -> WoWSims WotLK;
+- exports gear IDs/enchants, TBC/WotLK gems, talents, professions and WotLK glyphs;
+- `/wsim export` produces character import JSON;
+- `/wsim bags` produces equippable bag-item JSON for batch/top-gear simulation.
 
-The former `ExtendedCharacterStats` source remains in Git history/source for reference but is skipped from the generated bundle because GearAdvisor supersedes its UI/function.
+Pinned upstream sources live in `data/wowsims/sources.json`. The modern upstream exporter is reference/schema input only; it does not target Interface 30300, so Skrra ships its own bridge.
+
+Upgrade policy:
+- supported + validated era/spec -> WoWSims result is authoritative;
+- model limitation -> label LIMITED;
+- no validated model -> label UNSUPPORTED;
+- never silently substitute a WotLK model, Pawn score or invented stat weight for another era.
+
+Explanation policy:
+- show baseline -> candidate DPS/TPS/healing metric and percent delta;
+- quantify important stat changes;
+- explain whether lost hit/expertise/defense remains capped, crosses the cap, or removes over-cap waste;
+- if other gains outweigh a cap loss, say so and cite the simulated result;
+- if the swap loses, explain the dominant trade;
+- proc/set/weapon-sensitive results must not be described as raw-stat arithmetic only.
+
+The former `ExtendedCharacterStats` source remains for history but is skipped from the generated bundle.
+
+See `WOWSIMS_INTEGRATION.md` for the backend and confidence contract.
+
 
 ## Runtime acceptance
 
@@ -77,4 +87,9 @@ Before calling the pass accepted in game:
 8. hover every cap row and verify tooltip text + current/target detail;
 9. verify long hit/rating and Armor Penetration rows remain aligned rather than clipping into labels;
 10. confirm the panel close button hides it and `/ga` restores it;
-11. confirm ExtendedCharacterStats is absent from the distributed pack.
+11. confirm ExtendedCharacterStats is absent from the distributed pack;
+12. run `/wsim export` and verify the JSON imports into the simulator matching the live server era;
+13. run `/wsim bags` and verify equippable bag items are accepted by WoWSims batch/top-gear import;
+14. compare exported item IDs/enchants/gems/talents/professions against the live character;
+15. confirm Vanilla never routes to TBC/WotLK and TBC never routes to WotLK;
+16. confirm GearAdvisor no longer presents a static stat-priority ranking as the reason an item is better.

@@ -76,6 +76,23 @@ Status vocabulary:
 - TODO: Azeroth Control goto/saved-location travel refuses a future-era map.
 - TODO: Group Composer cannot teleport a reviewed roster into a future-era instance map.
 
+## GearAdvisor / WoWSims integration
+
+- PASS (CI `1f5ef71c`): GearAdvisor v0.2.1 narrow-screen anchoring/layout static contracts and both local heavy builds.
+- STATIC/CI: WoWSimsBridge parses as Lua 5.1 / Interface 30300.
+- STATIC/CI: source manifest pins Classic, TBC, WotLK and exporter upstream commits.
+- STATIC/CI: GearAdvisor no longer calls `priorityText:SetText(profile.priority)`.
+- STATIC/CI: WoWSimsBridge exposes Classic/TBC/WotLK URLs plus character and bag export functions.
+- TODO: Vanilla server era produces a Classic-family export accepted by WoWSims.
+- TODO: TBC server era produces a TBC-family export accepted by WoWSims.
+- TODO: WotLK server era produces a WotLK-family export accepted by WoWSims, including gems/glyphs.
+- TODO: equipped item IDs, enchants, talents and professions match the live character.
+- TODO: bag export is accepted by WoWSims batch/top-gear import.
+- TODO: unsupported sim model is labeled UNSUPPORTED rather than receiving a static-weight winner.
+- TODO: automatic backend runs same-settings baseline and candidate simulations.
+- TODO: candidate explanation quantifies cap/stat trade, e.g. hit lost vs agility/crit gained, and cites the actual simulated metric delta.
+- TODO: special proc/set/weapon effects are labeled simulation-sensitive and not explained as raw-stat arithmetic only.
+
 ## ERA-07 starter/catch-up / PlayerbotFactory provenance
 
 - PASS (CI `e990dff5`): post-patch transformer Python-compiles and inserts readiness + item-allowed callback contracts after EraTalents.

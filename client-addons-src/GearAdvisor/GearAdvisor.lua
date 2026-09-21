@@ -696,9 +696,29 @@ notesText:SetJustifyV("TOP")
 
 local footer = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 footer:SetPoint("BOTTOMLEFT", 20, 10)
-footer:SetPoint("BOTTOMRIGHT", -20, 10)
-footer:SetJustifyH("CENTER")
-footer:SetText("Boss targets are self-only | hover caps for details | /ga toggles")
+footer:SetPoint("BOTTOMRIGHT", -112, 10)
+footer:SetJustifyH("LEFT")
+footer:SetText("WoWSims-backed upgrades | hover caps for details | /ga toggles")
+
+local simButton = CreateFrame("Button", "GearAdvisor335SimButton", panel, "UIPanelButtonTemplate")
+simButton:SetWidth(88)
+simButton:SetHeight(20)
+simButton:SetPoint("BOTTOMRIGHT", -18, 7)
+simButton:SetText("WoWSims")
+simButton:SetScript("OnClick", function()
+    if WoWSimsBridge and WoWSimsBridge.Open then
+        WoWSimsBridge.Open("character")
+    else
+        DEFAULT_CHAT_FRAME:AddMessage("|cffff6666GearAdvisor:|r WoWSims Bridge is not installed or loaded.")
+    end
+end)
+simButton:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine("WoWSims", 0.4, 0.75, 1.0)
+    GameTooltip:AddLine("Export this character to the simulator for the current server era. Static item-score rankings are intentionally not used.", 1, 1, 1, true)
+    GameTooltip:Show()
+end)
+simButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
 local modeButton = CreateFrame("Button", "GearAdvisor335ModeButton", panel, "UIPanelButtonTemplate")
 modeButton:SetWidth(116)
@@ -722,6 +742,22 @@ closeButton:SetScript("OnClick", function()
 end)
 
 local hooked = false
+
+function GearAdvisor335_ApplySimulationResult(result)
+    if type(result) ~= "table" then return end
+    local metric = result.metric or "DPS"
+    local baseline = tonumber(result.baseline) or 0
+    local candidate = tonumber(result.candidate) or 0
+    local delta = candidate - baseline
+    local pct = baseline ~= 0 and (delta / baseline * 100) or 0
+    local verdict = delta > 0 and "|cff40ff70UPGRADE|r" or (delta < 0 and "|cffff6b6bDOWNGRADE|r" or "|cffffd24aSIDEGRADE|r")
+    local text = verdict .. "  " .. metric .. " " .. Number(baseline, 1) .. " -> " .. Number(candidate, 1) ..
+        " (" .. (pct >= 0 and "+" or "") .. Number(pct, 2) .. "%)"
+    if result.explanation and result.explanation ~= "" then
+        text = text .. "\n" .. result.explanation
+    end
+    notesText:SetText(text)
+end
 
 local function Anchor()
     panel:ClearAllPoints()
@@ -765,13 +801,13 @@ local function Update()
     specLine:SetText(className .. " | " .. specName .. " | " .. profile.role)
     ilvlLine:SetText("Equipped iLvl  |cffffffff" .. Number(EquippedItemLevel(), 1) .. "|r     Realm  |cffffffff" .. era .. "|r  (" .. eraSource .. ")")
 
-    if era == "WOTLK" then
-        priorityTitle:SetText("STAT PRIORITY")
-        eraNotice:SetText("")
+    priorityTitle:SetText("SIMULATION & STAT GUIDANCE")
+    if WoWSimsBridge then
+        priorityText:SetText("|cff67b7ffWoWSims|r is the upgrade authority for " .. era .. ". Use the WoWSims button to export your current character or bags for real simulation.")
     else
-        priorityTitle:SetText("STAT PRIORITY  |cffffcc66(WOTLK REFERENCE)|r")
-        eraNotice:SetText("|cffffcc66Caps adapt to " .. era .. "; detailed per-spec priority text is still WotLK-focused.|r")
+        priorityText:SetText("|cffffcc66WoWSims Bridge is not loaded.|r Static stat-weight rankings are intentionally disabled.")
     end
+    eraNotice:SetText("Realm era: |cffffffff" .. era .. "|r. GearAdvisor only shows era-valid mechanical caps; it does not reuse WotLK priorities in earlier eras.")
 
     if variant then
         modeButton:Show()
@@ -814,7 +850,6 @@ local function Update()
         end
     end
 
-    priorityText:SetText(profile.priority)
 
     for i = 1, 7 do
         local key = profile.stats[i]
@@ -840,11 +875,13 @@ local function Update()
             break
         end
     end
-    local note = profile.note
+    local note
     if firstMissing then
-        note = "|cffffd24aNext target: " .. firstMissing .. ".|r  " .. note
+        note = "|cffffd24aMechanical cap note: " .. firstMissing .. ".|r  A candidate item can still be better if WoWSims shows that its other gains outweigh this loss."
     elseif #profile.caps > 0 then
-        note = "|cff40ff70Primary listed caps are met.|r  " .. note
+        note = "|cff40ff70Primary listed mechanical caps are met.|r  WoWSims should decide whether a swap is an upgrade; over-cap rating may be safely traded for stronger stats."
+    else
+        note = "No universal hard PvE cap is being enforced for this profile. Use WoWSims rather than a static stat-weight score for item decisions."
     end
     notesText:SetText(note)
 end

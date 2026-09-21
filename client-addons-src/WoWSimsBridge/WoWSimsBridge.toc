@@ -1,0 +1,9 @@
+## Interface: 30300
+## Title: WoWSims Bridge
+## Notes: Era-aware 3.3.5a character export bridge for Classic/TBC/WotLK WoWSims.
+## Author: Stoffe101
+## Version: 0.1.0
+## OptionalDeps: GroupComposer
+## SavedVariablesPerCharacter: WoWSimsBridgeDB
+
+WoWSimsBridge.lua
