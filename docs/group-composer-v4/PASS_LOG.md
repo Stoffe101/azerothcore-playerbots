@@ -2,9 +2,27 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-22 — GearAdvisor v0.3.4 cap-context explanation
+
+Current slice: **IMPLEMENTED / exact-head local CI required**.
+- Sim Bags results append era/spec-aware current mechanical-cap context from the existing GearAdvisor cap model.
+- The UI reports the first unmet tracked cap or that tracked caps are currently met.
+- Every cap line is explicitly marked `Pre-swap context only`; candidate stat changes are not guessed.
+- No static stat-weight fallback or fake cap-crossing claim is introduced.
+- Client contract checks pin GearAdvisor v0.3.4 and require the cap-context helper/label.
+
+## 2026-09-22 — ArenaRoster pre-WotLK destructive-strip guard green
+
+Exact SHA `f23da452397ca80dc15e233eb0ccb700d72fb110`: **DONE + fully exact-head green**.
+- Group Composer client checks: SUCCESS.
+- Stage Group Composer V4 backend: SUCCESS.
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`.
+- Integration build: SUCCESS on `stoffes-pc`.
+- WotLK release is checked before any ArenaRoster season-gearing destructive strip, preserving dirty-dev bots on Vanilla/TBC realms.
+
 ## 2026-09-22 — ArenaRoster pre-WotLK destructive-strip guard
 
-Current follow-up: **IMPLEMENTED / exact-head local CI required**.
+Follow-up status: **DONE + exact-head local-CI green at `f23da452397ca80dc15e233eb0ccb700d72fb110`**.
 - `ArenaRosterGear::EquipSeason()` now checks that WotLK is released before destroying existing equipped items.
 - This closes a dirty-dev-state edge where a level-80 bot could otherwise be stripped on Vanilla/TBC and then have every WotLK arena item rejected by provenance.
 - Static server-contract coverage requires the WotLK release guard to occur before `bot->DestroyItem`.

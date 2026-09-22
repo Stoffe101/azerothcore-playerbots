@@ -71,7 +71,7 @@ ERA-01 is now **IN PROGRESS** while P0 runtime evidence is blocked.
 17. **DONE + green:** ERA-07 slice 4 Adventure Cache reward provenance is exact-head green at `e1a2e6fa`; pending caches survive provenance failure and created reward items are policy-gated.
 18. **DONE + exact-head local-CI green at `66c13cb1`:** ERA-07 automated vendor/reward-helper slice from Codex source `9499939`, integrated at `304aee8d`. Titan Rune vendors/exchange/pending rewards/Gamma signets and AI Guild stock/AH/item-service helpers fail closed on unavailable/future/UNKNOWN provenance; audit coverage and four reviewed Titan Rune overrides are included.
 19. **DONE + exact-head local-CI green at `b8195466` / runtime TODO:** ERA-07 automated loot/crafting slice from Codex `1fbb15f9` is integrated on top of the green WoWSims/GearAdvisor line. Covered: Titan protocol loot injection, AI Guild project-owned queued/autonomous crafting + item-taught recipe checks, ArenaRoster synthetic gearing and expanded audit.
-19a. **CURRENT / local CI:** explicit pre-WotLK ArenaRoster `EquipSeason` preservation guard before destructive stripping.
+19a. **DONE + exact-head local-CI green at `f23da452`:** explicit pre-WotLK ArenaRoster `EquipSeason` preservation guard before destructive stripping.
 19b. **NEXT ERA-07:** ordinary AzerothCore world loot/recipe tables, database-wide historical loot/recipe fidelity, `CREATE_ITEM_2` runtime loot-template provenance and broader upstream Playerbots crafting outside AI Guild orchestration. Runtime-generate the central snapshot on the dev realm and inspect the expanded `.era audit` sections.
 20. **NEXT ERA-13 containment:** broader quest/NPC/vendor cleanup plus Titan Rune NPC spawning/map lifecycle after item-source provenance work is proven.
 
@@ -170,6 +170,7 @@ Only build these if testing shows they add real value:
 - DONE + exact-head green at `d449136f`: real-image talent + glyph preset routing, including WotLK Fire/Frostfire.
 - DONE + exact-head green at `d449136f`: asynchronous Sim Bags compare queue off the world thread with one baseline reused across candidate swaps.
 - DONE + exact-head green at `a8b56bd0`: GearAdvisor v0.3.3 result transport, explicit Sim Bags action and stale-snapshot rejection.
-- NEXT: enrich explanations with cap/stat trade context after the transport boundary is proven.
+- CURRENT / local CI: GearAdvisor v0.3.4 adds honest pre-swap cap context to Sim Bags results without guessing candidate stat deltas.
+- NEXT: transport structured candidate stat/cap deltas if they can be derived authoritatively, then explain actual cap/stat tradeoffs.
 - NEXT validation: define/validate tank survivability authority before automatic tank item comparisons are enabled.
 - NEXT authority: validate individual era/spec mechanics before changing ENGINE_PRESENT_UNVALIDATED routes to SIM_BACKED.

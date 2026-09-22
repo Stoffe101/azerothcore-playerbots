@@ -776,6 +776,29 @@ end)
 
 local hooked = false
 
+local function SimulationCapContext()
+    local classToken, tab = DetectSpec()
+    local profile = ResolveProfile(classToken, tab)
+    local era = RealmEra()
+    local caps = profile and profile.caps or {}
+
+    for _, cap in ipairs(caps) do
+        local met, _, target, need, detail = CapState(cap, era)
+        if not met and target and target > 0 then
+            local decimals = (cap.kind == "expertise" or cap.kind == "defense" or cap.kind == "arp") and 0 or 2
+            local unit = (cap.kind == "meleeHit" or cap.kind == "rangedHit" or cap.kind == "spellHit") and "%"
+                or (cap.kind == "arp" and " rating" or "")
+            return "|cffb8c7d9Current gear:|r " .. cap.label .. " is short by " ..
+                Number(need, decimals) .. unit .. " (" .. detail .. "). |cff888888Pre-swap context only.|r"
+        end
+    end
+
+    if #caps > 0 then
+        return "|cffb8c7d9Current gear:|r tracked mechanical caps are met. |cff888888Pre-swap context only.|r"
+    end
+    return "|cffb8c7d9Current gear:|r no universal hard cap is tracked for this profile. |cff888888Pre-swap context only.|r"
+end
+
 function GearAdvisor335_ApplySimulationResult(result)
     if type(result) ~= "table" then return end
     local metric = string.upper(tostring(result.metric or "DPS"))
@@ -810,6 +833,7 @@ function GearAdvisor335_ApplySimulationResult(result)
     if not authoritative then
         text = text .. "\n|cffffd24aDiagnostic only:|r model status " .. support .. ". Skrra mechanics validation is still required."
     end
+    text = text .. "\n" .. SimulationCapContext()
     if result.explanation and result.explanation ~= "" then
         text = text .. "\n" .. result.explanation
     end
@@ -851,7 +875,8 @@ local function HandleSimulationProtocol(message)
         SetSimulationStatus(
             "|cffffd24aSim Bags complete:|r no positive candidate found across " .. tostring(count) ..
             " simulated swaps. " .. metric .. " baseline " .. baseline ..
-            ".\n|cffffd24aDiagnostic only:|r model status " .. support .. "."
+            ".\n|cffffd24aDiagnostic only:|r model status " .. support .. "." ..
+            "\n" .. SimulationCapContext()
         )
     elseif kind == "SIMSTALE" then
         SetSimulationStatus("|cffffd24aSim Bags result discarded:|r your character or bags changed while job " ..

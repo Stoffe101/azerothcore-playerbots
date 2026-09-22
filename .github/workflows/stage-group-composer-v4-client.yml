@@ -42,7 +42,7 @@ jobs:
           grep -q 'PANEL_WIDTH = 390' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'SetClampedToScreen' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'rightSpace >= PANEL_WIDTH + 8 or rightSpace >= leftSpace' client-addons-src/GearAdvisor/GearAdvisor.lua
-          grep -Fq '## Version: 0.3.3' client-addons-src/GearAdvisor/GearAdvisor.toc
+          grep -Fq '## Version: 0.3.4' client-addons-src/GearAdvisor/GearAdvisor.toc
           grep -q 'PANEL_HEIGHT = 638' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'eraNotice:SetHeight(34)' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'notesText:SetHeight(72)' client-addons-src/GearAdvisor/GearAdvisor.lua
@@ -57,6 +57,8 @@ jobs:
           grep -q 'SIM_BACKED' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'UNVALIDATED GAIN' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'SIMSTALE' client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q 'SimulationCapContext' client-addons-src/GearAdvisor/GearAdvisor.lua
+          grep -q 'Pre-swap context only' client-addons-src/GearAdvisor/GearAdvisor.lua
           grep -q 'www.wowsims.com/classic/' client-addons-src/WoWSimsBridge/WoWSimsBridge.lua
           grep -q 'www.wowsims.com/tbc/' client-addons-src/WoWSimsBridge/WoWSimsBridge.lua
           grep -q 'www.wowsims.com/wotlk/' client-addons-src/WoWSimsBridge/WoWSimsBridge.lua

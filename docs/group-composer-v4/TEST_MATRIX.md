@@ -503,3 +503,16 @@ Implementation source: Codex `1fbb15f9295084147e3205383a84866e75e33683`; integra
 - STATIC: missing provenance and unreleased WotLK both preserve existing gear.
 - RUNTIME TODO: on Vanilla and TBC dev-era states, invoke ArenaRoster sync/regear against a dirty level-80 bot and verify existing gear is not destructively stripped by the season-gearing layer.
 - RUNTIME TODO: on WotLK, verify legal season gear still equips and no blocked/future/UNKNOWN item is created.
+
+
+### GearAdvisor v0.3.4 simulation explanation context
+
+- STATIC: GearAdvisor v0.3.4 exposes `SimulationCapContext` and labels the line `Pre-swap context only`.
+- STATIC: cap context reuses the existing era/spec-aware `CapState` logic rather than a second cap table.
+- STATIC: current unmet tracked cap reports shortfall + existing detail; all-met state is explicit.
+- STATIC: no code claims the candidate fixes/breaks a cap from DPS/HPS delta alone.
+- STATIC: SIM_BACKED authority wording remains separate from cap-context wording.
+- TODO runtime: Sim Bags result for a character below hit/expertise/defense/ArP target shows the expected current shortfall cleanly.
+- TODO runtime: a character meeting all tracked caps shows the all-met message.
+- TODO runtime: Vanilla/TBC/WotLK era changes update the cap context consistently with the rest of GearAdvisor.
+- TODO future: once authoritative candidate stat deltas exist, add before/after cap crossing explanations and retire the pre-swap-only limitation.

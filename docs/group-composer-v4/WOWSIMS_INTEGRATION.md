@@ -409,3 +409,17 @@ The worker receives serialized copies only. On completion, the world thread rebu
 ### Authority wording
 
 `ENGINE_PRESENT_UNVALIDATED` and other non-`SIM_BACKED` routes may display numerical simulator output, but GearAdvisor labels it `UNVALIDATED GAIN`, `UNVALIDATED LOSS` or `UNVALIDATED SIDEGRADE`. Only a future route that has passed Skrra mechanics/assumption validation and is explicitly promoted to `SIM_BACKED` may use authoritative `UPGRADE` / `DOWNGRADE` wording.
+
+
+## Explanation contract: cap context before candidate stat transport
+
+The simulator currently returns baseline/candidate performance metrics plus the chosen item/slot, but not a complete authoritative before/after stat vector for the candidate swap. GearAdvisor must therefore not infer that an item crosses Hit, Expertise, Defense or Armor Penetration caps merely from a DPS/HPS delta.
+
+GearAdvisor v0.3.4 uses a constrained interim contract:
+- reuse the addon's existing era/spec-aware current-cap calculations;
+- append the first currently unmet tracked cap, or state that tracked caps are met;
+- label it **Pre-swap context only**;
+- keep the simulation verdict itself diagnostic until the route is SIM_BACKED;
+- do not introduce Pawn/static weights or reverse-engineer candidate stats from the performance delta.
+
+A future explanation slice may add true before/after cap tradeoffs only after structured candidate stat deltas are transported from an authoritative source.

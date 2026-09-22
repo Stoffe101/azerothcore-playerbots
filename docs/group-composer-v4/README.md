@@ -237,4 +237,9 @@ The previous GearAdvisor v0.3.3 Sim Bags transport head `a8b56bd0` is fully gree
 
 ### ArenaRoster chronology-preservation follow-up
 
-Current bounded follow-up: **IMPLEMENTED / exact-head local CI required**. ArenaRoster WotLK season gearing now refuses before destructive equipment stripping unless WotLK is actually released. This protects dirty dev-state bots while leaving broader PvP lifecycle containment for its dedicated roadmap work.
+ArenaRoster follow-up status: **DONE + exact-head local-CI green at `f23da452397ca80dc15e233eb0ccb700d72fb110`**. ArenaRoster WotLK season gearing now refuses before destructive equipment stripping unless WotLK is actually released. This protects dirty dev-state bots while leaving broader PvP lifecycle containment for its dedicated roadmap work.
+
+
+### GearAdvisor v0.3.4 simulation context
+
+Current slice: **IMPLEMENTED / exact-head local CI required**. Sim Bags results now append a clearly labeled **pre-swap mechanical-cap context** drawn from GearAdvisor's existing era/spec-aware cap logic. It reports the first currently unmet tracked cap, or that tracked caps are currently met, but explicitly does **not** claim the candidate item itself fixes/breaks the cap because candidate stat deltas are not yet transported. This keeps the explanation useful without inventing unsupported stat-weight conclusions.

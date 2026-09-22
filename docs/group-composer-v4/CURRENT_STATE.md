@@ -23,7 +23,7 @@ Still outside this bounded slice: ordinary AzerothCore world loot/recipe tables,
 
 ### ArenaRoster pre-WotLK preservation follow-up
 
-Status: **IMPLEMENTED / exact-head local CI required**.
+Status: **DONE + exact-head local-CI green at `f23da452397ca80dc15e233eb0ccb700d72fb110`**.
 
 Source review after the green integration found one dirty-dev edge in the bounded ArenaRoster item-generation path: `EquipSeason()` already failed before stripping gear when chronology was unavailable, but a level-80 dirty bot could still reach the destructive strip on a Vanilla/TBC realm before every WotLK season item was individually rejected. The follow-up adds an explicit `EraPolicy::IsEraReleased(Wotlk)` guard before the strip so existing gear is preserved until WotLK is actually released. A static ordering contract verifies the WotLK release check occurs before `DestroyItem`.
 
@@ -643,3 +643,19 @@ This slice connects the green async comparison boundary to the existing GearAdvi
 - manual WoWSims export remains available as a separate `Export` button.
 
 This is result transport and UX plumbing, not mechanics approval. Route-by-route simulator validation remains a separate gate.
+
+
+## GearAdvisor v0.3.4 cap-context explanation
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+The first post-transport explanation slice deliberately stays on the safe side of the available data:
+- completed Sim Bags results append GearAdvisor's current era/spec-aware hard-cap context;
+- the addon reports the first currently unmet tracked cap with current/target/shortfall detail, or states that tracked caps are currently met;
+- the line is explicitly labeled **Pre-swap context only** because the service does not yet transport candidate stat deltas;
+- no claim is made that a simulated candidate fixes, breaks or crosses a cap unless future structured candidate-stat transport proves it;
+- no static Pawn-style stat weights are introduced;
+- existing SIM_BACKED vs ENGINE_PRESENT_UNVALIDATED wording remains unchanged;
+- GearAdvisor addon version advances to 0.3.4.
+
+Next simulator UX slice after this is green: decide whether to transport structured before/after character stats from authoritative simulation/request state so GearAdvisor can explain actual cap/stat tradeoffs rather than only baseline context.
