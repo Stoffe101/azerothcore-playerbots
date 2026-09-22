@@ -1,5 +1,14 @@
 if(TARGET modules)
   target_include_directories(modules PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
+
+  # Synthetic arena-roster equipment consumes the central ERA-07 item chronology.
+  set(_ERA_POLICY_SRC "${CMAKE_CURRENT_LIST_DIR}/../mod-raid-roster/src")
+  if(EXISTS "${_ERA_POLICY_SRC}/EraPolicy.h")
+    target_include_directories(modules PRIVATE ${_ERA_POLICY_SRC})
+  else()
+    message(FATAL_ERROR "[mod-arena-roster] central EraPolicy.h is required")
+  endif()
+
   set(_PB_SRC "${CMAKE_CURRENT_LIST_DIR}/../mod-playerbots/src")
   if(EXISTS "${_PB_SRC}")
     target_include_directories(modules PRIVATE

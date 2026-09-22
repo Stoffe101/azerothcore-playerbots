@@ -77,10 +77,14 @@ ERA_AUDIT = (ROOT / "modules/mod-raid-roster/src/EraAuditCommand.cpp").read_text
 TITAN_SYSTEM = (ROOT / "modules/mod-titan-rune/src/TitanRuneSystem.cpp").read_text(encoding="utf-8")
 TITAN_PENDING_REWARDS = (ROOT / "modules/mod-titan-rune/src/TitanRunePendingRewards.cpp").read_text(encoding="utf-8")
 TITAN_GAMMA = (ROOT / "modules/mod-titan-rune/src/TitanRuneGamma.cpp").read_text(encoding="utf-8")
+TITAN_LOOT = (ROOT / "modules/mod-titan-rune/src/TitanRuneLoot.cpp").read_text(encoding="utf-8")
 TITAN_CMAKE = (ROOT / "modules/mod-titan-rune/mod-titan-rune.cmake").read_text(encoding="utf-8")
 AI_GUILD_SERVICES = (ROOT / "modules/mod-playerbot-chatter/src/PBAIGuildServices.cpp").read_text(encoding="utf-8")
+AI_GUILD_AUTONOMY = (ROOT / "modules/mod-playerbot-chatter/src/PBAIGuildAutonomy.cpp").read_text(encoding="utf-8")
 CHATTER_CMAKE = (ROOT / "modules/mod-playerbot-chatter/mod-playerbot-chatter.cmake").read_text(encoding="utf-8")
 ERA_OVERRIDES = (ROOT / "data/era-item-provenance/overrides.csv").read_text(encoding="utf-8")
+ARENA_GEAR = (ROOT / "modules/mod-arena-roster/src/ArenaRosterGear.cpp").read_text(encoding="utf-8")
+ARENA_CMAKE = (ROOT / "modules/mod-arena-roster/mod-arena-roster.cmake").read_text(encoding="utf-8")
 PROGRESSION_HISTORY = (ROOT / "modules/mod-raid-roster/src/AdventureProgressionHistory.cpp").read_text(encoding="utf-8")
 PROGRESSION_HISTORY_SQL = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_00_mod_adventure_progression_history.sql").read_text(encoding="utf-8")
 PROGRESSION_ACTIVITY_ID_MIGRATION = (ROOT / "modules/mod-raid-roster/data/sql/db-characters/base/2026_09_20_01_mod_adventure_progression_activity_id.sql").read_text(encoding="utf-8")
@@ -1546,5 +1550,62 @@ assert "CheckAutomatedItemPolicy(player, itemId, \"Item service\")" in AI_GUILD_
 for item_id in (900100, 900101, 900104, 900105):
     assert f"{item_id},wotlk," in ERA_OVERRIDES
 
-for audit_section in ("AUTOMATED_VENDOR_CATALOG", "PENDING_ITEM_REWARDS", "AI_GUILD_ITEM_HELPERS"):
+for audit_section in ("AUTOMATED_VENDOR_CATALOG", "TITAN_PROTOCOL_LOOT", "PENDING_ITEM_REWARDS", "AI_GUILD_ITEM_HELPERS"):
     assert audit_section in ERA_AUDIT
+
+
+# ERA-07 loot/crafting slice: scripted protocol rewards and queued bot crafting must fail closed
+# before ordinary loot, request state, reagents, cooldowns, or bot inventory can be consumed.
+assert '#include "EraPolicy.h"' in TITAN_LOOT
+titan_select = section(TITAN_LOOT, "uint32 SelectRandomFromPool(", "bool AddProtocolItem(")
+assert "EraPolicy::ItemProvenanceReady()" in titan_select
+assert "EraPolicy::IsItemAllowed(itemEntry)" in titan_select
+titan_add = section(TITAN_LOOT, "bool AddProtocolItem(", "bool AddRandomFromPool(")
+assert titan_add.index("EraPolicy::ItemProvenanceReady()") < titan_add.index("loot->AddItem")
+assert titan_add.index("EraPolicy::IsItemAllowed(itemEntry)") < titan_add.index("loot->AddItem")
+titan_hook = section(TITAN_LOOT, "void OnAfterLootTemplateProcess(", "};\n}")
+assert titan_hook.index("EraPolicy::ItemProvenanceReady()") < titan_hook.index("ReplaceBaselineHeroicEquipment")
+assert titan_hook.index("SelectRandomFromPool(loot, pools[POOL_BETA_GEAR])") < titan_hook.index("ReplaceBaselineHeroicEquipment")
+assert titan_hook.index("if (betaGear)") < titan_hook.index("ReplaceBaselineHeroicEquipment")
+
+recipe_gate = section(AI_GUILD_SERVICES, "bool IsRecipeItemAllowedForSpell(", "bool FindCraftSpell(")
+assert "ITEM_CLASS_RECIPE" in recipe_gate
+assert "ITEM_SPELLTRIGGER_LEARN_SPELL_ID" in recipe_gate
+assert "EraPolicy::IsItemAllowed(itemEntry)" in recipe_gate
+craft_spell_gate = section(AI_GUILD_SERVICES, "bool IsCraftSpellAllowed(", "bool FindCraftSpell(")
+assert "SPELL_EFFECT_CREATE_ITEM_2" in craft_spell_gate
+assert "EraPolicy::IsItemAllowed(resultItemId)" in craft_spell_gate
+craft_discovery = section(AI_GUILD_SERVICES, "bool FindCraftSpell(", "AuctionHouseEntry const*")
+assert "EraPolicy::ItemProvenanceReady()" in craft_discovery
+assert "EraPolicy::IsItemAllowed(itemId)" in craft_discovery
+assert "IsCraftSpellAllowed(itr->first, info, itemId)" in craft_discovery
+queued_craft = section(AI_GUILD_SERVICES, "bool TryCraftQueuedFromBot(", "bool ContributeSurplusFromBot(")
+assert queued_craft.index("EraPolicy::ItemProvenanceReady()") < queued_craft.index("CharacterDatabase.Query")
+assert queued_craft.index("EraPolicy::IsItemAllowed(itemId)") < queued_craft.index("ai->CanCastSpell")
+assert queued_craft.index("EraPolicy::IsItemAllowed(itemId)") < queued_craft.index("ai->CastSpell")
+assert "UPDATE mod_ai_guild_request" not in queued_craft
+assert "DELETE FROM mod_ai_guild_request" not in queued_craft
+guild_handler_start = AI_GUILD_SERVICES.index("bool HandleGuildMessage(")
+craft_policy_guard = (
+    'command == "!deposit" || command == "!withdraw" || command == "!mail" || command == "!buy" ||\n'
+    '         command == "!craft") &&'
+)
+assert craft_policy_guard in AI_GUILD_SERVICES[guild_handler_start:]
+assert AI_GUILD_SERVICES.index("!CheckAutomatedItemPolicy", guild_handler_start) < AI_GUILD_SERVICES.index(
+    "uint64 const requestId = CreateRequest(", guild_handler_start
+)
+assert "request_type='craft' AND status='queued'" in ERA_AUDIT
+assert 'classifyAutomatedItem("queued-craft"' in ERA_AUDIT
+autonomous_craft = section(AI_GUILD_SERVICES, "bool TryCraftAllowedFromBot(", "bool ContributeSurplusFromBot(")
+assert autonomous_craft.index("EraPolicy::ItemProvenanceReady()") < autonomous_craft.index("ai->CanCastSpell")
+assert autonomous_craft.index("IsCraftSpellAllowed") < autonomous_craft.index("ai->CastSpell")
+assert 'DoAction(bot, "craft random item")' not in AI_GUILD_AUTONOMY
+assert "PBAIGuildServices::TryCraftAllowedFromBot(bot)" in AI_GUILD_AUTONOMY
+
+assert 'central EraPolicy.h is required' in ARENA_CMAKE
+assert '#include "EraPolicy.h"' in ARENA_GEAR
+arena_equip_entry = section(ARENA_GEAR, "bool EquipEntry(", "} // namespace")
+assert arena_equip_entry.index("EraPolicy::ItemProvenanceReady()") < arena_equip_entry.index("bot->EquipNewItem")
+assert arena_equip_entry.index("EraPolicy::IsItemAllowed(entry)") < arena_equip_entry.index("bot->EquipNewItem")
+arena_equip_season = section(ARENA_GEAR, "bool EquipSeason(", "} // namespace ArenaRosterGear")
+assert arena_equip_season.index("EraPolicy::ItemProvenanceReady()") < arena_equip_season.index("bot->DestroyItem")

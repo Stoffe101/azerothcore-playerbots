@@ -28,6 +28,10 @@ bool SupplyQueuedFromBot(Player* bot);
 // system performs reagent checks/consumption and creates the item; this does not mint materials.
 bool TryCraftQueuedFromBot(Player* bot);
 
+// Cast one learned crafting spell only after every direct result and any item-taught recipe have
+// passed central item provenance. Opaque runtime-loot recipe results fail closed.
+bool TryCraftAllowedFromBot(Player* bot);
+
 // Move one real surplus consumable/material/gem stack from the bot into persistent guild stock.
 bool ContributeSurplusFromBot(Player* bot);
 

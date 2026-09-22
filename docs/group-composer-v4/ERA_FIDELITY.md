@@ -333,9 +333,9 @@ The following are strong candidates for making the realm *feel* like the active 
 - **System lifecycle:** dual spec, heirloom acquisition, glyphs and other WotLK systems stay unavailable until WotLK where technically practical.
 - **Travel lifecycle:** portal/transport/flying systems activate with the expansion that introduced the destination/mechanic.
 - **Race/class lifecycle:** Blood Elf/Draenei with TBC; Death Knight with WotLK; Vanilla faction class restrictions where practical.
-- **Profession lifecycle:** trainers, recipes and bot crafting behavior obey 300/375/450 and expansion-specific professions.
+- **Profession lifecycle:** trainers, recipes and bot crafting behavior obey 300/375/450 and expansion-specific professions. Project-owned AI Guild request/queued/autonomous crafting now provenance-checks direct outputs and item-taught recipes before mutation; ordinary core recipe tables and broader upstream Playerbots crafting remain TODO.
 - **Vendor/currency lifecycle:** badges/emblems, reputation vendors and catch-up gear cannot leak from future eras.
-- **Loot lifecycle:** audit later-reworked legacy drops so automated gearing cannot smuggle future-era power into earlier progression.
+- **Loot lifecycle:** audit later-reworked legacy drops so automated gearing cannot smuggle future-era power into earlier progression. Project-owned Titan protocol loot is now provenance-gated at injection/final-add boundaries, with Beta/Gamma replacement approved before ordinary loot removal; ordinary AzerothCore DB loot remains a separate historical-fidelity task.
 - **Event lifecycle:** holiday/world-event rewards should be audited for later-expansion additions.
 - **Expansion opening world reaction:** announcements, NPC dialogue, population movement and Adventure Guide state should visibly change when a new era opens.
 
@@ -354,3 +354,17 @@ The full candidate list and non-era feature ideas live in `FEATURE_IDEAS.md`.
 This order makes leaks visible early and avoids burying era logic independently inside every subsystem.
 
 - WoWSims bridge CI repair does not change era behavior: `97178c40` failed workflow parsing before client validation, so no new fidelity claim is made until the repaired exact head is green.
+
+
+## ERA-07 bounded automated loot/crafting slice
+
+Integration candidate from Codex `1fbb15f9`: **IMPLEMENTED / exact-head local CI required**.
+
+The boundary intentionally protects project-owned automated item creation without pretending the entire 3.3.5a world database has historical chronology:
+- Titan protocol injected loot is centrally provenance-gated;
+- AI Guild project-owned crafting validates outputs and item-taught recipe provenance before mutation;
+- ArenaRoster synthetic gear creation validates every selected item and fails before destructive stripping;
+- opaque `CREATE_ITEM_2` and unresolved provenance fail closed;
+- ordinary world loot, manual player crafting and ordinary recipe/gameplay tables remain untouched by design in this slice.
+
+This preserves the forward-only Vanilla -> TBC -> WotLK rule while keeping deep DB historical fidelity as an explicit later scope rather than an accidental claim.

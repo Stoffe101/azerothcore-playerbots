@@ -2,6 +2,29 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-22 — ERA-07 automated loot/crafting integration
+
+Current integrated candidate: **IMPLEMENTED / exact-head local CI required**.
+
+- Codex source: `1fbb15f9295084147e3205383a84866e75e33683`, based on `66c13cb1...`.
+- Integration base: fully-green `a8b56bd0674428f7a66b84af600f0ee8098ff821`; all eight Codex-touched source files were unchanged since Codex branched, so no manual conflict merge was required.
+- Titan Rune protocol loot: Alpha/Beta/Gamma injected items and the final loot-add boundary consume central provenance; Beta/Gamma replacement is approved before ordinary Heroic loot is removed.
+- AI Guild crafting: request creation, spell resolution, queued execution, direct create-item outputs, item-taught recipes and autonomous profession-session crafting all fail closed before protected state mutation.
+- Opaque `SPELL_EFFECT_CREATE_ITEM_2` outputs remain intentionally blocked.
+- ArenaRoster synthetic gearing now validates provenance before destructive strip and filters every item selected for equip.
+- Audit adds `TITAN_PROTOCOL_LOOT` and queued craft-result coverage.
+- No new overrides or ID/level/quality chronology heuristics were added.
+- Codex-local checks passed, including focused Clang 18 `-Werror` compilation of all changed translation units; integrated exact-SHA CI and live runtime acceptance remain required.
+
+## 2026-09-22 — GearAdvisor Sim Bags transport green
+
+Exact SHA `a8b56bd0674428f7a66b84af600f0ee8098ff821`: **DONE + fully exact-head green**.
+- Group Composer client checks: SUCCESS.
+- Stage Group Composer V4 backend: SUCCESS.
+- Integration build: SUCCESS on `stoffes-pc`.
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`.
+- Explicit Sim Bags action, compact `[GA]` result transport, stale-snapshot rejection and unvalidated-vs-SIM_BACKED wording are now compile/CI proven; runtime UI acceptance is still TODO.
+
 ## 2026-09-21 — Async WoWSims + glyph-aware preset routing green; GearAdvisor transport next
 
 Exact SHA `d449136f406a942f4553b7adc54a972ce66837cd`: **DONE + fully exact-head green**.

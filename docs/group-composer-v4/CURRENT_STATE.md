@@ -1,6 +1,25 @@
 # Current State
 
-_Last rewritten: 2026-09-21_
+_Last rewritten: 2026-09-22_
+
+## Current ERA-07 automated loot/crafting integration candidate
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+Codex source commit: `1fbb15f9295084147e3205383a84866e75e33683` (`feat: extend ERA-07 to automated loot and crafting`), based on `66c13cb1...`. The eight touched source files were byte-identical between that base and the current fully-green WoWSims/GearAdvisor head `a8b56bd0...`, so the source integration is conflict-free.
+
+Covered boundaries:
+- Titan Rune Alpha/Beta/Gamma protocol loot injection now requires ready provenance and legal item IDs at the final add-item boundary;
+- Beta/Gamma replacement equipment is selected and provenance-approved before ordinary Heroic equipment is removed, preserving normal loot if no legal replacement exists;
+- AI Guild `!craft` request creation, `FindCraftSpell`, queued bot crafting and autonomous profession-session crafting validate all direct create-item outputs plus item-taught recipe provenance before any persistent request/reagent/cooldown/inventory/treasury/stock mutation;
+- opaque `SPELL_EFFECT_CREATE_ITEM_2` outputs fail closed until their runtime loot-template provenance can be resolved;
+- ArenaRoster synthetic gearing now fails before destructive pre-gearing strip when provenance is unavailable and filters every equipped item;
+- `.era audit` gains `TITAN_PROTOCOL_LOOT` plus queued craft-result coverage in `AI_GUILD_ITEM_HELPERS`;
+- no new chronology guesses or item overrides were introduced.
+
+Codex-local static, codestyle, provenance self-test, Python and focused Clang 18 `-Werror` checks passed before integration. Authoritative integrated CI for the new combined head is still required, as is runtime acceptance across Vanilla/TBC/WotLK.
+
+Still outside this bounded slice: ordinary AzerothCore world loot/recipe tables, database-wide historical loot/recipe fidelity, runtime provenance resolution for `CREATE_ITEM_2` loot-template outputs, broader upstream Playerbots crafting behavior outside project-owned AI Guild orchestration, and remaining ERA-13 world-content/spawn containment. ERA-07 therefore remains **PARTIAL / IN PROGRESS**.
 
 
 ## Current integrated ERA-07 vendor/reward candidate
@@ -600,7 +619,7 @@ This is still preset routing only. It does not make Fire/Frostfire mechanics SIM
 
 ## GearAdvisor automatic Sim Bags transport
 
-Status: **IMPLEMENTED / exact-head local CI required**.
+Status: **DONE + exact-head local-CI green at `a8b56bd0674428f7a66b84af600f0ee8098ff821`**.
 
 This slice connects the green async comparison boundary to the existing GearAdvisor result surface without promoting unvalidated models:
 

@@ -92,7 +92,7 @@ They are the dependency spine for most other approved era work. First define one
 - [ ] **ERA-02 — Era Integrity scanner — IN PROGRESS**
   - GM-only read-only `.era audit` scaffold is implemented for cap drift, RNDbot quarantine, map gates and future Composer-map leakage.
   - PASS/WARN/FAIL sections for bots, AH, gear, vendors, professions, travel/maps, Composer catalog, classes/races, PvP/systems and automated rewards.
-  - Current sections include caps, RNDbot quarantine, maps, future Composer-map leakage, active bot classes/races/professions, AH profile drift and ERA-07 provenance profile/coverage. Existing-auction stock and stored RNDbot equipped gear are scanned; the integrated vendor/reward slice adds automated vendor catalogs, pending Titan rewards, AI Guild stock and queued automated purchases. PvP/geography and broader world-content scans remain TODO.
+  - Current sections include caps, RNDbot quarantine, maps, future Composer-map leakage, active bot classes/races/professions, AH profile drift and ERA-07 provenance profile/coverage. Existing-auction stock and stored RNDbot equipped gear are scanned; the integrated vendor/reward slice adds automated vendor catalogs, pending Titan rewards, AI Guild stock and queued automated purchases. The current loot/crafting slice adds Titan protocol-loot definitions plus queued craft-result coverage. PvP/geography and broader world-content scans remain TODO.
 
 - [ ] **ERA-03 — Strict bot era rules — PARTIAL**
   - Existing foundation: Composer anti-boost and bot-to-master progression sync.
@@ -124,9 +124,10 @@ They are the dependency spine for most other approved era work. First define one
   - Slice 2 is exact-head local-CI green at `e96d009`: generated chronology is central EraPolicy state, all three blocklists coexist, the live world item set is fingerprinted, setup/update regenerate it, existing auctions + stored RNDbot equipment are audited, and deterministic RaidRoster/Group Composer gear prep is gated.
   - Slice 3 is exact-head GitHub-CI green at `e990dff5`: PlayerbotFactory item generation uses central readiness/allow callbacks applied through a strict post-patch transformer, and AdventureStart/catch-up fail before destructive/one-time state changes.
   - Slice 4 is exact-head GitHub-CI green at `e1a2e6fa`: Adventure Cache direct gear/potion rewards use central provenance and pending rewards survive provenance failure.
-  - Slice 5 source `9499939`, integrated at `304aee8d`, is **IMPLEMENTED / exact-head local CI required**: Titan Rune vendors/exchange/pending rewards/Gamma signets and AI Guild stock/mail/AH/item-service helpers fail closed on unavailable/future/UNKNOWN provenance; four custom Titan IDs are reviewed WotLK overrides and audit coverage is extended.
-  - UNKNOWN IDs fail closed for protected automation; explicit overrides are the review ledger.
-  - Still TODO: runtime provenance generation evidence, protocol loot injection, recipe discovery/profession crafting, ordinary loot/crafting/recipes, enchant-spell chronology, ArenaRoster PvP gear generation and remaining non-PlayerbotFactory item paths.
+  - Slice 5 source `9499939`, integrated at `304aee8d`, is **DONE + exact-head green at `66c13cb1`**: Titan Rune vendors/exchange/pending rewards/Gamma signets and AI Guild stock/mail/AH/item-service helpers fail closed on unavailable/future/UNKNOWN provenance; four custom Titan IDs are reviewed WotLK overrides and audit coverage is extended.
+  - Slice 6 source `1fbb15f9` is **IMPLEMENTED / integrated CI required**: Titan protocol loot injection, project-owned AI Guild queued/autonomous crafting + item-taught recipes, ArenaRoster synthetic gearing and related audit coverage now consume central provenance and fail closed before protected mutation.
+  - UNKNOWN IDs fail closed for protected automation; explicit overrides are the review ledger. Slice 6 adds no overrides.
+  - Still TODO: runtime provenance generation evidence, ordinary AzerothCore world loot/recipe tables, database-wide historical loot/recipe fidelity, `CREATE_ITEM_2` runtime loot-template provenance, enchant-spell chronology, broader upstream Playerbots crafting outside AI Guild orchestration and remaining non-PlayerbotFactory item paths.
 
 - [ ] **ERA-08 — Profession progression — PARTIAL**
   - Central EraPolicy now defines Vanilla 300, TBC 375, WotLK 450 and audit detects over-cap active RNDbot profession skills.

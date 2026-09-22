@@ -70,7 +70,7 @@ ERA-01 is now **IN PROGRESS** while P0 runtime evidence is blocked.
 16. **DONE + green:** ERA-07 slice 3 PlayerbotFactory + AdventureStart/catch-up item policy is exact-head green at `e990dff5` on all four GitHub-hosted workflows.
 17. **DONE + green:** ERA-07 slice 4 Adventure Cache reward provenance is exact-head green at `e1a2e6fa`; pending caches survive provenance failure and created reward items are policy-gated.
 18. **DONE + exact-head local-CI green at `66c13cb1`:** ERA-07 automated vendor/reward-helper slice from Codex source `9499939`, integrated at `304aee8d`. Titan Rune vendors/exchange/pending rewards/Gamma signets and AI Guild stock/AH/item-service helpers fail closed on unavailable/future/UNKNOWN provenance; audit coverage and four reviewed Titan Rune overrides are included.
-19. **NEXT ERA-07:** protocol loot injection, AI Guild recipe discovery / profession crafting, ordinary loot/crafting/recipes and remaining non-PlayerbotFactory item sources. Runtime-generate the central snapshot on the dev realm and inspect the expanded `.era audit` sections.
+19. **CURRENT / integrated CI required:** ERA-07 automated loot/crafting slice from Codex `1fbb15f9` is integrated on top of the green `a8b56bd0` WoWSims/GearAdvisor head. Covered: Titan protocol loot injection, AI Guild project-owned queued/autonomous crafting + item-taught recipe checks, ArenaRoster synthetic gearing and expanded audit. Still TODO: ordinary AzerothCore world loot/recipe tables, database-wide historical loot/recipe fidelity, `CREATE_ITEM_2` runtime loot-template provenance and broader upstream Playerbots crafting outside AI Guild orchestration. Runtime-generate the central snapshot on the dev realm and inspect the expanded `.era audit` sections.
 20. **NEXT ERA-13 containment:** broader quest/NPC/vendor cleanup plus Titan Rune NPC spawning/map lifecycle after item-source provenance work is proven.
 
 Why: one authoritative era source prevents forty independent gates from drifting, and the audit tells us where WotLK/TBC leakage actually exists before we patch systems blindly.
@@ -167,7 +167,7 @@ Only build these if testing shows they add real value:
 - DONE + exact-head green: server-authoritative Sim Bags candidate enumeration at `52ac5255`.
 - DONE + exact-head green at `d449136f`: real-image talent + glyph preset routing, including WotLK Fire/Frostfire.
 - DONE + exact-head green at `d449136f`: asynchronous Sim Bags compare queue off the world thread with one baseline reused across candidate swaps.
-- CURRENT / local CI: GearAdvisor v0.3.3 result transport, explicit Sim Bags action and stale-snapshot rejection.
+- DONE + exact-head green at `a8b56bd0`: GearAdvisor v0.3.3 result transport, explicit Sim Bags action and stale-snapshot rejection.
 - NEXT: enrich explanations with cap/stat trade context after the transport boundary is proven.
 - NEXT validation: define/validate tank survivability authority before automatic tank item comparisons are enabled.
 - NEXT authority: validate individual era/spec mechanics before changing ENGINE_PRESENT_UNVALIDATED routes to SIM_BACKED.

@@ -475,3 +475,24 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 - TODO runtime: verify no-positive-candidate and server-error states render cleanly without leaking `[GA]` protocol text into chat.
 - TODO runtime: close/reopen CharacterFrame after a result and verify the result remains readable until gear/talent state changes.
 - TODO runtime: manual Export still opens WoWSimsBridge normally.
+
+
+## ERA-07 automated loot/crafting acceptance
+
+Implementation source: Codex `1fbb15f9295084147e3205383a84866e75e33683`; integrated exact-head CI required.
+
+- STATIC/CI: Titan Rune final injected-loot add boundary checks `EraPolicy::ItemProvenanceReady()` and `EraPolicy::IsItemAllowed()`.
+- STATIC/CI: Beta/Gamma replacement candidate is chosen and approved before ordinary Heroic equipment is removed.
+- STATIC/CI: blocked/no-legal Beta replacement preserves ordinary database loot.
+- STATIC/CI: AI Guild craft request creation rejects unavailable/future/UNKNOWN output before request persistence.
+- STATIC/CI: queued crafting validates every direct create-item result and item-taught recipe provenance before reagent/cooldown/inventory/treasury/stock/request mutation.
+- STATIC/CI: autonomous profession-session crafting uses the explicit guarded path rather than opaque `craft random item` execution.
+- STATIC/CI: `SPELL_EFFECT_CREATE_ITEM_2` remains fail-closed until runtime loot-template outputs have authoritative provenance.
+- STATIC/CI: ArenaRoster synthetic gearing checks provenance before stripping existing gear and filters every item before equip.
+- AUDIT: `TITAN_PROTOCOL_LOOT` reports unavailable central provenance as FAIL and future/UNKNOWN protocol definitions as WARN.
+- AUDIT: `AI_GUILD_ITEM_HELPERS` includes queued craft results and reports future/UNKNOWN outputs as WARN.
+- RUNTIME TODO: kill representative Alpha/Beta/Gamma bosses in Vanilla, TBC and WotLK realm states; verify legal protocol rewards appear only in legal eras and blocked pools leave ordinary loot intact.
+- RUNTIME TODO: test legal, future-era, UNKNOWN, trainer-taught, item-taught and insufficient-reagent craft requests; blocked queued crafts must remain queued with no protected state mutation.
+- RUNTIME TODO: test autonomous profession sessions under all three realm eras.
+- RUNTIME TODO: test ArenaRoster re-gearing with ready, unavailable and future/UNKNOWN provenance.
+- RUNTIME TODO: run `.era audit` against representative clean and quarantined DB state.

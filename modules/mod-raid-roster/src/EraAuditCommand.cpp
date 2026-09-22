@@ -320,6 +320,8 @@ bool EraAuditCommand::HandleAudit(ChatHandler* handler)
         report(AuditState::Fail, "BOT_EQUIPMENT", "not scanned because central item provenance is unavailable");
         report(AuditState::Fail, "AUTOMATED_VENDOR_CATALOG",
             "not scanned because central item provenance is unavailable");
+        report(AuditState::Fail, "TITAN_PROTOCOL_LOOT",
+            "not scanned because central item provenance is unavailable");
         report(AuditState::Fail, "PENDING_ITEM_REWARDS",
             "not scanned because central item provenance is unavailable");
         report(AuditState::Fail, "AI_GUILD_ITEM_HELPERS",
@@ -473,6 +475,29 @@ bool EraAuditCommand::HandleAudit(ChatHandler* handler)
                 ", unknownBlocked=" + std::to_string(unknownVendorItems) +
                 (vendorExamples.empty() ? "" : ", examples=" + JoinExamples(vendorExamples)));
 
+        uint64 protocolLootItems = 0;
+        uint64 futureProtocolLootItems = 0;
+        uint64 unknownProtocolLootItems = 0;
+        std::vector<std::string> protocolLootExamples;
+        if (QueryResult result = WorldDatabase.Query(
+                "SELECT item_entry, COUNT(*) FROM mod_titan_rune_boss_loot GROUP BY item_entry"))
+        {
+            do
+            {
+                Field* fields = result->Fetch();
+                classifyAutomatedItem("protocol-loot", fields[0].Get<uint32>(), fields[1].Get<uint64>(),
+                    protocolLootItems, futureProtocolLootItems, unknownProtocolLootItems, protocolLootExamples);
+            } while (result->NextRow());
+        }
+        report(
+            futureProtocolLootItems || unknownProtocolLootItems ? AuditState::Warn : AuditState::Pass,
+            "TITAN_PROTOCOL_LOOT",
+            "definitions=" + std::to_string(protocolLootItems) +
+                ", eligible=" + std::to_string(protocolLootItems - futureProtocolLootItems - unknownProtocolLootItems) +
+                ", futureBlocked=" + std::to_string(futureProtocolLootItems) +
+                ", unknownBlocked=" + std::to_string(unknownProtocolLootItems) +
+                (protocolLootExamples.empty() ? "" : ", examples=" + JoinExamples(protocolLootExamples)));
+
         uint64 pendingRewards = 0;
         uint64 futurePendingRewards = 0;
         uint64 unknownPendingRewards = 0;
@@ -521,10 +546,21 @@ bool EraAuditCommand::HandleAudit(ChatHandler* handler)
                     guildHelperItems, futureGuildHelperItems, unknownGuildHelperItems, guildHelperExamples);
             } while (result->NextRow());
         }
+        if (QueryResult result = CharacterDatabase.Query(
+                "SELECT item_id, SUM(item_count) FROM mod_ai_guild_request "
+                "WHERE request_type='craft' AND status='queued' GROUP BY item_id"))
+        {
+            do
+            {
+                Field* fields = result->Fetch();
+                classifyAutomatedItem("queued-craft", fields[0].Get<uint32>(), fields[1].Get<uint64>(),
+                    guildHelperItems, futureGuildHelperItems, unknownGuildHelperItems, guildHelperExamples);
+            } while (result->NextRow());
+        }
         report(
             futureGuildHelperItems || unknownGuildHelperItems ? AuditState::Warn : AuditState::Pass,
             "AI_GUILD_ITEM_HELPERS",
-            "stockAndQueuedBuyItems=" + std::to_string(guildHelperItems) +
+            "stockAndQueuedItems=" + std::to_string(guildHelperItems) +
                 ", futureQuarantined=" + std::to_string(futureGuildHelperItems) +
                 ", unknownQuarantined=" + std::to_string(unknownGuildHelperItems) +
                 (guildHelperExamples.empty() ? "" : ", examples=" + JoinExamples(guildHelperExamples)));
