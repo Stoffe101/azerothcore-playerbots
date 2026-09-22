@@ -423,3 +423,25 @@ GearAdvisor v0.3.4 uses a constrained interim contract:
 - do not introduce Pawn/static weights or reverse-engineer candidate stats from the performance delta.
 
 A future explanation slice may add true before/after cap tradeoffs only after structured candidate stat deltas are transported from an authoritative source.
+
+
+## Finalized stat-delta authority
+
+Performance delta alone cannot explain *why* an item wins. The pinned engines already expose `core.ComputeStats(ComputeStatsRequest)`, which returns finalized character stats after gear, talents, buffs, consumes and stat dependencies. Skrra therefore reuses that API rather than implementing a parallel stat calculator.
+
+Container build contract:
+1. Generate protobufs in the exact pinned upstream tree as already required by `wowsimcli`.
+2. Materialize the repository-owned `compute_stats_main.go.in` template with the era engine module path.
+3. Register the upstream engine's full model set.
+4. Compile a small static `wowstats-<era>` helper that accepts one ComputeStatsRequest JSON file and emits ComputeStatsResult JSON.
+5. Keep these helpers private inside `ac-wowsims`; AzerothCore never launches them directly.
+
+Sim Bags contract:
+- baseline RaidSimRequest is converted to ComputeStatsRequest and finalized once;
+- each isolated candidate request is finalized once;
+- selected useful stats are mapped by an era-specific index table pinned to that engine's exact `common.proto` Stat enum;
+- response entries contain normalized key, label, unit, baseline, candidate and delta;
+- zero deltas are omitted;
+- enum layouts are not shared across eras because the upstream projects intentionally differ.
+
+This provides factual stat trade data, not stat weights. Whether a +rating/-rating trade is a good choice remains governed by the actual simulation result and, once validated, the SIM_BACKED authority contract.

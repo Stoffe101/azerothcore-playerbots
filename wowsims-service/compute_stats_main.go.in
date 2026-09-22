@@ -1,0 +1,36 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+
+	sim "@@MODULE@@/sim"
+	"@@MODULE@@/sim/core"
+	"@@MODULE@@/sim/core/proto"
+	"google.golang.org/protobuf/encoding/protojson"
+)
+
+func init() {
+	sim.RegisterAll()
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		log.Fatalf("usage: skrra-compute-stats <ComputeStatsRequest.json>")
+	}
+	data, err := os.ReadFile(os.Args[1])
+	if err != nil {
+		log.Fatalf("failed to read input: %v", err)
+	}
+	input := &proto.ComputeStatsRequest{}
+	if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(data, input); err != nil {
+		log.Fatalf("failed to decode ComputeStatsRequest: %v", err)
+	}
+	result := core.ComputeStats(input)
+	output, err := (protojson.MarshalOptions{EmitUnpopulated: true}).Marshal(result)
+	if err != nil {
+		log.Fatalf("failed to encode ComputeStatsResult: %v", err)
+	}
+	fmt.Print(string(output))
+}

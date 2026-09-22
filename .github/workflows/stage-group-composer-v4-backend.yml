@@ -84,6 +84,13 @@ jobs:
           grep -q 'protobuf-compiler' wowsims-service/Dockerfile
           grep -q 'protoc-gen-go@v1.36.10' wowsims-service/Dockerfile
           grep -q 'go build --tags=with_db' wowsims-service/Dockerfile
+          grep -q 'compute_stats_main.go.in' wowsims-service/Dockerfile
+          grep -q 'wowstats-classic' wowsims-service/Dockerfile
+          grep -q 'wowstats-tbc' wowsims-service/Dockerfile
+          grep -q 'wowstats-wotlk' wowsims-service/Dockerfile
+          grep -q 'ERA_TO_STATS_BINARY' wowsims-service/app.py
+          grep -q 'build_stat_deltas' wowsims-service/app.py
+          grep -q 'ComputeStats' wowsims-service/compute_stats_main.go.in
           grep -q 'ENGINE_PRESENT_UNVALIDATED' data/wowsims/model-support.json
           grep -q '076c8773ab4c93ed8b2876a3c55f94267bbf1e85' data/wowsims/model-support.json
           grep -q 'BuildCharacterSnapshot' modules/mod-raid-roster/src/WoWSimsService.cpp
@@ -144,6 +151,7 @@ jobs:
             if git diff --quiet "$BEFORE" "${GITHUB_SHA}" -- \
               wowsims-service/Dockerfile \
               wowsims-service/app.py \
+              wowsims-service/compute_stats_main.go.in \
               wowsims-service/harvest_presets.py \
               wowsims-service/model-support.json \
               wowsims-service/sources.json \
@@ -158,7 +166,7 @@ jobs:
           fi
           IMAGE="skrra-wowsims-ci:${GITHUB_SHA}"
           docker build --progress=plain -t "$IMAGE" ./wowsims-service
-          docker run --rm "$IMAGE" python -c 'import app; m=app.load_manifest(); r=app.SimRunner(m); h=r.health(); assert h["ready"]; assert all(v["ready"] and v["selectableRouteCount"] == v["routeCount"] for v in h["presets"]["eras"].values()); print(h["presets"])'
+          docker run --rm "$IMAGE" python -c 'import json; from pathlib import Path; import app; m=app.load_manifest(); r=app.SimRunner(m); h=r.health(); assert h["ready"]; assert all(v["simReady"] and v["statsReady"] for v in h["engines"].values()); assert all(v["ready"] and v["selectableRouteCount"] == v["routeCount"] for v in h["presets"]["eras"].values()); [(app.extract_final_stat_vector(r.compute_stats(era, json.loads((Path("/app/presets") / era / next(iter(entry["routes"].values()))[0]["file"]).read_text(encoding="utf-8"))))) for era, entry in r.preset_catalog["eras"].items()]; print(h["engines"]); print(h["presets"])'
 
       - name: Commit generated backend changes
         run: |

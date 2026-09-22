@@ -242,4 +242,9 @@ ArenaRoster follow-up status: **DONE + exact-head local-CI green at `f23da452397
 
 ### GearAdvisor v0.3.4 simulation context
 
-Current slice: **IMPLEMENTED / exact-head local CI required**. Sim Bags results now append a clearly labeled **pre-swap mechanical-cap context** drawn from GearAdvisor's existing era/spec-aware cap logic. It reports the first currently unmet tracked cap, or that tracked caps are currently met, but explicitly does **not** claim the candidate item itself fixes/breaks the cap because candidate stat deltas are not yet transported. This keeps the explanation useful without inventing unsupported stat-weight conclusions.
+GearAdvisor v0.3.4 status: **DONE + exact-head local-CI green at `2bff0a685832229fd137aaceffd61c47825c8d11`**. Sim Bags results append a clearly labeled **pre-swap mechanical-cap context** drawn from GearAdvisor's existing era/spec-aware cap logic. It reports the first currently unmet tracked cap, or that tracked caps are currently met, but explicitly does **not** claim the candidate item itself fixes/breaks the cap because candidate stat deltas are not yet transported. This keeps the explanation useful without inventing unsupported stat-weight conclusions.
+
+
+### WoWSims finalized stat-delta foundation
+
+Current slice: **IMPLEMENTED / exact-head local CI required**. The private service now builds one tiny `ComputeStats` helper for each exact pinned Vanilla/TBC/WotLK engine. Sim Bags computes baseline finalized character stats once, computes finalized stats for each candidate request, and attaches structured before/after/delta records using era-specific pinned Stat enum layouts. This is service-side only for now; GearAdvisor transport follows after the three real engine images prove the helper binaries.

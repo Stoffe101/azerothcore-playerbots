@@ -2,6 +2,25 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-22 — WoWSims finalized stat-delta foundation
+
+Current slice: **IMPLEMENTED / exact-head local CI required**.
+- Adds a tiny repository-owned ComputeStats wrapper compiled against each exact pinned Vanilla/TBC/WotLK engine.
+- Wrapper calls the engine's own `core.ComputeStats()`; no item-stat formulas are duplicated in Python/Lua.
+- Runtime health requires both simulator and stats-helper binaries for every era.
+- Sim Bags computes one baseline finalized stat vector and one vector per candidate and returns structured stat deltas.
+- Era-specific enum indexes are pinned explicitly because the three engines use different Stat enum layouts.
+- Client transport is intentionally not included yet.
+
+## 2026-09-22 — GearAdvisor v0.3.4 cap-context green
+
+Exact SHA `2bff0a685832229fd137aaceffd61c47825c8d11`: **DONE + fully exact-head green**.
+- Group Composer client checks: SUCCESS.
+- Stage Group Composer V4 backend: SUCCESS.
+- Integration build: SUCCESS on `stoffes-pc`.
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`.
+- Sim Bags cap context remains explicitly pre-swap-only; no candidate cap claim is invented.
+
 ## 2026-09-22 — GearAdvisor v0.3.4 cap-context explanation
 
 Current slice: **IMPLEMENTED / exact-head local CI required**.

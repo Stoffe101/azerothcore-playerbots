@@ -516,3 +516,17 @@ Implementation source: Codex `1fbb15f9295084147e3205383a84866e75e33683`; integra
 - TODO runtime: a character meeting all tracked caps shows the all-met message.
 - TODO runtime: Vanilla/TBC/WotLK era changes update the cap context consistently with the rest of GearAdvisor.
 - TODO future: once authoritative candidate stat deltas exist, add before/after cap crossing explanations and retire the pre-swap-only limitation.
+
+
+### WoWSims finalized stat deltas
+
+- UNIT: era-specific Stat enum layouts map known WotLK Spell Power and Spell Hit Rating indexes to normalized delta records.
+- UNIT: ComputeStats helper launch uses a fixed pinned binary path, JSON tempfile and no shell.
+- UNIT: Sim Bags computes baseline finalized stats once and candidate finalized stats once per accepted swap.
+- UNIT: candidate results expose `statDeltas` without exposing the internal candidate request.
+- REAL-IMAGE CI: Docker builds `wowstats-classic`, `wowstats-tbc` and `wowstats-wotlk` from exact pinned source commits.
+- REAL-IMAGE CI: service health requires `simReady` + `statsReady` for Vanilla/TBC/WotLK.
+- REAL-IMAGE TODO/CI: all three helpers initialize the registered model set and `ComputeStats` can parse the pinned request schema.
+- TODO transport: worldserver protocol forwards selected structured stat deltas to GearAdvisor.
+- TODO runtime: compare service stat deltas for a known bag swap against the same before/after gear in the public pinned WoWSims UI/engine.
+- TODO: do not infer cap crossing until GearAdvisor reconciles the relevant stat unit safely with its live cap representation.

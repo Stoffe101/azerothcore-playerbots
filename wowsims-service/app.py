@@ -27,6 +27,105 @@ ERA_TO_BINARY = {
     "WOTLK": os.environ.get("WOWSIMS_WOTLK_BIN", "/usr/local/bin/wowsimcli-wotlk"),
 }
 
+ERA_TO_STATS_BINARY = {
+    "VANILLA": os.environ.get("WOWSIMS_STATS_CLASSIC_BIN", "/usr/local/bin/wowstats-classic"),
+    "TBC": os.environ.get("WOWSIMS_STATS_TBC_BIN", "/usr/local/bin/wowstats-tbc"),
+    "WOTLK": os.environ.get("WOWSIMS_STATS_WOTLK_BIN", "/usr/local/bin/wowstats-wotlk"),
+}
+
+# Selected finalized WoWSims stats that are useful for human-readable gearing explanations.
+# Indexes are pinned to each engine's exact common.proto Stat enum and deliberately live beside
+# the pinned engine commits instead of pretending that Classic/TBC/WotLK share one enum layout.
+ERA_STAT_LAYOUTS = {
+    "VANILLA": {
+        0: ("strength", "Strength", "points"),
+        1: ("agility", "Agility", "points"),
+        2: ("stamina", "Stamina", "points"),
+        3: ("intellect", "Intellect", "points"),
+        4: ("spirit", "Spirit", "points"),
+        5: ("spellPower", "Spell Power", "points"),
+        12: ("mp5", "MP5", "points"),
+        13: ("spellHit", "Spell Hit", "points"),
+        14: ("spellCrit", "Spell Crit", "points"),
+        15: ("spellHaste", "Spell Haste", "points"),
+        17: ("attackPower", "Attack Power", "points"),
+        18: ("meleeHit", "Melee Hit", "points"),
+        19: ("meleeCrit", "Melee Crit", "points"),
+        20: ("meleeHaste", "Melee Haste", "points"),
+        21: ("armorPenetration", "Armor Penetration", "points"),
+        22: ("expertise", "Expertise", "points"),
+        26: ("armor", "Armor", "points"),
+        27: ("rangedAttackPower", "Ranged Attack Power", "points"),
+        28: ("defense", "Defense", "points"),
+        29: ("block", "Block", "points"),
+        30: ("blockValue", "Block Value", "points"),
+        31: ("dodge", "Dodge", "points"),
+        32: ("parry", "Parry", "points"),
+        33: ("resilience", "Resilience", "points"),
+        34: ("health", "Health", "points"),
+        41: ("healingPower", "Healing Power", "points"),
+        42: ("spellDamage", "Spell Damage", "points"),
+        43: ("feralAttackPower", "Feral Attack Power", "points"),
+    },
+    "TBC": {
+        0: ("strength", "Strength", "points"),
+        1: ("agility", "Agility", "points"),
+        2: ("stamina", "Stamina", "points"),
+        3: ("intellect", "Intellect", "points"),
+        4: ("healingPower", "Healing Power", "points"),
+        5: ("spellDamage", "Spell Damage", "points"),
+        12: ("spellHitRating", "Spell Hit Rating", "rating"),
+        13: ("spellCritRating", "Spell Crit Rating", "rating"),
+        14: ("spellHasteRating", "Spell Haste Rating", "rating"),
+        16: ("spirit", "Spirit", "points"),
+        17: ("attackPower", "Attack Power", "points"),
+        18: ("rangedAttackPower", "Ranged Attack Power", "points"),
+        19: ("feralAttackPower", "Feral Attack Power", "points"),
+        20: ("meleeHitRating", "Melee Hit Rating", "rating"),
+        21: ("meleeCritRating", "Melee Crit Rating", "rating"),
+        22: ("meleeHasteRating", "Melee Haste Rating", "rating"),
+        23: ("armorPenetration", "Armor Penetration", "points"),
+        24: ("expertiseRating", "Expertise Rating", "rating"),
+        25: ("defenseRating", "Defense Rating", "rating"),
+        26: ("blockRating", "Block Rating", "rating"),
+        27: ("blockValue", "Block Value", "points"),
+        28: ("dodgeRating", "Dodge Rating", "rating"),
+        29: ("parryRating", "Parry Rating", "rating"),
+        30: ("resilienceRating", "Resilience Rating", "rating"),
+        31: ("armor", "Armor", "points"),
+        33: ("health", "Health", "points"),
+        34: ("mana", "Mana", "points"),
+        35: ("mp5", "MP5", "points"),
+    },
+    "WOTLK": {
+        0: ("strength", "Strength", "points"),
+        1: ("agility", "Agility", "points"),
+        2: ("stamina", "Stamina", "points"),
+        3: ("intellect", "Intellect", "points"),
+        4: ("spirit", "Spirit", "points"),
+        5: ("spellPower", "Spell Power", "points"),
+        6: ("mp5", "MP5", "points"),
+        7: ("spellHitRating", "Spell Hit Rating", "rating"),
+        8: ("spellCritRating", "Spell Crit Rating", "rating"),
+        9: ("spellHasteRating", "Spell Haste Rating", "rating"),
+        11: ("attackPower", "Attack Power", "points"),
+        12: ("meleeHitRating", "Melee Hit Rating", "rating"),
+        13: ("meleeCritRating", "Melee Crit Rating", "rating"),
+        14: ("meleeHasteRating", "Melee Haste Rating", "rating"),
+        15: ("armorPenetrationRating", "Armor Penetration Rating", "rating"),
+        16: ("expertiseRating", "Expertise Rating", "rating"),
+        20: ("armor", "Armor", "points"),
+        21: ("rangedAttackPower", "Ranged Attack Power", "points"),
+        22: ("defenseRating", "Defense Rating", "rating"),
+        23: ("blockRating", "Block Rating", "rating"),
+        24: ("blockValue", "Block Value", "points"),
+        25: ("dodgeRating", "Dodge Rating", "rating"),
+        26: ("parryRating", "Parry Rating", "rating"),
+        27: ("resilienceRating", "Resilience Rating", "rating"),
+        28: ("health", "Health", "points"),
+    },
+}
+
 METRIC_PATHS = {
     "dps": ("raidMetrics", "dps", "avg"),
     "hps": ("raidMetrics", "hps", "avg"),
@@ -945,6 +1044,48 @@ def extract_metric(result: dict[str, Any], metric: str) -> float:
         ) from exc
 
 
+def extract_final_stat_vector(result: dict[str, Any]) -> list[float]:
+    try:
+        values = result["raidStats"]["parties"][0]["players"][0]["finalStats"]["stats"]
+        if not isinstance(values, list):
+            raise TypeError("finalStats.stats is not an array")
+        return [float(value) for value in values]
+    except (KeyError, IndexError, TypeError, ValueError) as exc:
+        raise ServiceError(
+            "WoWSims ComputeStats result did not contain player final stats",
+            HTTPStatus.BAD_GATEWAY,
+        ) from exc
+
+
+def build_stat_deltas(
+    era: str,
+    baseline_result: dict[str, Any],
+    candidate_result: dict[str, Any],
+) -> list[dict[str, Any]]:
+    era = normalize_era(era)
+    baseline = extract_final_stat_vector(baseline_result)
+    candidate = extract_final_stat_vector(candidate_result)
+    layout = ERA_STAT_LAYOUTS[era]
+    deltas: list[dict[str, Any]] = []
+    for index, (key, label, unit) in layout.items():
+        if index >= len(baseline) or index >= len(candidate):
+            continue
+        before = baseline[index]
+        after = candidate[index]
+        delta = after - before
+        if abs(delta) < 1e-9:
+            continue
+        deltas.append({
+            "key": key,
+            "label": label,
+            "unit": unit,
+            "baseline": before,
+            "candidate": after,
+            "delta": delta,
+        })
+    return deltas
+
+
 ERA_LEVEL_CAPS = {
     "VANILLA": 60,
     "TBC": 70,
@@ -1080,6 +1221,7 @@ class SimRunner:
         *,
         timeout_seconds: float | None = None,
         binaries: dict[str, str] | None = None,
+        stats_binaries: dict[str, str] | None = None,
     ) -> None:
         self.manifest = manifest
         self.model_support = load_model_support(manifest=manifest)
@@ -1089,6 +1231,7 @@ class SimRunner:
             "WOWSIMS_TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS
         )
         self.binaries = dict(binaries or ERA_TO_BINARY)
+        self.stats_binaries = dict(stats_binaries or ERA_TO_STATS_BINARY)
         self._slots = threading.BoundedSemaphore(
             _env_int("WOWSIMS_MAX_CONCURRENT", DEFAULT_MAX_CONCURRENT)
         )
@@ -1099,18 +1242,24 @@ class SimRunner:
             "repository": engine["repository"],
             "commit": engine["commit"],
             "binary": self.binaries[era],
+            "statsBinary": self.stats_binaries[era],
         }
 
     def health(self) -> dict[str, Any]:
         engines: dict[str, Any] = {}
         ready = True
         for era in ERA_TO_BINARY:
-            path = Path(self.binaries[era])
-            exists = path.is_file() and os.access(path, os.X_OK)
-            ready = ready and exists
+            sim_path = Path(self.binaries[era])
+            stats_path = Path(self.stats_binaries[era])
+            sim_exists = sim_path.is_file() and os.access(sim_path, os.X_OK)
+            stats_exists = stats_path.is_file() and os.access(stats_path, os.X_OK)
+            engine_ready = sim_exists and stats_exists
+            ready = ready and engine_ready
             engines[era] = {
                 **self.engine_info(era),
-                "ready": exists,
+                "ready": engine_ready,
+                "simReady": sim_exists,
+                "statsReady": stats_exists,
             }
         return {
             "schema": SCHEMA_VERSION,
@@ -1215,11 +1364,13 @@ class SimRunner:
 
         baseline_result = self.simulate(baseline["era"], baseline["request"])
         baseline_metric = extract_metric(baseline_result, metric)
+        baseline_stats = self.compute_stats(baseline["era"], baseline["request"])
         results: list[dict[str, Any]] = []
 
         for swap in swaps:
             candidate_result = self.simulate(baseline["era"], swap["candidateRequest"])
             candidate_metric = extract_metric(candidate_result, metric)
+            candidate_stats = self.compute_stats(baseline["era"], swap["candidateRequest"])
             delta = candidate_metric - baseline_metric
             delta_percent = None if baseline_metric == 0 else (delta / baseline_metric) * 100.0
             results.append({
@@ -1232,6 +1383,11 @@ class SimRunner:
                 "candidate": candidate_metric,
                 "delta": delta,
                 "deltaPercent": delta_percent,
+                "statDeltas": build_stat_deltas(
+                    baseline["era"],
+                    baseline_stats,
+                    candidate_stats,
+                ),
             })
 
         best_upgrade = max(results, key=lambda result: result["delta"], default=None)
@@ -1254,6 +1410,98 @@ class SimRunner:
             "skipped": skipped,
             "bestUpgrade": best_upgrade,
         }
+
+    def compute_stats(self, era: str, request: dict[str, Any]) -> dict[str, Any]:
+        era = normalize_era(era)
+        if not isinstance(request, dict):
+            raise ServiceError("request must be a RaidSimRequest JSON object")
+        raid = request.get("raid")
+        encounter = request.get("encounter")
+        if not isinstance(raid, dict):
+            raise ServiceError("request.raid must be an object")
+
+        binary = self.stats_binaries[era]
+        if not (Path(binary).is_file() and os.access(binary, os.X_OK)):
+            raise ServiceError(
+                f"{era} WoWSims stats helper is unavailable",
+                HTTPStatus.SERVICE_UNAVAILABLE,
+            )
+
+        compute_request = {
+            "raid": raid,
+            "encounter": encounter if isinstance(encounter, dict) else {},
+            # TBC supports this optimization; Classic/WotLK discard the unknown field in the
+            # pinned helper's protojson decoder.
+            "skipRotation": True,
+        }
+        with tempfile.TemporaryDirectory(prefix="skrra-wowstats-") as tmp:
+            infile = Path(tmp) / "request.json"
+            infile.write_text(
+                json.dumps(compute_request, separators=(",", ":"), ensure_ascii=False),
+                encoding="utf-8",
+            )
+            acquired = self._slots.acquire(timeout=self.timeout_seconds)
+            if not acquired:
+                raise ServiceError(
+                    "WoWSims service is busy",
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                )
+            try:
+                try:
+                    completed = subprocess.run(
+                        [binary, str(infile)],
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                        timeout=self.timeout_seconds,
+                        env={
+                            **os.environ,
+                            "GOMAXPROCS": os.environ.get("WOWSIMS_GOMAXPROCS", "2"),
+                        },
+                    )
+                except subprocess.TimeoutExpired as exc:
+                    raise ServiceError(
+                        f"{era} WoWSims ComputeStats timed out after {self.timeout_seconds:g}s",
+                        HTTPStatus.GATEWAY_TIMEOUT,
+                    ) from exc
+                except OSError as exc:
+                    raise ServiceError(
+                        f"failed to launch {era} WoWSims stats helper: {exc}",
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                    ) from exc
+            finally:
+                self._slots.release()
+
+        if completed.returncode != 0:
+            detail = (completed.stderr or completed.stdout or "unknown ComputeStats error").strip()
+            if len(detail) > 800:
+                detail = detail[:800] + "..."
+            raise ServiceError(
+                f"{era} WoWSims ComputeStats failed: {detail}",
+                HTTPStatus.UNPROCESSABLE_ENTITY,
+            )
+
+        try:
+            result = json.loads(completed.stdout)
+        except json.JSONDecodeError as exc:
+            raise ServiceError(
+                f"{era} WoWSims ComputeStats returned invalid JSON",
+                HTTPStatus.BAD_GATEWAY,
+            ) from exc
+        if not isinstance(result, dict):
+            raise ServiceError(
+                f"{era} WoWSims ComputeStats returned a non-object result",
+                HTTPStatus.BAD_GATEWAY,
+            )
+        if result.get("errorResult"):
+            raise ServiceError(
+                f"{era} WoWSims ComputeStats error: {result['errorResult']}",
+                HTTPStatus.UNPROCESSABLE_ENTITY,
+            )
+        # Validate the result shape at the boundary instead of letting malformed data leak into
+        # later explanation code.
+        extract_final_stat_vector(result)
+        return result
 
     def simulate(self, era: str, request: dict[str, Any]) -> dict[str, Any]:
         era = normalize_era(era)

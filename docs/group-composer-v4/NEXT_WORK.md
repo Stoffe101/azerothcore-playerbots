@@ -170,7 +170,8 @@ Only build these if testing shows they add real value:
 - DONE + exact-head green at `d449136f`: real-image talent + glyph preset routing, including WotLK Fire/Frostfire.
 - DONE + exact-head green at `d449136f`: asynchronous Sim Bags compare queue off the world thread with one baseline reused across candidate swaps.
 - DONE + exact-head green at `a8b56bd0`: GearAdvisor v0.3.3 result transport, explicit Sim Bags action and stale-snapshot rejection.
-- CURRENT / local CI: GearAdvisor v0.3.4 adds honest pre-swap cap context to Sim Bags results without guessing candidate stat deltas.
-- NEXT: transport structured candidate stat/cap deltas if they can be derived authoritatively, then explain actual cap/stat tradeoffs.
+- DONE + exact-head green at `2bff0a68`: GearAdvisor v0.3.4 honest pre-swap cap context.
+- CURRENT / local CI: pinned-engine `ComputeStats` helpers + service-side finalized before/after `statDeltas` for Sim Bags candidates.
+- NEXT: transport structured stat deltas through the worldserver protocol into GearAdvisor and render actual item tradeoffs.
 - NEXT validation: define/validate tank survivability authority before automatic tank item comparisons are enabled.
 - NEXT authority: validate individual era/spec mechanics before changing ENGINE_PRESENT_UNVALIDATED routes to SIM_BACKED.

@@ -12,6 +12,7 @@ ARG WOTLK_COMMIT=563e4a08cb15729f1fdcbcf68e6d68224553bfef
 ENV GOTOOLCHAIN=auto
 COPY harvest_presets.py /tools/harvest_presets.py
 COPY model-support.json /tools/model-support.json
+COPY compute_stats_main.go.in /tools/compute_stats_main.go.in
 WORKDIR /src
 
 RUN git init classic \
@@ -20,7 +21,9 @@ RUN git init classic \
     && git -C classic checkout --detach FETCH_HEAD \
     && cd classic \
     && protoc -I=./proto --go_out=./sim/core ./proto/*.proto \
-    && CGO_ENABLED=0 go build --tags=with_db -trimpath -ldflags="-s -w" -o /out/wowsimcli-classic ./cmd/wowsimcli/cli_main.go
+    && CGO_ENABLED=0 go build --tags=with_db -trimpath -ldflags="-s -w" -o /out/wowsimcli-classic ./cmd/wowsimcli/cli_main.go \
+    && sed 's|@@MODULE@@|github.com/wowsims/classic|g' /tools/compute_stats_main.go.in > ./cmd/skrra_compute_stats.go \
+    && CGO_ENABLED=0 go build --tags=with_db -trimpath -ldflags="-s -w" -o /out/wowstats-classic ./cmd/skrra_compute_stats.go
 RUN python3 /tools/harvest_presets.py \
     --source /src/classic --era VANILLA --output /presets/VANILLA \
     --model-support /tools/model-support.json --commit "${CLASSIC_COMMIT}"
@@ -33,7 +36,9 @@ RUN git init tbc \
     && protoc -I=./proto -I=/usr/include \
         --go_opt=Mgoogle/protobuf/descriptor.proto=google.golang.org/protobuf/types/descriptorpb \
         --go_out=./sim/core ./proto/*.proto \
-    && CGO_ENABLED=0 go build --tags=with_db -trimpath -ldflags="-s -w" -o /out/wowsimcli-tbc ./cmd/wowsimcli/cli_main.go
+    && CGO_ENABLED=0 go build --tags=with_db -trimpath -ldflags="-s -w" -o /out/wowsimcli-tbc ./cmd/wowsimcli/cli_main.go \
+    && sed 's|@@MODULE@@|github.com/wowsims/tbc|g' /tools/compute_stats_main.go.in > ./cmd/skrra_compute_stats.go \
+    && CGO_ENABLED=0 go build --tags=with_db -trimpath -ldflags="-s -w" -o /out/wowstats-tbc ./cmd/skrra_compute_stats.go
 RUN python3 /tools/harvest_presets.py \
     --source /src/tbc --era TBC --output /presets/TBC \
     --model-support /tools/model-support.json --commit "${TBC_COMMIT}"
@@ -44,7 +49,9 @@ RUN git init wotlk \
     && git -C wotlk checkout --detach FETCH_HEAD \
     && cd wotlk \
     && protoc -I=./proto --go_out=./sim/core ./proto/*.proto \
-    && CGO_ENABLED=0 go build --tags=with_db -trimpath -ldflags="-s -w" -o /out/wowsimcli-wotlk ./cmd/wowsimcli/cli_main.go
+    && CGO_ENABLED=0 go build --tags=with_db -trimpath -ldflags="-s -w" -o /out/wowsimcli-wotlk ./cmd/wowsimcli/cli_main.go \
+    && sed 's|@@MODULE@@|github.com/wowsims/wotlk|g' /tools/compute_stats_main.go.in > ./cmd/skrra_compute_stats.go \
+    && CGO_ENABLED=0 go build --tags=with_db -trimpath -ldflags="-s -w" -o /out/wowstats-wotlk ./cmd/skrra_compute_stats.go
 RUN python3 /tools/harvest_presets.py \
     --source /src/wotlk --era WOTLK --output /presets/WOTLK \
     --model-support /tools/model-support.json --commit "${WOTLK_COMMIT}"
@@ -62,6 +69,9 @@ COPY --from=builder /src/wotlk/assets/db_inputs/glyph_id_map.json /app/wotlk-gly
 COPY --from=builder /out/wowsimcli-classic /usr/local/bin/wowsimcli-classic
 COPY --from=builder /out/wowsimcli-tbc /usr/local/bin/wowsimcli-tbc
 COPY --from=builder /out/wowsimcli-wotlk /usr/local/bin/wowsimcli-wotlk
+COPY --from=builder /out/wowstats-classic /usr/local/bin/wowstats-classic
+COPY --from=builder /out/wowstats-tbc /usr/local/bin/wowstats-tbc
+COPY --from=builder /out/wowstats-wotlk /usr/local/bin/wowstats-wotlk
 
 ENV WOWSIMS_MANIFEST=/app/sources.json \
     WOWSIMS_LISTEN=0.0.0.0:8092 \
@@ -71,7 +81,10 @@ ENV WOWSIMS_MANIFEST=/app/sources.json \
     WOWSIMS_PRESET_ROOT=/app/presets \
     WOWSIMS_REQUIRE_PRESETS=1 \
     WOWSIMS_WOTLK_GLYPH_MAP=/app/wotlk-glyph-id-map.json \
-    WOWSIMS_REQUIRE_GLYPH_MAP=1
+    WOWSIMS_REQUIRE_GLYPH_MAP=1 \
+    WOWSIMS_STATS_CLASSIC_BIN=/usr/local/bin/wowstats-classic \
+    WOWSIMS_STATS_TBC_BIN=/usr/local/bin/wowstats-tbc \
+    WOWSIMS_STATS_WOTLK_BIN=/usr/local/bin/wowstats-wotlk
 
 EXPOSE 8092
 USER 10001

@@ -40,6 +40,31 @@ class AppTests(unittest.TestCase):
         self.assertEqual(app.extract_metric(result, "dps"), 5042.5)
         self.assertEqual(app.extract_metric(result, "hps"), 12.0)
 
+    def test_final_stat_delta_uses_era_specific_layout(self):
+        baseline_values = [0.0] * 40
+        candidate_values = [0.0] * 40
+        baseline_values[5] = 2200.0
+        candidate_values[5] = 2246.0
+        baseline_values[7] = 250.0
+        candidate_values[7] = 232.0
+        baseline = {
+            "raidStats": {
+                "parties": [{"players": [{"finalStats": {"stats": baseline_values}}]}]
+            }
+        }
+        candidate = {
+            "raidStats": {
+                "parties": [{"players": [{"finalStats": {"stats": candidate_values}}]}]
+            }
+        }
+        deltas = app.build_stat_deltas("WOTLK", baseline, candidate)
+        by_key = {entry["key"]: entry for entry in deltas}
+        self.assertEqual(by_key["spellPower"]["delta"], 46.0)
+        self.assertEqual(by_key["spellPower"]["unit"], "points")
+        self.assertEqual(by_key["spellHitRating"]["delta"], -18.0)
+        self.assertEqual(by_key["spellHitRating"]["unit"], "rating")
+        self.assertNotIn("strength", by_key)
+
     def test_compare_returns_delta_and_pin(self):
         runner = app.SimRunner(
             MANIFEST,
@@ -89,6 +114,50 @@ class AppTests(unittest.TestCase):
             self.assertEqual(command[0], str(binary))
             self.assertEqual(command[1:3], ["sim", "--infile"])
             self.assertNotIn("shell", run.call_args.kwargs)
+
+    def test_compute_stats_uses_fixed_helper_without_shell(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            binary = Path(tmp) / "wowstats"
+            binary.write_text("#!/bin/sh\n", encoding="utf-8")
+            binary.chmod(0o755)
+            runner = app.SimRunner(
+                MANIFEST,
+                timeout_seconds=1,
+                binaries={"VANILLA": "/x", "TBC": "/x", "WOTLK": "/x"},
+                stats_binaries={
+                    "VANILLA": str(binary),
+                    "TBC": str(binary),
+                    "WOTLK": str(binary),
+                },
+            )
+            completed = mock.Mock(
+                returncode=0,
+                stdout=json.dumps({
+                    "raidStats": {
+                        "parties": [{"players": [{"finalStats": {"stats": [0.0] * 44}}]}]
+                    }
+                }),
+                stderr="",
+            )
+            captured = {}
+            def fake_run(command, **kwargs):
+                captured["request"] = json.loads(Path(command[1]).read_text(encoding="utf-8"))
+                captured["command"] = command
+                captured["kwargs"] = kwargs
+                return completed
+
+            with mock.patch("app.subprocess.run", side_effect=fake_run):
+                result = runner.compute_stats(
+                    "WOTLK",
+                    {"raid": {"parties": []}, "encounter": {"duration": 180}, "simOptions": {}},
+                )
+
+        self.assertIn("raidStats", result)
+        self.assertEqual(captured["command"][0], str(binary))
+        self.assertEqual(len(captured["command"]), 2)
+        self.assertNotIn("shell", captured["kwargs"])
+        self.assertEqual(captured["request"]["raid"], {"parties": []})
+        self.assertTrue(captured["request"]["skipRotation"])
 
     def test_health_requires_all_three_binaries(self):
         runner = app.SimRunner(
@@ -698,16 +767,34 @@ class AppTests(unittest.TestCase):
                 {"raidMetrics": {"dps": {"avg": 5100.0}}},
                 {"raidMetrics": {"dps": {"avg": 4950.0}}},
             ]
-            with mock.patch.object(runner, "simulate", side_effect=simulated) as simulate:
+            baseline_stats = [0.0] * 40
+            baseline_stats[5] = 2200.0
+            baseline_stats[7] = 250.0
+            candidate_a = list(baseline_stats)
+            candidate_a[5] += 46.0
+            candidate_a[7] -= 18.0
+            candidate_b = list(baseline_stats)
+            candidate_b[5] -= 12.0
+            computed = [
+                {"raidStats": {"parties": [{"players": [{"finalStats": {"stats": baseline_stats}}]}]}},
+                {"raidStats": {"parties": [{"players": [{"finalStats": {"stats": candidate_a}}]}]}},
+                {"raidStats": {"parties": [{"players": [{"finalStats": {"stats": candidate_b}}]}]}},
+            ]
+            with mock.patch.object(runner, "simulate", side_effect=simulated) as simulate, \
+                 mock.patch.object(runner, "compute_stats", side_effect=computed) as compute_stats:
                 out = runner.compare_bag_candidates(snapshot, candidates)
 
         self.assertEqual(simulate.call_count, 3)
+        self.assertEqual(compute_stats.call_count, 3)
         self.assertEqual(out["status"], "BAG_COMPARE_COMPLETE_UNVALIDATED")
         self.assertEqual(out["metric"], "dps")
         self.assertEqual(out["baseline"], 5000.0)
         self.assertEqual(out["resultCount"], 2)
         self.assertEqual(out["results"][0]["delta"], 100.0)
         self.assertEqual(out["results"][1]["delta"], -50.0)
+        stat_deltas = {entry["key"]: entry["delta"] for entry in out["results"][0]["statDeltas"]}
+        self.assertEqual(stat_deltas["spellPower"], 46.0)
+        self.assertEqual(stat_deltas["spellHitRating"], -18.0)
         self.assertEqual(out["bestUpgrade"]["itemId"], 40562)
         self.assertEqual(out["bestUpgrade"]["slotIndex"], 0)
         self.assertNotIn("candidateRequest", out["results"][0])

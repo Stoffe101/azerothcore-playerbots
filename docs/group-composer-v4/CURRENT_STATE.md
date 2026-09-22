@@ -647,7 +647,7 @@ This is result transport and UX plumbing, not mechanics approval. Route-by-route
 
 ## GearAdvisor v0.3.4 cap-context explanation
 
-Status: **IMPLEMENTED / exact-head local CI required**.
+Status: **DONE + exact-head local-CI green at `2bff0a685832229fd137aaceffd61c47825c8d11`**.
 
 The first post-transport explanation slice deliberately stays on the safe side of the available data:
 - completed Sim Bags results append GearAdvisor's current era/spec-aware hard-cap context;
@@ -659,3 +659,19 @@ The first post-transport explanation slice deliberately stays on the safe side o
 - GearAdvisor addon version advances to 0.3.4.
 
 Next simulator UX slice after this is green: decide whether to transport structured before/after character stats from authoritative simulation/request state so GearAdvisor can explain actual cap/stat tradeoffs rather than only baseline context.
+
+
+## WoWSims finalized stat-delta foundation
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+The next explanation boundary now uses the pinned simulators themselves instead of recreating item/stat math:
+- a repository-owned Go template is compiled inside each exact pinned WoWSims source tree;
+- each helper registers the same engine models as `wowsimcli` and calls that engine's `core.ComputeStats()`;
+- the runtime image carries `wowstats-classic`, `wowstats-tbc` and `wowstats-wotlk` beside the existing simulation binaries;
+- service health now requires both simulation and ComputeStats binaries for all three eras;
+- Sim Bags computes baseline finalized stats exactly once, then each candidate's finalized stats;
+- structured `statDeltas` contain normalized key, human label, unit, baseline, candidate and delta;
+- stat indexes are explicitly pinned per engine/era because Classic, TBC and WotLK do not share one Stat enum layout;
+- the service still does not claim static stat weights or SIM_BACKED authority;
+- worldserver/GearAdvisor transport of these structured deltas is deliberately the next slice, after the real image proves all three helpers compile and execute.
