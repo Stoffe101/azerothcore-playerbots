@@ -479,7 +479,7 @@ These are release-realm acceptance tests. All remain TODO until implemented and 
 
 ## ERA-07 automated loot/crafting acceptance
 
-Implementation source: Codex `1fbb15f9295084147e3205383a84866e75e33683`; integrated exact-head CI required.
+Implementation source: Codex `1fbb15f9295084147e3205383a84866e75e33683`; integrated exact head `b81954669fa19565fa9d556ca37b7b0d0651b4bb` passed all four required workflows.
 
 - STATIC/CI: Titan Rune final injected-loot add boundary checks `EraPolicy::ItemProvenanceReady()` and `EraPolicy::IsItemAllowed()`.
 - STATIC/CI: Beta/Gamma replacement candidate is chosen and approved before ordinary Heroic equipment is removed.
@@ -496,3 +496,10 @@ Implementation source: Codex `1fbb15f9295084147e3205383a84866e75e33683`; integra
 - RUNTIME TODO: test autonomous profession sessions under all three realm eras.
 - RUNTIME TODO: test ArenaRoster re-gearing with ready, unavailable and future/UNKNOWN provenance.
 - RUNTIME TODO: run `.era audit` against representative clean and quarantined DB state.
+
+### ArenaRoster pre-WotLK preservation follow-up
+
+- STATIC: `EquipSeason` checks `EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk)` before any equipped item is destroyed.
+- STATIC: missing provenance and unreleased WotLK both preserve existing gear.
+- RUNTIME TODO: on Vanilla and TBC dev-era states, invoke ArenaRoster sync/regear against a dirty level-80 bot and verify existing gear is not destructively stripped by the season-gearing layer.
+- RUNTIME TODO: on WotLK, verify legal season gear still equips and no blocked/future/UNKNOWN item is created.

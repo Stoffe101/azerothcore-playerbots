@@ -2,9 +2,17 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-22 — ArenaRoster pre-WotLK destructive-strip guard
+
+Current follow-up: **IMPLEMENTED / exact-head local CI required**.
+- `ArenaRosterGear::EquipSeason()` now checks that WotLK is released before destroying existing equipped items.
+- This closes a dirty-dev-state edge where a level-80 bot could otherwise be stripped on Vanilla/TBC and then have every WotLK arena item rejected by provenance.
+- Static server-contract coverage requires the WotLK release guard to occur before `bot->DestroyItem`.
+- Full arena/PvP lifecycle gating remains separate scope.
+
 ## 2026-09-22 — ERA-07 automated loot/crafting integration
 
-Current integrated candidate: **IMPLEMENTED / exact-head local CI required**.
+Exact SHA `b81954669fa19565fa9d556ca37b7b0d0651b4bb`: **DONE + fully exact-head green**.
 
 - Codex source: `1fbb15f9295084147e3205383a84866e75e33683`, based on `66c13cb1...`.
 - Integration base: fully-green `a8b56bd0674428f7a66b84af600f0ee8098ff821`; all eight Codex-touched source files were unchanged since Codex branched, so no manual conflict merge was required.
@@ -14,7 +22,9 @@ Current integrated candidate: **IMPLEMENTED / exact-head local CI required**.
 - ArenaRoster synthetic gearing now validates provenance before destructive strip and filters every item selected for equip.
 - Audit adds `TITAN_PROTOCOL_LOOT` and queued craft-result coverage.
 - No new overrides or ID/level/quality chronology heuristics were added.
-- Codex-local checks passed, including focused Clang 18 `-Werror` compilation of all changed translation units; integrated exact-SHA CI and live runtime acceptance remain required.
+- Codex-local checks passed, including focused Clang 18 `-Werror` compilation of all changed translation units.
+- Integrated exact-SHA CI: client SUCCESS, backend staging SUCCESS, Group Composer V4 compile SUCCESS on `stoffes-pc`, Integration SUCCESS on `stoffes-pc`.
+- Live runtime acceptance remains required.
 
 ## 2026-09-22 — GearAdvisor Sim Bags transport green
 

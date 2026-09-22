@@ -229,8 +229,12 @@ Current slice: **GearAdvisor v0.3.3 automatic result transport / exact-head loca
 
 ### ERA-07 automated loot/crafting integration
 
-Codex source `1fbb15f9295084147e3205383a84866e75e33683` is integrated on top of the fully-green GearAdvisor/WoWSims checkpoint `a8b56bd0674428f7a66b84af600f0ee8098ff821`. The source files did not diverge from Codex's `66c13cb1` base, so integration is conflict-free. Current status: **IMPLEMENTED / exact-head local CI required**.
+Codex source `1fbb15f9295084147e3205383a84866e75e33683` is integrated on top of the fully-green GearAdvisor/WoWSims checkpoint `a8b56bd0674428f7a66b84af600f0ee8098ff821`. The source files did not diverge from Codex's `66c13cb1` base, so integration is conflict-free. Integrated status: **DONE + exact-head local-CI green at `b81954669fa19565fa9d556ca37b7b0d0651b4bb` / runtime TODO**.
 
 Covered boundaries are Titan protocol loot injection, project-owned AI Guild queued/autonomous crafting and recipe-result checks, ArenaRoster synthetic gearing, and expanded `.era audit` coverage. The slice fails closed on unavailable/future/UNKNOWN provenance and introduces no chronology guesses or new item overrides. Ordinary AzerothCore world loot/recipe tables and broader upstream crafting remain later ERA-07 scope.
 
 The previous GearAdvisor v0.3.3 Sim Bags transport head `a8b56bd0` is fully green on all four required workflows.
+
+### ArenaRoster chronology-preservation follow-up
+
+Current bounded follow-up: **IMPLEMENTED / exact-head local CI required**. ArenaRoster WotLK season gearing now refuses before destructive equipment stripping unless WotLK is actually released. This protects dirty dev-state bots while leaving broader PvP lifecycle containment for its dedicated roadmap work.

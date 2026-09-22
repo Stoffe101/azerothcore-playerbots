@@ -358,7 +358,7 @@ This order makes leaks visible early and avoids burying era logic independently 
 
 ## ERA-07 bounded automated loot/crafting slice
 
-Integration candidate from Codex `1fbb15f9`: **IMPLEMENTED / exact-head local CI required**.
+Codex slice `1fbb15f9`, integrated at `b8195466`: **DONE + exact-head local-CI green / runtime TODO**.
 
 The boundary intentionally protects project-owned automated item creation without pretending the entire 3.3.5a world database has historical chronology:
 - Titan protocol injected loot is centrally provenance-gated;
@@ -368,3 +368,5 @@ The boundary intentionally protects project-owned automated item creation withou
 - ordinary world loot, manual player crafting and ordinary recipe/gameplay tables remain untouched by design in this slice.
 
 This preserves the forward-only Vanilla -> TBC -> WotLK rule while keeping deep DB historical fidelity as an explicit later scope rather than an accidental claim.
+
+ArenaRoster follow-up: the WotLK season-gearing layer now also refuses before destructive stripping when WotLK itself is unreleased. This is a narrow item-generation safety guard, not completion of the broader PvP lifecycle roadmap.

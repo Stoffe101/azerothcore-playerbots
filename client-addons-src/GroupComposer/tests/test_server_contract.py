@@ -1609,3 +1609,5 @@ assert arena_equip_entry.index("EraPolicy::ItemProvenanceReady()") < arena_equip
 assert arena_equip_entry.index("EraPolicy::IsItemAllowed(entry)") < arena_equip_entry.index("bot->EquipNewItem")
 arena_equip_season = section(ARENA_GEAR, "bool EquipSeason(", "} // namespace ArenaRosterGear")
 assert arena_equip_season.index("EraPolicy::ItemProvenanceReady()") < arena_equip_season.index("bot->DestroyItem")
+assert "EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk)" in arena_equip_season
+assert arena_equip_season.index("EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk)") < arena_equip_season.index("bot->DestroyItem")

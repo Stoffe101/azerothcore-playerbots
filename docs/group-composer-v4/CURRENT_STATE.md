@@ -4,7 +4,7 @@ _Last rewritten: 2026-09-22_
 
 ## Current ERA-07 automated loot/crafting integration candidate
 
-Status: **IMPLEMENTED / exact-head local CI required**.
+Status: **DONE + exact-head local-CI green at `b81954669fa19565fa9d556ca37b7b0d0651b4bb`**.
 
 Codex source commit: `1fbb15f9295084147e3205383a84866e75e33683` (`feat: extend ERA-07 to automated loot and crafting`), based on `66c13cb1...`. The eight touched source files were byte-identical between that base and the current fully-green WoWSims/GearAdvisor head `a8b56bd0...`, so the source integration is conflict-free.
 
@@ -17,9 +17,17 @@ Covered boundaries:
 - `.era audit` gains `TITAN_PROTOCOL_LOOT` plus queued craft-result coverage in `AI_GUILD_ITEM_HELPERS`;
 - no new chronology guesses or item overrides were introduced.
 
-Codex-local static, codestyle, provenance self-test, Python and focused Clang 18 `-Werror` checks passed before integration. Authoritative integrated CI for the new combined head is still required, as is runtime acceptance across Vanilla/TBC/WotLK.
+Codex-local static, codestyle, provenance self-test, Python and focused Clang 18 `-Werror` checks passed before integration. The integrated head `b8195466...` then passed all four required workflows: client checks, backend staging, Group Composer V4 compile on `stoffes-pc`, and Integration build on `stoffes-pc`. Runtime acceptance across Vanilla/TBC/WotLK remains required.
 
 Still outside this bounded slice: ordinary AzerothCore world loot/recipe tables, database-wide historical loot/recipe fidelity, runtime provenance resolution for `CREATE_ITEM_2` loot-template outputs, broader upstream Playerbots crafting behavior outside project-owned AI Guild orchestration, and remaining ERA-13 world-content/spawn containment. ERA-07 therefore remains **PARTIAL / IN PROGRESS**.
+
+### ArenaRoster pre-WotLK preservation follow-up
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+Source review after the green integration found one dirty-dev edge in the bounded ArenaRoster item-generation path: `EquipSeason()` already failed before stripping gear when chronology was unavailable, but a level-80 dirty bot could still reach the destructive strip on a Vanilla/TBC realm before every WotLK season item was individually rejected. The follow-up adds an explicit `EraPolicy::IsEraReleased(Wotlk)` guard before the strip so existing gear is preserved until WotLK is actually released. A static ordering contract verifies the WotLK release check occurs before `DestroyItem`.
+
+This does not claim full ArenaRoster/PvP lifecycle containment; arena feature availability, pool behavior and broader PvP-era orchestration remain separate roadmap work.
 
 
 ## Current integrated ERA-07 vendor/reward candidate

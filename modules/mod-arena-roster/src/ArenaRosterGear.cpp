@@ -203,6 +203,13 @@ bool EquipSeason(Player* bot, uint8_t specTab, ArenaSeason season)
             bot->GetName());
         return false;
     }
+    if (!EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk))
+    {
+        LOG_WARN("playerbots",
+            "[ArenaRoster] Not gearing {}: WotLK arena seasons are not released in the current realm era; existing gear was preserved.",
+            bot->GetName());
+        return false;
+    }
     // Gate BEFORE the strip, and at 80 (not 70): the ilvl >= 190 candidate floor means every
     // item this engine can produce requires level 80 — a lower gate would let a 70-79 bot get
     // fully stripped, then fail every equip probe and end up naked.
