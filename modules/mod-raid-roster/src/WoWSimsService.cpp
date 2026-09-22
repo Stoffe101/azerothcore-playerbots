@@ -892,6 +892,26 @@ void TickAsyncResults()
                     slotIndex,
                     supportStatus);
 
+                json const statDeltas = best.value("statDeltas", json::array());
+                if (statDeltas.is_array())
+                {
+                    for (json const& stat : statDeltas)
+                    {
+                        if (!stat.is_object())
+                            continue;
+                        handler.PSendSysMessage(
+                            "[GA]|SIMSTAT|{}|{}|{}|{}|{:.6f}|{:.6f}|{:.6f}",
+                            result.id,
+                            ProtocolField(stat.value("key", std::string("?"))),
+                            ProtocolField(stat.value("label", std::string("Stat"))),
+                            ProtocolField(stat.value("unit", std::string("points"))),
+                            stat.value("baseline", 0.0),
+                            stat.value("candidate", 0.0),
+                            stat.value("delta", 0.0));
+                    }
+                }
+                handler.PSendSysMessage("[GA]|SIMDONE|{}", result.id);
+
                 message << ", best=item " << itemId
                         << " -> slot " << slotIndex
                         << ", delta=" << best.value("delta", 0.0)

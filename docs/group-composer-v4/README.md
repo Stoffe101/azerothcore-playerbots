@@ -247,4 +247,9 @@ GearAdvisor v0.3.4 status: **DONE + exact-head local-CI green at `2bff0a68583222
 
 ### WoWSims finalized stat-delta foundation
 
-Current slice: **IMPLEMENTED / exact-head local CI required**. The private service now builds one tiny `ComputeStats` helper for each exact pinned Vanilla/TBC/WotLK engine. Sim Bags computes baseline finalized character stats once, computes finalized stats for each candidate request, and attaches structured before/after/delta records using era-specific pinned Stat enum layouts. This is service-side only for now; GearAdvisor transport follows after the three real engine images prove the helper binaries.
+Status: **DONE + exact-head local-CI green at `0bb9b39625a7aa7c9def6756463ad71f83373963`**. The private service now builds one tiny `ComputeStats` helper for each exact pinned Vanilla/TBC/WotLK engine. Sim Bags computes baseline finalized character stats once, computes finalized stats for each candidate request, and attaches structured before/after/delta records using era-specific pinned Stat enum layouts. This is service-side only for now; GearAdvisor transport follows after the three real engine images prove the helper binaries.
+
+
+### GearAdvisor v0.3.5 finalized stat tradeoffs
+
+Current slice: **IMPLEMENTED / exact-head local CI required**. The worldserver now forwards the selected Sim Bags candidate's structured finalized stat deltas as compact `[GA]|SIMSTAT` records followed by `SIMDONE`. GearAdvisor buffers those records for the matching async job and renders the actual arithmetic item tradeoffs, for example `Spell Power +46 · Spell Hit Rating -18`. These are factual before/after stat changes from the pinned engine's `ComputeStats`, not static stat weights or automatic good/bad judgments. Existing unvalidated-vs-SIM_BACKED authority wording and stale-result rejection remain unchanged.

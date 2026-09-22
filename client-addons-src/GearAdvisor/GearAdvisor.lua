@@ -696,6 +696,7 @@ notesText:SetJustifyV("TOP")
 
 local simulationStatusText = nil
 local protocolFilterInstalled = false
+local pendingSimulationResults = {}
 
 local SLOT_LABELS = {
     [0] = "Head", [1] = "Neck", [2] = "Shoulders", [3] = "Back", [4] = "Chest",
@@ -776,6 +777,31 @@ end)
 
 local hooked = false
 
+local function FormatSignedStat(value)
+    value = tonumber(value) or 0
+    local decimals = math.abs(value) < 10 and 1 or 0
+    return (value > 0 and "+" or "") .. Number(value, decimals)
+end
+
+local function SimulationStatTradeoffs(deltas)
+    if type(deltas) ~= "table" or #deltas == 0 then
+        return "|cff888888Finalized stat changes were not returned for this candidate.|r"
+    end
+
+    local parts = {}
+    local shown = math.min(6, #deltas)
+    for i = 1, shown do
+        local stat = deltas[i]
+        local label = tostring(stat.label or stat.key or "Stat")
+        parts[#parts + 1] = label .. " " .. FormatSignedStat(stat.delta)
+    end
+    local text = "|cffb8c7d9Finalized stat changes:|r " .. table.concat(parts, " · ")
+    if #deltas > shown then
+        text = text .. " · +" .. tostring(#deltas - shown) .. " more"
+    end
+    return text
+end
+
 local function SimulationCapContext()
     local classToken, tab = DetectSpec()
     local profile = ResolveProfile(classToken, tab)
@@ -833,6 +859,7 @@ function GearAdvisor335_ApplySimulationResult(result)
     if not authoritative then
         text = text .. "\n|cffffd24aDiagnostic only:|r model status " .. support .. ". Skrra mechanics validation is still required."
     end
+    text = text .. "\n" .. SimulationStatTradeoffs(result.statDeltas)
     text = text .. "\n" .. SimulationCapContext()
     if result.explanation and result.explanation ~= "" then
         text = text .. "\n" .. result.explanation
@@ -854,10 +881,13 @@ local function HandleSimulationProtocol(message)
     local kind = fields[2]
 
     if kind == "SIMQUEUE" then
+        local jobId = tonumber(fields[3])
+        if jobId then pendingSimulationResults[jobId] = nil end
         SetSimulationStatus("|cff67b7ffSim Bags:|r job " .. tostring(fields[3] or "?") .. " queued. You can keep playing while it runs.")
     elseif kind == "SIM" then
-        GearAdvisor335_ApplySimulationResult({
-            jobId = tonumber(fields[3]),
+        local jobId = tonumber(fields[3])
+        local result = {
+            jobId = jobId,
             metric = fields[4],
             baseline = tonumber(fields[5]),
             candidate = tonumber(fields[6]),
@@ -866,7 +896,30 @@ local function HandleSimulationProtocol(message)
             slotIndex = tonumber(fields[9]),
             support = fields[10],
             authoritative = fields[10] == "SIM_BACKED",
-        })
+            statDeltas = {},
+        }
+        if jobId then pendingSimulationResults[jobId] = result end
+        SetSimulationStatus("|cff67b7ffSim Bags:|r performance result received; assembling finalized stat changes...")
+    elseif kind == "SIMSTAT" then
+        local jobId = tonumber(fields[3])
+        local result = jobId and pendingSimulationResults[jobId]
+        if result then
+            result.statDeltas[#result.statDeltas + 1] = {
+                key = fields[4],
+                label = fields[5],
+                unit = fields[6],
+                baseline = tonumber(fields[7]),
+                candidate = tonumber(fields[8]),
+                delta = tonumber(fields[9]),
+            }
+        end
+    elseif kind == "SIMDONE" then
+        local jobId = tonumber(fields[3])
+        local result = jobId and pendingSimulationResults[jobId]
+        if result then
+            GearAdvisor335_ApplySimulationResult(result)
+            pendingSimulationResults[jobId] = nil
+        end
     elseif kind == "SIMNONE" then
         local metric = string.upper(tostring(fields[4] or "DPS"))
         local baseline = Number(tonumber(fields[5]) or 0, 1)
@@ -879,9 +932,13 @@ local function HandleSimulationProtocol(message)
             "\n" .. SimulationCapContext()
         )
     elseif kind == "SIMSTALE" then
+        local jobId = tonumber(fields[3])
+        if jobId then pendingSimulationResults[jobId] = nil end
         SetSimulationStatus("|cffffd24aSim Bags result discarded:|r your character or bags changed while job " ..
             tostring(fields[3] or "?") .. " was running. Run Sim Bags again for current state.")
     elseif kind == "SIMERROR" then
+        local jobId = tonumber(fields[3])
+        if jobId then pendingSimulationResults[jobId] = nil end
         SetSimulationStatus("|cffff6666Sim Bags failed:|r " .. tostring(fields[4] or "unknown server error"))
     else
         return false
@@ -1076,6 +1133,7 @@ event:SetScript("OnEvent", function(self, eventName, arg1)
     end
     if eventName == "PLAYER_EQUIPMENT_CHANGED" or eventName == "PLAYER_TALENT_UPDATE" or eventName == "ACTIVE_TALENT_GROUP_CHANGED" then
         simulationStatusText = nil
+        pendingSimulationResults = {}
     end
     if (eventName == "UNIT_STATS" or eventName == "UNIT_ATTACK_POWER" or eventName == "UNIT_RANGEDDAMAGE") and arg1 and arg1 ~= "player" then
         return

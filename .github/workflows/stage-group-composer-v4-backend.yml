@@ -102,6 +102,8 @@ jobs:
           grep -q 'QueueBagComparison' modules/mod-raid-roster/src/WoWSimsService.cpp
           grep -q 'TickAsyncResults' modules/mod-raid-roster/src/WoWSimsService.cpp
           grep -Fq '[GA]|SIM|' modules/mod-raid-roster/src/WoWSimsService.cpp
+          grep -Fq '[GA]|SIMSTAT|' modules/mod-raid-roster/src/WoWSimsService.cpp
+          grep -Fq '[GA]|SIMDONE|' modules/mod-raid-roster/src/WoWSimsService.cpp
           grep -Fq '[GA]|SIMSTALE|' modules/mod-raid-roster/src/WoWSimsService.cpp
           grep -Fq '[GA]|SIMQUEUE|' modules/mod-raid-roster/src/WoWSimsCommand.cpp
           grep -q 'bagCandidateSnapshot' modules/mod-raid-roster/src/WoWSimsService.cpp

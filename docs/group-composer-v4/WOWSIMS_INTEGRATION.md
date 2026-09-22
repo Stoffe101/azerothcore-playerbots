@@ -445,3 +445,15 @@ Sim Bags contract:
 - enum layouts are not shared across eras because the upstream projects intentionally differ.
 
 This provides factual stat trade data, not stat weights. Whether a +rating/-rating trade is a good choice remains governed by the actual simulation result and, once validated, the SIM_BACKED authority contract.
+
+
+## Finalized stat-delta client transport
+
+The service-side `statDeltas` can contain several records and are intentionally not serialized into one oversized Wrath chat message. The 3.3.5a transport contract is:
+1. send the existing `SIM` performance/result header;
+2. send one `SIMSTAT` record per non-zero finalized stat delta, containing job ID, normalized key, human label, unit, baseline, candidate and delta;
+3. finish with `SIMDONE`;
+4. GearAdvisor buffers records by job ID and renders only after `SIMDONE`;
+5. stale/error/character-change paths discard buffered records.
+
+The client presents these as factual arithmetic tradeoffs. A positive stat delta is not automatically labeled beneficial and a negative stat delta is not automatically labeled harmful; the simulation performance result remains the only performance signal. Current cap context remains pre-swap-only until rating/percentage/expertise/defense unit reconciliation is proven for each cap family.

@@ -663,7 +663,7 @@ Next simulator UX slice after this is green: decide whether to transport structu
 
 ## WoWSims finalized stat-delta foundation
 
-Status: **IMPLEMENTED / exact-head local CI required**.
+Status: **DONE + exact-head local-CI green at `0bb9b39625a7aa7c9def6756463ad71f83373963`**.
 
 The next explanation boundary now uses the pinned simulators themselves instead of recreating item/stat math:
 - a repository-owned Go template is compiled inside each exact pinned WoWSims source tree;
@@ -675,3 +675,21 @@ The next explanation boundary now uses the pinned simulators themselves instead 
 - stat indexes are explicitly pinned per engine/era because Classic, TBC and WotLK do not share one Stat enum layout;
 - the service still does not claim static stat weights or SIM_BACKED authority;
 - worldserver/GearAdvisor transport of these structured deltas is deliberately the next slice, after the real image proves all three helpers compile and execute.
+
+
+## GearAdvisor v0.3.5 finalized stat-delta transport
+
+Status: **IMPLEMENTED / exact-head local CI required**.
+
+This slice carries the already-green service-side `statDeltas` into the Wrath client without trying to squeeze structured JSON into one chat packet:
+- the worldserver sends one compact `[GA]|SIMSTAT|job|key|label|unit|baseline|candidate|delta` record per non-zero finalized stat change;
+- `[GA]|SIMDONE|job` terminates the batch;
+- GearAdvisor buffers stat records by async job ID and renders only after the completion marker;
+- queue, stale and error paths clear the buffered state safely;
+- finalized changes are displayed as arithmetic tradeoffs, not colored or classified as intrinsically good/bad;
+- the display is capped to six stat changes with a deterministic `+N more` suffix to fit the 3.3.5a side panel;
+- v0.3.4 pre-swap cap context remains present, but no cap-crossing claim is made yet because the cap representation still needs unit-safe reconciliation;
+- SIM_BACKED remains the only state allowed to use authoritative upgrade/down-grade language;
+- GearAdvisor addon version advances to 0.3.5.
+
+Next: reconcile the finalized rating deltas with GearAdvisor's cap units where this can be proven safely, then start route-by-route mechanics validation and tank survivability authority work.

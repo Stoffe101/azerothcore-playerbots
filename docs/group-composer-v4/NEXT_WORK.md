@@ -171,7 +171,8 @@ Only build these if testing shows they add real value:
 - DONE + exact-head green at `d449136f`: asynchronous Sim Bags compare queue off the world thread with one baseline reused across candidate swaps.
 - DONE + exact-head green at `a8b56bd0`: GearAdvisor v0.3.3 result transport, explicit Sim Bags action and stale-snapshot rejection.
 - DONE + exact-head green at `2bff0a68`: GearAdvisor v0.3.4 honest pre-swap cap context.
-- CURRENT / local CI: pinned-engine `ComputeStats` helpers + service-side finalized before/after `statDeltas` for Sim Bags candidates.
-- NEXT: transport structured stat deltas through the worldserver protocol into GearAdvisor and render actual item tradeoffs.
+- DONE + exact-head green at `0bb9b396`: pinned-engine `ComputeStats` helpers + service-side finalized before/after `statDeltas` for Sim Bags candidates.
+- CURRENT / local CI: GearAdvisor v0.3.5 structured `SIMSTAT` transport + finalized item-tradeoff rendering.
+- NEXT: reconcile safe rating-based cap crossings where service/client units can be proven equivalent.
 - NEXT validation: define/validate tank survivability authority before automatic tank item comparisons are enabled.
 - NEXT authority: validate individual era/spec mechanics before changing ENGINE_PRESENT_UNVALIDATED routes to SIM_BACKED.

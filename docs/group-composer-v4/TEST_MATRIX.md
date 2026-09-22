@@ -526,7 +526,23 @@ Implementation source: Codex `1fbb15f9295084147e3205383a84866e75e33683`; integra
 - UNIT: candidate results expose `statDeltas` without exposing the internal candidate request.
 - REAL-IMAGE CI: Docker builds `wowstats-classic`, `wowstats-tbc` and `wowstats-wotlk` from exact pinned source commits.
 - REAL-IMAGE CI: service health requires `simReady` + `statsReady` for Vanilla/TBC/WotLK.
-- REAL-IMAGE TODO/CI: all three helpers initialize the registered model set and `ComputeStats` can parse the pinned request schema.
-- TODO transport: worldserver protocol forwards selected structured stat deltas to GearAdvisor.
+- PASS (exact-head `0bb9b396`): all three helpers initialize the registered model set and `ComputeStats` parses a pinned request in the real service image.
+- CURRENT STATIC/CI: worldserver protocol forwards selected structured stat deltas to GearAdvisor via `SIMSTAT` + `SIMDONE`.
 - TODO runtime: compare service stat deltas for a known bag swap against the same before/after gear in the public pinned WoWSims UI/engine.
 - TODO: do not infer cap crossing until GearAdvisor reconciles the relevant stat unit safely with its live cap representation.
+
+
+### GearAdvisor v0.3.5 finalized stat tradeoff transport
+
+- STATIC: server emits one `SIMSTAT` record per structured finalized stat delta for the selected best candidate.
+- STATIC: server emits `SIMDONE` after all stat records.
+- STATIC: protocol strings are sanitized and numeric values remain explicit baseline/candidate/delta fields.
+- STATIC: GearAdvisor buffers records by job ID and does not render the final result until `SIMDONE`.
+- STATIC: stale/error/equipment/talent changes clear pending buffered results.
+- STATIC: UI renders up to six deterministic finalized stat changes plus a `+N more` suffix.
+- STATIC: arithmetic +/- is not treated as intrinsic stat value and no static weights are introduced.
+- STATIC: current cap line remains explicitly pre-swap-only; no candidate cap crossing is claimed by this slice.
+- TODO runtime: a known WotLK caster swap displays the same Spell Power/Hit/Crit/Haste deltas as the service response.
+- TODO runtime: a physical DPS swap displays the corresponding AP/Hit/Crit/Haste/ArP/Expertise changes cleanly.
+- TODO runtime: enough changed stats to exceed six produces a stable `+N more` summary without clipping the panel.
+- TODO runtime: stale/error results leave no orphaned partial stat records in GearAdvisor.

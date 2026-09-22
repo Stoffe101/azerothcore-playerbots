@@ -2,6 +2,25 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-22 — GearAdvisor v0.3.5 finalized stat tradeoffs
+
+Current slice: **IMPLEMENTED / exact-head local CI required**.
+- Worldserver emits compact `SIMSTAT` records for the best Sim Bags candidate and a final `SIMDONE` marker.
+- GearAdvisor buffers records by job ID and renders once the batch completes.
+- The panel shows real finalized stat arithmetic from pinned-engine ComputeStats, e.g. Spell Power +46 / Spell Hit Rating -18.
+- No static stat weights, no inferred good/bad stat coloring and no cap-crossing claim are introduced.
+- Existing stale-result, async job and SIM_BACKED authority contracts remain intact.
+- GearAdvisor version advances to 0.3.5.
+
+## 2026-09-22 — WoWSims finalized stat-delta foundation green
+
+Exact SHA `0bb9b39625a7aa7c9def6756463ad71f83373963`: **DONE + fully exact-head green**.
+- Group Composer client checks: SUCCESS.
+- Stage Group Composer V4 backend: SUCCESS, including all three pinned ComputeStats helpers in the real image.
+- Integration build: SUCCESS on `stoffes-pc`.
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`.
+- Service-side finalized before/after stat deltas are now proven and ready for client transport.
+
 ## 2026-09-22 — WoWSims finalized stat-delta foundation
 
 Current slice: **IMPLEMENTED / exact-head local CI required**.
