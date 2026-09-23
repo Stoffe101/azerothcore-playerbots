@@ -33,12 +33,14 @@ def main() -> int:
     core = Path(sys.argv[1]).resolve()
     header = core / "modules/mod-playerbots/src/Bot/Factory/PlayerbotFactory.h"
     source = core / "modules/mod-playerbots/src/Bot/Factory/PlayerbotFactory.cpp"
+    craft_source = core / "modules/mod-playerbots/src/Ai/Base/Actions/CastCustomSpellAction.cpp"
 
-    if not header.is_file() or not source.is_file():
-        raise SystemExit(f"ERROR: PlayerbotFactory sources not found under {core}")
+    if not header.is_file() or not source.is_file() or not craft_source.is_file():
+        raise SystemExit(f"ERROR: Playerbots sources not found under {core}")
 
     h = header.read_text(encoding="utf-8")
     cpp = source.read_text(encoding="utf-8")
+    craft = craft_source.read_text(encoding="utf-8")
 
     h = ensure_replace(
         h,
@@ -52,9 +54,12 @@ def main() -> int:
     // realm chronology; function pointers keep this module independent from any specific era mod.
     using ItemPolicyReadyPredicate = bool (*)();
     using ItemAllowedPredicate = bool (*)(uint32);
-    static void SetItemPolicyPredicates(ItemPolicyReadyPredicate readyPredicate, ItemAllowedPredicate allowedPredicate);
+    using CraftSpellAllowedPredicate = bool (*)(uint32);
+    static void SetItemPolicyPredicates(ItemPolicyReadyPredicate readyPredicate, ItemAllowedPredicate allowedPredicate,
+        CraftSpellAllowedPredicate craftSpellAllowedPredicate);
     static bool IsExternalItemPolicyReady();
     static bool IsItemAllowedByExternalPolicy(uint32 itemId);
+    static bool IsAutomatedCraftSpellAllowed(uint32 spellId);
 """,
         "using ItemPolicyReadyPredicate = bool (*)();",
         "public item-policy API",
@@ -66,6 +71,7 @@ def main() -> int:
         """std::vector<uint32> PlayerbotFactory::ccBreakTrinketCache;
 static PlayerbotFactory::ItemPolicyReadyPredicate g_itemPolicyReadyPredicate = nullptr;
 static PlayerbotFactory::ItemAllowedPredicate g_itemAllowedPredicate = nullptr;
+static PlayerbotFactory::CraftSpellAllowedPredicate g_craftSpellAllowedPredicate = nullptr;
 """,
         "g_itemPolicyReadyPredicate = nullptr;",
         "item-policy callback storage",
@@ -267,10 +273,12 @@ static PlayerbotFactory::ItemAllowedPredicate g_itemAllowedPredicate = nullptr;
 {
 """,
         """void PlayerbotFactory::SetItemPolicyPredicates(
-    ItemPolicyReadyPredicate readyPredicate, ItemAllowedPredicate allowedPredicate)
+    ItemPolicyReadyPredicate readyPredicate, ItemAllowedPredicate allowedPredicate,
+    CraftSpellAllowedPredicate craftSpellAllowedPredicate)
 {
     g_itemPolicyReadyPredicate = readyPredicate;
     g_itemAllowedPredicate = allowedPredicate;
+    g_craftSpellAllowedPredicate = craftSpellAllowedPredicate;
 }
 
 bool PlayerbotFactory::IsExternalItemPolicyReady()
@@ -284,6 +292,11 @@ bool PlayerbotFactory::IsItemAllowedByExternalPolicy(uint32 itemId)
            (!g_itemAllowedPredicate || g_itemAllowedPredicate(itemId));
 }
 
+bool PlayerbotFactory::IsAutomatedCraftSpellAllowed(uint32 spellId)
+{
+    return g_craftSpellAllowedPredicate && g_craftSpellAllowedPredicate(spellId);
+}
+
 void PlayerbotFactory::AutoGear(Player* bot, uint32 itemQuality, uint32 ilvl, bool incremental, bool secondChance,
                                 bool applyFinishers)
 {
@@ -293,6 +306,107 @@ void PlayerbotFactory::AutoGear(Player* bot, uint32 itemQuality, uint32 ilvl, bo
 """,
         "void PlayerbotFactory::SetItemPolicyPredicates(",
         "AutoGear callback implementation",
+    )
+
+    h = ensure_replace(
+        h,
+        "    static void SetItemPolicyPredicates(ItemPolicyReadyPredicate readyPredicate, ItemAllowedPredicate allowedPredicate);\n",
+        """    using CraftSpellAllowedPredicate = bool (*)(uint32);
+    static void SetItemPolicyPredicates(ItemPolicyReadyPredicate readyPredicate, ItemAllowedPredicate allowedPredicate,
+        CraftSpellAllowedPredicate craftSpellAllowedPredicate);
+    static bool IsAutomatedCraftSpellAllowed(uint32 spellId);
+""",
+        "using CraftSpellAllowedPredicate = bool (*)(uint32);",
+        "existing factory craft callback API",
+    )
+    cpp = ensure_replace(
+        cpp,
+        "static PlayerbotFactory::ItemAllowedPredicate g_itemAllowedPredicate = nullptr;\n",
+        """static PlayerbotFactory::ItemAllowedPredicate g_itemAllowedPredicate = nullptr;
+static PlayerbotFactory::CraftSpellAllowedPredicate g_craftSpellAllowedPredicate = nullptr;
+""",
+        "g_craftSpellAllowedPredicate = nullptr;",
+        "existing factory craft callback storage",
+    )
+    cpp = ensure_replace(
+        cpp,
+        """void PlayerbotFactory::SetItemPolicyPredicates(
+    ItemPolicyReadyPredicate readyPredicate, ItemAllowedPredicate allowedPredicate)
+{
+    g_itemPolicyReadyPredicate = readyPredicate;
+    g_itemAllowedPredicate = allowedPredicate;
+}
+""",
+        """void PlayerbotFactory::SetItemPolicyPredicates(
+    ItemPolicyReadyPredicate readyPredicate, ItemAllowedPredicate allowedPredicate,
+    CraftSpellAllowedPredicate craftSpellAllowedPredicate)
+{
+    g_itemPolicyReadyPredicate = readyPredicate;
+    g_itemAllowedPredicate = allowedPredicate;
+    g_craftSpellAllowedPredicate = craftSpellAllowedPredicate;
+}
+""",
+        "g_craftSpellAllowedPredicate = craftSpellAllowedPredicate;",
+        "existing factory craft callback registration",
+    )
+    cpp = ensure_replace(
+        cpp,
+        """void PlayerbotFactory::AutoGear(Player* bot, uint32 itemQuality, uint32 ilvl, bool incremental, bool secondChance,
+                                bool applyFinishers)
+{
+""",
+        """bool PlayerbotFactory::IsAutomatedCraftSpellAllowed(uint32 spellId)
+{
+    return g_craftSpellAllowedPredicate && g_craftSpellAllowedPredicate(spellId);
+}
+
+void PlayerbotFactory::AutoGear(Player* bot, uint32 itemQuality, uint32 ilvl, bool incremental, bool secondChance,
+                                bool applyFinishers)
+{
+""",
+        "bool PlayerbotFactory::IsAutomatedCraftSpellAllowed(uint32 spellId)",
+        "existing factory craft callback implementation",
+    )
+
+    craft = ensure_replace(
+        craft,
+        '#include "Playerbots.h"\n',
+        '#include "Playerbots.h"\n#include "PlayerbotFactory.h"\n',
+        '#include "PlayerbotFactory.h"',
+        "craft action item-policy include",
+    )
+    craft = ensure_replace(
+        craft,
+        """bool CastRandomSpellAction::AcceptSpell(SpellInfo const* spellInfo)
+{
+    bool isTradeSkill = spellInfo->Effects[EFFECT_0].Effect == SPELL_EFFECT_CREATE_ITEM &&
+""",
+        """bool CastRandomSpellAction::AcceptSpell(SpellInfo const* spellInfo)
+{
+    for (uint8 effect = 0; effect < MAX_SPELL_EFFECTS; ++effect)
+    {
+        auto const kind = spellInfo->Effects[effect].Effect;
+        if ((kind == SPELL_EFFECT_CREATE_ITEM || kind == SPELL_EFFECT_CREATE_ITEM_2 ||
+             kind == SPELL_EFFECT_CREATE_RANDOM_ITEM) &&
+            !PlayerbotFactory::IsAutomatedCraftSpellAllowed(spellInfo->Id))
+            return false;
+    }
+
+    bool isTradeSkill = spellInfo->Effects[EFFECT_0].Effect == SPELL_EFFECT_CREATE_ITEM &&
+""",
+        "kind == SPELL_EFFECT_CREATE_ITEM_2",
+        "generic random spell item-creation guard",
+    )
+    craft = ensure_replace(
+        craft,
+        """    return spellInfo->Effects[EFFECT_0].Effect == SPELL_EFFECT_CREATE_ITEM && spellInfo->ReagentCount[EFFECT_0] > 0 &&
+           spellInfo->SchoolMask == 0;
+""",
+        """    return spellInfo->Effects[EFFECT_0].Effect == SPELL_EFFECT_CREATE_ITEM && spellInfo->ReagentCount[EFFECT_0] > 0 &&
+           spellInfo->SchoolMask == 0 && PlayerbotFactory::IsAutomatedCraftSpellAllowed(spellInfo->Id);
+""",
+        "PlayerbotFactory::IsAutomatedCraftSpellAllowed(spellInfo->Id)",
+        "autonomous craft action guard",
     )
 
     required_header = (
@@ -319,6 +433,7 @@ void PlayerbotFactory::AutoGear(Player* bot, uint32 itemQuality, uint32 ilvl, bo
 
     header.write_text(h, encoding="utf-8")
     source.write_text(cpp, encoding="utf-8")
+    craft_source.write_text(craft, encoding="utf-8")
     print("Applied ERA-07 PlayerbotFactory item-policy bridge after complete patch stack")
     return 0
 

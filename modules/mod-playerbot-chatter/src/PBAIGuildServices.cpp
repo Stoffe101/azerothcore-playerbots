@@ -613,67 +613,20 @@ bool RequestExists(uint32 guildId, uint32 itemId)
         guildId, itemId));
 }
 
-bool IsRecipeItemAllowedForSpell(uint32 spellId)
-{
-    if (!EraPolicy::ItemProvenanceReady())
-        return false;
-
-    static std::unordered_map<uint32, std::vector<uint32>> const recipeItemsBySpell = []
-    {
-        std::unordered_map<uint32, std::vector<uint32>> result;
-        for (auto const& [itemEntry, proto] : *sObjectMgr->GetItemTemplateStore())
-        {
-            if (proto.Class != ITEM_CLASS_RECIPE)
-                continue;
-
-            for (uint8 slot = 0; slot < MAX_ITEM_PROTO_SPELLS; ++slot)
-            {
-                if (proto.Spells[slot].SpellId <= 0 ||
-                    proto.Spells[slot].SpellTrigger != ITEM_SPELLTRIGGER_LEARN_SPELL_ID)
-                    continue;
-                result[uint32(proto.Spells[slot].SpellId)].push_back(itemEntry);
-            }
-        }
-        return result;
-    }();
-
-    // Trainer-taught recipes have no recipe item for central item provenance to classify. Their
-    // created item is still checked at this boundary. If recipe items do exist, fail closed unless
-    // at least one legal recipe item can teach the spell.
-    auto itr = recipeItemsBySpell.find(spellId);
-    if (itr == recipeItemsBySpell.end())
-        return true;
-    return std::any_of(itr->second.begin(), itr->second.end(), [](uint32 itemEntry)
-    {
-        return EraPolicy::IsItemAllowed(itemEntry);
-    });
-}
-
 bool IsCraftSpellAllowed(uint32 spellId, SpellInfo const* info, uint32 requestedItemId)
 {
-    if (!info || !EraPolicy::ItemProvenanceReady())
+    EraPolicy::CraftOutputResolution const outputs = EraPolicy::ResolveCraftOutputs(info);
+    if (!outputs.resolved || !outputs.allowed || !EraPolicy::IsAutomatedCraftSpellAllowed(spellId))
         return false;
 
-    bool createsItem = false;
     bool createsRequestedItem = requestedItemId == 0;
-    for (uint8 effect = 0; effect < MAX_SPELL_EFFECTS; ++effect)
+    for (uint32 resultItemId : outputs.itemIds)
     {
-        // CREATE_ITEM_2 resolves its output from a runtime loot template. Central provenance
-        // cannot prove that result here, so AI Guild automation does not cast those spells.
-        if (info->Effects[effect].Effect == SPELL_EFFECT_CREATE_ITEM_2)
-            return false;
-        if (info->Effects[effect].Effect != SPELL_EFFECT_CREATE_ITEM)
-            continue;
-
-        createsItem = true;
-        uint32 const resultItemId = info->Effects[effect].ItemType;
-        if (!resultItemId || !EraPolicy::IsItemAllowed(resultItemId))
-            return false;
         if (resultItemId == requestedItemId)
             createsRequestedItem = true;
     }
 
-    return createsItem && createsRequestedItem && IsRecipeItemAllowedForSpell(spellId);
+    return createsRequestedItem;
 }
 
 bool FindCraftSpell(Player* bot, uint32 itemId, uint32& spellId)

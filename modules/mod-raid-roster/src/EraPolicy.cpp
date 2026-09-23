@@ -9,12 +9,15 @@
 #include "PlayerbotAIConfig.h"
 #include "RandomBotLevelMgr.h"
 #include "SharedDefines.h"
+#include "SpellInfo.h"
+#include "SpellMgr.h"
 
 #include <algorithm>
 #include <cctype>
 #include <limits>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -588,6 +591,76 @@ bool IsItemAllowed(uint32 itemId)
 {
     Era itemEra;
     return TryItemEra(itemId, itemEra) && IsEraReleased(itemEra);
+}
+
+CraftOutputResolution ResolveCraftOutputs(SpellInfo const* spellInfo)
+{
+    CraftOutputResolution result;
+    result.provenanceReady = ItemProvenanceReady();
+    if (!spellInfo || !result.provenanceReady)
+        return result;
+
+    bool createsItem = false;
+    for (uint8 effect = 0; effect < MAX_SPELL_EFFECTS; ++effect)
+    {
+        auto const& spellEffect = spellInfo->Effects[effect];
+        if (spellEffect.Effect == SPELL_EFFECT_CREATE_RANDOM_ITEM)
+            return result;
+        if (spellEffect.Effect != SPELL_EFFECT_CREATE_ITEM &&
+            spellEffect.Effect != SPELL_EFFECT_CREATE_ITEM_2)
+            continue;
+
+        createsItem = true;
+        if (spellEffect.Effect == SPELL_EFFECT_CREATE_ITEM_2 && spellInfo->IsLootCrafting())
+        {
+            // EffectCreateItem2 calls AutoStoreLoot(spellId, LootTemplates_Spell). The loaded
+            // LootTemplate keeps grouped entries and recursive references private, with no
+            // public enumeration API. A fresh SQL read cannot prove the loaded runtime set.
+            // Keep this result unresolved before any automated cast can consume reagents.
+            return result;
+        }
+
+        if (!spellEffect.ItemType)
+            return result;
+        result.itemIds.push_back(spellEffect.ItemType);
+    }
+
+    result.resolved = createsItem;
+    result.allowed = result.resolved &&
+        std::all_of(result.itemIds.begin(), result.itemIds.end(), [](uint32 itemId)
+        {
+            return IsItemAllowed(itemId);
+        });
+    return result;
+}
+
+bool IsAutomatedCraftSpellAllowed(uint32 spellId)
+{
+    CraftOutputResolution const outputs = ResolveCraftOutputs(sSpellMgr->GetSpellInfo(spellId));
+    if (!outputs.resolved || !outputs.allowed)
+        return false;
+
+    static std::unordered_map<uint32, std::vector<uint32>> const recipeItemsBySpell = []
+    {
+        std::unordered_map<uint32, std::vector<uint32>> result;
+        for (auto const& [itemEntry, proto] : *sObjectMgr->GetItemTemplateStore())
+        {
+            if (proto.Class != ITEM_CLASS_RECIPE)
+                continue;
+            for (uint8 slot = 0; slot < MAX_ITEM_PROTO_SPELLS; ++slot)
+                if (proto.Spells[slot].SpellId > 0 &&
+                    proto.Spells[slot].SpellTrigger == ITEM_SPELLTRIGGER_LEARN_SPELL_ID)
+                    result[uint32(proto.Spells[slot].SpellId)].push_back(itemEntry);
+        }
+        return result;
+    }();
+
+    auto itr = recipeItemsBySpell.find(spellId);
+    return itr == recipeItemsBySpell.end() ||
+        std::any_of(itr->second.begin(), itr->second.end(), [](uint32 itemEntry)
+        {
+            return IsItemAllowed(itemEntry);
+        });
 }
 
 char const* Name(Era era)

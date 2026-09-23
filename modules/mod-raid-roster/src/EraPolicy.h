@@ -4,6 +4,9 @@
 #include "Define.h"
 
 #include <string_view>
+#include <vector>
+
+class SpellInfo;
 
 namespace EraPolicy
 {
@@ -52,6 +55,17 @@ uint32 ItemProvenanceBlockedCount(Era era);
 uint64 ItemProvenanceWorldFingerprint();
 bool TryItemEra(uint32 itemId, Era& era);
 bool IsItemAllowed(uint32 itemId);
+
+struct CraftOutputResolution
+{
+    bool resolved = false;
+    bool provenanceReady = false;
+    bool allowed = false;
+    std::vector<uint32> itemIds;
+};
+
+CraftOutputResolution ResolveCraftOutputs(SpellInfo const* spellInfo);
+bool IsAutomatedCraftSpellAllowed(uint32 spellId);
 
 char const* Name(Era era);
 char const* Token(Era era);
