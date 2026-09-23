@@ -2,6 +2,12 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-23 — ERA-07 queued-craft contract repair
+
+Candidate `112cfa5cd1c3c250625c2ea5da274595c471249e`: **FAILED / superseded** at Stage backend source contracts.
+- `TryCraftQueuedFromBot()` reaches the shared output policy transitively through `FindCraftSpell()`; the integration contract incorrectly required a direct textual `IsCraftSpellAllowed()` call inside the queue function.
+- Repair now requires `FindCraftSpell()` before `ai->CastSpell`, while the separate discovery contract proves `FindCraftSpell()` invokes the shared resolver.
+- Implementation source remains unchanged.
 ## 2026-09-23 — ERA-07 integration contract repair
 
 Candidate `28ef1b999b6af198b99dfde558e7461988febc39`: **FAILED / superseded** at Stage backend before C++ compilation.

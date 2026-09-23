@@ -1599,7 +1599,7 @@ assert "IsCraftSpellAllowed(itr->first, info, itemId)" in craft_discovery
 queued_craft = section(AI_GUILD_SERVICES, "bool TryCraftQueuedFromBot(", "bool ContributeSurplusFromBot(")
 assert queued_craft.index("EraPolicy::ItemProvenanceReady()") < queued_craft.index("CharacterDatabase.Query")
 assert queued_craft.index("EraPolicy::IsItemAllowed(itemId)") < queued_craft.index("ai->CanCastSpell")
-assert queued_craft.index("IsCraftSpellAllowed") < queued_craft.index("ai->CastSpell")
+assert queued_craft.index("FindCraftSpell(bot, itemId, spellId)") < queued_craft.index("ai->CastSpell")
 assert "UPDATE mod_ai_guild_request" not in queued_craft
 assert "DELETE FROM mod_ai_guild_request" not in queued_craft
 guild_handler_start = AI_GUILD_SERVICES.index("bool HandleGuildMessage(")
