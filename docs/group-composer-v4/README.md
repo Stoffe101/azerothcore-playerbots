@@ -257,7 +257,7 @@ Status: **DONE + exact-head local-CI green at `c8a2fb343867e4c524845300f7dc03f19
 
 ### ERA-07 world-loot audit + automated crafting guard candidate
 
-Codex source `4a24bb09c78ad7f86b20ba761e4fa273995fbc5b` is being integrated from the exact green base `c8a2fb34...`. Current integration status: **IMPLEMENTED / exact-head local CI required**.
+Codex source `4a24bb09c78ad7f86b20ba761e4fa273995fbc5b` was reviewed and integrated from the exact green base `c8a2fb34...`. Status: **DONE + exact-head local-CI green at `7fe1a1be07181d51465176721e433477b678d0a7` / runtime TODO**.
 
 This slice does not rewrite ordinary world loot. It adds read-only visibility over 13 AzerothCore loot-template sources, centralizes automated craft-output/recipe checks in `EraPolicy`, keeps unresolved loot-crafting `CREATE_ITEM_2` fail-closed, and extends the Playerbots bridge so generic/random autonomous crafting cannot cast an unsafe item-producing spell before reagents/cooldowns are consumed.
 

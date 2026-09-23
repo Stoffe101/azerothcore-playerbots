@@ -2,6 +2,17 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-23 — ERA-07 world-loot / automated crafting integration green
+
+Exact SHA `7fe1a1be07181d51465176721e433477b678d0a7`: **DONE + fully exact-head green / runtime TODO**.
+- Group Composer client checks: SUCCESS.
+- Stage Group Composer V4 backend: SUCCESS.
+- Integration build: SUCCESS on `stoffes-pc`.
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`.
+- Codex source `4a24bb09...` is integrated with central direct craft-output/recipe policy, broader Playerbots pre-cast guards and a read-only 13-source world-loot audit.
+- Loot-crafting `CREATE_ITEM_2` remains intentionally fail-closed because complete loaded grouped/reference output enumeration is not exposed by the current core API.
+- Integration review repaired two stale/static contract assumptions without changing the production implementation.
+- Remaining work is live runtime acceptance, historical loot/recipe fidelity and any future reviewed runtime enumeration API for unresolved loot-crafting outputs.
 ## 2026-09-23 — ERA-07 queued-craft contract repair
 
 Candidate `112cfa5cd1c3c250625c2ea5da274595c471249e`: **FAILED / superseded** at Stage backend source contracts.

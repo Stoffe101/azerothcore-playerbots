@@ -441,7 +441,7 @@ Runtime evidence beats this ordering. A blocker discovered while testing may jum
 
 
 ### 2026-09-23 ERA-07 world-loot / crafting candidate
-- source `4a24bb09`, based exactly on green `c8a2fb34`, is **IMPLEMENTED / exact-head integrated CI required**;
+- source `4a24bb09`, integrated through `7fe1a1be`, is **DONE + exact-head local-CI green / runtime TODO**;
 - central craft-output policy now covers direct automated item-producing spells and item-taught recipe legality;
 - unresolved loot-crafting `CREATE_ITEM_2` remains fail-closed rather than guessed from database rows;
 - Playerbots generic/random automated crafting is gated before casting through the existing narrow callback bridge;

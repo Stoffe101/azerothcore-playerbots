@@ -4,7 +4,7 @@ _Last rewritten: 2026-09-23_
 
 ## ERA-07 world-loot / CREATE_ITEM_2 / Playerbots crafting integration candidate
 
-Status: **IMPLEMENTED / exact-head local CI required**.
+Status: **DONE + exact-head local-CI green at `7fe1a1be07181d51465176721e433477b678d0a7` / runtime TODO**.
 
 Codex source commit: `4a24bb09c78ad7f86b20ba761e4fa273995fbc5b`, based exactly on the current green integration base `c8a2fb343867e4c524845300f7dc03f199fe5b82`.
 
@@ -27,7 +27,9 @@ Single persistent realm rule:
 - UNKNOWN remains blocked from protected automation;
 - earlier legal content never becomes illegal when the realm advances.
 
-Still TODO after CI:
+Exact-head verification for `7fe1a1be...`: client checks SUCCESS, backend staging SUCCESS, Integration build SUCCESS on `stoffes-pc`, and Group Composer V4 compile SUCCESS on `stoffes-pc`.
+
+Still TODO at runtime / deeper fidelity:
 - runtime `.era audit` evidence while the same test progression state advances Vanilla -> TBC -> WotLK;
 - representative allowed/blocked automated craft casts before reagent use;
 - ordinary/manual player crafting regression check;

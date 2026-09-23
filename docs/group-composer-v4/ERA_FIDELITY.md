@@ -374,7 +374,7 @@ ArenaRoster follow-up: the WotLK season-gearing layer now also refuses before de
 
 ## ERA-07 world-loot / automated crafting visibility slice
 
-Codex source `4a24bb09`: **IMPLEMENTED / exact-head integrated CI required**.
+Codex source `4a24bb09`, integrated at `7fe1a1be`: **DONE + exact-head local-CI green / runtime TODO**.
 
 This slice extends the same persistent-realm chronology boundary without pretending that the WotLK world database has been rewritten into historical 1.12/2.4.3 data:
 - direct automated craft outputs are resolved through central EraPolicy item provenance;

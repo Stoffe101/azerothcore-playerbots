@@ -548,9 +548,9 @@ Implementation source: Codex `1fbb15f9295084147e3205383a84866e75e33683`; integra
 - TODO runtime: stale/error results leave no orphaned partial stat records in GearAdvisor.
 
 
-## ERA-07 world-loot / CREATE_ITEM_2 / Playerbots crafting candidate
+## ERA-07 world-loot / CREATE_ITEM_2 / Playerbots crafting — exact-head green
 
-- STATIC: central `CraftOutputResolution` requires provenance readiness.
+- PASS (exact-head `7fe1a1be`): central `CraftOutputResolution` requires provenance readiness.
 - STATIC: direct `CREATE_ITEM` and non-loot `CREATE_ITEM_2` outputs are collected and every item must pass `EraPolicy::IsItemAllowed`.
 - STATIC: `CREATE_RANDOM_ITEM` is unresolved/fail-closed for protected automation.
 - STATIC: loot-crafting `CREATE_ITEM_2` (`SpellInfo::IsLootCrafting`) is unresolved/fail-closed before automated cast.
@@ -560,7 +560,7 @@ Implementation source: Codex `1fbb15f9295084147e3205383a84866e75e33683`; integra
 - STATIC: Playerbots transformer patches generic random item-producing spell selection and autonomous craft execution with the shared pre-cast predicate.
 - STATIC: `.era audit` lists all 13 expected loot-template sources and uses grouped read-only SQL.
 - STATIC: unavailable provenance yields FAIL for `WORLD_LOOT_RECIPES`; future/UNKNOWN ordinary definitions yield WARN.
-- STATIC: integration CI contract replaces the old AI Guild-local resolver assertions with shared-policy assertions.
+- PASS (exact-head `7fe1a1be`): integration CI contract replaces the old AI Guild-local resolver assertions with shared-policy assertions and all four required workflows succeeded.
 - TODO runtime: run `.era audit` while the same progression state advances Vanilla -> TBC -> WotLK and verify the legal set widens cumulatively.
 - TODO runtime: test a legal direct-output autonomous craft and a future/UNKNOWN direct-output craft; blocked cast must occur before reagent consumption.
 - TODO runtime: confirm loot-crafting `CREATE_ITEM_2` stays blocked and ordinary manual player crafting remains unchanged.
