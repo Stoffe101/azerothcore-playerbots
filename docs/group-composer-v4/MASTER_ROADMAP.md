@@ -448,3 +448,13 @@ Runtime evidence beats this ordering. A blocker discovered while testing may jum
 - `.era audit` gains read-only grouped visibility over 13 world loot-template sources;
 - ordinary/manual loot and player crafting remain unchanged;
 - this is visibility/automation containment, not historical loot-table reconstruction.
+
+
+### 2026-09-23 ERA-13 / ERA-18 world-containment candidate
+- Codex source `515d115d`, based exactly on green `2de33c60`, is **IMPLEMENTED / exact-head integrated CI required / runtime TODO**;
+- `.era audit` gains bounded read-only spawn/vendor/trainer/quest visibility with map era treated only as a lower bound;
+- ordinary NPC/quest chronology stays UNKNOWN without authoritative evidence;
+- project-owned Titan world presentation is classified as WotLK-only and is runtime-gated by central EraPolicy;
+- fresh persistent realms do not create Titan Dalaran NPCs before WotLK; after WotLK opens, missing spawns are created without restart;
+- dirty-dev pre-existing Titan rows are not deleted, but are audit-visible and interaction-blocked;
+- ERA-13 and ERA-18 remain PARTIAL.

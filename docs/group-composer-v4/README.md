@@ -262,3 +262,12 @@ Codex source `4a24bb09c78ad7f86b20ba761e4fa273995fbc5b` was reviewed and integra
 This slice does not rewrite ordinary world loot. It adds read-only visibility over 13 AzerothCore loot-template sources, centralizes automated craft-output/recipe checks in `EraPolicy`, keeps unresolved loot-crafting `CREATE_ITEM_2` fail-closed, and extends the Playerbots bridge so generic/random autonomous crafting cannot cast an unsafe item-producing spell before reagents/cooldowns are consumed.
 
 The legality set remains cumulative on one persistent realm: Vanilla, then Vanilla+TBC after TBC opens, then Vanilla+TBC+WotLK after WotLK opens.
+
+
+### ERA-13 / ERA-18 world-containment candidate
+
+Codex source `515d115ddaffa416f58a9f4144e3ef53a6f78110` is being integrated from exact green base `2de33c60...`. Status: **IMPLEMENTED / exact-head local CI required / runtime TODO**.
+
+The bounded slice adds read-only world-content audit coverage for spawn maps, vendors, trainers and quest relations, and adds authoritative WotLK release gates to the project-owned Titan Rune world lifecycle. On a fresh friends realm, the three persistent Dalaran Titan NPCs are not created before WotLK and are created after WotLK opens on the same running realm. Existing dirty-dev Titan rows are deliberately not deleted; they are audit-visible and their interactions/mode paths are blocked pre-WotLK.
+
+Ordinary old-world NPC/quest chronology remains UNKNOWN unless authoritative evidence exists. ERA-13 and ERA-18 remain PARTIAL.

@@ -12,3 +12,4 @@ for test in chatter-grounding human-navigator; do
 done
 
 python3 "$ROOT/tools/tests/runtime-hardening.py"
+python3 "$ROOT/tools/tests/era-world-containment.py"

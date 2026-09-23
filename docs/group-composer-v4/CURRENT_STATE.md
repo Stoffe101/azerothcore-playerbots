@@ -2,6 +2,41 @@
 
 _Last rewritten: 2026-09-23_
 
+## ERA-13 / ERA-18 world-containment integration candidate
+
+Status: **IMPLEMENTED / exact-head local CI required / runtime TODO**.
+
+Codex source: `515d115ddaffa416f58a9f4144e3ef53a6f78110`, based exactly on green head `2de33c609bb05ed363a242f613396748b6a12a97`.
+
+Implemented/reviewed scope:
+- `.era audit` gains bounded read-only map exposure reporting for creature/gameobject spawns, ordinary/event vendors, legacy/default trainers, and creature/gameobject quest starters/end-ers;
+- vendor stock and quest start/reward item references are classified through existing central item provenance without pretending that item chronology proves NPC/quest chronology;
+- unresolved templates/addons/trainer definitions are explicitly reported as UNKNOWN chronology rather than guessed Vanilla;
+- the three project-owned Titan Dalaran NPC templates/spawns are audited as WotLK-only world presentation;
+- Titan persistent Dalaran spawn creation is blocked until WotLK is released;
+- a world tick retries creation after WotLK opens on the same running persistent realm, so expansion release does not require a restart;
+- Titan heroic/mode support, coordinator gossip, Sidereal/Scourgestone gossip, and `.titan` mode selection all reject pre-WotLK;
+- existing Titan item/currency provenance checks remain separate and still happen before protected currency mutation;
+- ordinary core vendors/quests/trainers are audit-only where earliest expansion cannot be proven.
+
+Fresh friends realm behavior:
+- Vanilla/TBC: no new Titan persistent Dalaran spawns are created and Titan interactions/modes are blocked;
+- after WotLK opens on the SAME realm: missing Titan spawns become eligible and are created without reset/restart.
+
+Dirty dev realm behavior:
+- previously persisted Titan rows are not destructively deleted by this slice;
+- `.era audit` flags pre-WotLK Titan rows as FAIL;
+- Titan interactions remain blocked pre-WotLK;
+- physical visibility of stale dirty-dev rows still requires runtime observation.
+
+Still TODO:
+- live same-realm Vanilla -> TBC -> WotLK acceptance;
+- ordinary vendor/NPC/quest/trainer chronology evidence;
+- broader reviewed vendor/currency containment once chronology exists;
+- later-added old-world hubs/scripted quests;
+- physical dirty-dev stale-row presentation validation.
+
+ERA-13 and ERA-18 remain **PARTIAL / IN PROGRESS**.
 ## ERA-07 world-loot / CREATE_ITEM_2 / Playerbots crafting integration candidate
 
 Status: **DONE + exact-head local-CI green at `7fe1a1be07181d51465176721e433477b678d0a7` / runtime TODO**.

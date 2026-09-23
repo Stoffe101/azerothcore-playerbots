@@ -136,7 +136,8 @@ float DamageMultiplier(uint32 mapId, TitanRuneMode mode)
 
 bool IsEligibleHeroicMap(Map const* map)
 {
-    return map && map->IsDungeon() && map->GetDifficulty() == DUNGEON_DIFFICULTY_HEROIC;
+    return EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk) && map && map->IsDungeon() &&
+        map->GetDifficulty() == DUNGEON_DIFFICULTY_HEROIC;
 }
 
 void Notify(Player* player, std::string const& message)
@@ -255,11 +256,15 @@ bool SpawnPersistentNpc(uint32 entry, float x, float y, float z, float o)
     return true;
 }
 
-void EnsureDalaranNpcs()
+bool EnsureDalaranNpcs()
 {
-    SpawnPersistentNpc(TitanRune::COORDINATOR_ENTRY,          5808.0f, 590.5f, VENDOR_Z, 4.70f);
-    SpawnPersistentNpc(TitanRune::SIDEREAL_VENDOR_ENTRY,      5811.0f, 590.5f, VENDOR_Z, 4.70f);
-    SpawnPersistentNpc(TitanRune::SCOURGESTONE_VENDOR_ENTRY,  5814.0f, 590.5f, VENDOR_Z, 4.70f);
+    if (!EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk))
+        return false;
+
+    bool const coordinator = SpawnPersistentNpc(TitanRune::COORDINATOR_ENTRY, 5808.0f, 590.5f, VENDOR_Z, 4.70f);
+    bool const sidereal = SpawnPersistentNpc(TitanRune::SIDEREAL_VENDOR_ENTRY, 5811.0f, 590.5f, VENDOR_Z, 4.70f);
+    bool const scourgestone = SpawnPersistentNpc(TitanRune::SCOURGESTONE_VENDOR_ENTRY, 5814.0f, 590.5f, VENDOR_Z, 4.70f);
+    return coordinator && sidereal && scourgestone;
 }
 
 uint32 CurrencyForVendor(uint8 vendor)
@@ -388,9 +393,26 @@ public:
     void OnStartup() override
     {
         LoadVendorItems();
-        EnsureDalaranNpcs();
+        _spawnsChecked = EnsureDalaranNpcs();
         LOG_INFO("server.loading", "[TitanRune] Defense Protocol Alpha/Beta/Gamma ready.");
     }
+
+    void OnUpdate(uint32 diff) override
+    {
+        // Expansion opening updates EraPolicy on the same running realm. Create the project-owned
+        // Dalaran spawns once WotLK opens, without requiring a world DB rewrite or restart.
+        if (_spawnsChecked || !EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk))
+            return;
+        _elapsed += diff;
+        if (_elapsed < 30000)
+            return;
+        _elapsed = 0;
+        _spawnsChecked = EnsureDalaranNpcs();
+    }
+
+private:
+    uint32 _elapsed = 0;
+    bool _spawnsChecked = false;
 };
 
 class TitanRuneInstanceLifecycleScript final : public GlobalScript
@@ -563,6 +585,11 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature) override
     {
+        if (!EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk))
+        {
+            ClearGossipMenuFor(player);
+            return true;
+        }
         ClearGossipMenuFor(player);
         TitanRuneMode current = TitanRune::LoadSelectedMode(player);
         AddGossipItemFor(player, GOSSIP_ICON_CHAT,
@@ -580,6 +607,11 @@ public:
 
     bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
     {
+        if (!EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk))
+        {
+            ClearGossipMenuFor(player);
+            return true;
+        }
         if (action >= 100 && action <= 103)
         {
             TitanRuneMode mode = static_cast<TitanRuneMode>(action - 100);
@@ -598,12 +630,22 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature) override
     {
+        if (!EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk))
+        {
+            ClearGossipMenuFor(player);
+            return true;
+        }
         ShowVendorPage(player, creature, VENDOR_SIDEREAL, 0);
         return true;
     }
 
     bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
     {
+        if (!EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk))
+        {
+            ClearGossipMenuFor(player);
+            return true;
+        }
         if (action >= 11000 && action < 12000)
             BuyVendorItem(player, VENDOR_SIDEREAL, action - 11000);
         else if (action >= 21000 && action < 22000)
@@ -620,12 +662,22 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature) override
     {
+        if (!EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk))
+        {
+            ClearGossipMenuFor(player);
+            return true;
+        }
         ShowVendorPage(player, creature, VENDOR_SCOURGESTONE, 0);
         return true;
     }
 
     bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
     {
+        if (!EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk))
+        {
+            ClearGossipMenuFor(player);
+            return true;
+        }
         if (action >= 12000 && action < 13000)
             BuyVendorItem(player, VENDOR_SCOURGESTONE, action - 12000);
         else if (action >= 22000 && action < 23000)
@@ -681,6 +733,11 @@ public:
         Player* player = GetPlayer(handler);
         if (!player)
             return true;
+        if (!EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk))
+        {
+            handler->PSendSysMessage("[Titan Rune] Unavailable before WotLK opens.");
+            return true;
+        }
         TitanRune::SaveSelectedMode(player, mode);
         handler->PSendSysMessage("[Titan Rune] Next eligible heroic: {}. Group leader selection wins.", TitanRune::ModeName(mode));
         return true;
@@ -751,6 +808,8 @@ TitanRuneMode GetActiveMode(Map const* map)
 
 bool IsSupportedDungeon(uint32 mapId, TitanRuneMode mode)
 {
+    if (!EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk))
+        return false;
     switch (mapId)
     {
         case 574: // Utgarde Keep

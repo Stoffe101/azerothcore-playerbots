@@ -387,3 +387,26 @@ This slice extends the same persistent-realm chronology boundary without pretend
 The legality model is cumulative on one persistent friends realm:
 `Vanilla -> Vanilla+TBC -> Vanilla+TBC+WotLK`.
 Earlier legitimate content remains legal after each manual expansion opening.
+
+
+## ERA-13 / ERA-18 world-content containment slice
+
+Codex source `515d115d`: **IMPLEMENTED / exact-head integrated CI required / runtime TODO**.
+
+World chronology now explicitly separates:
+1. map/continent earliest era;
+2. item provenance;
+3. NPC/vendor/quest chronology.
+
+Map era is a lower bound only. An allowed old-world map does not prove an NPC or quest is Vanilla.
+
+Authoritative runtime containment added in this slice is limited to the reviewed project-owned Titan Rune system:
+- persistent Dalaran coordinator/Sidereal/Scourgestone spawn creation requires WotLK release;
+- missing reviewed spawns can be created after WotLK opens on the same running realm;
+- Titan heroic/mode eligibility, gossip/vendor presentation and `.titan` selection require WotLK;
+- existing item/currency provenance guards remain in force.
+
+Ordinary vendors, trainers and quests are audited rather than broadly hidden when chronology cannot be proven. This avoids replacing era fidelity with ID/name/level guesses.
+
+Fresh friends realm progression remains cumulative:
+`Vanilla -> Vanilla+TBC -> Vanilla+TBC+WotLK`.

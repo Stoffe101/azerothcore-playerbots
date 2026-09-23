@@ -2,6 +2,16 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-23 — ERA-13 / ERA-18 world-containment integration candidate
+
+Current status: **IMPLEMENTED / exact-head local CI required / runtime TODO**.
+- Codex source `515d115d...` was based exactly on green head `2de33c60...`.
+- Review confirmed Titan spawn creation and all reviewed interaction/mode boundaries consume central WotLK release state.
+- Fresh early-era realms do not create the three persistent Titan Dalaran NPCs; after WotLK opens, a world tick retries missing creation without restart.
+- Dirty-dev persisted Titan rows are not deleted; audit reports them and interactions are blocked.
+- `.era audit` adds bounded read-only map/vendor/trainer/quest world-content visibility without inventing NPC/quest chronology.
+- Integration adds the new permanent ERA world-containment source contract directly to Stage backend so it runs in the required exact-head CI set.
+- ERA-13/ERA-18 remain PARTIAL until live transition acceptance and authoritative ordinary-world chronology exist.
 ## 2026-09-23 — ERA-07 world-loot / automated crafting integration green
 
 Exact SHA `7fe1a1be07181d51465176721e433477b678d0a7`: **DONE + fully exact-head green / runtime TODO**.

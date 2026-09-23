@@ -565,3 +565,24 @@ Implementation source: Codex `1fbb15f9295084147e3205383a84866e75e33683`; integra
 - TODO runtime: test a legal direct-output autonomous craft and a future/UNKNOWN direct-output craft; blocked cast must occur before reagent consumption.
 - TODO runtime: confirm loot-crafting `CREATE_ITEM_2` stays blocked and ordinary manual player crafting remains unchanged.
 - TODO runtime: inspect representative creature/gameobject/reference/spell-loot warnings against known data.
+
+
+## ERA-13 / ERA-18 world-containment candidate
+
+- STATIC: `EnsureDalaranNpcs()` requires `EraPolicy::IsEraReleased(Wotlk)`.
+- STATIC: Titan heroic eligibility and supported-dungeon/mode paths require WotLK.
+- STATIC: coordinator, Sidereal vendor and Scourgestone vendor gossip paths require WotLK before action.
+- STATIC: `.titan` mode selection rejects before WotLK.
+- STATIC: world update can create missing reviewed Titan spawns after WotLK opens without restart.
+- STATIC: audit is read-only; no world-table UPDATE/DELETE is introduced.
+- STATIC: map audit uses `EraPolicy::TryMapEra` and explicitly reports allowed-map content chronology as UNKNOWN.
+- STATIC: ordinary vendor and quest item references use central item provenance without upgrading item era into NPC/quest era.
+- STATIC: representative examples are bounded.
+- STATIC: Titan pre-WotLK persistent spawn rows are FAIL in audit.
+- STATIC/CI: `tools/tests/era-world-containment.py` is run by the Stage backend exact-head workflow.
+- TODO runtime: fresh Vanilla/TBC startup creates no Titan Dalaran persistent rows.
+- TODO runtime: WotLK opening on the same running realm creates missing Titan NPCs without restart.
+- TODO runtime: dirty-dev existing Titan rows are flagged and cannot be interacted with pre-WotLK; observe physical GM visibility.
+- TODO runtime: verify `.era audit` performance/counts/examples on the live DB.
+- TODO runtime: vendor purchase/exchange and `.titan` attempts fail before WotLK and work after release.
+- TODO runtime: sample questgiver/vendor/trainer audit output in Vanilla, TBC and WotLK states.

@@ -15,6 +15,7 @@
 #include <array>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace Acore::ChatCommands;
@@ -314,6 +315,137 @@ bool EraAuditCommand::HandleAudit(ChatHandler* handler)
             ", unknownBlocked=" + std::to_string(provenanceUnknown) +
             (provenanceReady ? "" : ", error=" + std::string(EraPolicy::ItemProvenanceError())));
 
+    // Map.dbc is authoritative for the continent's earliest era. It is only a lower bound for
+    // individual NPCs, gameobjects and quests, especially on retrofitted old-world maps.
+    auto auditWorldMapSource = [&](char const* source, char const* sql)
+    {
+        uint64 inspected = 0;
+        uint64 futureMap = 0;
+        uint64 unresolved = 0;
+        std::vector<std::string> examples;
+        if (QueryResult result = WorldDatabase.Query(sql))
+        {
+            do
+            {
+                Field* fields = result->Fetch();
+                uint32 const mapId = fields[0].Get<uint32>();
+                uint64 const count = fields[1].Get<uint64>();
+                inspected += count;
+                EraPolicy::Era mapEra;
+                if (!EraPolicy::TryMapEra(mapId, mapEra))
+                {
+                    unresolved += count;
+                    if (examples.size() < 5)
+                        examples.push_back("map=" + std::to_string(mapId) + "(x" + std::to_string(count) + ",UNKNOWN)");
+                }
+                else if (!EraPolicy::IsEraReleased(mapEra))
+                {
+                    futureMap += count;
+                    if (examples.size() < 5)
+                        examples.push_back("map=" + std::to_string(mapId) + "(x" + std::to_string(count) +
+                            "," + EraPolicy::Name(mapEra) + ")");
+                }
+                else if (examples.size() < 5)
+                    examples.push_back("map=" + std::to_string(mapId) + "(x" + std::to_string(count) +
+                        ",content-UNKNOWN)");
+            } while (result->NextRow());
+        }
+        // Allowed map does not establish an NPC/object/quest release date.
+        uint64 const unknownChronology = inspected - futureMap - unresolved;
+        report(futureMap || unresolved || unknownChronology ? AuditState::Warn : AuditState::Pass, "WORLD_MAP_CONTENT",
+            std::string("source=") + source + ", inspected=" + std::to_string(inspected) +
+                ", mapAllowed=" + std::to_string(unknownChronology) +
+                ", futureMap=" + std::to_string(futureMap) +
+                ", unknownMap=" + std::to_string(unresolved) +
+                ", unknownContentChronology=" + std::to_string(unknownChronology) +
+                (examples.empty() ? "" : ", examples=" + JoinExamples(examples)));
+    };
+    // The dirty development DB can still have the older `creature.id` layout; the pinned
+    // exact-base world schema uses `id1`. Inspect schema read-only instead of assuming either.
+    char const* creatureEntryColumn = "id";
+    bool creatureHasAlternateEntries = false;
+    if (QueryResult result = WorldDatabase.Query(
+            "SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() "
+            "AND TABLE_NAME='creature' AND COLUMN_NAME='id1' LIMIT 1"))
+    {
+        creatureEntryColumn = "id1";
+        creatureHasAlternateEntries = true;
+    }
+    auditWorldMapSource("creature", "SELECT map,COUNT(*) FROM creature GROUP BY map");
+    auditWorldMapSource("gameobject", "SELECT map,COUNT(*) FROM gameobject GROUP BY map");
+    auto auditCreatureRelation = [&](char const* source, char const* table, char const* relationColumn)
+    {
+        std::string predicate = std::string("r.") + relationColumn + "=c." + creatureEntryColumn;
+        if (creatureHasAlternateEntries)
+            predicate = "(" + predicate + " OR r." + relationColumn + "=c.id2 OR r." + relationColumn + "=c.id3)";
+        std::string const sql = std::string("SELECT c.map,COUNT(*) FROM creature c WHERE EXISTS (SELECT 1 FROM ") +
+            table + " r WHERE " + predicate + ") GROUP BY c.map";
+        auditWorldMapSource(source, sql.c_str());
+    };
+    auditCreatureRelation("npc_vendor+creature", "npc_vendor", "entry");
+    auditCreatureRelation("npc_trainer+creature", "npc_trainer", "ID");
+    auditCreatureRelation("creature_default_trainer+creature", "creature_default_trainer", "CreatureId");
+    auditCreatureRelation("creature_queststarter+creature", "creature_queststarter", "id");
+    auditCreatureRelation("creature_questender+creature", "creature_questender", "id");
+    auditWorldMapSource("game_event_npc_vendor+creature",
+        "SELECT c.map,COUNT(*) FROM creature c WHERE EXISTS "
+        "(SELECT 1 FROM game_event_npc_vendor v WHERE v.guid=c.guid) GROUP BY c.map");
+    auditWorldMapSource("gameobject_queststarter+gameobject", "SELECT g.map,COUNT(*) FROM gameobject g WHERE EXISTS (SELECT 1 FROM gameobject_queststarter q WHERE q.id=g.id) GROUP BY g.map");
+    auditWorldMapSource("gameobject_questender+gameobject", "SELECT g.map,COUNT(*) FROM gameobject g WHERE EXISTS (SELECT 1 FROM gameobject_questender q WHERE q.id=g.id) GROUP BY g.map");
+
+    // These tables shape interactions or decorate spawns, but carry no reviewed release era.
+    // Count them without treating a template, trainer spell or quest requirement as Vanilla.
+    std::array<char const*, 9> const unresolvedWorldTables = {
+        "creature_template", "gameobject_template", "creature_addon", "creature_template_addon",
+        "gameobject_addon", "npc_trainer", "trainer", "trainer_spell", "quest_template_addon"
+    };
+    for (char const* table : unresolvedWorldTables)
+    {
+        uint64 count = 0;
+        if (QueryResult result = WorldDatabase.Query("SELECT COUNT(*) FROM {}", table))
+            count = result->Fetch()[0].Get<uint64>();
+        report(count ? AuditState::Warn : AuditState::Pass, "WORLD_UNRESOLVED_DEFINITIONS",
+            std::string("source=") + table + ", inspected=" + std::to_string(count) +
+                ", unknownChronology=" + std::to_string(count));
+    }
+
+    // The three reviewed module-owned entries are WotLK content regardless of inventory or map.
+    uint64 titanSpawns = 0;
+    uint64 trackedTitanSpawns = 0;
+    uint64 titanTemplates = 0;
+    std::vector<std::string> titanExamples;
+    std::string const titanSpawnSql = std::string("SELECT ") + creatureEntryColumn +
+        ",map,COUNT(*) FROM creature WHERE " + creatureEntryColumn +
+        " IN (900110,900111,900112) GROUP BY " + creatureEntryColumn + ",map";
+    if (QueryResult result = WorldDatabase.Query(titanSpawnSql.c_str()))
+    {
+        do
+        {
+            Field* fields = result->Fetch();
+            uint64 const count = fields[2].Get<uint64>();
+            titanSpawns += count;
+            if (titanExamples.size() < 5)
+                titanExamples.push_back("entry=" + std::to_string(fields[0].Get<uint32>()) +
+                    "@map=" + std::to_string(fields[1].Get<uint32>()) + "(x" + std::to_string(count) + ")");
+        } while (result->NextRow());
+    }
+    if (QueryResult result = WorldDatabase.Query("SELECT COUNT(*) FROM mod_titan_rune_vendor_spawns"))
+        trackedTitanSpawns = result->Fetch()[0].Get<uint64>();
+    if (QueryResult result = WorldDatabase.Query(
+            "SELECT COUNT(*) FROM creature_template WHERE entry IN (900110,900111,900112)"))
+        titanTemplates = result->Fetch()[0].Get<uint64>();
+    bool const wotlkReleased = EraPolicy::IsEraReleased(EraPolicy::Era::Wotlk);
+    AuditState const titanState = !wotlkReleased && titanSpawns ? AuditState::Fail :
+        (titanTemplates != 3 || (wotlkReleased && (titanSpawns != 3 || trackedTitanSpawns != 3)) ?
+            AuditState::Warn : AuditState::Pass);
+    report(titanState,
+        "TITAN_WORLD_SPAWNS",
+        "source=creature+mod_titan_rune_vendor_spawns, present=" + std::to_string(titanSpawns) +
+            ", tracked=" + std::to_string(trackedTitanSpawns) +
+            ", templates=" + std::to_string(titanTemplates) +
+            ", released=" + (wotlkReleased ? "yes" : "no") +
+            (titanExamples.empty() ? "" : ", examples=" + JoinExamples(titanExamples)));
+
     if (!provenanceReady)
     {
         report(AuditState::Fail, "AUCTION_STOCK", "not scanned because central item provenance is unavailable");
@@ -328,6 +460,8 @@ bool EraAuditCommand::HandleAudit(ChatHandler* handler)
             "not scanned because central item provenance is unavailable");
         report(AuditState::Fail, "WORLD_LOOT_RECIPES",
             "not scanned because central item provenance is unavailable");
+        report(AuditState::Fail, "WORLD_VENDOR_ITEMS", "not scanned because central item provenance is unavailable");
+        report(AuditState::Fail, "WORLD_QUEST_REWARDS", "not scanned because central item provenance is unavailable");
     }
     else
     {
@@ -453,6 +587,60 @@ bool EraAuditCommand::HandleAudit(ChatHandler* handler)
                         "(x" + std::to_string(count) + "," + EraPolicy::Name(itemEra) + ")");
             }
         };
+
+        // Definitions are grouped by item, so a future item is a signal without claiming the
+        // vendor NPC or quest itself has a proven expansion chronology.
+        uint64 worldVendorItems = 0;
+        uint64 futureWorldVendorItems = 0;
+        uint64 unknownWorldVendorItems = 0;
+        std::vector<std::string> worldVendorExamples;
+        std::array<std::pair<char const*, char const*>, 2> const worldVendorQueries = {{
+            {"npc_vendor", "SELECT item,COUNT(*) FROM npc_vendor WHERE item>0 GROUP BY item"},
+            {"game_event_npc_vendor", "SELECT item,COUNT(*) FROM game_event_npc_vendor WHERE item>0 GROUP BY item"}
+        }};
+        for (auto const& [source, sql] : worldVendorQueries)
+            if (QueryResult result = WorldDatabase.Query(sql))
+                do
+                {
+                    Field* fields = result->Fetch();
+                    classifyAutomatedItem(source, fields[0].Get<uint32>(), fields[1].Get<uint64>(),
+                        worldVendorItems, futureWorldVendorItems, unknownWorldVendorItems, worldVendorExamples);
+                } while (result->NextRow());
+        report(futureWorldVendorItems || unknownWorldVendorItems ? AuditState::Warn : AuditState::Pass,
+            "WORLD_VENDOR_ITEMS",
+            "source=npc_vendor+game_event_npc_vendor, inspected=" + std::to_string(worldVendorItems) +
+                ", itemAllowed=" + std::to_string(worldVendorItems - futureWorldVendorItems - unknownWorldVendorItems) +
+                ", futureItem=" + std::to_string(futureWorldVendorItems) +
+                ", unknownItem=" + std::to_string(unknownWorldVendorItems) +
+                ", npcChronology=UNKNOWN" +
+                (worldVendorExamples.empty() ? "" : ", examples=" + JoinExamples(worldVendorExamples)));
+
+        uint64 questRewardItems = 0;
+        uint64 futureQuestRewardItems = 0;
+        uint64 unknownQuestRewardItems = 0;
+        std::vector<std::string> questRewardExamples;
+        std::array<char const*, 11> const questItemColumns = {
+            "StartItem", "RewardItem1", "RewardItem2", "RewardItem3", "RewardItem4",
+            "RewardChoiceItemID1", "RewardChoiceItemID2", "RewardChoiceItemID3",
+            "RewardChoiceItemID4", "RewardChoiceItemID5", "RewardChoiceItemID6"
+        };
+        for (char const* column : questItemColumns)
+            if (QueryResult result = WorldDatabase.Query(
+                    "SELECT {},COUNT(*) FROM quest_template WHERE {}>0 GROUP BY {}", column, column, column))
+                do
+                {
+                    Field* fields = result->Fetch();
+                    classifyAutomatedItem("quest_template", fields[0].Get<uint32>(), fields[1].Get<uint64>(),
+                        questRewardItems, futureQuestRewardItems, unknownQuestRewardItems, questRewardExamples);
+                } while (result->NextRow());
+        report(futureQuestRewardItems || unknownQuestRewardItems ? AuditState::Warn : AuditState::Pass,
+            "WORLD_QUEST_REWARDS",
+            "source=quest_template, inspected=" + std::to_string(questRewardItems) +
+                ", itemAllowed=" + std::to_string(questRewardItems - futureQuestRewardItems - unknownQuestRewardItems) +
+                ", futureItem=" + std::to_string(futureQuestRewardItems) +
+                ", unknownItem=" + std::to_string(unknownQuestRewardItems) +
+                ", questChronology=UNKNOWN" +
+                (questRewardExamples.empty() ? "" : ", examples=" + JoinExamples(questRewardExamples)));
 
         uint64 vendorItems = 0;
         uint64 futureVendorItems = 0;
