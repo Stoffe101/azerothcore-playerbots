@@ -438,3 +438,13 @@ Runtime evidence beats this ordering. A blocker discovered while testing may jum
 - unvalidated models cannot render authoritative UPGRADE/DOWNGRADE language;
 - manual WoWSims export remains available;
 - cap/stat trade explanations and route promotion to SIM_BACKED remain later validation work.
+
+
+### 2026-09-23 ERA-07 world-loot / crafting candidate
+- source `4a24bb09`, based exactly on green `c8a2fb34`, is **IMPLEMENTED / exact-head integrated CI required**;
+- central craft-output policy now covers direct automated item-producing spells and item-taught recipe legality;
+- unresolved loot-crafting `CREATE_ITEM_2` remains fail-closed rather than guessed from database rows;
+- Playerbots generic/random automated crafting is gated before casting through the existing narrow callback bridge;
+- `.era audit` gains read-only grouped visibility over 13 world loot-template sources;
+- ordinary/manual loot and player crafting remain unchanged;
+- this is visibility/automation containment, not historical loot-table reconstruction.

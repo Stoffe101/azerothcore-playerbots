@@ -252,4 +252,13 @@ Status: **DONE + exact-head local-CI green at `0bb9b39625a7aa7c9def6756463ad71f8
 
 ### GearAdvisor v0.3.5 finalized stat tradeoffs
 
-Current slice: **IMPLEMENTED / exact-head local CI required**. The worldserver now forwards the selected Sim Bags candidate's structured finalized stat deltas as compact `[GA]|SIMSTAT` records followed by `SIMDONE`. GearAdvisor buffers those records for the matching async job and renders the actual arithmetic item tradeoffs, for example `Spell Power +46 · Spell Hit Rating -18`. These are factual before/after stat changes from the pinned engine's `ComputeStats`, not static stat weights or automatic good/bad judgments. Existing unvalidated-vs-SIM_BACKED authority wording and stale-result rejection remain unchanged.
+Status: **DONE + exact-head local-CI green at `c8a2fb343867e4c524845300f7dc03f199fe5b82`**. The worldserver now forwards the selected Sim Bags candidate's structured finalized stat deltas as compact `[GA]|SIMSTAT` records followed by `SIMDONE`. GearAdvisor buffers those records for the matching async job and renders the actual arithmetic item tradeoffs, for example `Spell Power +46 · Spell Hit Rating -18`. These are factual before/after stat changes from the pinned engine's `ComputeStats`, not static stat weights or automatic good/bad judgments. Existing unvalidated-vs-SIM_BACKED authority wording and stale-result rejection remain unchanged.
+
+
+### ERA-07 world-loot audit + automated crafting guard candidate
+
+Codex source `4a24bb09c78ad7f86b20ba761e4fa273995fbc5b` is being integrated from the exact green base `c8a2fb34...`. Current integration status: **IMPLEMENTED / exact-head local CI required**.
+
+This slice does not rewrite ordinary world loot. It adds read-only visibility over 13 AzerothCore loot-template sources, centralizes automated craft-output/recipe checks in `EraPolicy`, keeps unresolved loot-crafting `CREATE_ITEM_2` fail-closed, and extends the Playerbots bridge so generic/random autonomous crafting cannot cast an unsafe item-producing spell before reagents/cooldowns are consumed.
+
+The legality set remains cumulative on one persistent realm: Vanilla, then Vanilla+TBC after TBC opens, then Vanilla+TBC+WotLK after WotLK opens.

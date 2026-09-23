@@ -370,3 +370,20 @@ The boundary intentionally protects project-owned automated item creation withou
 This preserves the forward-only Vanilla -> TBC -> WotLK rule while keeping deep DB historical fidelity as an explicit later scope rather than an accidental claim.
 
 ArenaRoster follow-up: the WotLK season-gearing layer now also refuses before destructive stripping when WotLK itself is unreleased. This is a narrow item-generation safety guard, not completion of the broader PvP lifecycle roadmap.
+
+
+## ERA-07 world-loot / automated crafting visibility slice
+
+Codex source `4a24bb09`: **IMPLEMENTED / exact-head integrated CI required**.
+
+This slice extends the same persistent-realm chronology boundary without pretending that the WotLK world database has been rewritten into historical 1.12/2.4.3 data:
+- direct automated craft outputs are resolved through central EraPolicy item provenance;
+- item-taught recipe items are checked through the same central policy;
+- unresolved/random item outputs fail closed;
+- loot-crafting `CREATE_ITEM_2` stays disabled for protected automation because a complete runtime enumeration of loaded grouped/reference spell-loot entries is not publicly exposed by the current core API;
+- broader Playerbots autonomous item-producing casts are rejected before cast when the shared resolver cannot prove them legal;
+- ordinary world loot remains untouched, but 13 loot-template sources are now visible through read-only audit WARNs for future/UNKNOWN definitions.
+
+The legality model is cumulative on one persistent friends realm:
+`Vanilla -> Vanilla+TBC -> Vanilla+TBC+WotLK`.
+Earlier legitimate content remains legal after each manual expansion opening.

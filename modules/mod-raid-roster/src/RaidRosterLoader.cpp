@@ -86,7 +86,8 @@ void Addmod_raid_rosterScripts()
 
     // Playerbots remains independent from this module: register narrow callbacks so every
     // PlayerbotFactory-generated item can obey the same live ERA-07 chronology.
-    PlayerbotFactory::SetItemPolicyPredicates(&EraPolicy::ItemProvenanceReady, &EraPolicy::IsItemAllowed);
+    PlayerbotFactory::SetItemPolicyPredicates(&EraPolicy::ItemProvenanceReady, &EraPolicy::IsItemAllowed,
+        &EraPolicy::IsAutomatedCraftSpellAllowed);
 
     new RaidRosterWorld();
     new RaidRosterCommand();

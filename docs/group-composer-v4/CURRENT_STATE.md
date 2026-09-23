@@ -1,34 +1,38 @@
 # Current State
 
-_Last rewritten: 2026-09-22_
+_Last rewritten: 2026-09-23_
 
-## Current ERA-07 automated loot/crafting integration candidate
+## ERA-07 world-loot / CREATE_ITEM_2 / Playerbots crafting integration candidate
 
-Status: **DONE + exact-head local-CI green at `b81954669fa19565fa9d556ca37b7b0d0651b4bb`**.
+Status: **IMPLEMENTED / exact-head local CI required**.
 
-Codex source commit: `1fbb15f9295084147e3205383a84866e75e33683` (`feat: extend ERA-07 to automated loot and crafting`), based on `66c13cb1...`. The eight touched source files were byte-identical between that base and the current fully-green WoWSims/GearAdvisor head `a8b56bd0...`, so the source integration is conflict-free.
+Codex source commit: `4a24bb09c78ad7f86b20ba761e4fa273995fbc5b`, based exactly on the current green integration base `c8a2fb343867e4c524845300f7dc03f199fe5b82`.
 
-Covered boundaries:
-- Titan Rune Alpha/Beta/Gamma protocol loot injection now requires ready provenance and legal item IDs at the final add-item boundary;
-- Beta/Gamma replacement equipment is selected and provenance-approved before ordinary Heroic equipment is removed, preserving normal loot if no legal replacement exists;
-- AI Guild `!craft` request creation, `FindCraftSpell`, queued bot crafting and autonomous profession-session crafting validate all direct create-item outputs plus item-taught recipe provenance before any persistent request/reagent/cooldown/inventory/treasury/stock mutation;
-- opaque `SPELL_EFFECT_CREATE_ITEM_2` outputs fail closed until their runtime loot-template provenance can be resolved;
-- ArenaRoster synthetic gearing now fails before destructive pre-gearing strip when provenance is unavailable and filters every equipped item;
-- `.era audit` gains `TITAN_PROTOCOL_LOOT` plus queued craft-result coverage in `AI_GUILD_ITEM_HELPERS`;
-- no new chronology guesses or item overrides were introduced.
+Reviewed integration scope:
+- `EraPolicy::ResolveCraftOutputs` centralizes direct `CREATE_ITEM` / non-loot `CREATE_ITEM_2` output classification and requires live central provenance;
+- `SPELL_EFFECT_CREATE_RANDOM_ITEM` remains unresolved/fail-closed for protected automation;
+- loot-crafting `CREATE_ITEM_2` identified by `SpellInfo::IsLootCrafting()` remains unresolved/fail-closed because the loaded runtime loot template does not expose a complete public grouped/reference enumeration API;
+- AI Guild queued/autonomous crafting consumes the shared resolver and shared recipe-item policy instead of maintaining a duplicate local implementation;
+- the Playerbots source transformer adds the same pre-cast gate to generic `CastRandomSpellAction` item-producing spells and autonomous craft-action execution;
+- the callback is registered through the existing narrow PlayerbotFactory bridge, keeping Playerbots independent from EraPolicy implementation details;
+- `.era audit` read-only scans 13 loot-template sources: creature, gameobject, reference, item, disenchant, prospecting, milling, fishing, skinning, pickpocketing, spell, mail and player loot;
+- audit rows are grouped by item and capped to representative examples; ordinary future/UNKNOWN definitions are WARN, while unavailable central provenance is FAIL;
+- ordinary gameplay loot and manual player crafting are not modified by this slice;
+- integration adds permanent source-contract assertions and CI checks so the shared resolver/Playerbots pre-cast guard/world-loot audit cannot silently disappear later.
 
-Codex-local static, codestyle, provenance self-test, Python and focused Clang 18 `-Werror` checks passed before integration. The integrated head `b8195466...` then passed all four required workflows: client checks, backend staging, Group Composer V4 compile on `stoffes-pc`, and Integration build on `stoffes-pc`. Runtime acceptance across Vanilla/TBC/WotLK remains required.
+Single persistent realm rule:
+- current released era Vanilla => Vanilla items legal;
+- after TBC opens on the same realm => Vanilla + TBC legal;
+- after WotLK opens on the same realm => Vanilla + TBC + WotLK legal;
+- UNKNOWN remains blocked from protected automation;
+- earlier legal content never becomes illegal when the realm advances.
 
-Still outside this bounded slice: ordinary AzerothCore world loot/recipe tables, database-wide historical loot/recipe fidelity, runtime provenance resolution for `CREATE_ITEM_2` loot-template outputs, broader upstream Playerbots crafting behavior outside project-owned AI Guild orchestration, and remaining ERA-13 world-content/spawn containment. ERA-07 therefore remains **PARTIAL / IN PROGRESS**.
-
-### ArenaRoster pre-WotLK preservation follow-up
-
-Status: **DONE + exact-head local-CI green at `f23da452397ca80dc15e233eb0ccb700d72fb110`**.
-
-Source review after the green integration found one dirty-dev edge in the bounded ArenaRoster item-generation path: `EquipSeason()` already failed before stripping gear when chronology was unavailable, but a level-80 dirty bot could still reach the destructive strip on a Vanilla/TBC realm before every WotLK season item was individually rejected. The follow-up adds an explicit `EraPolicy::IsEraReleased(Wotlk)` guard before the strip so existing gear is preserved until WotLK is actually released. A static ordering contract verifies the WotLK release check occurs before `DestroyItem`.
-
-This does not claim full ArenaRoster/PvP lifecycle containment; arena feature availability, pool behavior and broader PvP-era orchestration remain separate roadmap work.
-
+Still TODO after CI:
+- runtime `.era audit` evidence while the same test progression state advances Vanilla -> TBC -> WotLK;
+- representative allowed/blocked automated craft casts before reagent use;
+- ordinary/manual player crafting regression check;
+- a reviewed runtime/core enumeration API for loaded loot-crafting `CREATE_ITEM_2` outputs if those automated casts are ever enabled;
+- historical loot-table fidelity itself remains a separate, much larger project.
 
 ## Current integrated ERA-07 vendor/reward candidate
 
@@ -679,7 +683,7 @@ The next explanation boundary now uses the pinned simulators themselves instead 
 
 ## GearAdvisor v0.3.5 finalized stat-delta transport
 
-Status: **IMPLEMENTED / exact-head local CI required**.
+Status: **DONE + exact-head local-CI green at `c8a2fb343867e4c524845300f7dc03f199fe5b82`**.
 
 This slice carries the already-green service-side `statDeltas` into the Wrath client without trying to squeeze structured JSON into one chat packet:
 - the worldserver sends one compact `[GA]|SIMSTAT|job|key|label|unit|baseline|candidate|delta` record per non-zero finalized stat change;

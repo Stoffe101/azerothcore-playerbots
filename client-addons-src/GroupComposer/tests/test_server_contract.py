@@ -1568,13 +1568,29 @@ assert titan_hook.index("EraPolicy::ItemProvenanceReady()") < titan_hook.index("
 assert titan_hook.index("SelectRandomFromPool(loot, pools[POOL_BETA_GEAR])") < titan_hook.index("ReplaceBaselineHeroicEquipment")
 assert titan_hook.index("if (betaGear)") < titan_hook.index("ReplaceBaselineHeroicEquipment")
 
-recipe_gate = section(AI_GUILD_SERVICES, "bool IsRecipeItemAllowedForSpell(", "bool FindCraftSpell(")
-assert "ITEM_CLASS_RECIPE" in recipe_gate
-assert "ITEM_SPELLTRIGGER_LEARN_SPELL_ID" in recipe_gate
-assert "EraPolicy::IsItemAllowed(itemEntry)" in recipe_gate
+# ERA-07 shared craft-output policy + world-loot audit.
+assert "struct CraftOutputResolution" in ERA_POLICY_H
+assert "CraftOutputResolution ResolveCraftOutputs(SpellInfo const* spellInfo);" in ERA_POLICY_H
+assert "bool IsAutomatedCraftSpellAllowed(uint32 spellId);" in ERA_POLICY_H
+craft_resolution = section(ERA_POLICY_CPP, "CraftOutputResolution ResolveCraftOutputs(", "bool IsAutomatedCraftSpellAllowed(")
+assert "ItemProvenanceReady()" in craft_resolution
+assert "SPELL_EFFECT_CREATE_RANDOM_ITEM" in craft_resolution
+assert "SPELL_EFFECT_CREATE_ITEM_2 && spellInfo->IsLootCrafting()" in craft_resolution
+assert "return result;" in craft_resolution
+assert "SPELL_EFFECT_CREATE_ITEM" in craft_resolution
+assert "SPELL_EFFECT_CREATE_ITEM_2" in craft_resolution
+assert "IsItemAllowed(itemId)" in craft_resolution
+shared_craft_gate = section(ERA_POLICY_CPP, "bool IsAutomatedCraftSpellAllowed(", "char const* Name(")
+assert "ResolveCraftOutputs(sSpellMgr->GetSpellInfo(spellId))" in shared_craft_gate
+assert "ITEM_CLASS_RECIPE" in shared_craft_gate
+assert "ITEM_SPELLTRIGGER_LEARN_SPELL_ID" in shared_craft_gate
+assert "IsItemAllowed(itemEntry)" in shared_craft_gate
+
 craft_spell_gate = section(AI_GUILD_SERVICES, "bool IsCraftSpellAllowed(", "bool FindCraftSpell(")
-assert "SPELL_EFFECT_CREATE_ITEM_2" in craft_spell_gate
-assert "EraPolicy::IsItemAllowed(resultItemId)" in craft_spell_gate
+assert "EraPolicy::ResolveCraftOutputs(info)" in craft_spell_gate
+assert "outputs.resolved" in craft_spell_gate
+assert "outputs.allowed" in craft_spell_gate
+assert "EraPolicy::IsAutomatedCraftSpellAllowed(spellId)" in craft_spell_gate
 craft_discovery = section(AI_GUILD_SERVICES, "bool FindCraftSpell(", "AuctionHouseEntry const*")
 assert "EraPolicy::ItemProvenanceReady()" in craft_discovery
 assert "EraPolicy::IsItemAllowed(itemId)" in craft_discovery
@@ -1582,7 +1598,7 @@ assert "IsCraftSpellAllowed(itr->first, info, itemId)" in craft_discovery
 queued_craft = section(AI_GUILD_SERVICES, "bool TryCraftQueuedFromBot(", "bool ContributeSurplusFromBot(")
 assert queued_craft.index("EraPolicy::ItemProvenanceReady()") < queued_craft.index("CharacterDatabase.Query")
 assert queued_craft.index("EraPolicy::IsItemAllowed(itemId)") < queued_craft.index("ai->CanCastSpell")
-assert queued_craft.index("EraPolicy::IsItemAllowed(itemId)") < queued_craft.index("ai->CastSpell")
+assert queued_craft.index("IsCraftSpellAllowed") < queued_craft.index("ai->CastSpell")
 assert "UPDATE mod_ai_guild_request" not in queued_craft
 assert "DELETE FROM mod_ai_guild_request" not in queued_craft
 guild_handler_start = AI_GUILD_SERVICES.index("bool HandleGuildMessage(")
@@ -1601,6 +1617,28 @@ assert autonomous_craft.index("EraPolicy::ItemProvenanceReady()") < autonomous_c
 assert autonomous_craft.index("IsCraftSpellAllowed") < autonomous_craft.index("ai->CastSpell")
 assert 'DoAction(bot, "craft random item")' not in AI_GUILD_AUTONOMY
 assert "PBAIGuildServices::TryCraftAllowedFromBot(bot)" in AI_GUILD_AUTONOMY
+
+assert "&EraPolicy::IsAutomatedCraftSpellAllowed" in RAID_ROSTER_LOADER
+assert "CastCustomSpellAction.cpp" in PLAYERBOT_ITEM_POLICY_APPLIER
+assert "CastRandomSpellAction::AcceptSpell" in PLAYERBOT_ITEM_POLICY_APPLIER
+assert 'spellInfo->ReagentCount[EFFECT_0] > 0 &&' in PLAYERBOT_ITEM_POLICY_APPLIER
+assert PLAYERBOT_ITEM_POLICY_APPLIER.count(
+    "PlayerbotFactory::IsAutomatedCraftSpellAllowed(spellInfo->Id)"
+) >= 2
+assert "SPELL_EFFECT_CREATE_ITEM_2" in PLAYERBOT_ITEM_POLICY_APPLIER
+assert "SPELL_EFFECT_CREATE_RANDOM_ITEM" in PLAYERBOT_ITEM_POLICY_APPLIER
+
+for loot_table in (
+    "creature_loot_template", "gameobject_loot_template", "reference_loot_template",
+    "item_loot_template", "disenchant_loot_template", "prospecting_loot_template",
+    "milling_loot_template", "fishing_loot_template", "skinning_loot_template",
+    "pickpocketing_loot_template", "spell_loot_template", "mail_loot_template",
+    "player_loot_template",
+):
+    assert f'"{loot_table}"' in ERA_AUDIT
+assert '"WORLD_LOOT_RECIPES"' in ERA_AUDIT
+assert '"WORLD_LOOT_SUMMARY"' in ERA_AUDIT
+assert '"SELECT Item, COUNT(*) FROM {} WHERE Reference=0 AND Item>0 GROUP BY Item"' in ERA_AUDIT
 
 assert 'central EraPolicy.h is required' in ARENA_CMAKE
 assert '#include "EraPolicy.h"' in ARENA_GEAR

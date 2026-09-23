@@ -43,6 +43,11 @@ jobs:
           bash -n configure-ahbot.sh
           grep -q 'EraProvenanceDisabledItemIDs' patches/0043-ahbot-era-provenance-filter.patch
           python3 -m py_compile tools/apply-playerbot-era-item-policy.py
+          python3 -m py_compile tools/check-era07-focused-compile.py
+          grep -q 'IsAutomatedCraftSpellAllowed' tools/apply-playerbot-era-item-policy.py
+          grep -q 'SPELL_EFFECT_CREATE_ITEM_2' tools/apply-playerbot-era-item-policy.py
+          grep -q 'WORLD_LOOT_SUMMARY' modules/mod-raid-roster/src/EraAuditCommand.cpp
+          grep -q 'spell_loot_template' modules/mod-raid-roster/src/EraAuditCommand.cpp
           python3 -m py_compile wowsims-service/app.py
           python3 -m py_compile wowsims-service/harvest_presets.py
           python3 wowsims-service/harvest_presets.py --self-test

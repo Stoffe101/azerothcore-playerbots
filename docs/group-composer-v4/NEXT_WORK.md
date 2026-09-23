@@ -72,7 +72,7 @@ ERA-01 is now **IN PROGRESS** while P0 runtime evidence is blocked.
 18. **DONE + exact-head local-CI green at `66c13cb1`:** ERA-07 automated vendor/reward-helper slice from Codex source `9499939`, integrated at `304aee8d`. Titan Rune vendors/exchange/pending rewards/Gamma signets and AI Guild stock/AH/item-service helpers fail closed on unavailable/future/UNKNOWN provenance; audit coverage and four reviewed Titan Rune overrides are included.
 19. **DONE + exact-head local-CI green at `b8195466` / runtime TODO:** ERA-07 automated loot/crafting slice from Codex `1fbb15f9` is integrated on top of the green WoWSims/GearAdvisor line. Covered: Titan protocol loot injection, AI Guild project-owned queued/autonomous crafting + item-taught recipe checks, ArenaRoster synthetic gearing and expanded audit.
 19a. **DONE + exact-head local-CI green at `f23da452`:** explicit pre-WotLK ArenaRoster `EquipSeason` preservation guard before destructive stripping.
-19b. **NEXT ERA-07:** ordinary AzerothCore world loot/recipe tables, database-wide historical loot/recipe fidelity, `CREATE_ITEM_2` runtime loot-template provenance and broader upstream Playerbots crafting outside AI Guild orchestration. Runtime-generate the central snapshot on the dev realm and inspect the expanded `.era audit` sections.
+19b. **CURRENT / exact-head CI required:** ERA-07 world-loot/recipe visibility + broader automated Playerbots crafting candidate from Codex `4a24bb09`. Adds read-only scanning of 13 loot-template sources, shared craft-output/recipe policy and Playerbots pre-cast guards. Loot-crafting `CREATE_ITEM_2` remains intentionally fail-closed because loaded grouped/reference outputs cannot yet be authoritatively enumerated. Historical loot fidelity remains TODO.
 20. **NEXT ERA-13 containment:** broader quest/NPC/vendor cleanup plus Titan Rune NPC spawning/map lifecycle after item-source provenance work is proven.
 
 Why: one authoritative era source prevents forty independent gates from drifting, and the audit tells us where WotLK/TBC leakage actually exists before we patch systems blindly.
@@ -172,7 +172,7 @@ Only build these if testing shows they add real value:
 - DONE + exact-head green at `a8b56bd0`: GearAdvisor v0.3.3 result transport, explicit Sim Bags action and stale-snapshot rejection.
 - DONE + exact-head green at `2bff0a68`: GearAdvisor v0.3.4 honest pre-swap cap context.
 - DONE + exact-head green at `0bb9b396`: pinned-engine `ComputeStats` helpers + service-side finalized before/after `statDeltas` for Sim Bags candidates.
-- CURRENT / local CI: GearAdvisor v0.3.5 structured `SIMSTAT` transport + finalized item-tradeoff rendering.
+- DONE + exact-head green at `c8a2fb34`: GearAdvisor v0.3.5 structured `SIMSTAT` transport + finalized item-tradeoff rendering.
 - NEXT: reconcile safe rating-based cap crossings where service/client units can be proven equivalent.
 - NEXT validation: define/validate tank survivability authority before automatic tank item comparisons are enabled.
 - NEXT authority: validate individual era/spec mechanics before changing ENGINE_PRESENT_UNVALIDATED routes to SIM_BACKED.

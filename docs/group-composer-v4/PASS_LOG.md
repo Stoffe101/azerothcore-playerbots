@@ -2,6 +2,24 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-23 — ERA-07 world-loot / automated crafting integration candidate
+
+Current status: **IMPLEMENTED / exact-head local CI required**.
+- Codex source `4a24bb09c78ad7f86b20ba761e4fa273995fbc5b` was based exactly on green head `c8a2fb34...`.
+- Review confirmed direct craft outputs use central provenance and unresolved loot-crafting `CREATE_ITEM_2` remains fail-closed before automated casting.
+- Review confirmed Playerbots random/generic item-producing spell selection is patched through the narrow PlayerbotFactory callback before the cast.
+- Read-only audit covers 13 grouped loot-template sources and never mutates ordinary loot.
+- Integration-side hardening updates the permanent source-contract test, backend CI assertions, and parameterizes the focused compile helper so it does not become stale after merge.
+- Runtime evidence and authoritative integrated four-workflow CI remain required.
+
+## 2026-09-23 — GearAdvisor v0.3.5 finalized stat tradeoffs green
+
+Exact SHA `c8a2fb343867e4c524845300f7dc03f199fe5b82`: **DONE + fully exact-head green**.
+- Group Composer client checks: SUCCESS.
+- Stage Group Composer V4 backend: SUCCESS.
+- Group Composer V4 compile: SUCCESS on `stoffes-pc`.
+- Integration build: SUCCESS on `stoffes-pc`.
+- Finalized ComputeStats deltas are transported and rendered as factual arithmetic tradeoffs without static stat-weight claims.
 ## 2026-09-22 — GearAdvisor v0.3.5 finalized stat tradeoffs
 
 Current slice: **IMPLEMENTED / exact-head local CI required**.

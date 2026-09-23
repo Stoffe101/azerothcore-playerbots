@@ -326,6 +326,8 @@ bool EraAuditCommand::HandleAudit(ChatHandler* handler)
             "not scanned because central item provenance is unavailable");
         report(AuditState::Fail, "AI_GUILD_ITEM_HELPERS",
             "not scanned because central item provenance is unavailable");
+        report(AuditState::Fail, "WORLD_LOOT_RECIPES",
+            "not scanned because central item provenance is unavailable");
     }
     else
     {
@@ -564,6 +566,57 @@ bool EraAuditCommand::HandleAudit(ChatHandler* handler)
                 ", futureQuarantined=" + std::to_string(futureGuildHelperItems) +
                 ", unknownQuarantined=" + std::to_string(unknownGuildHelperItems) +
                 (guildHelperExamples.empty() ? "" : ", examples=" + JoinExamples(guildHelperExamples)));
+
+        // These are database definitions, not actual drops. Reference templates are scanned as
+        // their own source; this counts each definition once without multiplying reference chains.
+        // The queries aggregate by item in SQL and never change ordinary player loot.
+        std::array<char const*, 13> const lootTables =
+        {
+            "creature_loot_template", "gameobject_loot_template", "reference_loot_template",
+            "item_loot_template", "disenchant_loot_template", "prospecting_loot_template",
+            "milling_loot_template", "fishing_loot_template", "skinning_loot_template",
+            "pickpocketing_loot_template", "spell_loot_template", "mail_loot_template",
+            "player_loot_template"
+        };
+        uint64 allReferences = 0;
+        uint64 allFuture = 0;
+        uint64 allUnknown = 0;
+        std::vector<std::string> allExamples;
+        for (char const* table : lootTables)
+        {
+            uint64 references = 0;
+            uint64 future = 0;
+            uint64 unknown = 0;
+            std::vector<std::string> examples;
+            if (QueryResult result = WorldDatabase.Query(
+                    "SELECT Item, COUNT(*) FROM {} WHERE Reference=0 AND Item>0 GROUP BY Item", table))
+            {
+                do
+                {
+                    Field* fields = result->Fetch();
+                    classifyAutomatedItem(table, fields[0].Get<uint32>(), fields[1].Get<uint64>(),
+                        references, future, unknown, examples);
+                } while (result->NextRow());
+            }
+            allReferences += references;
+            allFuture += future;
+            allUnknown += unknown;
+            for (std::string const& example : examples)
+                if (allExamples.size() < 5)
+                    allExamples.push_back(example);
+            report(future || unknown ? AuditState::Warn : AuditState::Pass, "WORLD_LOOT_RECIPES",
+                std::string("source=") + table + ", references=" + std::to_string(references) +
+                    ", eligible=" + std::to_string(references - future - unknown) +
+                    ", future=" + std::to_string(future) +
+                    ", unknown=" + std::to_string(unknown) +
+                    (examples.empty() ? "" : ", examples=" + JoinExamples(examples)));
+        }
+        report(allFuture || allUnknown ? AuditState::Warn : AuditState::Pass, "WORLD_LOOT_SUMMARY",
+            "references=" + std::to_string(allReferences) +
+                ", eligible=" + std::to_string(allReferences - allFuture - allUnknown) +
+                ", future=" + std::to_string(allFuture) +
+                ", unknown=" + std::to_string(allUnknown) +
+                (allExamples.empty() ? "" : ", examples=" + JoinExamples(allExamples)));
     }
 
     AuditState const summary = failures ? AuditState::Fail : (warnings ? AuditState::Warn : AuditState::Pass);
