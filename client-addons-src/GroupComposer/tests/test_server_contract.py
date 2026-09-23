@@ -1470,7 +1470,8 @@ assert "IsItemAllowedByExternalPolicy" in PLAYERBOT_ITEM_POLICY_APPLIER
 assert "ERA-07: fail closed before second-chance" in PLAYERBOT_ITEM_POLICY_APPLIER
 assert "GetEquipmentNew(requiredLevel, inventoryType)" in PLAYERBOT_ITEM_POLICY_APPLIER
 assert "enchantGemIdCache" in PLAYERBOT_ITEM_POLICY_APPLIER
-assert "PlayerbotFactory::SetItemPolicyPredicates(&EraPolicy::ItemProvenanceReady, &EraPolicy::IsItemAllowed)" in RAID_ROSTER_LOADER
+assert "PlayerbotFactory::SetItemPolicyPredicates(&EraPolicy::ItemProvenanceReady, &EraPolicy::IsItemAllowed," in RAID_ROSTER_LOADER
+assert "&EraPolicy::IsAutomatedCraftSpellAllowed" in RAID_ROSTER_LOADER
 assert "Starter kit for {} refused: ERA-07 item provenance unavailable" in ADVENTURE_START_KIT
 assert "EraPolicy::IsItemAllowed(itemId)" in ADVENTURE_START_KIT
 assert "No progression or claim was changed." in ADVENTURE_CATCHUP

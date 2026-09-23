@@ -2,6 +2,13 @@
 
 Newest entries belong at the top of the dated section.
 
+## 2026-09-23 — ERA-07 integration contract repair
+
+Candidate `28ef1b999b6af198b99dfde558e7461988febc39`: **FAILED / superseded** at Stage backend before C++ compilation.
+- The permanent server contract still contained one legacy assertion requiring the old two-argument `PlayerbotFactory::SetItemPolicyPredicates` registration.
+- The integrated implementation intentionally uses the new third automated-craft predicate.
+- Repair updates that stale contract to require the three-predicate bridge; implementation source is unchanged.
+- A new exact-head `[local-ci]` commit must prove all four workflows.
 ## 2026-09-23 — ERA-07 world-loot / automated crafting integration candidate
 
 Current status: **IMPLEMENTED / exact-head local CI required**.
